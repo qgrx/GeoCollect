@@ -271,6 +271,14 @@ export default function App() {
 
   const [questions, setQuestions] = useState([]);
 
+  // ── Détection mobile ───────────────────────────────────────────────────────
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 520)
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 520)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+
   // ── Clic en dehors du menu avatar ──────────────────────────────────────────
   useEffect(() => {
     function handleClickOutside(e) {
@@ -540,52 +548,46 @@ export default function App() {
       <div style={{ background: 'linear-gradient(90deg,#e84393,#f9ca24,#00cec9,#6c5ce7)',backgroundSize: '300% 100%',animation: 'shimmer 6s linear infinite',height: 4 }} />
 
       {/* ── Header ── */}
-      <div style={{ position: 'relative', zIndex: 100, background: '#00000055', backdropFilter: 'blur(14px)', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #ffffff12', gap: 8 }}>
+      <div style={{ position: 'relative', zIndex: 100, background: '#00000055', backdropFilter: 'blur(14px)', padding: isMobile ? '8px 10px' : '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #ffffff12', gap: 6 }}>
 
         {/* Logo */}
-        <Logo iconSize={34} textSize={22} />
+        <Logo iconSize={isMobile ? 28 : 34} textSize={isMobile ? 17 : 22} />
 
         {/* Stats compactes — connecté seulement */}
         {auth.profile && (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#ffffff0a', borderRadius: 20, padding: '5px 12px', border: '1px solid #00b89433' }}>
-              <span style={{ fontWeight: 900, fontSize: 13, color: '#00b894' }}>{gs.uniqueCards}<span style={{ color: '#555', fontWeight: 600 }}>/{gs.totalUnique}</span></span>
-              <div style={{ width: 48, height: 4, borderRadius: 2, background: '#ffffff12', overflow: 'hidden' }}>
-                <div style={{ width: `${Math.round(gs.uniqueCards / gs.totalUnique * 100)}%`, height: '100%', background: 'linear-gradient(90deg,#00b894,#00cec9)', transition: 'width .8s' }}/>
-              </div>
-            </div>
-            <div style={{ fontWeight: 900, fontSize: 14, color: '#f9ca24' }} data-tour="gold">💰 {gs.gold}G</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, justifyContent: 'center' }}>
+            <div style={{ fontWeight: 900, fontSize: isMobile ? 13 : 14, color: '#f9ca24' }} data-tour="gold">💰 {gs.gold}G</div>
           </div>
         )}
 
         {/* Actions droite */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
           {auth.profile ? (
             <>
               {/* Marché */}
               {(auth.profile || hasDuplicate) && (
                 <button data-tour="market-btn" onClick={() => setShowMarket(true)}
-                  style={{ position: 'relative', background: 'linear-gradient(135deg,#00b894,#00cec9)', border: 'none', color: '#fff', padding: '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
-                  {t('btn_market')}
+                  style={{ position: 'relative', background: 'linear-gradient(135deg,#00b894,#00cec9)', border: 'none', color: '#fff', padding: isMobile ? '7px 10px' : '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
+                  {isMobile ? '🏪' : t('btn_market')}
                   {gs.unreadSales > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#e74c3c', color: '#fff', fontSize: 10, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: '1.5px solid #1a1a2e', animation: 'pulseBadge 1.5s infinite' }}>{gs.unreadSales}</span>}
                 </button>
               )}
               {/* Classement */}
               <button data-tour="leaderboard-btn" onClick={() => setShowLeaderboard(true)}
-                style={{ background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1a1a2e', padding: '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
+                style={{ background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1a1a2e', padding: isMobile ? '7px 10px' : '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
                 {t('btn_leaderboard')}
               </button>
 
               {/* Avatar + menu déroulant */}
               <div style={{ position: 'relative' }} ref={avatarMenuRef}>
                 <button onClick={() => setAvatarMenu(v => !v)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: avatarMenu ? '#ffffff22' : '#ffffff0a', borderRadius: 20, padding: '5px 10px 5px 5px', border: '1px solid #ffffff18', cursor: 'pointer', fontFamily: "'Nunito',sans-serif" }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, background: avatarMenu ? '#ffffff22' : '#ffffff0a', borderRadius: 20, padding: isMobile ? '5px 8px 5px 5px' : '5px 10px 5px 5px', border: '1px solid #ffffff18', cursor: 'pointer', fontFamily: "'Nunito',sans-serif" }}
                   onMouseEnter={e => e.currentTarget.style.background = '#ffffff16'}
                   onMouseLeave={e => e.currentTarget.style.background = avatarMenu ? '#ffffff22' : '#ffffff0a'}>
                   <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#1a1a2e', flexShrink: 0 }}>
                     {auth.profile.pseudo[0].toUpperCase()}
                   </div>
-                  <PseudoDisplay pseudo={auth.profile.pseudo} score={userScore} ranks={gs.limits.playerRanks} style={{ fontSize: 12, fontWeight: 800, color: '#fff', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}/>
+                  {!isMobile && <PseudoDisplay pseudo={auth.profile.pseudo} score={userScore} ranks={gs.limits.playerRanks} style={{ fontSize: 12, fontWeight: 800, color: '#fff', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}/>}
                   <span style={{ fontSize: 10, color: '#888' }}>▾</span>
                 </button>
 
@@ -637,7 +639,7 @@ export default function App() {
       </div>
 
       {/* ── Countdown ── */}
-      <div style={{ padding: '10px 18px 0' }}>
+      <div style={{ padding: isMobile ? '8px 10px 0' : '10px 18px 0' }}>
         {!activeQuiz && auth.profile?.status !== 'banni' && <div data-tour="countdown"><CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} /></div>}
       </div>
 
@@ -685,22 +687,47 @@ export default function App() {
       )}
 
       {/* ── Filters ── */}
-      {(auth.profile || !import.meta.env.VITE_API_URL) && <div style={{ padding: '10px 18px 0' }}>
-        <div style={{ display: 'flex',gap: 6,flexWrap: 'wrap',alignItems: 'center',marginBottom: 8 }}>
-          {types.map(tp => (
-            <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }} style={{ background: filter === tp ? '#f9ca24' : '#ffffff15',border: 'none',color: filter === tp ? '#1a1a2e' : '#fff',padding: '5px 12px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 11,cursor: 'pointer',transition: 'all .15s' }}>{tp}</button>
-          ))}
-          <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }} style={{ marginLeft: 'auto',background: showMissing ? '#6c5ce7' : '#ffffff15',border: 'none',color: '#fff',padding: '5px 13px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 11,cursor: 'pointer' }}>
+      {(auth.profile || !import.meta.env.VITE_API_URL) && <div style={{ padding: isMobile ? '8px 10px 0' : '10px 18px 0' }}>
+        {/* ── Compteurs par type — scroll horizontal ── */}
+        {auth.profile && gs.cardPool.length > 0 && (
+          <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginBottom: 8, paddingBottom: 2, scrollbarWidth: 'none' }}>
+            {types.map(tp => {
+              const pool  = tp === 'Tous'
+                ? gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement')
+                : gs.cardPool.filter(c => c.type === tp)
+              const total = pool.length
+              const owned = pool.filter(c => (gs.collection[c.id] || 0) > 0).length
+              const pct   = total > 0 ? Math.round(owned / total * 100) : 0
+              const full  = owned === total && total > 0
+              const active = filter === tp
+              return (
+                <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0, background: active ? '#f9ca24' : '#ffffff08', border: `1px solid ${active ? '#f9ca24' : '#ffffff0f'}`, borderRadius: 8, padding: '5px 8px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', alignItems: 'center', minWidth: 58 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a1a2e' : full ? '#00b894' : '#999', whiteSpace: 'nowrap' }}>{tp}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: active ? '#1a1a2e' : full ? '#00b894' : '#f9ca24', whiteSpace: 'nowrap', lineHeight: 1 }}>{owned}<span style={{ color: active ? '#00000055' : '#555', fontWeight: 600 }}>/{total}</span></span>
+                    <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#00000022' : '#ffffff10', overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: active ? '#1a1a2e' : full ? '#00b894' : 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .6s' }}/>
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+          <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }}
+            placeholder={t('collection_search')}
+            style={{ flex: 1, boxSizing: 'border-box', background: '#ffffff0f', border: '1px solid #ffffff18', borderRadius: 10, color: '#fff', padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
+          <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }} style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : '#ffffff15', border: 'none', color: '#fff', padding: '7px 12px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             {showMissing ? t('filter_owned') : t('filter_missing')}
           </button>
         </div>
-        <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }}
-          placeholder={t('collection_search')}
-          style={{ width: '100%',boxSizing: 'border-box',background: '#ffffff0f',border: '1px solid #ffffff18',borderRadius: 10,color: '#fff',padding: '7px 12px',fontFamily: "'Nunito',sans-serif",fontWeight: 700,fontSize: 13,outline: 'none' }}/>
       </div>}
 
       {/* ── Collection grid ── */}
-      {(auth.profile || !import.meta.env.VITE_API_URL) && <div data-tour="collection" style={{ padding: '12px 18px' }}>
+      {(auth.profile || !import.meta.env.VITE_API_URL) && <div data-tour="collection" style={{ padding: isMobile ? '10px 10px' : '12px 18px' }}>
         {displayCards.length === 0 ? (
           <div style={{ textAlign: 'center',color: '#888',padding: '44px 0' }}>
             <div style={{ fontSize: 52 }}>📭</div>
