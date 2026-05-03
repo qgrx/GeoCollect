@@ -174,12 +174,12 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <div>
             <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:21,color:"#f9ca24"}}>{t("quiz_title")}</div>
-            <div style={{color:"#888",fontSize:11,marginTop:2}}>Premier à répondre = gagne la carte · <span style={{color:"#f9ca24"}}>Réponse : {wc} mot{wc>1?"s":""}</span></div>
+            <div style={{color:"#888",fontSize:11,marginTop:2}}>{t("quiz_subtitle")}</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            {status==="open" && <div style={{display:"flex",alignItems:"center",gap:6,background:"#00b89418",border:"1.5px solid #00b89455",color:"#00b894",padding:"6px 12px",borderRadius:20,fontSize:12,fontWeight:800}}>
-              <span style={{display:"inline-block",width:8,height:8,background:"#00b894",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/>
-              En cours
+            {status==="open" && <div style={{display:"flex",alignItems:"center",gap:5,color:"#00b894",fontSize:11,fontWeight:800}}>
+              <span style={{display:"inline-block",width:7,height:7,background:"#00b894",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/>
+              Live
             </div>}
             {status==="open"&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:28,height:28,borderRadius:"50%",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
           </div>
@@ -189,7 +189,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
             <Card card={quiz.card} />
           </div>
           <div style={{flex:1,minWidth:180}}>
-            <div style={{background:"#f9ca2412",border:"1.5px solid #f9ca2430",borderRadius:13,padding:"12px 14px",fontSize:14,fontWeight:700,color:"#fff",lineHeight:1.55,marginBottom:7}}>❓ {quiz.q}</div>
+            <div style={{fontSize:15,fontWeight:800,color:"#fff",lineHeight:1.55,marginBottom:7}}>{quiz.q}</div>
             {maskedHint&&<div style={{fontSize:11,color:"#f39c12",fontFamily:"monospace",letterSpacing:3,marginTop:4,animation:"pulse 1s infinite"}}>🔤 {maskedHint}</div>}
           </div>
         </div>
