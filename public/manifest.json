@@ -1,0 +1,16 @@
+{
+  "name": "Geocoins",
+  "short_name": "Geocoins",
+  "description": "Collecte des cartes en répondant à des quiz de géocaching !",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0c29",
+  "theme_color": "#f9ca24",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/favicon.svg",  "sizes": "any",     "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "screenshots": [],
+  "categories": ["games", "entertainment"]
+}

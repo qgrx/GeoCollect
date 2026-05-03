@@ -1,0 +1,27 @@
+// Rarity Config
+export const RARITY_CONFIG = {
+  commun:     { color: '#78909c', bg: '#eceff1', stars: 1, label: 'Commun',     order: 3, cc: '#74c7ec,#b0bec5' },
+  rare:       { color: '#1565c0', bg: '#e3f2fd', stars: 2, label: 'Rare',       order: 2, cc: '#1565c0,#42a5f5' },
+  épique:     { color: '#6a1b9a', bg: '#f3e5f5', stars: 3, label: 'Épique',     order: 1, cc: '#6a1b9a,#ce93d8' },
+  légendaire: { color: '#e65100', bg: '#fff3e0', stars: 4, label: 'Légendaire', order: 0, cc: '#e65100,#ffd54f' },
+};
+
+export const RC = RARITY_CONFIG;
+export const cardCC = (r) => {
+  const [c1, c2] = (RC[r]?.cc || '#888,#aaa').split(',');
+  return { c1, c2 };
+};
+
+// Définitions des achievements (logique de déclenchement — pas de données de cartes)
+export const ACHIEVEMENT_DEF = [
+  { id: 'first_legendary', label: 'Première Légendaire', icon: '🐉', cardId: 909, check: (s) => Object.entries(s.collection).some(([id, n]) => n > 0 && (s.cardPool || []).find(c => c.id === +id)?.rarity === 'légendaire') },
+  { id: 'cards_5',         label: '5 Cartes',            icon: '🃏', cardId: 902, check: (s) => Object.keys(s.collection).filter(k => s.collection[k] > 0).length >= 5 },
+  { id: 'buy_1',           label: 'Premier Achat',       icon: '🛍️', cardId: 903, check: (s) => s.totalBuys >= 1 },
+  { id: 'buy_10',          label: '10 Achats',            icon: '💳', cardId: 904, check: (s) => s.totalBuys >= 10 },
+  { id: 'buy_100',         label: '100 Achats',           icon: '💎', cardId: 905, check: (s) => s.totalBuys >= 100 },
+  { id: 'sell_1',          label: 'Première Vente',      icon: '🏷️', cardId: 906, check: (s) => s.totalSells >= 1 },
+  { id: 'sell_10',         label: '10 Ventes',            icon: '📦', cardId: 907, check: (s) => s.totalSells >= 10 },
+  { id: 'sell_100',        label: '100 Ventes',           icon: '🏆', cardId: 908, check: (s) => s.totalSells >= 100 },
+  { id: 'daily_10',        label: '10 Cartes/Jour',      icon: '⚡', cardId: 910, check: (s) => s.dailyCards >= 10 },
+  { id: 'streak_7',        label: '7 Jours de Suite',    icon: '🔥', cardId: 911, check: (s) => s.streak >= 7 },
+];

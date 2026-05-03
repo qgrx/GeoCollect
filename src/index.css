@@ -1,0 +1,100 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  min-height: 100vh;
+  color: #fff;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #f9ca2466; border-radius: 3px; }
+
+select option { background: #1a1a2e; color: #fff; }
+
+input, select, textarea, button {
+  font-family: 'Nunito', sans-serif;
+  outline: none;
+}
+
+/* Effets de survol globaux pour les boutons */
+button {
+  transition: filter 0.2s !important;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes slideIn {
+  from { transform: translateY(28px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes slideUp {
+  from { transform: translateX(-50%) translateY(30px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+}
+@keyframes toastIn {
+  from { transform: translateX(120px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+@keyframes goldPop {
+  0%   { opacity: 0; transform: translate(-50%, -50%)  scale(0.5); }
+  15%  { opacity: 1; transform: translate(-50%, -65%)  scale(1.15); }
+  70%  { opacity: 1; transform: translate(-50%, -90%)  scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(0.85); }
+}
+@keyframes alertPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+@keyframes scrollLeft {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes quizIn {
+  from { transform: scale(0.85) translateY(20px); opacity: 0; }
+  to   { transform: scale(1)    translateY(0);    opacity: 1; }
+}
+@keyframes shakeIt {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-7px); }
+  40%       { transform: translateX(7px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+@keyframes winPulse {
+  0%, 100% { box-shadow: 0 0 0 0   #00b89400; }
+  50%       { box-shadow: 0 0 24px 6px #00b89455; }
+}
+@keyframes legendShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-5px); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: .6; }
+  50%       { opacity: 1; }
+}
+
+/* ── Responsive header ─────────────────────────────────────────────────────── */
+.menu-buttons   { display: flex; }
+.menu-hamburger { display: none; }
+.menu-drawer    { display: flex; }
+
+@media (max-width: 640px) {
+  .menu-buttons   { display: none; }
+  .menu-hamburger { display: flex; }
+}
