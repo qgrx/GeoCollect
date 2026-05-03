@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 import { useT, setLang, LANGS } from './i18n/translations.js'
 import LangSelector from './i18n/LangSelector.jsx';
+import Logo from './components/Logo.jsx';
 
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG } from './data/cards.js';
@@ -316,13 +317,8 @@ export default function App() {
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
 
-  // ── Titre dynamique (après useQuiz) ──────────────────────────────────────────
-  useEffect(() => {
-    const base = 'Geocoins'
-    if (quizSessionActive && !activeQuiz) document.title = `❓ Quiz disponible ! — ${base}`
-    else if (gs.unreadSales > 0) document.title = `(${gs.unreadSales}) Vente${gs.unreadSales > 1 ? 's' : ''} — ${base}`
-    else document.title = base
-  }, [quizSessionActive, activeQuiz, gs.unreadSales])
+  // Titre fixe — le favicon (pin vert) est affiché dans l'onglet par index.html
+  useEffect(() => { document.title = 'Geocoins' }, [])
 
 
   // ── Market actions with toasts ─────────────────────────────────────────────
@@ -524,8 +520,8 @@ export default function App() {
         ))}
       </div>
       {/* Logo centré */}
-      <div style={{ position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)', fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: '#ffffff22', animation: 'pulse 1.8s infinite' }}>
-        🗺️ Geocoins
+      <div style={{ position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)', animation: 'pulse 1.8s infinite' }}>
+        <Logo iconSize={28} textSize={17} dim />
       </div>
     </div>
   );
@@ -547,9 +543,7 @@ export default function App() {
       <div style={{ position: 'relative', zIndex: 100, background: '#00000055', backdropFilter: 'blur(14px)', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #ffffff12', gap: 8 }}>
 
         {/* Logo */}
-        <div style={{ fontFamily: "'Fredoka One', sans-serif", fontSize: 22, color: '#f9ca24', letterSpacing: 1, textShadow: '0 2px 12px #f9ca2488', flexShrink: 0 }}>
-          🗺️ Geocoins
-        </div>
+        <Logo iconSize={34} textSize={22} />
 
         {/* Stats compactes — connecté seulement */}
         {auth.profile && (

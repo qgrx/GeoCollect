@@ -1,3 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <text y=".9em" font-size="90">🪙</text>
+<svg width="32" height="40" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="p" x1="16" y1="0" x2="16" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#33c97a"/>
+      <stop offset="100%" stop-color="#005C35"/>
+    </linearGradient>
+    <radialGradient id="g" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#fff9c4"/>
+      <stop offset="60%" stop-color="#f9ca24"/>
+      <stop offset="100%" stop-color="#e17055"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="16" cy="39" rx="5.5" ry="1.2" fill="#000" opacity="0.18"/>
+  <path d="M16 1C8.27 1 2 7.27 2 15C2 24.4 16 39 16 39C16 39 30 24.4 30 15C30 7.27 23.73 1 16 1Z" fill="url(#p)"/>
+  <circle cx="16" cy="15" r="10.5" fill="#12001a"/>
+  <circle cx="16" cy="15" r="9.5" fill="#1a1a2e"/>
+  <circle cx="16" cy="15" r="9" stroke="#f9ca2430" stroke-width="0.6" fill="none"/>
+  <polygon points="16,6.5 17.8,14 16,12 14.2,14" fill="#f9ca24"/>
+  <polygon points="16,23.5 17.8,16 16,18 14.2,16" fill="#f9ca24" opacity="0.45"/>
+  <polygon points="24.5,15 17,13.2 19,15 17,16.8" fill="#f9ca24" opacity="0.45"/>
+  <polygon points="7.5,15 15,13.2 13,15 15,16.8" fill="#f9ca24" opacity="0.45"/>
+  <circle cx="16" cy="15" r="2.8" fill="url(#g)"/>
+  <circle cx="15.1" cy="14.1" r="0.9" fill="#fff" opacity="0.55"/>
 </svg>
