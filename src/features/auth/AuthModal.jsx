@@ -117,7 +117,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
       'User already registered':          '❌ Compte déjà existant — connecte-toi.',
       'Password should be at least 6':    '❌ Mot de passe trop court (6 caractères min).',
       'Unable to validate email address': '❌ Adresse email invalide.',
-      'domain_not_allowed':               '❌ Ce domaine email n\'est pas autorisé à s\'inscrire.',
+      'domain_not_allowed':               '❌ ' + t('auth_domain_not_allowed'),
     }
     for (const [k, v] of Object.entries(map)) {
       if (code?.includes(k)) return v

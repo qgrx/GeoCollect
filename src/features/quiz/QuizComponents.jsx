@@ -190,7 +190,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
           </div>
           <div style={{flex:1,minWidth:180}}>
             <div style={{background:"#f9ca2412",border:"1.5px solid #f9ca2430",borderRadius:13,padding:"12px 14px",fontSize:14,fontWeight:700,color:"#fff",lineHeight:1.55,marginBottom:7}}>❓ {quiz.q}</div>
-            <div style={{fontSize:11,color:"#555"}}>💡 {quiz.hint}</div>
             {maskedHint&&<div style={{fontSize:11,color:"#f39c12",fontFamily:"monospace",letterSpacing:3,marginTop:4,animation:"pulse 1s infinite"}}>🔤 {maskedHint}</div>}
           </div>
         </div>
