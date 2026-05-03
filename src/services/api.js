@@ -7,8 +7,9 @@
  */
 import { supabase } from '../lib/supabase.js'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-export const API_ENABLED = !!import.meta.env.VITE_API_URL
+const _rawApiUrl = (import.meta.env.VITE_API_URL || '').trim()
+const API_URL    = _rawApiUrl || 'http://localhost:3001'
+export const API_ENABLED = !!_rawApiUrl
 
 // ─── Helper fetch ─────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {

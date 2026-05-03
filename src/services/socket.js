@@ -6,12 +6,13 @@
 import { io } from 'socket.io-client'
 import { supabase } from '../lib/supabase.js'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const _rawApiUrl = (import.meta.env.VITE_API_URL || '').trim()
+const API_URL    = _rawApiUrl || 'http://localhost:3001'
 
 let _socket = null
 
 export async function getSocket() {
-  if (!import.meta.env.VITE_API_URL) return null
+  if (!_rawApiUrl) return null
   if (_socket?.connected) return _socket
 
   // Récupérer le token pour authentifier la connexion WebSocket
