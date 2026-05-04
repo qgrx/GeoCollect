@@ -197,10 +197,22 @@ export function useGameState(auth) {
             const cfg = admCfg.config
             setLimits(prev => ({
               ...prev,
-              connected: cfg.limits_connected ?? prev.connected,
-              guest:     cfg.limits_guest     ?? prev.guest,
-              marketExpireDays: cfg.market_expire_days ?? 30,
-              registrationWhitelist: cfg.registration_whitelist ?? prev.registrationWhitelist ?? null,
+              connected:             cfg.limits_connected          ?? prev.connected,
+              guest:                 cfg.limits_guest              ?? prev.guest,
+              marketExpireDays:      cfg.market_expire_days        ?? prev.marketExpireDays ?? 30,
+              registrationWhitelist: cfg.registration_whitelist    ?? prev.registrationWhitelist ?? null,
+              playerRanks:           cfg.player_ranks              ?? prev.playerRanks,
+              quizInterval:          cfg.quiz_interval             ?? prev.quizInterval,
+              quizDuration:          cfg.quiz_duration             ?? prev.quizDuration,
+              quizRarityRates:       cfg.quiz_rarity_rates         ?? prev.quizRarityRates,
+              marketSalesOpen:       cfg.market_sales_open         ?? prev.marketSalesOpen,
+              maxActiveListings:     cfg.max_active_listings       ?? prev.maxActiveListings,
+              botsVisible:           cfg.bots_visible              ?? prev.botsVisible,
+              cache_ttl_cards:       cfg.cache_ttl_cards           ?? prev.cache_ttl_cards,
+              cache_ttl_config:      cfg.cache_ttl_config          ?? prev.cache_ttl_config,
+              cache_ttl_leaderboard: cfg.cache_ttl_leaderboard     ?? prev.cache_ttl_leaderboard,
+              cache_ttl_market:      cfg.cache_ttl_market          ?? prev.cache_ttl_market,
+              cache_ttl_quiz_stats:  cfg.cache_ttl_quiz_stats      ?? prev.cache_ttl_quiz_stats,
             }))
           }
         }
