@@ -449,7 +449,16 @@ export function useGameState(auth) {
 
       const { data, error } = await apiAdminAddCard(finalCard)
       if (error) return error
-      setCardPool(prev => [...prev, { ...data.card, sellable: data.card.sellable !== false, minPrice: data.card.min_price }])
+      const c = data?.card
+      if (!c) return 'Réponse API invalide'
+      setCardPool(prev => [...prev, {
+        ...c,
+        desc:      c.desc      ?? c.description      ?? '',
+        image:     c.image     ?? c.image_url         ?? null,
+        thumbnail: c.thumbnail ?? c.image_url_thumb   ?? null,
+        minPrice:  c.minPrice  ?? c.min_price         ?? null,
+        sellable:  c.sellable  !== false,
+      }])
     }
     return null
   }, [profile])
