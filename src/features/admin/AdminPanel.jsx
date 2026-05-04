@@ -982,9 +982,9 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
         {/* ── RANGS ── */}
         {tab==="ranks"&&(()=>{
-          // Utilise limEdit (state local) pour éviter des appels API à chaque frappe
-          const ranks=[...(limEdit.playerRanks||[])].sort((a,b)=>a.min-b.min);
-          const setRanks=r=>setLimEdit(prev=>({...prev,playerRanks:r}));
+          // Pas de sort pendant l'édition — les éléments bougent sinon à chaque frappe
+          const ranks = limEdit.playerRanks || [];
+          const setRanks = r => setLimEdit(prev => ({...prev, playerRanks: r}));
           return(
             <div>
               <div style={{fontSize:12,color:"#aaa",marginBottom:14,lineHeight:1.6}}>
@@ -993,14 +993,14 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
                 {ranks.map((rank,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"#ffffff08",borderRadius:10,padding:"10px 12px",border:"1px solid #ffffff10",flexWrap:"wrap"}}>
+                  <div key={rank.label+i} style={{display:"flex",alignItems:"center",gap:8,background:"#ffffff08",borderRadius:10,padding:"10px 12px",border:"1px solid #ffffff10",flexWrap:"wrap"}}>
                     <input value={rank.icon} onChange={e=>{const r=[...ranks];r[i]={...r[i],icon:e.target.value};setRanks(r);}}
                       style={{...INP,width:50,textAlign:"center",fontSize:18,padding:"4px"}}/>
                     <input value={rank.label} onChange={e=>{const r=[...ranks];r[i]={...r[i],label:e.target.value};setRanks(r);}}
                       style={{...INP,flex:1,minWidth:100}}/>
                     <div style={{display:"flex",alignItems:"center",gap:5}}>
                       <span style={{fontSize:11,color:"#888"}}>Seuil :</span>
-                      <input type="number" min={0} value={rank.min} onChange={e=>{const r=[...ranks];r[i]={...r[i],min:+e.target.value};setRanks(r);}}
+                      <input type="number" min={0} value={rank.min} onChange={e=>{const r=[...ranks];r[i]={...r[i],min:e.target.value===''?'':+e.target.value};setRanks(r);}}
                         style={{...INP,width:70}}/>
                       <span style={{fontSize:11,color:"#888"}}>pts</span>
                     </div>
@@ -1014,7 +1014,12 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               <div style={{display:"flex",gap:8}}>
                 <button onClick={()=>setRanks([...ranks,{min:(ranks[ranks.length-1]?.min||0)+50,label:"Nouveau rang",color:"#ffffff",icon:"⭐"}])}
                   style={{...BTN("#ffffff18"),padding:"8px 16px",borderRadius:9,fontSize:12}}>+ Ajouter un rang</button>
-                <button onClick={async()=>{await onSetLimits(limEdit);setMsg("✅ Rangs sauvegardés !");}}
+                <button onClick={async()=>{
+                  const sorted={...limEdit,playerRanks:[...ranks].sort((a,b)=>(+a.min||0)-(+b.min||0))};
+                  await onSetLimits(sorted);
+                  setLimEdit(sorted);
+                  setMsg("✅ Rangs sauvegardés !");
+                }}
                   style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:9,fontSize:12}}>Sauvegarder</button>
               </div>
             </div>
