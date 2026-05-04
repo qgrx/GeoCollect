@@ -198,7 +198,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
 
         {/* ── Onglets ── */}
         <div style={{ display: 'flex', borderBottom: '1px solid #ffffff0a' }}>
-          {[['profil','👤 Profil'],['achievements','🏆 Succès']].map(([id, lbl]) => (
+          {[['profil','👤 Profil']].map(([id, lbl]) => (
             <button key={id} onClick={() => setTab(id)}
               style={{ flex: 1, background: 'none', border: 'none', borderBottom: `2px solid ${tab===id?'#f9ca24':'transparent'}`,
                 color: tab===id?'#f9ca24':'#666', padding: '11px 0', fontFamily: "'Nunito',sans-serif",
@@ -299,48 +299,6 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
         )}
         </>}
 
-        {/* ── Onglet ACHIEVEMENTS ── */}
-        {tab === 'achievements' && (
-          <div style={{ padding: '20px 24px' }}>
-            <div style={{ fontSize: 11, color: '#666', marginBottom: 14, fontWeight: 700 }}>
-              {unlockedAch.length} / {ACHIEVEMENT_DEF.length} succès débloqués
-            </div>
-            {/* Barre globale */}
-            <div style={{ background: '#ffffff0f', borderRadius: 50, height: 6, overflow: 'hidden', marginBottom: 20 }}>
-              <div style={{ width: `${Math.round(unlockedAch.length/ACHIEVEMENT_DEF.length*100)}%`,
-                height: '100%', borderRadius: 50,
-                background: 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .5s' }}/>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {ACHIEVEMENT_DEF.map(def => {
-                const done = unlockedAch.includes(def.id)
-                return (
-                  <div key={def.id} style={{ display: 'flex', alignItems: 'center', gap: 12,
-                    background: done ? '#f9ca2410' : '#ffffff06',
-                    border: `1px solid ${done ? '#f9ca2433' : '#ffffff0a'}`,
-                    borderRadius: 12, padding: '10px 14px',
-                    opacity: done ? 1 : 0.55, transition: 'all .2s' }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                      background: done ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff12',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-                      boxShadow: done ? '0 2px 12px #f9ca2444' : 'none' }}>
-                      {done ? def.icon : '🔒'}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 900, fontSize: 13, color: done ? '#fff' : '#555' }}>
-                        {def.label}
-                      </div>
-                      <div style={{ fontSize: 11, color: done ? '#aaa' : '#444', marginTop: 2 }}>
-                        {done ? '✅ Débloqué' : 'Non débloqué'}
-                      </div>
-                    </div>
-                    {done && <div style={{ fontSize: 10, color: '#f9ca24', fontWeight: 800 }}>+1 carte</div>}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
       </div>
     </div>
