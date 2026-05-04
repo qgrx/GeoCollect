@@ -33,15 +33,21 @@ export default function AdminPlayers({ players, cardPool, limEdit, onTogglePlaye
           <div style={{marginTop:14,display:"flex",gap:8,flexWrap:"wrap"}}>
             <button onClick={async()=>{
               const current=canSellOverrides[playerView.id]??playerView.can_sell; const next=current===false;
-              const{error}=await apiAdminSetCanSell(playerView.id,next);
-              if(!error){ setCanSellOverrides(prev=>({...prev,[playerView.id]:next})); setPlayerView({...playerView,can_sell:next}); setMsg(next?"✅ Vente autorisée.":"⛔ Vente interdite."); } else setMsg("❌ "+error);
+              const{data,error}=await apiAdminSetCanSell(playerView.id,next);
+              if(error){setMsg("❌ "+error);return;}
+              const actual=data?.can_sell??next;
+              setCanSellOverrides(prev=>({...prev,[playerView.id]:actual}));
+              setPlayerView({...playerView,can_sell:actual});
+              setMsg(actual?"✅ Vente autorisée.":"⛔ Vente interdite.");
             }} style={{...BTN((canSellOverrides[playerView.id]??playerView.can_sell)===false?"linear-gradient(135deg,#00b894,#00cec9)":"linear-gradient(135deg,#e17055,#d63031)"),padding:"8px 14px",borderRadius:9,fontSize:12}}>
               {(canSellOverrides[playerView.id]??playerView.can_sell)===false?"✅ Autoriser la vente":"⛔ Interdire la vente"}
             </button>
             {(playerView.status==="supprimé"||playerView.deleted_at)&&(
               <button onClick={async()=>{
-                const{error}=await apiAdminReactivate(playerView.id);
-                if(!error){setPlayerView({...playerView,status:"actif",deleted_at:null});setMsg("✅ Compte réactivé.");} else setMsg("❌ "+error);
+                const{data,error}=await apiAdminReactivate(playerView.id);
+                if(error){setMsg("❌ "+error);return;}
+                setPlayerView({...playerView,status:data?.status??"actif",deleted_at:data?.deleted_at??null});
+                setMsg("✅ Compte réactivé.");
               }} style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"8px 14px",borderRadius:9,fontSize:12}}>🔄 Réactiver le compte</button>
             )}
             {playerView.status!=="supprimé"&&!playerView.deleted_at&&(<div style={{fontSize:10,color:"#444",alignSelf:"center"}}>Compte actif — le joueur peut se désactiver depuis ses paramètres</div>)}
@@ -53,8 +59,9 @@ export default function AdminPlayers({ players, cardPool, limEdit, onTogglePlaye
               <input type="text" inputMode="numeric" placeholder="Nouveau montant" value={playerGoldEdit} onChange={e=>setPlayerGoldEdit(e.target.value.replace(/[^0-9]/g,''))} style={{...INP,width:120}}/><span style={{color:"#aaa",fontSize:12}}>G</span>
               <button onClick={async()=>{
                 const g=+playerGoldEdit; if(isNaN(g)||g<0){setMsg("❌ Montant invalide.");return;}
-                const{error}=await apiAdminSetGold(playerView.id,g); if(error){setMsg("❌ "+error);return;}
-                setPlayerView({...playerView,gold:g}); setPlayerGoldEdit(''); setMsg(`✅ Or de ${playerView.pseudo} → ${g}G`);
+                const{data,error}=await apiAdminSetGold(playerView.id,g); if(error){setMsg("❌ "+error);return;}
+                const actual=data?.gold??g;
+                setPlayerView({...playerView,gold:actual}); setPlayerGoldEdit(''); setMsg(`✅ Or de ${playerView.pseudo} → ${actual}G`);
               }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1a1a2e"),padding:"7px 14px",borderRadius:8,fontSize:12}}>Appliquer</button>
             </div>
           </div>

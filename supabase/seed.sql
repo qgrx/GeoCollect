@@ -26,17 +26,17 @@ insert into public.cards (name, type, rarity, description, sellable, min_price, 
 
 -- ─── Cartes Achievement ────────────────────────────────────
 insert into public.cards (name, type, rarity, description, sellable, active) values
-  ('Premier Log', 'Achievement', 'commun', 'Ta toute première carte gagnée !', false, true),
-  ('Collectionneur', 'Achievement', 'rare', '5 cartes dans ta collection.', false, true),
-  ('Premier Achat', 'Achievement', 'commun', 'Ton premier achat sur le marché.', false, true),
-  ('Acheteur', 'Achievement', 'rare', '10 achats sur le marché.', false, true),
-  ('Gros Acheteur', 'Achievement', 'épique', '100 achats sur le marché.', false, true),
-  ('Premier Vendeur', 'Achievement', 'commun', 'Ta première vente sur le marché.', false, true),
-  ('Vendeur', 'Achievement', 'rare', '10 ventes réalisées.', false, true),
-  ('Grand Vendeur', 'Achievement', 'épique', '100 ventes réalisées.', false, true),
-  ('Legendaire', 'Achievement', 'légendaire', 'Tu possèdes ta première carte légendaire.', false, true),
-  ('Endurant', 'Achievement', 'rare', '10 cartes gagnées en une seule journée.', false, true),
-  ('Fidèle', 'Achievement', 'épique', '1 carte trouvée par jour pendant 7 jours.', false, true);
+  ('Premier Log',     'Achievement', 'commun',    'Connecte-toi et gagne ta toute première carte lors d''un quiz.', false, true),
+  ('Collectionneur',  'Achievement', 'rare',      'Possède 5 geocoins différents dans ta collection.', false, true),
+  ('Premier achat',   'Achievement', 'commun',    'Effectue ton premier achat sur le marché.', false, true),
+  ('Acheteur',        'Achievement', 'rare',      'Effectue 10 achats sur le marché.', false, true),
+  ('Super acheteur',  'Achievement', 'épique',    'Effectue 50 achats sur le marché.', false, true),
+  ('Premier vendeur', 'Achievement', 'commun',    'Réalise ta première vente sur le marché.', false, true),
+  ('Super vendeur',   'Achievement', 'épique',    'Réalise 50 ventes sur le marché.', false, true),
+  ('Grand Vendeur',   'Achievement', 'épique',    'Réalise 100 ventes sur le marché.', false, true),
+  ('Legendaire',      'Achievement', 'légendaire','Obtiens ta première carte légendaire lors d''un quiz.', false, true),
+  ('Endurant',        'Achievement', 'rare',      'Gagne 10 geocoins en une seule journée.', false, true),
+  ('Fidèle',          'Achievement', 'épique',    'Connecte-toi et gagne au moins une carte par jour pendant 7 jours consécutifs.', false, true);
 
 -- ─── Questions géocaching ──────────────────────────────────
 insert into public.questions (question, answer, hint, active) values

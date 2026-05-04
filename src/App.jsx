@@ -459,7 +459,7 @@ export default function App() {
   }
 
   // ── Derived display state ─────────────────────────────────────────────────
-  const types = ['Tous', ...new Set(gs.cardPool.filter(c => c.type !== 'Achievement').map(c => c.type))];
+  const types = ['Tous', ...new Set(gs.cardPool.filter(c => c.type !== 'Achievement').map(c => c.type).filter(Boolean))];
   const displayCards = useMemo(() => {
     const af = filter === 'Tous';
     const q = cardSearch.trim().toLowerCase();
@@ -977,6 +977,7 @@ export default function App() {
         gs.setMaintenance({ on, text })
       }}
           onTogglePlayer={gs.adminTogglePlayer} onBanIP={gs.adminBanIP} onUnbanIP={gs.adminUnbanIP}
+          onUpdateCardInPool={card => gs.setCardPool(prev => prev.map(c => c.id === card.id ? {...c, ...card, desc: card.desc??card.description??''} : c))}
           onStartTour={() => { setShowAdmin(false); localStorage.removeItem('geocoins_tour_done'); setShowTour(true) }}
         />
       )}

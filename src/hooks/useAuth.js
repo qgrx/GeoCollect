@@ -112,10 +112,12 @@ export function useAuth() {
       }
     }
 
+    const locale = (() => { try { return localStorage.getItem('geocards_lang') || 'fr' } catch { return 'fr' } })()
+
     return supabase.auth.signUp({
       email, password,
       options: {
-        data: { pseudo },
+        data: { pseudo, locale },
         emailRedirectTo: `${window.location.origin}`,
       },
     })

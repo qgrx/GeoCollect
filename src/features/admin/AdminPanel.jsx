@@ -41,7 +41,7 @@ function Tb({id,lbl,tab,setTab,setMsg}){
 }
 
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
-export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,players,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameDefaultType,onAddQuestion,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onTogglePlayer,onBanIP,onUnbanIP,onStartTour}){
+export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,players,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameDefaultType,onAddQuestion,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onTogglePlayer,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool}){
   const {t}=useT();
   const [tab,setTab]=useState("cards");
   const [editQ,setEditQ]=useState(null);
@@ -106,7 +106,9 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
   useEffect(()=>{
     if(tab!=='achievements') return;
-    apiGetAchievementCards().then(({data})=>{ if(data?.cards) setAchCards(data.cards); });
+    apiGetAchievementCards().then(({data})=>{
+      if(data?.cards) setAchCards(data.cards.map(c=>({...c, desc: c.desc ?? c.description ?? ''})));
+    });
   },[tab]);
 
   useEffect(()=>{
@@ -575,36 +577,41 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {/* ── ACHIEVEMENTS ── */}
         {tab==="achievements"&&<div>
           <div style={{fontWeight:900,color:"#e74c3c",marginBottom:14,fontSize:14}}>🏆 Cartes Achievement ({achCards.length})</div>
-          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-            {/* Liste */}
-            <div style={{flex:1,minWidth:220}}>
-              <div style={{fontSize:11,color:"#888",marginBottom:8}}>Clique pour éditer</div>
-              <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                {achCards.map(c=>{
-                  const {c1,c2}=cardCC(c.rarity); const rc=RC[c.rarity]||RC.commun;
-                  return(
-                    <button key={c.id} onClick={()=>setEditAch(editAch?.id===c.id?null:{...c})}
-                      style={{display:"flex",alignItems:"center",gap:10,background:editAch?.id===c.id?"#f9ca2412":"#ffffff08",border:`1px solid ${editAch?.id===c.id?"#f9ca2444":"#ffffff10"}`,borderRadius:10,padding:"9px 12px",cursor:"pointer",textAlign:"left",fontFamily:"'Nunito',sans-serif",width:"100%"}}>
-                      <div style={{width:34,height:34,borderRadius:8,background:`linear-gradient(135deg,${c1},${c2})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,color:"#fff",flexShrink:0}}>{c.name[0]}</div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:800,color:"#fff",fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
-                        <div style={{fontSize:10,color:rc.color,fontWeight:700}}>{rc.label}</div>
-                      </div>
-                    </button>
-                  );
-                })}
+          <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"flex-start"}}>
+
+            {/* Grille de cartes */}
+            <div style={{flex:2,minWidth:260}}>
+              <div style={{fontSize:11,color:"#888",marginBottom:10}}>Clique pour éditer</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+                {achCards.map(c=>(
+                  <div key={c.id} onClick={()=>setEditAch(editAch?.id===c.id?null:{...c})}
+                    style={{cursor:"pointer",outline:editAch?.id===c.id?"2.5px solid #f9ca24":"2.5px solid transparent",borderRadius:18,transition:"outline .15s"}}>
+                    <Card card={c} small />
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Formulaire d'édition */}
             {editAch&&(
-              <div style={{flex:1,minWidth:240}}>
+              <div style={{flex:1,minWidth:260}}>
                 <div style={{fontWeight:800,color:"#f9ca24",marginBottom:12,fontSize:13}}>✏️ {editAch.name}</div>
+
+                {/* Aperçu pleine taille */}
+                <div style={{display:"flex",justifyContent:"center",marginBottom:14}}>
+                  <Card card={editAch} />
+                </div>
+
                 <Fld lbl="Nom">
                   <input value={editAch.name} onChange={e=>setEditAch({...editAch,name:e.target.value})} style={INP}/>
                 </Fld>
-                <Fld lbl="Description">
-                  <input value={editAch.desc||''} onChange={e=>setEditAch({...editAch,desc:e.target.value})} style={INP}/>
+                <Fld lbl="Description (condition d'obtention)">
+                  <textarea value={editAch.desc??editAch.description??''} onChange={e=>setEditAch({...editAch,desc:e.target.value,description:e.target.value})} style={{...INP,height:64,resize:'vertical'}}/>
+                </Fld>
+                <Fld lbl="Type">
+                  <select value={editAch.type==='Achievement'||!editAch.type ? (cardTypes[0]||'Normal') : editAch.type} onChange={e=>setEditAch({...editAch,type:e.target.value})} style={SEL}>
+                    {cardTypes.filter(t=>t!=='Achievement').map(t=><option key={t} value={t}>{t}</option>)}
+                  </select>
                 </Fld>
                 <Fld lbl="Rareté">
                   <select value={editAch.rarity} onChange={e=>setEditAch({...editAch,rarity:e.target.value})} style={SEL}>
@@ -616,22 +623,23 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <div onClick={()=>achFileRef.current.click()} style={{border:"2px dashed #ffffff33",borderRadius:9,padding:"11px",textAlign:"center",cursor:"pointer",background:"#ffffff08"}}
                     onMouseEnter={e=>e.currentTarget.style.borderColor="#f9ca2466"}
                     onMouseLeave={e=>e.currentTarget.style.borderColor="#ffffff33"}>
-                    {editAch.image
-                      ?<img src={editAch.image} style={{maxWidth:"100%",maxHeight:70,objectFit:"contain",borderRadius:5}} alt="prev"/>
-                      :<div style={{color:"#888",fontSize:12}}>📁 Choisir un PNG</div>}
+                    <div style={{color:"#888",fontSize:12}}>📁 Changer l'image PNG</div>
                   </div>
                   <input ref={achFileRef} type="file" accept=".png,image/png" onChange={e => imgUpload(e, ({ imageBase64 }) => {
-                    if (imageBase64) setEditAch(ach => ({ ...ach, image: imageBase64 }));
-                  }, { name: editAch?.name || '', type: 'Achievement', rarity: editAch?.rarity || '' })} style={{display:"none"}}/>
+                    if (imageBase64) setEditAch(ach => ({ ...ach, image_url: imageBase64, image: imageBase64 }));
+                  }, { name: editAch?.name || '', type: editAch?.type || 'Achievement', rarity: editAch?.rarity || '' })} style={{display:"none"}}/>
                 </Fld>
                 <div style={{display:"flex",gap:8,marginTop:4}}>
                   <button onClick={async()=>{
                     if(!editAch.name.trim()){setMsg("❌ Nom requis.");return;}
-                    const {error}=await apiEditAchievementCard(editAch.id,{name:editAch.name,desc:editAch.desc,rarity:editAch.rarity,image:editAch.image});
+                    const finalType = editAch.type==='Achievement'||!editAch.type ? (cardTypes[0]||'Normal') : editAch.type;
+                    const {data,error}=await apiEditAchievementCard(editAch.id,{name:editAch.name,desc:editAch.desc,rarity:editAch.rarity,type:finalType,image:editAch.image_url||editAch.image||null});
                     if(error){setMsg("❌ "+error);return;}
-                    setAchCards(prev=>prev.map(c=>c.id===editAch.id?{...c,...editAch}:c));
+                    const updated = data?.card ? {...data.card, desc: data.card.desc??data.card.description??''} : {...editAch, type:finalType, image_url:editAch.image_url||editAch.image||null};
+                    setAchCards(prev=>prev.map(c=>c.id===editAch.id?updated:c));
+                    setEditAch(updated);
+                    onUpdateCardInPool?.(updated);
                     setMsg(`✅ "${editAch.name}" mis à jour !`);
-                    setEditAch(null);
                   }} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"10px",borderRadius:10,textAlign:"center"}}>
                     Enregistrer ✏️
                   </button>
@@ -679,7 +687,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 if(!botForm.pseudo.trim()){setMsg("❌ Pseudo requis.");return;}
                 const{data,error}=await apiAdminCreateBot({pseudo:botForm.pseudo.trim(),type:botForm.type,config:botForm.config});
                 if(error){setMsg("❌ "+error);return;}
-                setBots(prev=>[{...data.bot,profiles:{pseudo:botForm.pseudo.trim(),gold:10000},active:true},...prev]);
+                setBots(prev=>[data.bot,...prev]);
                 setBotForm({pseudo:'',type:'seller',config:BOT_DEFAULTS.seller});
                 setMsg("✅ Bot créé !");
               }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:9,fontSize:12,alignSelf:"flex-end"}}>Créer</button>
@@ -708,9 +716,9 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <div style={{display:"flex",gap:6}}>
                     <button onClick={async()=>{
                       const next=!bot.active;
-                      const{error}=await apiAdminUpdateBot(bot.id,{active:next});
-                      if(!error) setBots(prev=>prev.map(b=>b.id===bot.id?{...b,active:next}:b));
-                      else setMsg("❌ "+error);
+                      const{data,error}=await apiAdminUpdateBot(bot.id,{active:next});
+                      if(error){setMsg("❌ "+error);return;}
+                      setBots(prev=>prev.map(b=>b.id===bot.id?{...b,...(data?.bot??{}),active:data?.bot?.active??next}:b));
                     }} style={{background:bot.active?"#e74c3c22":"#00b89422",border:`1px solid ${bot.active?"#e74c3c44":"#00b89444"}`,color:bot.active?"#e74c3c":"#00b894",padding:"4px 10px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>
                       {bot.active?"Désactiver":"Activer"}
                     </button>

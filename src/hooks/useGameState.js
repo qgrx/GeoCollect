@@ -112,7 +112,7 @@ export function useGameState(auth) {
             minPrice: c.minPrice ?? c.min_price   ?? null,
           }))
           setCardPool(normalized)
-          const types = [...new Set(['Normal', ...normalized.map(c => c.type).filter(t => t !== 'Achievement')])]
+          const types = [...new Set(normalized.map(c => c.type).filter(t => t !== 'Achievement'))]
           setCardTypes(types)
         }
 
@@ -275,7 +275,7 @@ export function useGameState(auth) {
       setPendingAch(prev => [...prev, def])
       // Mise à jour optimiste de la collection + persistance DB
       setCollection(p => p[def.cardId] > 0 ? p : { ...p, [def.cardId]: 1 })
-      apiGrantAchievement(def.id).catch(() => {})
+      if (def.cardId) apiGrantAchievement(def.cardId).catch(() => {})
     })
   }, [collection, cardPool, totalBuys, totalSells, dailyCards, streak])
 
@@ -447,9 +447,12 @@ export function useGameState(auth) {
       const finalCard = { ...card };
       delete finalCard.thumbnailFile;
 
-      const { error } = await apiAdminEditCard(finalCard.id, finalCard)
+      const { data, error } = await apiAdminEditCard(finalCard.id, finalCard)
       if (error) return error
-      setCardPool(prev => prev.map(x => x.id === finalCard.id ? finalCard : x))
+      const updated = data?.card
+        ? { ...data.card, desc: data.card.desc ?? data.card.description ?? '', image: data.card.image ?? data.card.image_url ?? null, thumbnail: data.card.thumbnail ?? data.card.image_url_thumb ?? null, minPrice: data.card.minPrice ?? data.card.min_price ?? null }
+        : finalCard
+      setCardPool(prev => prev.map(x => x.id === finalCard.id ? updated : x))
     }
     return null
   }, [profile])
