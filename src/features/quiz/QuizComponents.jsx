@@ -218,7 +218,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
         </>}
         {/* Turnstile invisible — aucune UI visible */}
         {status==="won"&&<div style={{textAlign:"center",padding:"14px 0",background:"#00b89420",borderRadius:13,border:"1.5px solid #00b89444",animation:"winGlow 1.5s infinite"}}><div style={{fontSize:38}}>🎉</div><div style={{color:"#00b894",fontWeight:900,fontSize:19,marginTop:7}}>{t("quiz_won").replace("{card}",quiz.card.name)}</div></div>}
-        {status==="lost"&&<div style={{textAlign:"center",padding:"14px 0",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}><div style={{fontSize:36}}>😤</div><div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div><div style={{color:"#888",fontSize:12,marginTop:5}}>{t("quiz_answer_was")} <span style={{color:"#f9ca24",fontWeight:800}}>{quiz.a}</span></div></div>}
+        {status==="lost"&&<div style={{textAlign:"center",padding:"14px 0",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}><div style={{fontSize:36}}>😤</div><div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div></div>}
       </div>
     </div>
   );
