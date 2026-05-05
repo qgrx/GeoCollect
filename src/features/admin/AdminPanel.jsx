@@ -154,7 +154,6 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <div>
             <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:21,color:"#e74c3c"}}>{t("admin_title")}</div>
-            <div style={{fontSize:10,color:"#888"}}>{t("admin_mode")}</div>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {onStartTour && (
@@ -173,6 +172,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           <Tb id="questions"   lbl="❓ Questions"                     tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="quiz_config" lbl="🎲 Quiz"                              tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="limits"      lbl="📊 Limites"                       tab={tab} setTab={setTab} setMsg={setMsg}/>
+          <Tb id="interface"   lbl="📱 Interface"                     tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="players"     lbl={`👤 Joueurs (${players.length})`} tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="ips"         lbl={`🌐 IPs (${bannedIPs.length})`}   tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="maintenance"  lbl="🛠️ Maintenance"                   tab={tab} setTab={setTab} setMsg={setMsg}/>
@@ -395,6 +395,14 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <input type="number" min={0} value={limEdit[k].dailyCards} onChange={e=>setLimEdit({...limEdit,[k]:{...limEdit[k],dailyCards:+e.target.value}})} style={{...INP,width:"100%"}}/>
                 </div>
               </div>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Bouton "Classement"</div>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                  <input type="checkbox" checked={limEdit.leaderboardVisible!==false}
+                    onChange={e=>setLimEdit({...limEdit,leaderboardVisible:e.target.checked})} style={{width:16,height:16}}/>
+                  <span style={{color:"#fff",fontSize:13}}>Afficher le bouton dans la barre supérieure</span>
+                </label>
+              </div>
             </div>
           ))}
 
@@ -470,6 +478,27 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               setMsg(error ? "❌ "+error : "✅ Quiz déclenché !");
             }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"10px 22px",borderRadius:9}}>⚡ Déclencher un quiz</button>
           </div>
+        </div>}
+
+        {/* ── INTERFACE ── */}
+        {tab==="interface"&&<div>
+          <div style={{fontWeight:900,color:"#e74c3c",marginBottom:14,fontSize:14}}>📱 Personnalisation de l'interface</div>
+          <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
+            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:10,fontSize:13}}>Menus et boutons</div>
+            <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Bouton "Soutenir"</div>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                  <input type="checkbox" checked={limEdit.supportVisible!==false}
+                    onChange={e=>setLimEdit({...limEdit,supportVisible:e.target.checked})} style={{width:16,height:16}}/>
+                  <span style={{color:"#fff",fontSize:13}}>Afficher le bouton dans le menu principal</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <button onClick={async ()=>{await onSetLimits(limEdit);setMsg("✅ Interface sauvegardée !");}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"10px 22px",borderRadius:9}}>
+            Sauvegarder les réglages
+          </button>
         </div>}
 
         {/* ── JOUEURS ── */}
