@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Card from '../../components/Card.jsx';
+import { useT } from '../../i18n/translations.js';
 
 const FAKE_COIN    = { id: 0, name: 'Geocoin Légendaire', rarity: 'légendaire', type: 'Geocaching', image_url: null };
 const FAKE_COIN_EP = { id: 1, name: 'Geocoin Épique',     rarity: 'épique',     type: 'Geocaching', image_url: null };
@@ -27,6 +28,7 @@ function useScrollY(ref) {
 }
 
 export default function LandingSection({ onOpenAuth }) {
+  const { t } = useT();
   const containerRef = useRef(null);
   const scrollY = useScrollY(containerRef);
   const vh = typeof window !== 'undefined' ? window.innerHeight - 60 : 600;
@@ -88,7 +90,7 @@ export default function LandingSection({ onOpenAuth }) {
         {/* Content */}
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: '#e65100', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 18, animation: 'fadeUp .6s ease both' }}>
-            ✦ Geocoin du jour ✦
+            {t('landing_badge')}
           </div>
 
           {/* Coin with independent parallax */}
@@ -97,17 +99,17 @@ export default function LandingSection({ onOpenAuth }) {
           </div>
 
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#ffd54f', marginBottom: 10, animation: 'fadeUp .7s .1s ease both' }}>
-            Collectionnez des Geocoins rares
+            {t('landing_hero_title')}
           </div>
           <div style={{ fontSize: 14, color: '#aaa', lineHeight: 1.7, maxWidth: 300, marginBottom: 28, animation: 'fadeUp .7s .2s ease both' }}>
-            Répondez à des questions sur le geocaching et remportez des geocoins uniques en temps réel.
+            {t('landing_hero_sub')}
           </div>
           <button onClick={e => { e.stopPropagation(); onOpenAuth(); }} style={{ background: 'linear-gradient(135deg,#e65100,#ffd54f)', border: 'none', color: '#1a0a00', padding: '14px 36px', borderRadius: 16, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 16, cursor: 'pointer', boxShadow: '0 6px 28px #e6510077', animation: 'fadeUp .7s .3s ease both' }}>
-            Rejoindre la chasse →
+            {t('landing_hero_cta')}
           </button>
         </div>
 
-        <div style={{ position: 'absolute', bottom: 24, left: '50%', fontSize: 12, color: '#ffffff44', animation: 'bounce 2s ease-in-out infinite' }}>↓ Défiler</div>
+        <div style={{ position: 'absolute', bottom: 24, left: '50%', fontSize: 12, color: '#ffffff44', animation: 'bounce 2s ease-in-out infinite' }}>{t('landing_scroll')}</div>
       </section>
 
       {/* ══ SLIDE 1 — QUIZ ══════════════════════════════════════════════════════ */}
@@ -128,24 +130,20 @@ export default function LandingSection({ onOpenAuth }) {
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px', width: '100%', maxWidth: 420 }}>
           <div style={{ fontSize: 48, marginBottom: 10, transform: `translateY(${p1 * -0.1}px)`, willChange: 'transform' }}>🎯</div>
-          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#f9ca24', marginBottom: 10 }}>Quiz en temps réel</div>
-          <div style={{ fontSize: 14, color: '#888', marginBottom: 20, lineHeight: 1.6 }}>
-            Chaque quiz met en jeu un geocoin unique. Soyez le premier à répondre correctement.
-          </div>
+          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#f9ca24', marginBottom: 10 }}>{t('landing_quiz_title')}</div>
+          <div style={{ fontSize: 14, color: '#888', marginBottom: 20, lineHeight: 1.6 }}>{t('landing_quiz_sub')}</div>
           <div style={{ background: '#ffffff08', border: '1.5px solid #f9ca2433', borderRadius: 18, padding: '18px 20px', width: '100%', marginBottom: 24, transform: `translateY(${p1 * -0.05}px)`, willChange: 'transform' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <span style={{ display: 'inline-block', width: 7, height: 7, background: '#e74c3c', borderRadius: '50%', animation: 'glow 1.5s infinite' }} />
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#f9ca24' }}>Quiz en cours — Geocoin Légendaire</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#f9ca24' }}>{t('landing_quiz_live')}</span>
             </div>
-            <div style={{ fontSize: 13, color: '#ccc', lineHeight: 1.6, marginBottom: 14, textAlign: 'left' }}>
-              Quel terme désigne une cache de très petite taille, souvent dissimulée sous une feuille ou une pierre ?
-            </div>
+            <div style={{ fontSize: 13, color: '#ccc', lineHeight: 1.6, marginBottom: 14, textAlign: 'left' }}>{t('landing_quiz_q')}</div>
             <div style={{ background: '#ffffff06', border: '1.5px solid #f9ca2422', borderRadius: 10, padding: '10px 14px', color: '#444', fontSize: 13, textAlign: 'left' }}>
-              Connectez-vous pour répondre…
+              {t('landing_quiz_placeholder')}
             </div>
           </div>
           <button onClick={e => { e.stopPropagation(); onOpenAuth(); }} style={{ background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1a0a00', padding: '12px 28px', borderRadius: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 20px #f9ca2444' }}>
-            Jouer maintenant →
+            {t('landing_quiz_cta')}
           </button>
         </div>
       </section>
@@ -168,10 +166,8 @@ export default function LandingSection({ onOpenAuth }) {
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px', width: '100%', maxWidth: 420 }}>
           <div style={{ fontSize: 48, marginBottom: 10, transform: `translateY(${p2 * -0.1}px)`, willChange: 'transform' }}>🏪</div>
-          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#00b894', marginBottom: 10 }}>Marché des geocoins</div>
-          <div style={{ fontSize: 14, color: '#888', marginBottom: 22, lineHeight: 1.6 }}>
-            Échangez vos geocoins en double. Vendez au plus offrant, achetez les raretés qui vous manquent.
-          </div>
+          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#00b894', marginBottom: 10 }}>{t('landing_market_title')}</div>
+          <div style={{ fontSize: 14, color: '#888', marginBottom: 22, lineHeight: 1.6 }}>{t('landing_market_sub')}</div>
           <div style={{ display: 'flex', gap: 18, justifyContent: 'center', marginBottom: 26, transform: `translateY(${p2 * -0.08}px)`, willChange: 'transform' }}>
             {[
               { coin: FAKE_COIN,    price: '2 400 G', c: '#e65100' },
@@ -185,7 +181,7 @@ export default function LandingSection({ onOpenAuth }) {
             ))}
           </div>
           <button onClick={e => { e.stopPropagation(); onOpenAuth(); }} style={{ background: 'linear-gradient(135deg,#00b894,#55efc4)', border: 'none', color: '#071510', padding: '12px 28px', borderRadius: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 20px #00b89444' }}>
-            Accéder au marché →
+            {t('landing_market_cta')}
           </button>
         </div>
       </section>
@@ -208,10 +204,8 @@ export default function LandingSection({ onOpenAuth }) {
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px', width: '100%', maxWidth: 380 }}>
           <div style={{ fontSize: 48, marginBottom: 10, transform: `translateY(${p3 * -0.1}px)`, willChange: 'transform' }}>🏆</div>
-          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#f9ca24', marginBottom: 10 }}>Classement mondial</div>
-          <div style={{ fontSize: 14, color: '#888', marginBottom: 18, lineHeight: 1.6 }}>
-            Gravissez le classement en collectionnant les geocoins les plus rares.
-          </div>
+          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#f9ca24', marginBottom: 10 }}>{t('landing_lb_title')}</div>
+          <div style={{ fontSize: 14, color: '#888', marginBottom: 18, lineHeight: 1.6 }}>{t('landing_lb_sub')}</div>
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 24, transform: `translateY(${p3 * -0.06}px)`, willChange: 'transform' }}>
             {FAKE_LEADERBOARD.map((p, i) => {
               const blurred = p.pseudo === '???';
@@ -232,7 +226,7 @@ export default function LandingSection({ onOpenAuth }) {
             })}
           </div>
           <button onClick={e => { e.stopPropagation(); onOpenAuth(); }} style={{ background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1a0a00', padding: '12px 28px', borderRadius: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 20px #f9ca2444' }}>
-            Rejoindre le classement →
+            {t('landing_lb_cta')}
           </button>
         </div>
       </section>
