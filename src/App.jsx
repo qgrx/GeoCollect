@@ -28,6 +28,7 @@ import MaintenanceScreen from './components/MaintenanceScreen.jsx';
 // ─── Features ────────────────────────────────────────────────────────────────
 import AuthModal from './features/auth/AuthModal.jsx';
 import SettingsModal from './features/auth/SettingsModal.jsx';
+import LandingSection from './features/landing/LandingSection.jsx';
 import { QuizNotif, QuizModal, CountdownWidget, ThumbImage } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
@@ -666,17 +667,9 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Invitation à se connecter ── */}
+      {/* ── Landing — non connecté ── */}
       {!auth.profile && import.meta.env.VITE_API_URL && (
-        <div style={{ margin: '16px 18px', background: 'linear-gradient(135deg,#1a1a2e,#16213e)', border: '1.5px solid #6c5ce744', borderRadius: 16, padding: '24px 20px', textAlign: 'center' }}>
-          <div style={{ fontSize: 36, marginBottom: 10 }}>🃏</div>
-          <div style={{ fontWeight: 900, color: '#fff', fontSize: 16, marginBottom: 6 }}>{t('auth_title')}</div>
-          <div style={{ fontSize: 13, color: '#888', marginBottom: 16, lineHeight: 1.5 }}>{t('auth_subtitle')}</div>
-          <button onClick={() => setShowAuth(true)}
-            style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: '11px 24px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>
-            {t('btn_login')}
-          </button>
-        </div>
+        <LandingSection onOpenAuth={() => setShowAuth(true)} />
       )}
 
       {/* ── Filters ── */}
