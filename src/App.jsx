@@ -535,7 +535,7 @@ export default function App() {
   );
 
   return (
-    <div style={{ minHeight: '100vh',fontFamily: "'Nunito', sans-serif",color: '#fff',paddingBottom: gs.showBanner && !auth.profile ? 60 : 20 }}>
+    <div style={{ minHeight: '100vh',fontFamily: "'Nunito', sans-serif",color: '#fff',paddingBottom: 20 }}>
       <style>{`
         @keyframes pulseBadge {
           0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
@@ -673,12 +673,12 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Collection invitée ── */}
+      {/* ── Invitation à se connecter ── */}
       {!auth.profile && import.meta.env.VITE_API_URL && (
         <div style={{ margin: '16px 18px', background: 'linear-gradient(135deg,#1a1a2e,#16213e)', border: '1.5px solid #6c5ce744', borderRadius: 16, padding: '24px 20px', textAlign: 'center' }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>🃏</div>
-          <div style={{ fontWeight: 900, color: '#fff', fontSize: 16, marginBottom: 6 }}>{t('guest_no_collection_title')}</div>
-          <div style={{ fontSize: 13, color: '#888', marginBottom: 16, lineHeight: 1.5 }}>{t('guest_no_collection_body')}</div>
+          <div style={{ fontWeight: 900, color: '#fff', fontSize: 16, marginBottom: 6 }}>{t('auth_title')}</div>
+          <div style={{ fontSize: 13, color: '#888', marginBottom: 16, lineHeight: 1.5 }}>{t('auth_subtitle')}</div>
           <button onClick={() => setShowAuth(true)}
             style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: '11px 24px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>
             {t('btn_login')}
@@ -801,15 +801,6 @@ export default function App() {
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#2d3436', borderTop: '2px solid #636e72', padding: '7px 18px', display: 'flex', alignItems: 'center', gap: 10, zIndex: 500, fontSize: 11, color: '#aaa', fontFamily: "'Nunito',sans-serif" }}>
           <span style={{ fontSize: 16 }}>🧪</span>
           <div><strong style={{ color: '#fff' }}>{t('no_api_title')}</strong> — {t('no_api_body')}</div>
-        </div>
-      )}
-      {!auth.profile && gs.showBanner && import.meta.env.VITE_API_URL && (
-        <div style={{ position: 'fixed',bottom: 0,left: 0,right: 0,background: 'linear-gradient(90deg,#6c5ce7,#a29bfe)',padding: '9px 18px',display: 'flex',justifyContent: 'space-between',alignItems: 'center',zIndex: 500,gap: 10,flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 12,fontWeight: 700,color: '#fff' }}>{t('guest_msg')}</div>
-          <div style={{ display: 'flex',gap: 8,alignItems: 'center' }}>
-            <button onClick={() => setShowAuth(true)} style={{ background: '#fff',border: 'none',color: '#6c5ce7',padding: '6px 16px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 900,fontSize: 12,cursor: 'pointer' }}>{t('guest_login')}</button>
-            <button onClick={() => gs.setShowBanner(false)} style={{ background: 'none',border: '1px solid #ffffff44',color: '#ffffffcc',padding: '4px 10px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 700,fontSize: 11,cursor: 'pointer' }}>{t('guest_close')}</button>
-          </div>
         </div>
       )}
 
@@ -935,7 +926,7 @@ export default function App() {
           players={gs.players} bannedIPs={gs.bannedIPs}
           onClose={() => setShowAdmin(false)}
           onAddCard={gs.adminAddCard} onEditCard={gs.adminEditCard} onDeleteCard={gs.adminDeleteCard}
-          onAddType={gs.adminAddType} onDeleteType={gs.adminDeleteType} onRenameDefaultType={gs.adminRenameDefault}
+          onAddType={gs.adminAddType} onDeleteType={gs.adminDeleteType} onRenameType={gs.adminRenameType}
           onAddQuestion={q => setQuestions(prev => [...prev, { ...q, id: Date.now() }])}
           onEditQuestion={q => setQuestions(prev => prev.map(x => x.id === q.id ? q : x))}
           onDeleteQuestion={id => setQuestions(prev => prev.map(x => x.id === id ? { ...x, active: false } : x))}
@@ -952,29 +943,38 @@ export default function App() {
             }
           }}
           onSetLimits={async (limEdit) => {
+            const prevLimits = gs.limits;
             gs.setLimits(limEdit)
-            await Promise.all([
-              apiSetConfig('limits_connected', limEdit.connected),
-              apiSetConfig('limits_guest',     limEdit.guest),
-              apiSetConfig('quiz_interval',    limEdit.quizInterval ?? 60),
-              apiSetConfig('quiz_rarity_rates',  limEdit.quizRarityRates   ?? DEFAULT_RARITY_RATES),
-              ...(limEdit.cache_ttl_cards       != null ? [apiSetConfig('cache_ttl_cards',       limEdit.cache_ttl_cards)]       : []),
-              ...(limEdit.cache_ttl_config      != null ? [apiSetConfig('cache_ttl_config',      limEdit.cache_ttl_config)]      : []),
-              ...(limEdit.cache_ttl_leaderboard != null ? [apiSetConfig('cache_ttl_leaderboard', limEdit.cache_ttl_leaderboard)] : []),
-              ...(limEdit.cache_ttl_market      != null ? [apiSetConfig('cache_ttl_market',      limEdit.cache_ttl_market)]      : []),
-              ...(limEdit.cache_ttl_quiz_stats  != null ? [apiSetConfig('cache_ttl_quiz_stats',  limEdit.cache_ttl_quiz_stats)]  : []),
-              apiSetConfig('player_ranks',       limEdit.playerRanks    ?? DEFAULT_RANKS),
-              apiSetConfig('market_sales_open',   limEdit.marketSalesOpen   ?? true),
-              apiSetConfig('max_active_listings', limEdit.maxActiveListings ?? 10),
-              apiSetConfig('bots_visible',        limEdit.botsVisible       ?? false),
-              apiSetConfig('market_expire_days',  limEdit.marketExpireDays  ?? 30),
-              ...(limEdit.registrationWhitelist != null ? [apiSetConfig('registration_whitelist', limEdit.registrationWhitelist)] : []),
-            ])
+            try {
+              await Promise.all([
+                apiSetConfig('limits_connected', limEdit.connected),
+                apiSetConfig('quiz_interval',    limEdit.quizInterval ?? 60),
+                apiSetConfig('quiz_rarity_rates',  limEdit.quizRarityRates   ?? DEFAULT_RARITY_RATES),
+                ...(limEdit.cache_ttl_cards       != null ? [apiSetConfig('cache_ttl_cards',       limEdit.cache_ttl_cards)]       : []),
+                ...(limEdit.cache_ttl_config      != null ? [apiSetConfig('cache_ttl_config',      limEdit.cache_ttl_config)]      : []),
+                ...(limEdit.cache_ttl_leaderboard != null ? [apiSetConfig('cache_ttl_leaderboard', limEdit.cache_ttl_leaderboard)] : []),
+                ...(limEdit.cache_ttl_market      != null ? [apiSetConfig('cache_ttl_market',      limEdit.cache_ttl_market)]      : []),
+                ...(limEdit.cache_ttl_quiz_stats  != null ? [apiSetConfig('cache_ttl_quiz_stats',  limEdit.cache_ttl_quiz_stats)]  : []),
+                apiSetConfig('player_ranks',       limEdit.playerRanks    ?? DEFAULT_RANKS),
+                apiSetConfig('market_sales_open',   limEdit.marketSalesOpen   ?? true),
+                apiSetConfig('max_active_listings', limEdit.maxActiveListings ?? 10),
+                apiSetConfig('bots_visible',        limEdit.botsVisible       ?? false),
+                apiSetConfig('market_expire_days',  limEdit.marketExpireDays  ?? 30),
+                ...(limEdit.registrationWhitelist != null ? [apiSetConfig('registration_whitelist', limEdit.registrationWhitelist)] : []),
+              ])
+            } catch (err) {
+              gs.setLimits(prevLimits)
+            }
           }}
       onSetMaintenance={async (on, text) => {
-        await apiSetConfig('maintenance', on)
-        await apiSetConfig('maintenance_text', text)
+            const prevM = gs.maintenance;
         gs.setMaintenance({ on, text })
+            try {
+              await apiSetConfig('maintenance', on)
+              await apiSetConfig('maintenance_text', text)
+            } catch (err) {
+              gs.setMaintenance(prevM)
+            }
       }}
           onTogglePlayer={gs.adminTogglePlayer} onBanIP={gs.adminBanIP} onUnbanIP={gs.adminUnbanIP}
           onUpdateCardInPool={card => gs.setCardPool(prev => prev.map(c => c.id === card.id ? {...c, ...card, desc: card.desc??card.description??''} : c))}
@@ -986,7 +986,7 @@ export default function App() {
       {showScrollTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          style={{ position: 'fixed', bottom: (gs.showBanner && !auth.profile ? 80 : 28), left: 28, zIndex: 2500, background: 'linear-gradient(135deg,#1a1a2e,#16213e)', border: '1.5px solid #6c5ce788', color: '#a29bfe', width: 44, height: 44, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 8px 32px #0008', transition: 'all .2s ease', fontFamily: "'Nunito',sans-serif" }}
+          style={{ position: 'fixed', bottom: 28, left: 28, zIndex: 2500, background: 'linear-gradient(135deg,#1a1a2e,#16213e)', border: '1.5px solid #6c5ce788', color: '#a29bfe', width: 44, height: 44, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 8px 32px #0008', transition: 'all .2s ease', fontFamily: "'Nunito',sans-serif" }}
           onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 40px #000c'; e.currentTarget.style.borderColor = '#a29bfe'; e.currentTarget.style.color = '#fff' }}
           onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 8px 32px #0008'; e.currentTarget.style.borderColor = '#6c5ce788'; e.currentTarget.style.color = '#a29bfe' }}
           title="Remonter en haut"

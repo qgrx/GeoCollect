@@ -38,7 +38,6 @@ export function useGameState(auth) {
   const [pendingAch,   setPendingAch]  = useState([])
   const [saleNotifs,   setSaleNotifs]  = useState([])
   const [unreadSales,  _setUnreadSales] = useState(0)
-  const [showBanner,   setShowBanner]  = useState(true)
 
   const mounted = useRef(true)
   useEffect(() => () => { mounted.current = false }, [])
@@ -70,7 +69,6 @@ export function useGameState(auth) {
         setLimits(prev => ({
           ...prev,
           quizInterval:      cfg.quiz_interval       ?? prev.quizInterval,
-          quizDuration:      cfg.quiz_duration       ?? prev.quizDuration,
           quizRarityRates:   cfg.quiz_rarity_rates   ?? prev.quizRarityRates,
           playerRanks:       cfg.player_ranks        ?? prev.playerRanks,
           marketSalesOpen:   cfg.market_sales_open   ?? prev.marketSalesOpen,
@@ -111,6 +109,7 @@ export function useGameState(auth) {
           thumbnail: c.thumbnail ?? c.image_url_thumb ?? null,
             minPrice: c.minPrice ?? c.min_price   ?? null,
           }))
+          normalized.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
           setCardPool(normalized)
           const types = [...new Set(normalized.map(c => c.type).filter(t => t !== 'Achievement'))]
           setCardTypes(types)
@@ -190,7 +189,7 @@ export function useGameState(auth) {
           }))
         }
 
-        // Config admin — uniquement pour les admins (limits_connected, limits_guest, etc.)
+        // Config admin — uniquement pour les admins (limits_connected, etc.)
         if (profile.role === 'admin') {
           const { data: admCfg } = await apiGetAdminConfig()
           if (admCfg?.config && mounted.current) {
@@ -198,12 +197,10 @@ export function useGameState(auth) {
             setLimits(prev => ({
               ...prev,
               connected:             cfg.limits_connected          ?? prev.connected,
-              guest:                 cfg.limits_guest              ?? prev.guest,
               marketExpireDays:      cfg.market_expire_days        ?? prev.marketExpireDays ?? 30,
               registrationWhitelist: cfg.registration_whitelist    ?? prev.registrationWhitelist ?? null,
               playerRanks:           cfg.player_ranks              ?? prev.playerRanks,
               quizInterval:          cfg.quiz_interval             ?? prev.quizInterval,
-              quizDuration:          cfg.quiz_duration             ?? prev.quizDuration,
               quizRarityRates:       cfg.quiz_rarity_rates         ?? prev.quizRarityRates,
               marketSalesOpen:       cfg.market_sales_open         ?? prev.marketSalesOpen,
               maxActiveListings:     cfg.max_active_listings       ?? prev.maxActiveListings,
@@ -253,7 +250,7 @@ export function useGameState(auth) {
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const isGuest     = !profile
-  const lim         = limits[isGuest ? 'guest' : 'connected']
+  const lim         = limits.connected
   const uniqueCards = useMemo(() => Object.keys(collection).filter(k => collection[k] > 0).length, [collection])
   const totalUnique = cardPool.length
   const myScore     = useMemo(() => collScore(collection, cardPool), [collection, cardPool])
@@ -451,14 +448,23 @@ export function useGameState(auth) {
       if (error) return error
       const c = data?.card
       if (!c) return 'Réponse API invalide'
-      setCardPool(prev => [...prev, {
-        ...c,
-        desc:      c.desc      ?? c.description      ?? '',
-        image:     c.image     ?? c.image_url         ?? null,
-        thumbnail: c.thumbnail ?? c.image_url_thumb   ?? null,
-        minPrice:  c.minPrice  ?? c.min_price         ?? null,
-        sellable:  c.sellable  !== false,
-      }])
+      setCardPool(prev => {
+        const next = [...prev, {
+          ...c,
+          desc:      c.desc      ?? c.description      ?? '',
+          image:     c.image     ?? c.image_url         ?? null,
+          thumbnail: c.thumbnail ?? c.image_url_thumb   ?? null,
+          minPrice:  c.minPrice  ?? c.min_price         ?? null,
+          sellable:  c.sellable  !== false,
+        }]
+        return next.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
+      })
+      setCardTypes(prev => {
+        if (c.type && c.type !== 'Achievement' && !prev.includes(c.type)) {
+          return [...prev, c.type]
+        }
+        return prev
+      })
     }
     return null
   }, [profile])
@@ -468,12 +474,31 @@ export function useGameState(auth) {
       const finalCard = { ...card };
       delete finalCard.thumbnailFile;
 
+      let prevCard = null;
+      setCardPool(prev => {
+        prevCard = prev.find(x => x.id === finalCard.id);
+        const next = prev.map(x => x.id === finalCard.id ? { ...x, ...finalCard } : x)
+        return next.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
+      });
+
       const { data, error } = await apiAdminEditCard(finalCard.id, finalCard)
-      if (error) return error
+      if (error) {
+        if (prevCard) setCardPool(prev => prev.map(x => x.id === finalCard.id ? prevCard : x).sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })))
+        return error
+      }
       const updated = data?.card
         ? { ...data.card, desc: data.card.desc ?? data.card.description ?? '', image: data.card.image ?? data.card.image_url ?? null, thumbnail: data.card.thumbnail ?? data.card.image_url_thumb ?? null, minPrice: data.card.minPrice ?? data.card.min_price ?? null }
         : finalCard
-      setCardPool(prev => prev.map(x => x.id === finalCard.id ? updated : x))
+      setCardPool(prev => {
+        const next = prev.map(x => x.id === finalCard.id ? updated : x)
+        return next.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
+      })
+      setCardTypes(prev => {
+        if (updated.type && updated.type !== 'Achievement' && !prev.includes(updated.type)) {
+          return [...prev, updated.type]
+        }
+        return prev
+      })
     }
     return null
   }, [profile])
@@ -502,21 +527,43 @@ export function useGameState(auth) {
   const adminDeleteType = useCallback(async (type) => {
     const fallback = cardTypes.find(t => t !== type) || 'Normal'
     if (profile) {
-      const { data } = await apiAdminDeleteType(type)
-      const fb = data?.fallbackType || fallback
-      setCardPool(prev => prev.map(c => c.type === type ? { ...c, type: fb } : c))
+      // Mise à jour optimiste
       setCardTypes(prev => prev.filter(x => x !== type))
+      
+      let affectedIds = []
+      setCardPool(prev => {
+        const affected = prev.filter(c => c.type === type)
+        if (affected.length > 0) affectedIds = affected.map(c => c.id)
+        return prev.map(c => c.type === type ? { ...c, type: fallback } : c)
+      })
+
+      const { data, error } = await apiAdminDeleteType(type) || {}
+      if (error) {
+        // Rollback ciblé en cas d'erreur
+        setCardTypes(prev => [...prev, type])
+        setCardPool(prev => prev.map(c => affectedIds.includes(c.id) ? { ...c, type } : c))
+      } else if (data?.fallbackType && data.fallbackType !== fallback) {
+        // Corrige si le serveur a utilisé une autre catégorie de repli
+        const fb = data.fallbackType
+        setCardPool(prev => prev.map(c => affectedIds.includes(c.id) ? { ...c, type: fb } : c))
+      }
     }
   }, [cardTypes, profile])
 
-  const adminRenameDefault = useCallback(async (name) => {
-    const oldName = cardTypes[0]
+  const adminRenameType = useCallback(async (oldName, newName) => {
     if (profile) {
-      await apiAdminRenameType(oldName, name)
-      setCardTypes(prev => [name, ...prev.slice(1)])
-      setCardPool(prev => prev.map(c => c.type === oldName ? { ...c, type: name } : c))
+      // Mise à jour optimiste (immédiate)
+      setCardTypes(prev => prev.map(t => t === oldName ? newName : t))
+      setCardPool(prev => prev.map(c => c.type === oldName ? { ...c, type: newName } : c))
+      
+      const { error } = await apiAdminRenameType(oldName, newName) || {}
+      if (error) {
+        // Rollback en cas d'erreur serveur
+        setCardTypes(prev => prev.map(t => t === newName ? oldName : t))
+        setCardPool(prev => prev.map(c => c.type === newName ? { ...c, type: oldName } : c))
+      }
     }
-  }, [cardTypes, profile])
+  }, [profile])
   const adminTogglePlayer  = useCallback((name) => setPlayers(prev => prev.map(p => p.name === name ? { ...p, status: p.status === 'banni' ? 'actif' : 'banni' } : p)), [])
   const adminBanIP         = useCallback((ip) => setBannedIPs(prev => [...prev, ip]), [])
   const adminUnbanIP       = useCallback((ip) => setBannedIPs(prev => prev.filter(i => i !== ip)), [])
@@ -528,7 +575,7 @@ export function useGameState(auth) {
     // Player
     gold, collection, setCollection, myListings, dailyGold, dailyCards, totalBuys, totalSells,
     streak, setStreak, transactions, setTransactions, unlockedAch, pendingAch, setPendingAch,
-    saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, showBanner, setShowBanner, marketOpenRef,
+    saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,
     // Derived
     isGuest, lim, uniqueCards, totalUnique, myScore,
     // Actions
@@ -537,6 +584,6 @@ export function useGameState(auth) {
     handleSaleNotifFromSocket,
     // Admin
     adminAddCard, adminEditCard, adminDeleteCard, adminAddType, adminDeleteType,
-    adminRenameDefault, adminTogglePlayer, adminBanIP, adminUnbanIP,
+    adminRenameType, adminTogglePlayer, adminBanIP, adminUnbanIP,
   }
 }

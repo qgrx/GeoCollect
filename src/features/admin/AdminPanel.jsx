@@ -41,7 +41,7 @@ function Tb({id,lbl,tab,setTab,setMsg}){
 }
 
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
-export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,players,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameDefaultType,onAddQuestion,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onTogglePlayer,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool}){
+export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,players,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onTogglePlayer,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool}){
   const {t}=useT();
   const [tab,setTab]=useState("cards");
   const [editQ,setEditQ]=useState(null);
@@ -65,7 +65,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [expiredDays,setExpiredDays]=useState(limits.marketExpireDays || 30);
   const [nq,setNq]=useState({q:"",a:"",hint:""});
   const [ntName,setNtName]=useState("");
-  const [renameDefault,setRenameDefault]=useState(cardTypes[0]||DEFAULT_TYPE);
+  const [editingType,setEditingType]=useState(null);
+  const [editTypeName,setEditTypeName]=useState("");
   const [limEdit,setLimEdit]=useState(limits);
   const [maintText,setMaintText]=useState(maintenanceText||"");
   const [ipInput,setIpInput]=useState("");
@@ -189,27 +190,32 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
         {/* ── CARTES ── */}
         {tab==="cards" && (
-          <AdminCards cardPool={cardPool} cardTypes={cardTypes} onAddCard={onAddCard} onEditCard={onEditCard} onDeleteCard={onDeleteCard} setMsg={setMsg} imgUpload={imgUpload} />
+          <AdminCards cardPool={cardPool} cardTypes={cardTypes} onAddCard={onAddCard} onEditCard={onEditCard} onDeleteCard={onDeleteCard} onUpdateCardInPool={onUpdateCardInPool} setMsg={setMsg} imgUpload={imgUpload} />
         )}
 
         {/* ── TYPES ── */}
         {tab==="types"&&<div>
           <div style={{fontWeight:900,color:"#e74c3c",marginBottom:14,fontSize:14}}>{t("admin_types_title")}</div>
-          <div style={{marginBottom:16}}>
-            <div style={{fontSize:11,color:"#888",marginBottom:8}}>{t("admin_default_type")}</div>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <input value={renameDefault} onChange={e=>setRenameDefault(e.target.value)} style={{...INP,width:180}} placeholder="Nom catégorie par défaut"/>
-              <button onClick={()=>{onRenameDefaultType(renameDefault);setMsg(`✅ Catégorie par défaut renommée en "${renameDefault}"`);}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"7px 14px",borderRadius:8,fontSize:11}}>Renommer</button>
-            </div>
-          </div>
           <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:18}}>
             {cardTypes.map((t,i)=>{
               const isDefault=i===0;
-              return <div key={t} style={{display:"flex",alignItems:"center",gap:5,background:isDefault?"#f9ca2415":"#ffffff12",border:isDefault?"1px solid #f9ca2433":"1px solid #ffffff18",borderRadius:50,padding:"4px 12px"}}>
-                <span style={{fontSize:12,fontWeight:800,color:isDefault?"#f9ca24":"#fff"}}>{t}</span>
-                <span style={{fontSize:9,color:"#666"}}>{cardPool.filter(c=>c.type===t).length}c</span>
-                {!isDefault&&<button onClick={()=>{onDeleteType(t);setMsg(`✅ Type "${t}" supprimé (cartes → ${cardTypes[0]}).`);}} style={{background:"none",border:"none",color:"#e74c3c",fontSize:12,cursor:"pointer",padding:"0 2px"}}>✕</button>}
-                {isDefault&&<span style={{fontSize:8,color:"#f9ca24"}}>défaut</span>}
+              const isEditing = editingType === t;
+              return <div key={t} style={{display:"flex",alignItems:"center",gap:5,background:isDefault?"#f9ca2415":"#ffffff12",border:isDefault?"1px solid #f9ca2433":"1px solid #ffffff18",borderRadius:50,padding:"4px 12px",transition:"all .2s"}}>
+                {isEditing ? (
+                  <>
+                    <input autoFocus value={editTypeName} onChange={e=>setEditTypeName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){if(!editTypeName.trim()||editTypeName.trim()===t){setEditingType(null);return;}if(cardTypes.includes(editTypeName.trim())){setMsg("❌ Type existant.");return;}onRenameType(t,editTypeName.trim());setEditingType(null);setMsg(`✅ Type "${t}" renommé en "${editTypeName.trim()}".`);}else if(e.key==="Escape"){setEditingType(null);}}} style={{...INP, padding:"2px 8px", fontSize:12, marginBottom:0, width:120, height:24, borderRadius:12}} />
+                    <button onClick={()=>{if(!editTypeName.trim()||editTypeName.trim()===t){setEditingType(null);return;}if(cardTypes.includes(editTypeName.trim())){setMsg("❌ Type existant.");return;}onRenameType(t,editTypeName.trim());setEditingType(null);setMsg(`✅ Type "${t}" renommé en "${editTypeName.trim()}".`);}} style={{background:"#00b89422",border:"none",color:"#00b894",fontSize:12,cursor:"pointer",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center"}}>✓</button>
+                    <button onClick={()=>setEditingType(null)} style={{background:"#e74c3c22",border:"none",color:"#e74c3c",fontSize:12,cursor:"pointer",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{fontSize:12,fontWeight:800,color:isDefault?"#f9ca24":"#fff"}}>{t}</span>
+                    <span style={{fontSize:9,color:"#666"}}>{cardPool.filter(c=>c.type===t).length}c</span>
+                    <button onClick={()=>{setEditingType(t);setEditTypeName(t);}} style={{background:"none",border:"none",color:"#a29bfe",fontSize:12,cursor:"pointer",padding:"0 2px"}}>✏️</button>
+                    {!isDefault&&<button onClick={()=>{if(window.confirm(`Supprimer le type "${t}" et déplacer ses cartes vers "${cardTypes[0]}" ?`)){onDeleteType(t);setMsg(`✅ Type "${t}" supprimé.`);}}} style={{background:"none",border:"none",color:"#e74c3c",fontSize:12,cursor:"pointer",padding:"0 2px"}}>🗑️</button>}
+                    {isDefault&&<span style={{fontSize:8,color:"#f9ca24"}}>défaut</span>}
+                  </>
+                )}
               </div>;
             })}
           </div>
@@ -376,7 +382,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {/* ── LIMITES ── */}
         {tab==="limits"&&<div>
           <div style={{fontWeight:900,color:"#e74c3c",marginBottom:14,fontSize:14}}>📊 Limites quotidiennes</div>
-          {[["connected", t("stat_players_online")],["guest","Invités"]].map(([k,lbl])=>(
+          {[["connected", t("stat_players_online")]].map(([k,lbl])=>(
             <div key={k} style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
               <div style={{fontWeight:800,color:"#f9ca24",marginBottom:10,fontSize:13}}>{lbl}</div>
               <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
@@ -407,24 +413,6 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   {[[30,"30s"],[60,"1 min"],[120,"2 min"],[300,"5 min"]].map(([v,lbl])=>(
                     <button key={v} onClick={()=>setLimEdit({...limEdit,quizInterval:v})}
                       style={{background:(limEdit.quizInterval??60)===v?"#e74c3c":"#ffffff18",border:"none",color:"#fff",padding:"4px 10px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
-                      {lbl}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Durée du quiz (temps de réponse)</div>
-              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                <input type="number" min={10} max={120} value={limEdit.quizDuration??30}
-                  onChange={e=>setLimEdit({...limEdit,quizDuration:Math.max(10,Math.min(120,+e.target.value))})}
-                  style={{...INP,width:90}}/>
-                <span style={{color:"#aaa",fontSize:12}}>secondes</span>
-                <div style={{display:"flex",gap:5}}>
-                  {[[15,"15s"],[30,"30s"],[45,"45s"],[60,"1 min"]].map(([v,lbl])=>(
-                    <button key={v} onClick={()=>setLimEdit({...limEdit,quizDuration:v})}
-                      style={{background:(limEdit.quizDuration??30)===v?"#e74c3c":"#ffffff18",border:"none",color:"#fff",padding:"4px 10px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
                       {lbl}
                     </button>
                   ))}
@@ -633,9 +621,14 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <button onClick={async()=>{
                     if(!editAch.name.trim()){setMsg("❌ Nom requis.");return;}
                     const finalType = editAch.type==='Achievement'||!editAch.type ? (cardTypes[0]||'Normal') : editAch.type;
+                    const optimisticUpdated = { ...editAch, type:finalType, image_url:editAch.image_url||editAch.image||null };
+                    const prevAch = achCards.find(c=>c.id===editAch.id);
+                    setAchCards(prev=>prev.map(c=>c.id===editAch.id?optimisticUpdated:c));
+                    setEditAch(optimisticUpdated);
+                    onUpdateCardInPool?.(optimisticUpdated);
                     const {data,error}=await apiEditAchievementCard(editAch.id,{name:editAch.name,desc:editAch.desc,rarity:editAch.rarity,type:finalType,image:editAch.image_url||editAch.image||null});
-                    if(error){setMsg("❌ "+error);return;}
-                    const updated = data?.card ? {...data.card, desc: data.card.desc??data.card.description??''} : {...editAch, type:finalType, image_url:editAch.image_url||editAch.image||null};
+                    if(error){setAchCards(prev=>prev.map(c=>c.id===editAch.id?prevAch:c));setEditAch(prevAch);onUpdateCardInPool?.(prevAch);setMsg("❌ "+error);return;}
+                    const updated = data?.card ? {...data.card, desc: data.card.desc??data.card.description??''} : optimisticUpdated;
                     setAchCards(prev=>prev.map(c=>c.id===editAch.id?updated:c));
                     setEditAch(updated);
                     onUpdateCardInPool?.(updated);
@@ -716,17 +709,25 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <div style={{display:"flex",gap:6}}>
                     <button onClick={async()=>{
                       const next=!bot.active;
+                      setBots(prev=>prev.map(b=>b.id===bot.id?{...b,active:next}:b));
                       const{data,error}=await apiAdminUpdateBot(bot.id,{active:next});
-                      if(error){setMsg("❌ "+error);return;}
-                      setBots(prev=>prev.map(b=>b.id===bot.id?{...b,...(data?.bot??{}),active:data?.bot?.active??next}:b));
+                      if(error){
+                        setBots(prev=>prev.map(b=>b.id===bot.id?{...b,active:!next}:b));
+                        setMsg("❌ "+error);
+                        return;
+                      }
+                      if(data?.bot) setBots(prev=>prev.map(b=>b.id===bot.id?{...b,...data.bot}:b));
                     }} style={{background:bot.active?"#e74c3c22":"#00b89422",border:`1px solid ${bot.active?"#e74c3c44":"#00b89444"}`,color:bot.active?"#e74c3c":"#00b894",padding:"4px 10px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>
                       {bot.active?"Désactiver":"Activer"}
                     </button>
                     <button onClick={async()=>{
                       if(!window.confirm(`Supprimer le bot ${bot.profiles?.pseudo} ?`)) return;
+                      setBots(prev=>prev.filter(b=>b.id!==bot.id));
                       const{error}=await apiAdminDeleteBot(bot.id);
-                      if(!error) setBots(prev=>prev.filter(b=>b.id!==bot.id));
-                      else setMsg("❌ "+error);
+                      if(error){
+                        setBots(prev=>[...prev,bot].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)));
+                        setMsg("❌ "+error);
+                      }
                     }} style={{background:"#e74c3c22",border:"1px solid #e74c3c44",color:"#e74c3c",padding:"4px 10px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>Supprimer</button>
                   </div>
                 </div>
@@ -958,10 +959,13 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         <div style={{fontSize:10,color:"#888"}}>Vendeur : <span style={{color:rc.color,fontWeight:700}}>{l.profiles?.pseudo||"?"}</span> · {l.price}G</div>
                       </div>
                       <button onClick={async()=>{
-                        const {error}=await apiAdminCancelListing(l.id);
-                        if(error){setMsg("❌ "+error);return;}
+                        const prevListings = listingsData.listings;
                         setListingsData(prev=>({...prev,listings:prev.listings.filter(x=>x.id!==l.id),total:prev.total-1}));
-                        setMsg("✅ Annonce annulée.");
+                        const {error}=await apiAdminCancelListing(l.id);
+                        if(error){
+                          setListingsData(prev=>({...prev,listings:prevListings,total:prev.total+1}));
+                          setMsg("❌ "+error);return;
+                        }
                       }} style={{background:"#e74c3c22",border:"1px solid #e74c3c44",color:"#e74c3c",padding:"4px 10px",borderRadius:7,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
                         Annuler
                       </button>

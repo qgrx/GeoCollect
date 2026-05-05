@@ -17,9 +17,7 @@ export const DEFAULT_RARITY_RATES = { commun: 50, rare: 30, épique: 15, légend
 
 export const INIT_LIMITS = {
   connected:     { dailyGold: 200, dailyCards: 20 },
-  guest:         { dailyGold:  50, dailyCards:  5 },
   quizInterval:  60,
-  quizDuration:  30,
   quizRarityRates: DEFAULT_RARITY_RATES,
   playerRanks:   DEFAULT_RANKS,
   marketSalesOpen: true,

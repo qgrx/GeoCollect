@@ -33,11 +33,16 @@ export default function AdminPlayers({ players, cardPool, limEdit, onTogglePlaye
           <div style={{marginTop:14,display:"flex",gap:8,flexWrap:"wrap"}}>
             <button onClick={async()=>{
               const current=canSellOverrides[playerView.id]??playerView.can_sell; const next=current===false;
+              setCanSellOverrides(prev=>({...prev,[playerView.id]:next}));
+              setPlayerView({...playerView,can_sell:next});
               const{data,error}=await apiAdminSetCanSell(playerView.id,next);
-              if(error){setMsg("❌ "+error);return;}
+              if(error){
+                setCanSellOverrides(prev=>({...prev,[playerView.id]:current}));
+                setPlayerView({...playerView,can_sell:current});
+                setMsg("❌ "+error);return;
+              }
               const actual=data?.can_sell??next;
-              setCanSellOverrides(prev=>({...prev,[playerView.id]:actual}));
-              setPlayerView({...playerView,can_sell:actual});
+              if(actual!==next){setCanSellOverrides(prev=>({...prev,[playerView.id]:actual}));setPlayerView({...playerView,can_sell:actual});}
               setMsg(actual?"✅ Vente autorisée.":"⛔ Vente interdite.");
             }} style={{...BTN((canSellOverrides[playerView.id]??playerView.can_sell)===false?"linear-gradient(135deg,#00b894,#00cec9)":"linear-gradient(135deg,#e17055,#d63031)"),padding:"8px 14px",borderRadius:9,fontSize:12}}>
               {(canSellOverrides[playerView.id]??playerView.can_sell)===false?"✅ Autoriser la vente":"⛔ Interdire la vente"}
@@ -59,9 +64,13 @@ export default function AdminPlayers({ players, cardPool, limEdit, onTogglePlaye
               <input type="text" inputMode="numeric" placeholder="Nouveau montant" value={playerGoldEdit} onChange={e=>setPlayerGoldEdit(e.target.value.replace(/[^0-9]/g,''))} style={{...INP,width:120}}/><span style={{color:"#aaa",fontSize:12}}>G</span>
               <button onClick={async()=>{
                 const g=+playerGoldEdit; if(isNaN(g)||g<0){setMsg("❌ Montant invalide.");return;}
-                const{data,error}=await apiAdminSetGold(playerView.id,g); if(error){setMsg("❌ "+error);return;}
+                const oldGold=playerView.gold;
+                setPlayerView({...playerView,gold:g}); setPlayerGoldEdit('');
+                const{data,error}=await apiAdminSetGold(playerView.id,g); 
+                if(error){setPlayerView({...playerView,gold:oldGold});setPlayerGoldEdit(g.toString());setMsg("❌ "+error);return;}
                 const actual=data?.gold??g;
-                setPlayerView({...playerView,gold:actual}); setPlayerGoldEdit(''); setMsg(`✅ Or de ${playerView.pseudo} → ${actual}G`);
+                if(actual!==g) setPlayerView({...playerView,gold:actual});
+                setMsg(`✅ Or de ${playerView.name} → ${actual}G`);
               }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1a1a2e"),padding:"7px 14px",borderRadius:8,fontSize:12}}>Appliquer</button>
             </div>
           </div>
@@ -82,9 +91,13 @@ export default function AdminPlayers({ players, cardPool, limEdit, onTogglePlaye
                         <div key={c.id} style={{display:"flex",alignItems:"center",gap:5,background:"#ffffff0a",border:"1px solid #ffffff14",borderRadius:7,padding:"4px 8px"}}>
                           <span style={{fontSize:11,color:"#fff",fontWeight:700}}>{c.name}</span>{inCol&&<span style={{fontSize:9,color:"#aaa"}}>×{inCol.quantity}</span>}
                           <button onClick={async()=>{
-                            const{error}=await apiAdminGiveCard(playerView.id,c.id); if(error){setMsg("❌ "+error);return;}
                             setPlayerCollection(prev=>{const ex=prev.find(x=>x.card_id===c.id);return ex?prev.map(x=>x.card_id===c.id?{...x,quantity:x.quantity+1}:x):[...prev,{card_id:c.id,quantity:1,cards:c}];});
-                            setMsg(`✅ ${c.name} ajoutée à ${playerView.pseudo}`);
+                            const{error}=await apiAdminGiveCard(playerView.id,c.id); 
+                            if(error){
+                              setPlayerCollection(prev=>{const ex=prev.find(x=>x.card_id===c.id);if(ex?.quantity<=1)return prev.filter(x=>x.card_id!==c.id);return prev.map(x=>x.card_id===c.id?{...x,quantity:x.quantity-1}:x);});
+                              setMsg("❌ "+error);return;
+                            }
+                            setMsg(`✅ ${c.name} ajoutée à ${playerView.name}`);
                           }} style={{background:"#00b89422",border:"1px solid #00b89444",color:"#00b894",padding:"2px 7px",borderRadius:5,fontSize:10,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:800}}>+1</button>
                         </div>
                       );
@@ -97,8 +110,13 @@ export default function AdminPlayers({ players, cardPool, limEdit, onTogglePlaye
                     <div key={x.card_id} style={{display:"flex",alignItems:"center",gap:4,background:"#ffffff0a",border:"1px solid #ffffff12",borderRadius:7,padding:"3px 8px"}}>
                       <span style={{fontSize:11,color:"#ccc",fontWeight:700}}>{x.cards?.name||`#${x.card_id}`}</span><span style={{fontSize:10,color:"#888"}}>×{x.quantity}</span>
                       <button onClick={async()=>{
-                        const{error}=await apiAdminTakeCard(playerView.id,x.card_id); if(error){setMsg("❌ "+error);return;}
+                        const ex=playerCollection.find(p=>p.card_id===x.card_id);
                         setPlayerCollection(prev=>{const ex=prev.find(p=>p.card_id===x.card_id);if(ex?.quantity<=1) return prev.filter(p=>p.card_id!==x.card_id);return prev.map(p=>p.card_id===x.card_id?{...p,quantity:p.quantity-1}:p);});
+                        const{error}=await apiAdminTakeCard(playerView.id,x.card_id); 
+                        if(error){
+                          setPlayerCollection(prev=>{const p=prev.find(p=>p.card_id===x.card_id);return p?prev.map(p=>p.card_id===x.card_id?{...p,quantity:p.quantity+1}:p):[...prev,{...ex,quantity:1}];});
+                          setMsg("❌ "+error);return;
+                        }
                       }} style={{background:"#e74c3c22",border:"none",color:"#e74c3c",padding:"1px 5px",borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:900}}>−</button>
                     </div>
                   ))}
