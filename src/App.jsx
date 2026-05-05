@@ -212,17 +212,8 @@ export default function App() {
         showToast(message, type === 'error' ? 'error' : 'success')
       })
 
-      s.on('market:watch-hit', ({ cardName }) => {
-        showToast(`🔔 "${cardName}" est disponible sur le marché !`)
-      })
-
       s.on('connect',    () => {
         setSocketOnline(true)
-        // Re-sync les watches au reconnect
-        try {
-          const saved = JSON.parse(localStorage.getItem('watched_cards') || '[]')
-          saved.forEach(cardId => s.emit('market:watch', { cardId, watching: true }))
-        } catch { /* */ }
       })
       s.on('disconnect', () => setSocketOnline(false))
       s.on('connect_error', () => setSocketOnline(false))
@@ -573,10 +564,12 @@ export default function App() {
                 </button>
               )}
               {/* Classement */}
-              <button data-tour="leaderboard-btn" onClick={() => setShowLeaderboard(true)}
-                style={{ background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1a1a2e', padding: isMobile ? '7px 10px' : '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
-                {t('btn_leaderboard')}
-              </button>
+              {gs.limits.leaderboardVisible !== false && (
+                <button data-tour="leaderboard-btn" onClick={() => setShowLeaderboard(true)}
+                  style={{ background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1a1a2e', padding: isMobile ? '7px 10px' : '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
+                  {t('btn_leaderboard')}
+                </button>
+              )}
 
               {/* Avatar + menu déroulant */}
               <div style={{ position: 'relative' }} ref={avatarMenuRef}>
@@ -608,7 +601,7 @@ export default function App() {
                       {/* Actions */}
                       {[
                         { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
-                        { icon: '💝', label: t('menu_support') || 'Soutenir',   fn: () => { setShowShop(true);    setAvatarMenu(false) } },
+                        ...(gs.limits.supportVisible !== false ? [{ icon: '💝', label: t('menu_support') || 'Soutenir', fn: () => { setShowShop(true); setAvatarMenu(false) } }] : []),
                         ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false) } }] : []),
                         null,
                         { icon: '↩', label: t('btn_logout'), color: '#e74c3c', fn: () => { auth.signOut(); setAvatarMenu(false) } },
@@ -644,16 +637,16 @@ export default function App() {
       </div>
 
       {/* ── History strip (last 5) — version compacte centrée ── */}
-      {history.length > 0 && (
+      {history.filter(h => !h.skipped).length > 0 && (
         <div style={{ padding: '6px 18px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <div style={{ fontSize: 9,color: '#555',fontWeight: 700,textTransform: 'uppercase',letterSpacing: 1 }}>{t('last_cards')}</div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-            {history.slice(0, 5).map((h, i) => {
+            {history.filter(h => !h.skipped).slice(0, 5).map((h, i) => {
               const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
               return (
               <div key={i} title={h.card?.name} onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)} style={{ display: 'flex',flexDirection: 'column',alignItems: 'center',gap: 3, cursor: 'pointer' }}>
               <div style={{ position: 'relative', width: 40, height: 40, transition: 'all 0.2s', zIndex: 1 }} onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.7)'; e.currentTarget.style.zIndex = 10; }} onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
-                <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', position: 'relative', border: `2px solid ${c1}`, opacity: h.skipped ? 0.6 : 1, background: '#1a1a2e', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 12px ${c1}aa` : 'none' }}>
+                <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', position: 'relative', border: `2px solid ${c1}`, background: '#1a1a2e', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 12px ${c1}aa` : 'none' }}>
                     {h.card ? (
                       (h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url) ? (
                         <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
@@ -663,8 +656,8 @@ export default function App() {
                     ) : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:900,color:'#555'}}>?</div>}
                   </div>
                 </div>
-                <div style={{ fontSize: 8,fontWeight:700,color:h.skipped?'#555':'#ccc',maxWidth:36,textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
-                  {h.won ? '✓' : h.skipped ? '—' : h.winner}
+                <div style={{ fontSize: 8,fontWeight:700,color:'#ccc',maxWidth:36,textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
+                  {h.won ? '✓' : h.winner}
                 </div>
               </div>
               );
@@ -959,6 +952,8 @@ export default function App() {
                 apiSetConfig('market_sales_open',   limEdit.marketSalesOpen   ?? true),
                 apiSetConfig('max_active_listings', limEdit.maxActiveListings ?? 10),
                 apiSetConfig('bots_visible',        limEdit.botsVisible       ?? false),
+                apiSetConfig('support_visible',     limEdit.supportVisible    ?? true),
+                apiSetConfig('leaderboard_visible', limEdit.leaderboardVisible?? true),
                 apiSetConfig('market_expire_days',  limEdit.marketExpireDays  ?? 30),
                 ...(limEdit.registrationWhitelist != null ? [apiSetConfig('registration_whitelist', limEdit.registrationWhitelist)] : []),
               ])

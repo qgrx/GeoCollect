@@ -20,23 +20,6 @@ export default function MarketModal({
 }) {
   const { t } = useT()
   const [tab, setTab] = useState(initialTab)
-  const [watched, setWatched] = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('watched_cards') || '[]')) } catch { return new Set() }
-  })
-
-  const toggleWatch = useCallback((cardId) => {
-    setWatched(prev => {
-      const next = new Set(prev)
-      if (next.has(cardId)) next.delete(cardId)
-      else next.add(cardId)
-      localStorage.setItem('watched_cards', JSON.stringify([...next]))
-      // Notifier le serveur via socket
-      import('../../services/socket.js').then(({ getSocket }) =>
-        getSocket().then(s => s?.emit('market:watch', { cardId, watching: next.has(cardId) }))
-      )
-      return next
-    })
-  }, [])
   const [sellCard, setSellCard] = useState(initialSellCard)
   const [sellPrice, setSellPrice] = useState(0)
   const [msg, setMsg] = useState('')
@@ -75,7 +58,6 @@ export default function MarketModal({
     { id: 'acheter',    label: t('market_buy') },
     { id: 'vendre',     label: t('market_sell') },
     { id: 'meslistes',  label: `${t('market_listings')}${myListings.length ? ` (${myListings.length})` : ''}` },
-    { id: 'surveiller', label: `🔔 Surveiller${watched.size > 0 ? ` (${watched.size})` : ''}` },
     { id: 'historique', label: t('market_history'), badge: unreadSales },
   ]
 
@@ -155,11 +137,6 @@ export default function MarketModal({
                             <span>{t('market_from')} <span style={{ color: '#00b894',fontWeight: 800 }}>{tiersArr[0].price}G</span></span>
                           </div>
                         </div>
-                        <button onClick={e => { e.stopPropagation(); toggleWatch(card.id) }}
-                          title={watched.has(card.id) ? 'Ne plus surveiller' : 'M\'avertir quand disponible'}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: '2px 4px', flexShrink: 0, opacity: watched.has(card.id) ? 1 : 0.4, transition: 'opacity .2s' }}>
-                          🔔
-                        </button>
                         <div style={{ color: isO ? '#f9ca24' : '#666',fontSize: 17,transform: isO ? 'rotate(180deg)' : 'none',flexShrink: 0,transition: 'transform .25s' }}>⌄</div>
                       </div>
                       {isO && (
@@ -399,38 +376,6 @@ export default function MarketModal({
         })()}
 
         {/* ── HISTORIQUE — 50 dernières ventes/achats ── */}
-        {tab === 'surveiller' && (
-          <div>
-            {watched.size === 0 ? (
-              <div style={{ textAlign:'center', color:'#888', padding:'32px 0' }}>
-                <div style={{ fontSize:36, marginBottom:8 }}>🔔</div>
-                <div>Aucune carte surveillée.<br/>Clique sur 🔔 dans l'onglet Acheter pour en ajouter.</div>
-              </div>
-            ) : (
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {[...watched].map(cardId => {
-                  const card = cardPool.find(c => c.id === cardId)
-                  const { c1, c2 } = cardCC(card?.rarity || 'commun')
-                  return (
-                    <div key={cardId} style={{ display:'flex', alignItems:'center', gap:10, background:'#ffffff08', border:'1px solid #ffffff10', borderRadius:11, padding:'10px 14px' }}>
-                      <div style={{ width:36, height:36, borderRadius:9, background:`linear-gradient(135deg,${c1},${c2})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:900, color:'#fff', flexShrink:0 }}>
-                        {(card?.name||'?')[0]}
-                      </div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontWeight:800, color:'#fff', fontSize:13 }}>{card?.name || `Carte #${cardId}`}</div>
-                        <div style={{ fontSize:10, color:'#888', marginTop:1 }}>Alerte active</div>
-                      </div>
-                      <button onClick={() => toggleWatch(cardId)} style={{ background:'#e74c3c22', border:'1px solid #e74c3c44', color:'#e74c3c', padding:'5px 10px', borderRadius:8, fontFamily:"'Nunito',sans-serif", fontWeight:800, fontSize:11, cursor:'pointer' }}>
-                        Retirer
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
         {tab === 'historique' && (
           <TxHistoryModal transactions={transactions.slice(0, 50)} onClose={onClose} embedded />
         )}

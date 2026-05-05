@@ -23,4 +23,6 @@ export const INIT_LIMITS = {
   marketSalesOpen: true,
   maxActiveListings: 10,
   botsVisible: false,
+  supportVisible: true,
+  leaderboardVisible: true,
 };

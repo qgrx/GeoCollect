@@ -71,9 +71,11 @@ export function useGameState(auth) {
           quizInterval:      cfg.quiz_interval       ?? prev.quizInterval,
           quizRarityRates:   cfg.quiz_rarity_rates   ?? prev.quizRarityRates,
           playerRanks:       cfg.player_ranks        ?? prev.playerRanks,
-          marketSalesOpen:   cfg.market_sales_open   ?? prev.marketSalesOpen,
+          marketSalesOpen:   cfg.market_sales_open !== undefined ? (cfg.market_sales_open === 'true' || cfg.market_sales_open === true) : prev.marketSalesOpen,
           maxActiveListings: cfg.max_active_listings ?? prev.maxActiveListings,
-          botsVisible:       cfg.bots_visible        ?? prev.botsVisible,
+          botsVisible:       cfg.bots_visible !== undefined ? (cfg.bots_visible === 'true' || cfg.bots_visible === true) : prev.botsVisible,
+          supportVisible:    cfg.support_visible !== undefined ? (cfg.support_visible === 'true' || cfg.support_visible === true) : prev.supportVisible,
+          leaderboardVisible:cfg.leaderboard_visible !== undefined ? (cfg.leaderboard_visible === 'true' || cfg.leaderboard_visible === true) : prev.leaderboardVisible,
         }))
       }
     })
@@ -183,9 +185,11 @@ export function useGameState(auth) {
             quizDuration:      cfg.quiz_duration       ?? prev.quizDuration,
             quizRarityRates:   cfg.quiz_rarity_rates   ?? prev.quizRarityRates,
             playerRanks:       cfg.player_ranks        ?? prev.playerRanks,
-            marketSalesOpen:   cfg.market_sales_open   ?? prev.marketSalesOpen,
+            marketSalesOpen:   cfg.market_sales_open !== undefined ? (cfg.market_sales_open === 'true' || cfg.market_sales_open === true) : prev.marketSalesOpen,
             maxActiveListings: cfg.max_active_listings ?? prev.maxActiveListings,
-            botsVisible:       cfg.bots_visible        ?? prev.botsVisible,
+            botsVisible:       cfg.bots_visible !== undefined ? (cfg.bots_visible === 'true' || cfg.bots_visible === true) : prev.botsVisible,
+            supportVisible:    cfg.support_visible !== undefined ? (cfg.support_visible === 'true' || cfg.support_visible === true) : prev.supportVisible,
+            leaderboardVisible:cfg.leaderboard_visible !== undefined ? (cfg.leaderboard_visible === 'true' || cfg.leaderboard_visible === true) : prev.leaderboardVisible,
           }))
         }
 
@@ -202,9 +206,11 @@ export function useGameState(auth) {
               playerRanks:           cfg.player_ranks              ?? prev.playerRanks,
               quizInterval:          cfg.quiz_interval             ?? prev.quizInterval,
               quizRarityRates:       cfg.quiz_rarity_rates         ?? prev.quizRarityRates,
-              marketSalesOpen:       cfg.market_sales_open         ?? prev.marketSalesOpen,
+              marketSalesOpen:       cfg.market_sales_open !== undefined ? (cfg.market_sales_open === 'true' || cfg.market_sales_open === true) : prev.marketSalesOpen,
               maxActiveListings:     cfg.max_active_listings       ?? prev.maxActiveListings,
-              botsVisible:           cfg.bots_visible              ?? prev.botsVisible,
+              botsVisible:           cfg.bots_visible !== undefined ? (cfg.bots_visible === 'true' || cfg.bots_visible === true) : prev.botsVisible,
+              supportVisible:        cfg.support_visible !== undefined ? (cfg.support_visible === 'true' || cfg.support_visible === true) : prev.supportVisible,
+              leaderboardVisible:    cfg.leaderboard_visible !== undefined ? (cfg.leaderboard_visible === 'true' || cfg.leaderboard_visible === true) : prev.leaderboardVisible,
               cache_ttl_cards:       cfg.cache_ttl_cards           ?? prev.cache_ttl_cards,
               cache_ttl_config:      cfg.cache_ttl_config          ?? prev.cache_ttl_config,
               cache_ttl_leaderboard: cfg.cache_ttl_leaderboard     ?? prev.cache_ttl_leaderboard,
