@@ -98,8 +98,11 @@ export const apiGetLeaderboard = (page = 0, q) => apiFetch(`/api/leaderboard?pag
 // ─── Admin config ────────────────────────────────────────────────────────────
 export const apiAdminAnnounce         = (message, type = 'info') => apiFetch('/api/admin/announce', { method: 'POST', body: { message, type } })
 export const apiTriggerQuiz           = () => apiFetch('/api/admin/quiz/trigger', { method: 'POST' })
-export const apiAdminGetQuestions     = ()            => apiFetch('/api/admin/questions')
-export const apiAdminToggleQuestion   = (id, active) => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { active } })
+export const apiAdminGetQuestions       = ()                         => apiFetch('/api/admin/questions')
+export const apiAdminAddQuestion        = (q, a, translations)       => apiFetch('/api/admin/questions', { method: 'POST', body: { question: q, answer: a, hint: '', translations: translations || {} } })
+export const apiAdminEditQuestion       = (id, q, a)                 => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { question: q, answer: a } })
+export const apiAdminToggleQuestion     = (id, active)               => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { active } })
+export const apiAdminSaveTranslations   = (id, translations)         => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { translations } })
 export const apiGetPublicConfig       = () => apiFetch('/api/config')
 export const apiGetAdminConfig        = () => apiFetch('/api/admin/config')
 export const apiAdminGetMarketHistory = (params = {}) => { const qs = new URLSearchParams(params).toString(); return apiFetch(`/api/admin/market-history${qs ? '?' + qs : ''}`) }

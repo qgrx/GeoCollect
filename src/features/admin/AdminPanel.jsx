@@ -6,7 +6,8 @@ import { PAGE_SIZE } from '../../data/constants.js';
 import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache,
   apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminReactivate,
   apiAdminGetBots, apiAdminCreateBot, apiAdminUpdateBot, apiAdminDeleteBot,
-  apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings } from '../../services/api.js';
+  apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
+  apiAdminSaveTranslations } from '../../services/api.js';
 
 const DEFAULT_TYPE = 'Normal';
 
@@ -64,6 +65,9 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [listingsQ,setListingsQ]=useState('');
   const [expiredDays,setExpiredDays]=useState(limits.marketExpireDays || 30);
   const [nq,setNq]=useState({q:"",a:"",hint:""});
+  const [transQ,setTransQ]=useState(null);   // question en cours de traduction
+  const [transLang,setTransLang]=useState('en');
+  const TRANS_LANGS=[{code:'en',label:'English'},{code:'de',label:'Deutsch'},{code:'es',label:'Español'}];
   const [ntName,setNtName]=useState("");
   const [editingType,setEditingType]=useState(null);
   const [editTypeName,setEditTypeName]=useState("");
@@ -93,12 +97,24 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
     const f=e.target.files[0]; if(!f) return;
     const r=new FileReader(); r.onload=ev=>{
       const rows=parseCSV(ev.target.result);
-      rows.forEach(([q,a])=>{if(q&&a)onAddQuestion({q,a,hint:""});});
+      rows.forEach(([q,a,q_en,a_en,q_de,a_de,q_es,a_es])=>{
+        if(!q||!a) return;
+        const translations={};
+        if(q_en&&a_en) translations.en={question:q_en,answer:a_en};
+        if(q_de&&a_de) translations.de={question:q_de,answer:a_de};
+        if(q_es&&a_es) translations.es={question:q_es,answer:a_es};
+        onAddQuestion({q,a,hint:"",translations});
+      });
       setMsg("✅ Questions importées !");
     }; r.readAsText(f);
   }
   function exportCSVQ(){
-    const csv=["question,reponse",...questions.map(q=>`"${q.q}","${q.a}"`)];
+    const header="question,reponse,question_en,reponse_en,question_de,reponse_de,question_es,reponse_es";
+    const rows=questions.map(q=>{
+      const t=q.translations||{};
+      return `"${q.q}","${q.a}","${t.en?.question||""}","${t.en?.answer||""}","${t.de?.question||""}","${t.de?.answer||""}","${t.es?.question||""}","${t.es?.answer||""}"`;
+    });
+    const csv=[header,...rows];
     const blob=new Blob([csv.join("\n")],{type:"text/csv"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="questions.csv"; a.click();
   }
@@ -284,6 +300,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       </div>
                       <div style={{display:"flex",gap:5,flexShrink:0}}>
                         {!inactive&&<button onClick={()=>setEditQ(editQ?.id===q.id?null:{...q})} style={{background:"#f9ca2422",border:"1px solid #f9ca2444",color:"#f9ca24",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>✏️</button>}
+                        {!inactive&&<button onClick={()=>setTransQ(transQ?.id===q.id?null:{...q,translations:q.translations||{}})} title="Traduire" style={{background:"#6c5ce722",border:"1px solid #6c5ce744",color:"#a29bfe",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>🌐</button>}
                         <button onClick={()=>{onToggleQuestion(q.id);setMsg(inactive?"✅ Question réactivée.":"⛔ Question désactivée.");}} style={{background:inactive?"#00b89422":"#e74c3c22",border:`1px solid ${inactive?"#00b89444":"#e74c3c44"}`,color:inactive?"#00b894":"#e74c3c",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{inactive?"✅":"🗑️"}</button>
                       </div>
                     </div>
@@ -308,6 +325,42 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </>
             );
           })()}
+
+          {/* ── Panneau traductions ── */}
+          {transQ&&(
+            <div style={{background:"#1a0a3a",border:"1.5px solid #6c5ce766",borderRadius:12,padding:16,marginTop:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <div style={{fontWeight:900,color:"#a29bfe",fontSize:13}}>🌐 Traductions — <span style={{color:"#fff",fontStyle:"italic"}}>{transQ.q}</span></div>
+                <button onClick={()=>setTransQ(null)} style={{background:"none",border:"none",color:"#666",fontSize:14,cursor:"pointer"}}>✕</button>
+              </div>
+              <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+                {TRANS_LANGS.map(l=>(
+                  <button key={l.code} onClick={()=>setTransLang(l.code)}
+                    style={{background:transLang===l.code?"#6c5ce7":"#ffffff10",border:"none",color:transLang===l.code?"#fff":"#aaa",padding:"5px 12px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
+                    {l.label} {transQ.translations?.[l.code]?.question?"✓":""}
+                  </button>
+                ))}
+              </div>
+              {TRANS_LANGS.filter(l=>l.code===transLang).map(l=>(
+                <div key={l.code}>
+                  <Fld lbl={`Question (${l.label})`}>
+                    <input value={transQ.translations?.[l.code]?.question||""} onChange={e=>setTransQ(q=>({...q,translations:{...q.translations,[l.code]:{...q.translations?.[l.code],question:e.target.value}}}))} style={INP} placeholder={`Question en ${l.label}…`}/>
+                  </Fld>
+                  <Fld lbl={`Réponse (${l.label})`}>
+                    <input value={transQ.translations?.[l.code]?.answer||""} onChange={e=>setTransQ(q=>({...q,translations:{...q.translations,[l.code]:{...q.translations?.[l.code],answer:e.target.value}}}))} style={INP} placeholder={`Réponse en ${l.label}…`}/>
+                  </Fld>
+                </div>
+              ))}
+              <button onClick={async()=>{
+                const {error}=await apiAdminSaveTranslations(transQ.id,transQ.translations);
+                if(error){setMsg("❌ Erreur sauvegarde");return;}
+                onEditQuestion({...transQ});
+                setMsg("✅ Traductions sauvegardées !");
+              }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"8px 18px",borderRadius:8,fontSize:12,marginTop:8}}>
+                💾 Sauvegarder les traductions
+              </button>
+            </div>
+          )}
         </div>}
 
         {/* ── QUIZ CONFIG ── */}

@@ -13,7 +13,7 @@ import { collScore } from './utils/gameUtils.js';
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -139,12 +139,14 @@ export default function App() {
         const card = { ...data.card, ...poolCard, sellable: true, minPrice: null, desc: '' }
         const wc = data.answer_word_count || 1
         const fakeAnswer = Array(wc).fill('x').join(' ')
+        const curLang = (typeof window !== 'undefined' && localStorage.getItem('geocards_lang')) || 'fr'
+        const trans = data.translations?.[curLang]
         const q = {
           ...data,
           card,
           id:   data.quiz_id,
-          q:    data.question,
-          a:    fakeAnswer,
+          q:    trans?.question || data.question,
+          a:    trans?.answer ? Array((trans.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : fakeAnswer,
           h:    data.hint,
           answer_length: data.answer_length,
         }
@@ -944,7 +946,13 @@ export default function App() {
           onClose={() => setShowAdmin(false)}
           onAddCard={gs.adminAddCard} onEditCard={gs.adminEditCard} onDeleteCard={gs.adminDeleteCard}
           onAddType={gs.adminAddType} onDeleteType={gs.adminDeleteType} onRenameType={gs.adminRenameType}
-          onAddQuestion={q => setQuestions(prev => [...prev, { ...q, id: Date.now() }])}
+          onAddQuestion={async q => {
+            const { data, error } = await apiAdminAddQuestion(q.q, q.a, q.translations)
+            if (!error && data?.question) {
+              const saved = data.question
+              setQuestions(prev => [...prev, { id: saved.id, q: saved.question, a: saved.answer, hint: saved.hint || '', active: saved.active, translations: saved.translations || {} }])
+            }
+          }}
           onEditQuestion={q => setQuestions(prev => prev.map(x => x.id === q.id ? q : x))}
           onDeleteQuestion={id => setQuestions(prev => prev.map(x => x.id === id ? { ...x, active: false } : x))}
           onToggleQuestion={async id => {
