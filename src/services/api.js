@@ -98,6 +98,7 @@ export const apiGetLeaderboard = (page = 0, q) => apiFetch(`/api/leaderboard?pag
 // ─── Admin config ────────────────────────────────────────────────────────────
 export const apiAdminAnnounce         = (message, type = 'info') => apiFetch('/api/admin/announce', { method: 'POST', body: { message, type } })
 export const apiTriggerQuiz           = () => apiFetch('/api/admin/quiz/trigger', { method: 'POST' })
+export const apiAdminGetQuestions     = ()            => apiFetch('/api/admin/questions')
 export const apiAdminToggleQuestion   = (id, active) => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { active } })
 export const apiGetPublicConfig       = () => apiFetch('/api/config')
 export const apiGetAdminConfig        = () => apiFetch('/api/admin/config')

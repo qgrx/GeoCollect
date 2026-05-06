@@ -13,7 +13,7 @@ import { collScore } from './utils/gameUtils.js';
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -263,6 +263,15 @@ export default function App() {
   const [showScrollTop,   setShowScrollTop]   = useState(false);
 
   const [questions, setQuestions] = useState([]);
+
+  useEffect(() => {
+    if (!showAdmin || !auth.profile) return
+    apiAdminGetQuestions().then(({ data }) => {
+      if (data?.questions) setQuestions(data.questions.map(q => ({
+        id: q.id, q: q.question, a: q.answer, hint: q.hint || '', active: q.active
+      })))
+    })
+  }, [showAdmin])
 
   // ── Détection mobile ───────────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 520)
