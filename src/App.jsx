@@ -716,7 +716,7 @@ export default function App() {
       </div>}
 
       {/* ── Collection grid ── */}
-      {(auth.profile || !import.meta.env.VITE_API_URL) && <div data-tour="collection" style={{ padding: isMobile ? '10px 10px' : '12px 18px' }}>
+      {(auth.profile || !import.meta.env.VITE_API_URL) && <div style={{ padding: isMobile ? '10px 10px' : '12px 18px' }}>
         {displayCards.length === 0 ? (
           <div style={{ textAlign: 'center',color: '#888',padding: '44px 0' }}>
             <div style={{ fontSize: 52 }}>📭</div>
@@ -729,10 +729,10 @@ export default function App() {
           return (
             <>
               <div style={{ display: 'flex',flexWrap: 'wrap',gap: 12,marginBottom: 16 }}>
-                {slice.map(({ card, count, cnt, missing }) => {
+                {slice.map(({ card, count, cnt, missing }, idx) => {
                   const c = count || cnt || 0;
                   return (
-                    <div key={card.id} style={{ animation: 'slideIn .35s ease both' }}>
+                    <div key={card.id} style={{ animation: 'slideIn .35s ease both' }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
                       <Card card={card} count={missing ? 0 : c} dimmed={missing}
                         onClick={missing ? undefined : () => setSelectedCard(card)} />
                     </div>
