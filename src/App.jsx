@@ -6,7 +6,7 @@ import LangSelector from './i18n/LangSelector.jsx';
 import Logo from './components/Logo.jsx';
 
 // ─── Data & utils ─────────────────────────────────────────────────────────────
-import { RC, cardCC, RARITY_CONFIG } from './data/cards.js';
+import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName } from './data/cards.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
 import { collScore } from './utils/gameUtils.js';
 
@@ -865,15 +865,15 @@ export default function App() {
               <div style={{ animation:'cardReveal .6s .2s cubic-bezier(.34,1.56,.64,1) both', width:160, margin:'0 auto 28px', borderRadius:18, overflow:'hidden', border:`2px solid ${c1}`, background:`linear-gradient(145deg,${c1}33,${c2}55)`, boxShadow:`0 0 48px ${c1}66, 0 24px 60px #000c` }}>
                 <div style={{ background:`linear-gradient(90deg,${c1},${c2})`, padding:'7px 11px', display:'flex', justifyContent:'space-between' }}>
                   <span style={{ fontWeight:900, fontSize:11, color:'#fff', textTransform:'uppercase' }}>{card.type}</span>
-                  <span style={{ fontWeight:800, fontSize:10, color:'#ffffffbb' }}>{rc.label}</span>
+                  <span style={{ fontWeight:800, fontSize:10, color:'#ffffffbb' }}>{rarityLabel(card.rarity, t)}</span>
                 </div>
                 {card.image_url
                   ? <img src={card.image_url} alt={card.name} style={{ width:'100%', height:90, objectFit:'contain', background:`linear-gradient(135deg,${c1}22,${c2}44)` }} />
                   : <div style={{ height:90, background:`linear-gradient(135deg,${c1}22,${c2}44)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:44, opacity:.4 }}>🃏</div>
                 }
-                <div style={{ textAlign:'center', fontWeight:900, fontSize:14, color:'#1a1a2e', padding:'3px 7px', background:'#ffffff88' }}>{card.name}</div>
+                <div style={{ textAlign:'center', fontWeight:900, fontSize:14, color:'#1a1a2e', padding:'3px 7px', background:'#ffffff88' }}>{cardName(card, lang)}</div>
                 <div style={{ textAlign:'center', fontSize:11, color:rc.color, padding:'2px 0' }}>{'★'.repeat(rc.stars||1)}{'☆'.repeat(4-(rc.stars||1))}</div>
-                <div style={{ background:rc.bg, color:rc.color, fontSize:9, fontWeight:800, textTransform:'uppercase', textAlign:'center', padding:'2px 0', letterSpacing:1 }}>{rc.label}</div>
+                <div style={{ background:rc.bg, color:rc.color, fontSize:9, fontWeight:800, textTransform:'uppercase', textAlign:'center', padding:'2px 0', letterSpacing:1 }}>{rarityLabel(card.rarity, t)}</div>
               </div>
               <button onClick={dismiss}
                 style={{ background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1a1a2e', padding:'13px 32px', borderRadius:14, fontFamily:"'Nunito',sans-serif", fontWeight:900, fontSize:16, cursor:'pointer', boxShadow:'0 4px 20px #f9ca2466' }}>
@@ -956,7 +956,7 @@ export default function App() {
         <AdminPanel
           cardPool={gs.cardPool} cardTypes={gs.cardTypes} questions={questions} limits={gs.limits}
           maintenanceMode={gs.maintenance.on} maintenanceText={gs.maintenance.text}
-          players={gs.players} bannedIPs={gs.bannedIPs}
+          bannedIPs={gs.bannedIPs}
           onClose={() => setShowAdmin(false)}
           onAddCard={gs.adminAddCard} onEditCard={gs.adminEditCard} onDeleteCard={gs.adminDeleteCard}
           onAddType={gs.adminAddType} onDeleteType={gs.adminDeleteType} onRenameType={gs.adminRenameType}
@@ -1022,7 +1022,7 @@ export default function App() {
               gs.setMaintenance(prevM)
             }
       }}
-          onTogglePlayer={gs.adminTogglePlayer} onBanIP={gs.adminBanIP} onUnbanIP={gs.adminUnbanIP}
+          onBanIP={gs.adminBanIP} onUnbanIP={gs.adminUnbanIP}
           onUpdateCardInPool={card => gs.setCardPool(prev => prev.map(c => c.id === card.id ? {...c, ...card, desc: card.desc??card.description??''} : c))}
           onStartTour={() => { setShowAdmin(false); setShowTour(true) }}
         />

@@ -18,7 +18,6 @@ export function useGameState(auth) {
   const [cardPool,    setCardPool]    = useState([])
   const [cardTypes,   setCardTypes]   = useState([])
   const [market,      setMarket]      = useState([])
-  const [players,     setPlayers]     = useState([])
   const [bannedIPs,   setBannedIPs]   = useState([])
   const [limits,      setLimits]      = useState(INIT_LIMITS)
   const [maintenance, setMaintenance] = useState({ on: false, text: '' })
@@ -570,13 +569,12 @@ export function useGameState(auth) {
       }
     }
   }, [profile])
-  const adminTogglePlayer  = useCallback((name) => setPlayers(prev => prev.map(p => p.name === name ? { ...p, status: p.status === 'banni' ? 'actif' : 'banni' } : p)), [])
   const adminBanIP         = useCallback((ip) => setBannedIPs(prev => [...prev, ip]), [])
   const adminUnbanIP       = useCallback((ip) => setBannedIPs(prev => prev.filter(i => i !== ip)), [])
 
   return {
     // World
-    cardPool, setCardPool, cardTypes, market, setMarket, players, bannedIPs,
+    cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs,
     limits, setLimits, maintenance, setMaintenance, loadingData,
     // Player
     gold, collection, setCollection, myListings, dailyGold, dailyCards, totalBuys, totalSells,
@@ -590,6 +588,6 @@ export function useGameState(auth) {
     handleSaleNotifFromSocket,
     // Admin
     adminAddCard, adminEditCard, adminDeleteCard, adminAddType, adminDeleteType,
-    adminRenameType, adminTogglePlayer, adminBanIP, adminUnbanIP,
+    adminRenameType, adminBanIP, adminUnbanIP,
   }
 }

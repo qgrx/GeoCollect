@@ -3,6 +3,7 @@ import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
+import { apiAdminSaveCardNameTrans } from '../../services/api.js';
 
 // Petits utilitaires dupliqués pour rendre le composant autonome
 function Fld({lbl,children}){
@@ -30,6 +31,10 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const [circulation, setCirculation] = useState(null);
   const [nc, setNc] = useState({ name: "", type: cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "" });
 
+  const [transCard, setTransCard] = useState(null);
+  const [transCardLang, setTransCardLang] = useState('en');
+  const TRANS_LANGS = [{code:'en',label:'English'},{code:'de',label:'Deutsch'},{code:'es',label:'Español'}];
+
   const csvCardRef = useRef();
   const fileRef = useRef();
   const editFileRef = useRef();
@@ -51,7 +56,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
       })
       .then(r => r.json())
       .then(d => {
-        if (mounted && d.data?.circulation !== undefined) setCirculation(d.data.circulation);
+        if (mounted && d.circulation !== undefined) setCirculation(d.circulation);
       }).catch(() => { if (mounted) setCirculation('?'); });
     });
     return () => { mounted = false; };
@@ -201,6 +206,39 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
             <div style={{display:"flex",gap:8,marginTop:4}}>{editCard?(<><button onClick={async()=>{if(!editCard.name.trim()){setMsg("❌ Nom requis.");return;}const payload={...editCard, image_url: editCard.image, image_url_thumb: editCard.thumbnail, is_offered: !!editCard.is_offered}; if(payload.minPrice!==undefined){payload.min_price=payload.minPrice; delete payload.minPrice;} delete payload.image; delete payload.thumbnail; const err=await onEditCard(payload);if(err){setMsg("❌ "+err);return;}onUpdateCardInPool?.(payload);setEditCard(null);setSelectedType(payload.type);setNc({name:"",type:payload.type,rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:""});if(editFileRef.current)editFileRef.current.value='';if(fileRef.current)fileRef.current.value='';setMsg(`✅ "${editCard.name}" mis à jour !`);}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>Enregistrer ✏️</button><button onClick={()=>{setEditCard(null);setNc({name:"",type:selectedType||cardTypes[0]||"",rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:""});if(editFileRef.current)editFileRef.current.value='';if(fileRef.current)fileRef.current.value='';}} style={{...BTN("#ffffff18"),padding:"11px",borderRadius:10}}>Annuler</button><button onClick={async()=>{if(!window.confirm(`Supprimer définitivement "${editCard.name}" ?`)) return;const name=editCard.name; const type=editCard.type;const err=await onDeleteCard(editCard.id);if(err){setMsg("❌ "+err);return;}setEditCard(null);setSelectedType(type);setNc({name:"",type:type,rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:""});if(editFileRef.current)editFileRef.current.value='';if(fileRef.current)fileRef.current.value='';setMsg(`✅ "${name}" supprimée.`);}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)","#fff"),padding:"11px",borderRadius:10}} title="Supprimer cette carte">🗑️</button></>):(<button onClick={async()=>{if(!nc.name.trim()){setMsg("❌ Nom requis.");return;}const payload={name:nc.name.trim(), type:nc.type||selectedType||cardTypes[0]||"", rarity:nc.rarity, image_url:nc.image, image_url_thumb:nc.thumbnail, desc:nc.desc, sellable:nc.sellable, min_price:nc.minPrice||null}; const err=await onAddCard(payload);if(err){setMsg("❌ "+err);return;}setMsg(`✅ "${nc.name}" créée !`);setSelectedType(payload.type);setNc({name:"",type:payload.type,rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:""});if(fileRef.current)fileRef.current.value='';}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>{t("admin_create_card")}</button>)}</div>
           </div>
           <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:7}}><div style={{fontSize:10,color:"#888",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Aperçu</div>{(()=>{const src=editCard||nc;const {c1,c2}=cardCC(src.rarity);const isLeg=src.rarity==="légendaire";return(<div style={{position:"relative",width:148,height:190,borderRadius:16,border:isLeg?`2px solid ${c1}`:`1.5px solid ${c1}66`,boxShadow:isLeg?`0 0 20px ${c1}66,0 4px 20px #0004`:"0 4px 14px #0003",overflow:"hidden",background:src.image?"transparent":`linear-gradient(145deg,${c1}44,${c2}66)`,fontFamily:"'Nunito',sans-serif"}}>{isLeg&&<div style={{position:"absolute",inset:0,borderRadius:16,zIndex:2,background:"linear-gradient(135deg,transparent 40%,#ffffff1a 50%,transparent 60%)",backgroundSize:"400px 100%",animation:"shimmer 2.5s linear infinite",pointerEvents:"none"}}/>}<div style={{position:"absolute",inset:0,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:6}}>{src.image?<img src={src.image} style={{width:"100%",height:"88%",objectFit:"contain"}} alt=""/>:<div style={{fontSize:52,opacity:.22,marginTop:40}}>🃏</div>}</div><div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,background:`linear-gradient(to top,${c1}ee 0%,${c1}99 50%,transparent 100%)`,padding:"28px 8px 7px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:13,color:"#fff",textShadow:"0 1px 4px #0008",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",letterSpacing:.3}}>{src.name||"Nom"}</div></div><div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:4,height:4,background:`linear-gradient(90deg,${c1},${c2})`}}/>{src.sellable===false&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#e74c3ccc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>NON VENDABLE</div>}{src.minPrice>0&&<div style={{position:"absolute",top:5,right:5,zIndex:5,background:"#f39c12cc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>MIN {src.minPrice}G</div>}</div>);})()}</div>
+        </div>
+      )}
+
+      {/* ── Panneau traduction nom de carte ── */}
+      {editCard && (
+        <div style={{background:"#1a0a3a",border:"1.5px solid #6c5ce766",borderRadius:12,padding:16,marginTop:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{fontWeight:900,color:"#a29bfe",fontSize:13}}>🌐 Traduction du nom — <span style={{color:"#fff"}}>{editCard.name}</span></div>
+          </div>
+          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+            {TRANS_LANGS.map(l=>(
+              <button key={l.code} onClick={()=>setTransCardLang(l.code)}
+                style={{background:transCardLang===l.code?"#6c5ce7":"#ffffff10",border:"none",color:transCardLang===l.code?"#fff":"#aaa",padding:"5px 12px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
+                {l.label} {editCard.name_translations?.[l.code]?"✓":""}
+              </button>
+            ))}
+          </div>
+          {TRANS_LANGS.filter(l=>l.code===transCardLang).map(l=>(
+            <Fld key={l.code} lbl={`Nom en ${l.label}`}>
+              <input
+                value={editCard.name_translations?.[l.code]||""}
+                onChange={e=>setEditCard(c=>({...c,name_translations:{...c.name_translations,[l.code]:e.target.value}}))}
+                style={INP} placeholder={`Nom en ${l.label}…`}/>
+            </Fld>
+          ))}
+          <button onClick={async()=>{
+            const {error}=await apiAdminSaveCardNameTrans(editCard.id, editCard.name_translations||{});
+            if(error){setMsg("❌ Erreur sauvegarde");return;}
+            onUpdateCardInPool?.({...editCard});
+            setMsg("✅ Traductions du nom sauvegardées !");
+          }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"8px 18px",borderRadius:8,fontSize:12,marginTop:8}}>
+            💾 Sauvegarder les traductions
+          </button>
         </div>
       )}
     </div>

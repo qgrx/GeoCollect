@@ -1,6 +1,8 @@
 import { RARITY_CONFIG as RC, cardCC } from '../data/cards.js';
+import { useT } from '../i18n/translations.js';
 
 export default function Card({ card, count, onClick, selected, small, dimmed }) {
+  const { t } = useT();
   const rc = RC[card.rarity] || RC.commun;
   const { c1, c2 } = cardCC(card.rarity);
   const isLeg = card.rarity === 'légendaire';

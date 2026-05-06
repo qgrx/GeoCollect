@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback } from 'react'
-import { RC, cardCC } from '../data/cards.js'
+import { RC, cardCC, rarityLabel } from '../data/cards.js'
+import { useT } from '../i18n/translations.js'
 
 export default function CardDetailModal({ card, count, onClose, onSell }) {
+  const { t } = useT()
   const imgRef = useRef()
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const onMove = useCallback(e => {
@@ -47,7 +49,7 @@ export default function CardDetailModal({ card, count, onClose, onSell }) {
             backgroundSize: '400px 100%', animation: 'shimmer 2s linear infinite' }}/>}
           <div>
             <div style={{ fontWeight: 900, fontSize: 12, color: '#fff', textTransform: 'uppercase', letterSpacing: 1 }}>{card.type}</div>
-            <div style={{ fontSize: 10, color: '#ffffff88', fontWeight: 700 }}>{rc.label}</div>
+            <div style={{ fontSize: 10, color: '#ffffff88', fontWeight: 700 }}>{rarityLabel(card.rarity, t)}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {count > 0 && <div style={{ background: '#00000044', color: '#fff', borderRadius: 50, padding: '3px 10px', fontSize: 11, fontWeight: 900 }}>×{count}</div>}
@@ -88,7 +90,7 @@ export default function CardDetailModal({ card, count, onClose, onSell }) {
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 24, color: '#fff', marginBottom: 4 }}>{card.name}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span style={{ color: rc.color, fontSize: 14 }}>{'★'.repeat(rc.stars)}{'☆'.repeat(4 - rc.stars)}</span>
-            <span style={{ fontSize: 11, color: rc.color, fontWeight: 800, background: rc.bg, borderRadius: 50, padding: '2px 10px' }}>{rc.label}</span>
+            <span style={{ fontSize: 11, color: rc.color, fontWeight: 800, background: rc.bg, borderRadius: 50, padding: '2px 10px' }}>{rarityLabel(card.rarity, t)}</span>
           </div>
           {card.desc && (
             <div style={{ fontSize: 13, color: '#aaa', lineHeight: 1.6, fontStyle: 'italic',

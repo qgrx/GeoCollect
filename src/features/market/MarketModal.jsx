@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useT } from '../../i18n/translations.js'
-import { RC, cardCC } from '../../data/cards.js'
+import { RC, cardCC, rarityLabel } from '../../data/cards.js'
 import Card from '../../components/Card.jsx'
 import { TxHistoryModal } from '../achievements/NotifComponents.jsx'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
@@ -128,7 +128,7 @@ export default function MarketModal({
                         <div style={{ flex: 1,minWidth: 0 }}>
                           <div style={{ display: 'flex',alignItems: 'center',gap: 7,flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 900,fontSize: 14,color: '#fff' }}>{card.name}</span>
-                            <span style={{ background: rc.bg,color: rc.color,fontSize: 8,fontWeight: 800,padding: '1px 6px',borderRadius: 50,textTransform: 'uppercase' }}>{rc.label}</span>
+                            <span style={{ background: rc.bg,color: rc.color,fontSize: 8,fontWeight: 800,padding: '1px 6px',borderRadius: 50,textTransform: 'uppercase' }}>{rarityLabel(card.rarity, t)}</span>
                             {owned && <span style={{ background: '#f9ca2422',color: '#f9ca24',fontSize: 8,fontWeight: 800,padding: '1px 6px',borderRadius: 50 }}>{t('market_already_owned')}</span>}
                           </div>
                           <div style={{ fontSize: 10,color: '#aaa',marginTop: 2,display: 'flex',gap: 10,flexWrap: 'wrap' }}>
@@ -334,7 +334,7 @@ export default function MarketModal({
                           {/* Infos */}
                           <div style={{ flex: 1,minWidth: 0 }}>
                             <div style={{ fontWeight: 900,color: '#fff',fontSize: 14,whiteSpace: 'nowrap',overflow: 'hidden',textOverflow: 'ellipsis' }}>{l.card.name}</div>
-                            <div style={{ fontSize: 10,color: rc.color,fontWeight: 700,marginTop: 1 }}>{rc.label} · {l.card.type}</div>
+                            <div style={{ fontSize: 10,color: rc.color,fontWeight: 700,marginTop: 1 }}>{rarityLabel(l.card.rarity, t)} · {l.card.type}</div>
                           </div>
                           {/* Prix */}
                           <div style={{ fontWeight: 900,fontSize: 17,color: '#f9ca24',flexShrink: 0 }}>{l.price}G</div>

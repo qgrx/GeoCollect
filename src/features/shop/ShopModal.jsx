@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useT } from '../../i18n/translations.js';
-import { RC, cardCC, RARITY_CONFIG as RC2 } from '../../data/cards.js';
+import { RC, cardCC, RARITY_CONFIG as RC2, rarityLabel } from '../../data/cards.js';
 import { PACK_PRICE_LABEL } from '../../data/constants.js';
 import { drawPackCards } from '../../utils/gameUtils.js';
 
@@ -161,7 +161,7 @@ export default function ShopModal({onClose, cardPool, onPurchase}){ const {t}=us
                       <div style={{background:`linear-gradient(90deg,${c1},${c2})`,padding:"4px 7px",fontSize:9,fontWeight:900,color:"#fff"}}>{card.type.toUpperCase()}</div>
                       <div style={{height:50,background:`linear-gradient(135deg,${c1}22,${c2}44)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:800}}>{card.name[0]}</div>
                       <div style={{textAlign:"center",fontWeight:900,fontSize:10,color:"#1a1a2e",padding:"2px 4px",background:"#ffffff88"}}>{card.name}</div>
-                      <div style={{background:rc.bg,color:rc.color,fontSize:7,fontWeight:800,textAlign:"center",padding:"2px 0",letterSpacing:.5}}>{rc.label.toUpperCase()}</div>
+                      <div style={{background:rc.bg,color:rc.color,fontSize:7,fontWeight:800,textAlign:"center",padding:"2px 0",letterSpacing:.5}}>{rarityLabel(card.rarity,t).toUpperCase()}</div>
                     </>
                   ):(
                     <div style={{height:98,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>❓</div>
@@ -182,7 +182,7 @@ export default function ShopModal({onClose, cardPool, onPurchase}){ const {t}=us
                   const rc=RC[r]; const {c1}=cardCC(r);
                   return <div key={r} style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                     <div style={{width:10,height:10,borderRadius:"50%",background:c1,flexShrink:0}}/>
-                    <span style={{fontSize:12,color:rc.color,fontWeight:800}}>{rc.label}</span>
+                    <span style={{fontSize:12,color:rc.color,fontWeight:800}}>{rarityLabel(r,t)}</span>
                     <span style={{fontSize:12,color:"#aaa"}}>× {cnt}</span>
                   </div>;
                 })}

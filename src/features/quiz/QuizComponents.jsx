@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { soundCorrect, soundWrong } from '../../utils/sounds.js';
 import { useT } from '../../i18n/translations.js';
 import { normA, wordCount } from '../../utils/gameUtils.js';
-import { RC, cardCC } from '../../data/cards.js';
+import { RC, cardCC, rarityLabel, cardName } from '../../data/cards.js';
+import { getLang } from '../../i18n/translations.js';
 import { QUIZ_INTERVAL } from '../../data/constants.js';
 import Card from '../../components/Card.jsx';
 import { BTN } from '../../utils/styles.js';
@@ -42,7 +43,7 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
         <div style={{fontSize:32,marginBottom:8}}>😤</div>
         <div style={{fontWeight:900,color:"#fff",fontSize:15,marginBottom:4}}>Trop tard !</div>
         <div style={{color:"#aaa",fontSize:13}}>
-          <span style={{color:"#f9ca24",fontWeight:800}}>{quiz.winner}</span> a remporté la carte <span style={{color:c1,fontWeight:800}}>{quiz.card.name}</span>.
+          <span style={{color:"#f9ca24",fontWeight:800}}>{quiz.winner}</span> a remporté la carte <span style={{color:c1,fontWeight:800}}>{cardName(quiz.card, getLang())}</span>.
         </div>
       </div>
     );
@@ -58,14 +59,14 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
         <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
           <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', position: 'relative', border: `2px solid ${c1}`, background: '#1a1a2e', boxSizing: 'border-box', boxShadow: quiz.card.rarity === 'légendaire' ? `0 0 12px ${c1}aa` : 'none' }}>
             {quiz.card.image_url ? (
-              <ThumbImage src={quiz.card.image_url} alt={quiz.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
+              <ThumbImage src={quiz.card.image_url} alt={cardName(quiz.card, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
             ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{quiz.card.name[0]}</div>
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{cardName(quiz.card, getLang())[0]}</div>
             )}
           </div>
         </div>
         <div style={{flex:1}}>
-          <div style={{fontWeight:800,color:"#fff",fontSize:13,marginBottom:2}}>{quiz.card.name} <span style={{color:rc.color,fontWeight:700,fontSize:11}}>({rc.label})</span></div>
+          <div style={{fontWeight:800,color:"#fff",fontSize:13,marginBottom:2}}>{cardName(quiz.card, getLang())} <span style={{color:rc.color,fontWeight:700,fontSize:11}}>({rarityLabel(quiz.card.rarity, t)})</span></div>
           <div style={{fontSize:11,color:"#888",marginBottom:7}}>{t("quiz_answer_correctly")} · <span style={{color:"#f9ca24"}}>{t("quiz_answer_words")} {wc} {wc>1?t("quiz_words"):t("quiz_word")}</span></div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button onClick={onJoin} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1a1a2e"),padding:"8px 14px",borderRadius:12,fontSize:12}}>{t("quiz_join")}</button>
@@ -217,7 +218,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
           <style>{`@keyframes spin{to{transform:rotate(360deg)} } @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}`}</style>
         </>}
         {/* Turnstile invisible — aucune UI visible */}
-        {status==="won"&&<div style={{textAlign:"center",padding:"14px 0",background:"#00b89420",borderRadius:13,border:"1.5px solid #00b89444",animation:"winGlow 1.5s infinite"}}><div style={{fontSize:38}}>🎉</div><div style={{color:"#00b894",fontWeight:900,fontSize:19,marginTop:7}}>{t("quiz_won").replace("{card}",quiz.card.name)}</div></div>}
+        {status==="won"&&<div style={{textAlign:"center",padding:"14px 0",background:"#00b89420",borderRadius:13,border:"1.5px solid #00b89444",animation:"winGlow 1.5s infinite"}}><div style={{fontSize:38}}>🎉</div><div style={{color:"#00b894",fontWeight:900,fontSize:19,marginTop:7}}>{t("quiz_won").replace("{card}",cardName(quiz.card, getLang()))}</div></div>}
         {status==="lost"&&<div style={{textAlign:"center",padding:"14px 0",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}><div style={{fontSize:36}}>😤</div><div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div></div>}
       </div>
     </div>
@@ -239,9 +240,9 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycl
         <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', position: 'relative', border: `2px solid ${c1}`, background: '#1a1a2e', boxSizing: 'border-box', boxShadow: (hasCard && nextCard.rarity === 'légendaire') ? `0 0 12px ${c1}aa` : (urgent ? `0 0 10px ${c1}66` : 'none') }}>
           {hasCard ? (
             nextCard.image_url ? (
-              <ThumbImage src={nextCard.image_url} alt={nextCard.name} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
+              <ThumbImage src={nextCard.image_url} alt={cardName(nextCard, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
             ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{nextCard.name[0]}</div>
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{cardName(nextCard, getLang())[0]}</div>
             )
           ) : (
             <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:900,color:urgent?c1:'#888'}}>?</div>
@@ -258,7 +259,7 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycl
         </div>
         <div style={{fontSize:10,color:"#666"}}>
           {hasCard
-            ? <><span style={{color:rc.color,fontWeight:800}}>{rc.label}</span> — <span style={{color:"#ccc"}}>{nextCard.name}</span></>
+            ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity, t)}</span> — <span style={{color:"#ccc"}}>{cardName(nextCard, getLang())}</span></>
             : <span style={{color:urgent?c1:"#888",fontStyle:"italic",transition:"color .5s"}}>Geocoin mystère…</span>}
         </div>
       </div>

@@ -42,7 +42,7 @@ function Tb({id,lbl,tab,setTab,setMsg}){
 }
 
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
-export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,players,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onTogglePlayer,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool}){
+export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool}){
   const {t}=useT();
   const [tab,setTab]=useState("cards");
   const [editQ,setEditQ]=useState(null);
@@ -210,7 +210,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           <Tb id="quiz_config" lbl="🎲 Quiz"                              tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="limits"      lbl="📊 Limites"                       tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="interface"   lbl="📱 Interface"                     tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="players"     lbl={`👤 Joueurs (${players.length})`} tab={tab} setTab={setTab} setMsg={setMsg}/>
+          <Tb id="players"     lbl="👤 Joueurs"                       tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="ips"         lbl={`🌐 IPs (${bannedIPs.length})`}   tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="maintenance"  lbl="🛠️ Maintenance"                   tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="achievements"  lbl="🏆 Achievements"                  tab={tab} setTab={setTab} setMsg={setMsg}/>
@@ -590,7 +590,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
         {/* ── JOUEURS ── */}
         {tab==="players" && (
-          <AdminPlayers players={players} cardPool={cardPool} limEdit={limEdit} onTogglePlayer={onTogglePlayer} onBanIP={onBanIP} setTab={setTab} setMsg={setMsg} />
+          <AdminPlayers cardPool={cardPool} limEdit={limEdit} onBanIP={onBanIP} setTab={setTab} setMsg={setMsg} />
         )}
 
         {/* ── IPs ── */}
