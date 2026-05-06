@@ -93,12 +93,12 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
     const f=e.target.files[0]; if(!f) return;
     const r=new FileReader(); r.onload=ev=>{
       const rows=parseCSV(ev.target.result);
-      rows.forEach(([q,a,hint])=>{if(q&&a)onAddQuestion({q,a,hint:hint||""});});
+      rows.forEach(([q,a])=>{if(q&&a)onAddQuestion({q,a,hint:""});});
       setMsg("✅ Questions importées !");
     }; r.readAsText(f);
   }
   function exportCSVQ(){
-    const csv=["question,reponse,indice",...questions.map(q=>`"${q.q}","${q.a}","${q.hint||""}"`)];
+    const csv=["question,reponse",...questions.map(q=>`"${q.q}","${q.a}"`)];
     const blob=new Blob([csv.join("\n")],{type:"text/csv"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="questions.csv"; a.click();
   }
