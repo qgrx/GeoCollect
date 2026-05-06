@@ -2,9 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Card from '../../components/Card.jsx';
 import { useT } from '../../i18n/translations.js';
 
-const FAKE_COIN    = { id: 0, name: 'Geocoin Légendaire', rarity: 'légendaire', type: 'Geocaching', image_url: null };
-const FAKE_COIN_EP = { id: 1, name: 'Geocoin Épique',     rarity: 'épique',     type: 'Geocaching', image_url: null };
-const FAKE_COIN_R  = { id: 2, name: 'Geocoin Rare',       rarity: 'rare',       type: 'Geocaching', image_url: null };
+const FAKE_COIN         = { id: 0, name: 'FTF',     rarity: 'légendaire', type: 'Geocaching', image_url: '/geocoin-ftf.webp' };
 
 const FAKE_LEADERBOARD = [
   { pseudo: 'GeoMaster42', score: 4820, rank: 1 },
@@ -129,7 +127,9 @@ export default function LandingSection({ onOpenAuth }) {
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg,#e65100,#f9ca24,#e17055)', transform: `translateY(${p1}px)`, willChange: 'transform' }} />
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px', width: '100%', maxWidth: 420 }}>
-          <div style={{ fontSize: 48, marginBottom: 10, transform: `translateY(${p1 * -0.1}px)`, willChange: 'transform' }}>🎯</div>
+          <div style={{ transform: `translateY(${p1 * -0.1}px)`, willChange: 'transform', marginBottom: 10, pointerEvents: 'none' }}>
+            <img src="/geocoin-mystery.webp" alt="Mystery" style={{ width: 100, height: 100, objectFit: 'contain', filter: 'drop-shadow(0 0 20px #6a1b9a99)' }} />
+          </div>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#f9ca24', marginBottom: 10 }}>{t('landing_quiz_title')}</div>
           <div style={{ fontSize: 14, color: '#888', marginBottom: 20, lineHeight: 1.6 }}>{t('landing_quiz_sub')}</div>
           <div style={{ background: '#ffffff08', border: '1.5px solid #f9ca2433', borderRadius: 18, padding: '18px 20px', width: '100%', marginBottom: 24, transform: `translateY(${p1 * -0.05}px)`, willChange: 'transform' }}>
@@ -165,17 +165,19 @@ export default function LandingSection({ onOpenAuth }) {
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg,#00b894,#55efc4)', transform: `translateY(${p2}px)`, willChange: 'transform' }} />
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px', width: '100%', maxWidth: 420 }}>
-          <div style={{ fontSize: 48, marginBottom: 10, transform: `translateY(${p2 * -0.1}px)`, willChange: 'transform' }}>🏪</div>
+          <div style={{ transform: `translateY(${p2 * -0.1}px)`, willChange: 'transform', marginBottom: 10, pointerEvents: 'none' }}>
+            <img src="/geocoin-market.webp" alt="Geocoin Market" style={{ width: 100, height: 100, objectFit: 'contain', filter: 'drop-shadow(0 0 16px #00b89466)' }} />
+          </div>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#00b894', marginBottom: 10 }}>{t('landing_market_title')}</div>
           <div style={{ fontSize: 14, color: '#888', marginBottom: 22, lineHeight: 1.6 }}>{t('landing_market_sub')}</div>
           <div style={{ display: 'flex', gap: 18, justifyContent: 'center', marginBottom: 26, transform: `translateY(${p2 * -0.08}px)`, willChange: 'transform' }}>
             {[
-              { coin: FAKE_COIN,    price: '2 400 G', c: '#e65100' },
-              { coin: FAKE_COIN_EP, price: '850 G',   c: '#6a1b9a' },
-              { coin: FAKE_COIN_R,  price: '320 G',   c: '#1565c0' },
-            ].map(({ coin, price, c }, i) => (
+              { src: '/geocoin-ape.webp',     price: '2 400 G', c: '#e65100', label: 'Légendaire' },
+              { src: '/geocoin-ammobox.webp', price: '850 G',   c: '#6a1b9a', label: 'Épique' },
+              { src: '/geocoin-gps.webp',     price: '320 G',   c: '#1565c0', label: 'Rare' },
+            ].map(({ src, price, c, label }, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <div style={{ pointerEvents: 'none', filter: `drop-shadow(0 0 12px ${c}66)` }}><Card card={coin} small /></div>
+                <img src={src} alt={label} style={{ width: 80, height: 80, objectFit: 'contain', filter: `drop-shadow(0 0 12px ${c}66)`, pointerEvents: 'none' }} />
                 <div style={{ fontSize: 11, fontWeight: 900, color: c, background: c + '22', padding: '3px 10px', borderRadius: 20 }}>{price}</div>
               </div>
             ))}

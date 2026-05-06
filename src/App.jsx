@@ -633,9 +633,11 @@ export default function App() {
       </div>
 
       {/* ── Countdown ── */}
-      <div style={{ padding: isMobile ? '8px 10px 0' : '10px 18px 0' }}>
-        {!activeQuiz && auth.profile?.status !== 'banni' && <div data-tour="countdown"><CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} /></div>}
-      </div>
+      {auth.profile && (
+        <div style={{ padding: isMobile ? '8px 10px 0' : '10px 18px 0' }}>
+          {!activeQuiz && auth.profile?.status !== 'banni' && <div data-tour="countdown"><CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} /></div>}
+        </div>
+      )}
 
       {/* ── History strip (last 5) — version compacte centrée ── */}
       {history.filter(h => !h.skipped).length > 0 && (
