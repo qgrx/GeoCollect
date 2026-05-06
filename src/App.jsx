@@ -606,7 +606,7 @@ export default function App() {
                         ...(gs.limits.supportVisible !== false ? [{ icon: '💝', label: t('menu_support') || 'Soutenir', fn: () => { setShowShop(true); setAvatarMenu(false) } }] : []),
                         ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false) } }] : []),
                         null,
-                        { icon: '↩', label: t('btn_logout'), color: '#e74c3c', fn: () => { auth.signOut(); setAvatarMenu(false) } },
+                        { icon: '↩', label: t('btn_logout'), color: '#e74c3c', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
                       ].map((item, i) => item === null ? (
                         <div key={i} style={{ height: 1, background: '#ffffff10' }}/>
                       ) : (
