@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 import { useT, setLang, LANGS, getLang } from './i18n/translations.js'
