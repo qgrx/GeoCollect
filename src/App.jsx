@@ -22,7 +22,8 @@ import { useAuth } from './hooks/useAuth.js';
 import Card from './components/Card.jsx';
 import CardDetailModal from './components/CardDetailModal.jsx';
 import OnboardingTour from './components/OnboardingTour.jsx';
-import PseudoDisplay, { getRank, isTopRank } from './components/PseudoDisplay.jsx';
+import PseudoDisplay from './components/PseudoDisplay.jsx';
+import { getRank, isTopRank } from './utils/rankUtils.js';
 import MaintenanceScreen from './components/MaintenanceScreen.jsx';
 
 // ─── Features ────────────────────────────────────────────────────────────────

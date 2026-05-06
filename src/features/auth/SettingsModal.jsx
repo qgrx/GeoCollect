@@ -61,14 +61,14 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const [loading, setLoading] = useState(false)
   const [changed, setChanged] = useState(false)
 
+  const computedScore = useMemo(() => scoreFromCol(collection, cardPool), [collection, cardPool])
+
   if (!profile) return null
 
   const lastChange = profile.pseudo_changed_at ? new Date(profile.pseudo_changed_at) : null
   const daysSince  = lastChange ? Math.floor((Date.now() - lastChange.getTime()) / 864e5) : 999
   const canChange  = daysSince >= PSEUDO_CHANGE_DAYS
   const history    = profile.pseudo_history || []
-
-  const computedScore = useMemo(() => scoreFromCol(collection, cardPool), [collection, cardPool])
   const score = scoreProp ?? computedScore
   const rank     = getrank(score, ranks)
   const topRarity = bestRarity(collection, cardPool)

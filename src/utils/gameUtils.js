@@ -41,18 +41,13 @@ export function createCardThumbnail(file, targetWidth = 100, targetHeight = 140)
       // Cadrage "cover" avec centrage
       const imgRatio = img.width / img.height;
       const targetRatio = targetWidth / targetHeight;
-      let drawWidth = targetWidth;
-      let drawHeight = targetHeight;
-      let offsetX = 0;
-      let offsetY = 0;
-
       if (imgRatio > targetRatio) {
-        drawWidth = img.height * targetRatio;
-        offsetX = (img.width - drawWidth) / 2;
+        const drawWidth = img.height * targetRatio;
+        const offsetX = (img.width - drawWidth) / 2;
         ctx.drawImage(img, offsetX, 0, drawWidth, img.height, 0, 0, targetWidth, targetHeight);
       } else {
-        drawHeight = img.width / targetRatio;
-        offsetY = (img.height - drawHeight) * 0.25; // Focus sur le haut (comme le CSS 25%)
+        const drawHeight = img.width / targetRatio;
+        const offsetY = (img.height - drawHeight) * 0.25; // Focus sur le haut (comme le CSS 25%)
         ctx.drawImage(img, 0, offsetY, img.width, drawHeight, 0, 0, targetWidth, targetHeight);
       }
 

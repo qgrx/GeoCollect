@@ -116,7 +116,7 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
   const [filter, setFilter] = useState('vente')
 
   // Marquer tout comme lu à l'ouverture
-  useEffect(() => { onRead?.() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onRead?.() }, [])
 
   const filtered = transactions.filter(tx => tx.type === filter)
 

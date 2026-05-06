@@ -2,23 +2,22 @@ import { useState, useRef, useCallback } from 'react'
 import { RC, cardCC } from '../data/cards.js'
 
 export default function CardDetailModal({ card, count, onClose, onSell }) {
-  if (!card) return null
-  const rc = RC[card.rarity] || RC.commun
-  const { c1, c2 } = cardCC(card.rarity)
-  const isLeg = card.rarity === 'légendaire'
   const imgRef = useRef()
-
-  // Effet tilt 3D sur l'image
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const onMove = useCallback(e => {
     const el = imgRef.current
     if (!el) return
     const r = el.getBoundingClientRect()
-    const cx = (e.clientX - r.left) / r.width  - 0.5   // -0.5 → 0.5
+    const cx = (e.clientX - r.left) / r.width  - 0.5
     const cy = (e.clientY - r.top)  / r.height - 0.5
-    setTilt({ x: cy * -18, y: cx * 18 })  // inclinaison max ±9°
+    setTilt({ x: cy * -18, y: cx * 18 })
   }, [])
   const onLeave = useCallback(() => setTilt({ x: 0, y: 0 }), [])
+
+  if (!card) return null
+  const rc = RC[card.rarity] || RC.commun
+  const { c1, c2 } = cardCC(card.rarity)
+  const isLeg = card.rarity === 'légendaire'
 
   const hasImage = !!(card.image || card.image_url)
 

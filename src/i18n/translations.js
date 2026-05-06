@@ -50,7 +50,6 @@ const TRANSLATIONS = {
     server_offline:"⚠️ Connexion au serveur perdue — reconnexion en cours…",
     collection_search:"🔍 Rechercher un geocoin…",
     lb_loading:"Chargement…",
-    lb_score:"pts",
     market_already_owned:"✓ déjà possédé",
     market_duplicate_confirm:"Tu possèdes déjà \"{card}\". Acheter quand même (doublon) ?",
     market_duplicate_btn:"⚠️ Doublon",
@@ -312,7 +311,6 @@ const TRANSLATIONS = {
     server_offline:"⚠️ Server connection lost — reconnecting…",
     collection_search:"🔍 Search geocoins…",
     lb_loading:"Loading…",
-    lb_score:"pts",
     market_title:"🏪 Market",
     market_buy:"🏪 Buy",
     market_sell:"🏷️ Sell (duplicates)",
@@ -543,7 +541,6 @@ const TRANSLATIONS = {
     server_offline:"⚠️ Serververbindung getrennt — Wiederverbindung…",
     collection_search:"🔍 Geocoin suchen…",
     lb_loading:"Laden…",
-    lb_score:"Pkt",
     market_title:"🏪 Markt",
     market_buy:"🏪 Kaufen",
     market_sell:"🏷️ Verkaufen (Duplikate)",
@@ -774,7 +771,6 @@ const TRANSLATIONS = {
     server_offline:"⚠️ Conexión perdida — reconectando…",
     collection_search:"🔍 Buscar geocoin…",
     lb_loading:"Cargando…",
-    lb_score:"pts",
     market_title:"🏪 Mercado",
     market_buy:"🏪 Comprar",
     market_sell:"🏷️ Vender (duplicados)",
@@ -952,12 +948,12 @@ function setLang(l) {
   if(!TRANSLATIONS[l]) return;
   _lang = l;
   _langListeners.forEach(cb => cb(l));
-  try { localStorage.setItem("geocards_lang", l); } catch(e){}
+  try { localStorage.setItem("geocards_lang", l); } catch(_e){ /* ignore */ }
 }
 
 try {
   const saved = localStorage.getItem("geocards_lang");
   if(saved && TRANSLATIONS[saved]) _lang = saved;
-} catch(e){}
+} catch(_e){ /* ignore */ }
 
 export { LANGS, TRANSLATIONS, useT, setLang };
