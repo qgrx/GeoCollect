@@ -75,6 +75,7 @@ export function useGameState(auth) {
           botsVisible:       cfg.bots_visible !== undefined ? (cfg.bots_visible === 'true' || cfg.bots_visible === true) : prev.botsVisible,
           supportVisible:    cfg.support_visible !== undefined ? (cfg.support_visible === 'true' || cfg.support_visible === true) : prev.supportVisible,
           leaderboardVisible:cfg.leaderboard_visible !== undefined ? (cfg.leaderboard_visible === 'true' || cfg.leaderboard_visible === true) : prev.leaderboardVisible,
+          typeTranslations: cfg.type_translations ?? prev.typeTranslations,
         }))
       }
     })
@@ -189,6 +190,7 @@ export function useGameState(auth) {
             botsVisible:       cfg.bots_visible !== undefined ? (cfg.bots_visible === 'true' || cfg.bots_visible === true) : prev.botsVisible,
             supportVisible:    cfg.support_visible !== undefined ? (cfg.support_visible === 'true' || cfg.support_visible === true) : prev.supportVisible,
             leaderboardVisible:cfg.leaderboard_visible !== undefined ? (cfg.leaderboard_visible === 'true' || cfg.leaderboard_visible === true) : prev.leaderboardVisible,
+            typeTranslations: cfg.type_translations ?? prev.typeTranslations,
           }))
         }
 
@@ -210,6 +212,7 @@ export function useGameState(auth) {
               botsVisible:           cfg.bots_visible !== undefined ? (cfg.bots_visible === 'true' || cfg.bots_visible === true) : prev.botsVisible,
               supportVisible:        cfg.support_visible !== undefined ? (cfg.support_visible === 'true' || cfg.support_visible === true) : prev.supportVisible,
               leaderboardVisible:    cfg.leaderboard_visible !== undefined ? (cfg.leaderboard_visible === 'true' || cfg.leaderboard_visible === true) : prev.leaderboardVisible,
+              typeTranslations:      cfg.type_translations ?? prev.typeTranslations,
               cache_ttl_cards:       cfg.cache_ttl_cards           ?? prev.cache_ttl_cards,
               cache_ttl_config:      cfg.cache_ttl_config          ?? prev.cache_ttl_config,
               cache_ttl_leaderboard: cfg.cache_ttl_leaderboard     ?? prev.cache_ttl_leaderboard,

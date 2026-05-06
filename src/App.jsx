@@ -6,7 +6,7 @@ import LangSelector from './i18n/LangSelector.jsx';
 import Logo from './components/Logo.jsx';
 
 // ─── Data & utils ─────────────────────────────────────────────────────────────
-import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName } from './data/cards.js';
+import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
 import { collScore } from './utils/gameUtils.js';
 
@@ -719,7 +719,7 @@ export default function App() {
               return (
                 <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }}
                   style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0, background: active ? '#f9ca24' : '#ffffff08', border: `1px solid ${active ? '#f9ca24' : '#ffffff0f'}`, borderRadius: 8, padding: '5px 8px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', alignItems: 'center', minWidth: 58 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a1a2e' : full ? '#00b894' : '#999', whiteSpace: 'nowrap' }}>{tp === 'Tous' ? t('filter_all') : tp}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a1a2e' : full ? '#00b894' : '#999', whiteSpace: 'nowrap' }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: active ? '#1a1a2e' : full ? '#00b894' : '#f9ca24', whiteSpace: 'nowrap', lineHeight: 1 }}>{owned}<span style={{ color: active ? '#00000055' : '#555', fontWeight: 600 }}>/{total}</span></span>
                     <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#00000022' : '#ffffff10', overflow: 'hidden' }}>
@@ -864,7 +864,7 @@ export default function App() {
               )}
               <div style={{ animation:'cardReveal .6s .2s cubic-bezier(.34,1.56,.64,1) both', width:160, margin:'0 auto 28px', borderRadius:18, overflow:'hidden', border:`2px solid ${c1}`, background:`linear-gradient(145deg,${c1}33,${c2}55)`, boxShadow:`0 0 48px ${c1}66, 0 24px 60px #000c` }}>
                 <div style={{ background:`linear-gradient(90deg,${c1},${c2})`, padding:'7px 11px', display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ fontWeight:900, fontSize:11, color:'#fff', textTransform:'uppercase' }}>{card.type}</span>
+                  <span style={{ fontWeight:900, fontSize:11, color:'#fff', textTransform:'uppercase' }}>{typeLabel(card.type, gs.limits.typeTranslations, lang)}</span>
                   <span style={{ fontWeight:800, fontSize:10, color:'#ffffffbb' }}>{rarityLabel(card.rarity, t)}</span>
                 </div>
                 {card.image_url
@@ -1006,6 +1006,7 @@ export default function App() {
                 apiSetConfig('support_visible',     limEdit.supportVisible    ?? true),
                 apiSetConfig('leaderboard_visible', limEdit.leaderboardVisible?? true),
                 apiSetConfig('market_expire_days',  limEdit.marketExpireDays  ?? 30),
+                ...(limEdit.typeTranslations != null ? [apiSetConfig('type_translations', limEdit.typeTranslations)] : []),
                 ...(limEdit.registrationWhitelist != null ? [apiSetConfig('registration_whitelist', limEdit.registrationWhitelist)] : []),
               ])
             } catch (err) {

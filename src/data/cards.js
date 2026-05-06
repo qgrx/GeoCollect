@@ -12,6 +12,11 @@ export const rarityLabel = (rarity, t) => {
   if (!rc) return rarity
   return t ? (t(rc.labelKey) || rc.label) : rc.label
 };
+export const typeLabel = (type, typeTranslations, lang) => {
+  if (!type) return ''
+  if (lang && lang !== 'fr' && typeTranslations?.[type]?.[lang]) return typeTranslations[type][lang]
+  return type
+};
 export const cardName = (card, lang) => {
   if (!card) return ''
   if (lang && lang !== 'fr' && card.name_translations?.[lang]) return card.name_translations[lang]

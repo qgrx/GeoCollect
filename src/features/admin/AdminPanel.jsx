@@ -256,6 +256,31 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>;
             })}
           </div>
+          {/* Traductions des types */}
+          <div style={{background:"#1a0a3a",border:"1.5px solid #6c5ce766",borderRadius:12,padding:14,marginBottom:14}}>
+            <div style={{fontWeight:900,color:"#a29bfe",marginBottom:12,fontSize:13}}>🌐 Traductions des types</div>
+            {cardTypes.map(tp=>{
+              const trans = (limits.typeTranslations||{})[tp] || {}
+              return (
+                <div key={tp} style={{marginBottom:10}}>
+                  <div style={{fontSize:11,fontWeight:800,color:"#f9ca24",marginBottom:5}}>{tp}</div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {[{code:'en',label:'EN'},{code:'de',label:'DE'},{code:'es',label:'ES'}].map(l=>(
+                      <div key={l.code} style={{display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{fontSize:10,color:"#888",width:22}}>{l.label}</span>
+                        <input value={trans[l.code]||""} onChange={async e=>{
+                          const newTrans = {...(limits.typeTranslations||{}), [tp]:{...trans,[l.code]:e.target.value}}
+                          await onSetLimits({...limits, typeTranslations: newTrans})
+                        }} style={{...INP,padding:"4px 8px",fontSize:11,width:120,marginBottom:0}} placeholder={tp}/>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+            <button onClick={async()=>{await onSetLimits({...limits});setMsg("✅ Traductions des types sauvegardées !");}} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"7px 16px",borderRadius:8,fontSize:11,marginTop:6}}>💾 Sauvegarder</button>
+          </div>
+
           <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12"}}>
             <div style={{fontWeight:800,color:"#f9ca24",marginBottom:9,fontSize:13}}>➕ Nouveau type</div>
             <div style={{display:"flex",gap:8}}>

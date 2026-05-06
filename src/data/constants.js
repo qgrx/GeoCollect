@@ -25,4 +25,5 @@ export const INIT_LIMITS = {
   botsVisible: false,
   supportVisible: true,
   leaderboardVisible: true,
+  typeTranslations: {},
 };
