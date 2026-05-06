@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
-import { RC, cardCC, RARITY_CONFIG } from '../../data/cards.js';
+import { RC, cardCC, RARITY_CONFIG, ACHIEVEMENT_DEF } from '../../data/cards.js';
 import { PAGE_SIZE } from '../../data/constants.js';
 import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache,
   apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminReactivate,
@@ -42,7 +42,7 @@ function Tb({id,lbl,tab,setTab,setMsg}){
 }
 
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
-export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool}){
+export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool,onTestAchievement}){
   const {t}=useT();
   const [tab,setTab]=useState("cards");
   const [editQ,setEditQ]=useState(null);
@@ -782,6 +782,25 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>
             )}
           </div>
+
+          {/* ── Test des notifications achievement ── */}
+          {onTestAchievement && (
+            <div style={{marginTop:18,background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:12,padding:14}}>
+              <div style={{fontWeight:900,color:"#f9ca24",fontSize:13,marginBottom:12}}>🧪 Tester les notifications</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                {ACHIEVEMENT_DEF.map(def => {
+                  const card = achCards.find(c => c.id === def.cardId)
+                  return (
+                    <button key={def.id} onClick={() => { if (card) onTestAchievement(card); else setMsg(`❌ Carte #${def.cardId} introuvable`); }}
+                      style={{...BTN("#6c5ce722"),border:"1px solid #6c5ce744",color:"#a29bfe",padding:"6px 12px",borderRadius:8,fontSize:11,fontFamily:"'Nunito',sans-serif",fontWeight:800,cursor:"pointer"}}>
+                      {def.icon} {def.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{fontSize:10,color:"#555",marginTop:8}}>Affiche la modale "Geocoin offert !" sans modifier la collection.</div>
+            </div>
+          )}
         </div>}
 
         {/* ── BOTS ── */}

@@ -843,8 +843,7 @@ export default function App() {
       )}
       {welcomeCards.length > 0 && (() => {
         const card = welcomeCards[0]
-        const { c1, c2 } = cardCC(card.rarity)
-        const rc = RC[card.rarity] || RC.commun
+        const { c1 } = cardCC(card.rarity)
         const isLast = welcomeCards.length === 1
         const dismiss = () => {
           const remaining = welcomeCards.slice(1)
@@ -864,18 +863,10 @@ export default function App() {
               {welcomeCards.length > 1 && (
                 <div style={{ color:'#888', fontSize:12, marginBottom:8 }}>{welcomeCards.length} geocoin{welcomeCards.length > 1 ? 's' : ''} à recevoir</div>
               )}
-              <div style={{ animation:'cardReveal .6s .2s cubic-bezier(.34,1.56,.64,1) both', width:160, margin:'0 auto 28px', borderRadius:18, overflow:'hidden', border:`2px solid ${c1}`, background:`linear-gradient(145deg,${c1}33,${c2}55)`, boxShadow:`0 0 48px ${c1}66, 0 24px 60px #000c` }}>
-                <div style={{ background:`linear-gradient(90deg,${c1},${c2})`, padding:'7px 11px', display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ fontWeight:900, fontSize:11, color:'#fff', textTransform:'uppercase' }}>{typeLabel(card.type, gs.limits.typeTranslations, lang)}</span>
-                  <span style={{ fontWeight:800, fontSize:10, color:'#ffffffbb' }}>{rarityLabel(card.rarity, t)}</span>
+              <div style={{ display:'flex', justifyContent:'center', margin:'0 auto 28px' }}>
+                <div style={{ animation:'cardReveal .6s .2s cubic-bezier(.34,1.56,.64,1) both', transform:'scale(1.7)', transformOrigin:'center top', marginBottom:80, filter:`drop-shadow(0 0 40px ${c1}99)` }}>
+                  <Card card={card} onClick={() => setSelectedCard(card)} />
                 </div>
-                {card.image_url
-                  ? <img src={card.image_url} alt={card.name} style={{ width:'100%', height:90, objectFit:'contain', background:`linear-gradient(135deg,${c1}22,${c2}44)` }} />
-                  : <div style={{ height:90, background:`linear-gradient(135deg,${c1}22,${c2}44)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:44, opacity:.4 }}>🃏</div>
-                }
-                <div style={{ textAlign:'center', fontWeight:900, fontSize:14, color:'#1a1a2e', padding:'3px 7px', background:'#ffffff88' }}>{cardName(card, lang)}</div>
-                <div style={{ textAlign:'center', fontSize:11, color:rc.color, padding:'2px 0' }}>{'★'.repeat(rc.stars||1)}{'☆'.repeat(4-(rc.stars||1))}</div>
-                <div style={{ background:rc.bg, color:rc.color, fontSize:9, fontWeight:800, textTransform:'uppercase', textAlign:'center', padding:'2px 0', letterSpacing:1 }}>{rarityLabel(card.rarity, t)}</div>
               </div>
               <button onClick={dismiss}
                 style={{ background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1a1a2e', padding:'13px 32px', borderRadius:14, fontFamily:"'Nunito',sans-serif", fontWeight:900, fontSize:16, cursor:'pointer', boxShadow:'0 4px 20px #f9ca2466' }}>
@@ -1028,6 +1019,7 @@ export default function App() {
           onBanIP={gs.adminBanIP} onUnbanIP={gs.adminUnbanIP}
           onUpdateCardInPool={card => gs.setCardPool(prev => prev.map(c => c.id === card.id ? {...c, ...card, desc: card.desc??card.description??''} : c))}
           onStartTour={() => { setShowAdmin(false); setShowTour(true) }}
+          onTestAchievement={card => setWelcomeCards(prev => [...prev, card])}
         />
       )}
 
