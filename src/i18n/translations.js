@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const LANGS = { fr:"🇫🇷 Français", en:"🇬🇧 English", de:"🇩🇪 Deutsch", es:"🇪🇸 Español" };
+const LANGS = { fr:"Français", en:"English", de:"Deutsch", es:"Español" };
 
 const TRANSLATIONS = {
   fr: {
