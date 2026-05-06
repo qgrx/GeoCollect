@@ -947,12 +947,17 @@ export default function App() {
           onAddCard={gs.adminAddCard} onEditCard={gs.adminEditCard} onDeleteCard={gs.adminDeleteCard}
           onAddType={gs.adminAddType} onDeleteType={gs.adminDeleteType} onRenameType={gs.adminRenameType}
           onAddQuestion={async q => {
+            if (q.id) { // déjà persisté (vient du batch import)
+              setQuestions(prev => [...prev, q])
+              return
+            }
             const { data, error } = await apiAdminAddQuestion(q.q, q.a, q.translations)
             if (!error && data?.question) {
               const saved = data.question
               setQuestions(prev => [...prev, { id: saved.id, q: saved.question, a: saved.answer, hint: saved.hint || '', active: saved.active, translations: saved.translations || {} }])
             }
           }}
+          onReplaceQuestions={list => setQuestions(list)}
           onEditQuestion={q => setQuestions(prev => prev.map(x => x.id === q.id ? q : x))}
           onDeleteQuestion={id => setQuestions(prev => prev.map(x => x.id === id ? { ...x, active: false } : x))}
           onToggleQuestion={async id => {

@@ -18,7 +18,7 @@ const BOT_DEFAULTS = {
 };
 
 function parseCSV(text) {
-  return text.split('\n').slice(1).map(line => {
+  return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').slice(1).map(line => {
     const cols = []; let cur = ''; let inQ = false;
     for (const ch of line) {
       if (ch === '"') { inQ = !inQ; }
@@ -42,7 +42,7 @@ function Tb({id,lbl,tab,setTab,setMsg}){
 }
 
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
-export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,players,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onTogglePlayer,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool}){
+export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,players,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onTogglePlayer,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool}){
   const {t}=useT();
   const [tab,setTab]=useState("cards");
   const [editQ,setEditQ]=useState(null);
@@ -93,20 +93,41 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
       .catch(err => { setMsg('❌ Erreur traitement image: ' + err.message); });
   }
 
-  function handleCSVQ(e){
+  const [csvPending,setCsvPending]=useState(null); // {questions:[]} en attente du choix
+
+  async function handleCSVQ(e){
     const f=e.target.files[0]; if(!f) return;
-    const r=new FileReader(); r.onload=ev=>{
-      const rows=parseCSV(ev.target.result);
-      rows.forEach(([q,a,q_en,a_en,q_de,a_de,q_es,a_es])=>{
-        if(!q||!a) return;
-        const translations={};
-        if(q_en&&a_en) translations.en={question:q_en,answer:a_en};
-        if(q_de&&a_de) translations.de={question:q_de,answer:a_de};
-        if(q_es&&a_es) translations.es={question:q_es,answer:a_es};
-        onAddQuestion({q,a,hint:"",translations});
-      });
-      setMsg("✅ Questions importées !");
-    }; r.readAsText(f);
+    e.target.value='';
+    const text = await f.text();
+    const rows=parseCSV(text);
+    const parsed=rows.map(([q,a,q_en,a_en,q_de,a_de,q_es,a_es])=>{
+      if(!q||!a) return null;
+      const translations={};
+      if(q_en&&a_en) translations.en={question:q_en,answer:a_en};
+      if(q_de&&a_de) translations.de={question:q_de,answer:a_de};
+      if(q_es&&a_es) translations.es={question:q_es,answer:a_es};
+      return {question:q,answer:a,hint:"",translations};
+    }).filter(Boolean);
+    if(!parsed.length){setMsg("❌ Aucune question valide.");return;}
+    setCsvPending({questions:parsed});
+  }
+
+  async function doImportCSV(replace){
+    if(!csvPending) return;
+    const {questions:parsed}=csvPending;
+    setCsvPending(null);
+    setMsg("⏳ Importation en cours…");
+    const {apiAdminBatchAddQuestions,apiAdminDeleteAllQuestions}=await import('../../services/api.js');
+    if(replace){
+      const {error}=await apiAdminDeleteAllQuestions();
+      if(error){setMsg("❌ Erreur suppression : "+error);return;}
+      onReplaceQuestions([]);
+    }
+    const {data,error}=await apiAdminBatchAddQuestions(parsed);
+    if(error){setMsg("❌ Erreur import : "+error);return;}
+    const saved=(data?.questions||[]).map(q=>({id:q.id,q:q.question,a:q.answer,hint:q.hint||'',active:q.active,translations:q.translations||{}}));
+    saved.forEach(q=>onAddQuestion(q));
+    setMsg(`✅ ${data?.inserted||saved.length} questions importées !`);
   }
   function exportCSVQ(){
     const header="question,reponse,question_en,reponse_en,question_de,reponse_de,question_es,reponse_es";
@@ -256,6 +277,19 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
             <button onClick={exportCSVQ} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📤 Export</button>
             <input ref={csvQRef} type="file" accept=".csv" onChange={handleCSVQ} style={{display:"none"}}/>
           </div>
+          {/* Dialog choix import CSV */}
+          {csvPending&&(
+            <div style={{background:"#1a0a2e",border:"1.5px solid #6c5ce7",borderRadius:12,padding:16,marginBottom:14,textAlign:"center"}}>
+              <div style={{fontWeight:900,color:"#f9ca24",fontSize:14,marginBottom:6}}>📥 Importer {csvPending.questions.length} questions</div>
+              <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>Que faire des questions existantes ?</div>
+              <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+                <button onClick={()=>doImportCSV(true)} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"9px 18px",borderRadius:9,fontSize:12}}>🗑️ Remplacer les existantes</button>
+                <button onClick={()=>doImportCSV(false)} style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"9px 18px",borderRadius:9,fontSize:12}}>➕ Ajouter aux existantes</button>
+                <button onClick={()=>setCsvPending(null)} style={{background:"none",border:"none",color:"#666",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>Annuler</button>
+              </div>
+            </div>
+          )}
+
           {/* Form */}
           <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:14}}>
             <div style={{fontWeight:800,color:"#f9ca24",marginBottom:9,fontSize:13}}>{editQ?"✏️ Éditer":"➕ Nouvelle question"}</div>

@@ -100,6 +100,8 @@ export const apiAdminAnnounce         = (message, type = 'info') => apiFetch('/a
 export const apiTriggerQuiz           = () => apiFetch('/api/admin/quiz/trigger', { method: 'POST' })
 export const apiAdminGetQuestions       = ()                         => apiFetch('/api/admin/questions')
 export const apiAdminAddQuestion        = (q, a, translations)       => apiFetch('/api/admin/questions', { method: 'POST', body: { question: q, answer: a, hint: '', translations: translations || {} } })
+export const apiAdminBatchAddQuestions  = (questions)                => apiFetch('/api/admin/questions/batch', { method: 'POST', body: { questions } })
+export const apiAdminDeleteAllQuestions = ()                         => apiFetch('/api/admin/questions', { method: 'DELETE' })
 export const apiAdminEditQuestion       = (id, q, a)                 => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { question: q, answer: a } })
 export const apiAdminToggleQuestion     = (id, active)               => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { active } })
 export const apiAdminSaveTranslations   = (id, translations)         => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { translations } })
