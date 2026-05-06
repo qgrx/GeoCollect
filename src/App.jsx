@@ -719,7 +719,7 @@ export default function App() {
               return (
                 <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }}
                   style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0, background: active ? '#f9ca24' : '#ffffff08', border: `1px solid ${active ? '#f9ca24' : '#ffffff0f'}`, borderRadius: 8, padding: '5px 8px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', alignItems: 'center', minWidth: 58 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a1a2e' : full ? '#00b894' : '#999', whiteSpace: 'nowrap' }}>{tp}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a1a2e' : full ? '#00b894' : '#999', whiteSpace: 'nowrap' }}>{tp === 'Tous' ? t('filter_all') : tp}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: active ? '#1a1a2e' : full ? '#00b894' : '#f9ca24', whiteSpace: 'nowrap', lineHeight: 1 }}>{owned}<span style={{ color: active ? '#00000055' : '#555', fontWeight: 600 }}>/{total}</span></span>
                     <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#00000022' : '#ffffff10', overflow: 'hidden' }}>

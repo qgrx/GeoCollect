@@ -30,6 +30,7 @@ const TRANSLATIONS = {
     sell_duplicate:"🏷️ Vendre un doublon",
     not_sellable:"Non vendable",
     unique_card:"Exemplaire unique",
+    filter_all:"Tous",
     rarity_commun:"Commun", rarity_rare:"Rare", rarity_epique:"Épique", rarity_legendaire:"Légendaire",
     quiz_new_card:"Nouveau geocoin disponible !",
     quiz_answer_correctly:"Réponds correctement",
@@ -236,6 +237,7 @@ const TRANSLATIONS = {
   },
 
   en: {
+    filter_all:"All",
     rarity_commun:"Common", rarity_rare:"Rare", rarity_epique:"Epic", rarity_legendaire:"Legendary",
     tagline:"Catch them all!",
     subtitle:"Answer · Collect · Trade",
@@ -468,6 +470,7 @@ const TRANSLATIONS = {
   },
 
   de: {
+    filter_all:"Alle",
     rarity_commun:"Gewöhnlich", rarity_rare:"Selten", rarity_epique:"Episch", rarity_legendaire:"Legendär",
     tagline:"Fang sie alle!",
     subtitle:"Antworte · Sammle · Handle",
@@ -700,6 +703,7 @@ const TRANSLATIONS = {
   },
 
   es: {
+    filter_all:"Todos",
     rarity_commun:"Común", rarity_rare:"Raro", rarity_epique:"Épico", rarity_legendaire:"Legendario",
     tagline:"¡Atrápelos todos!",
     subtitle:"Responde · Colecciona · Vende",
