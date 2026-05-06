@@ -799,6 +799,18 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 })}
               </div>
               <div style={{fontSize:10,color:"#555",marginTop:8}}>Affiche la modale "Geocoin offert !" sans modifier la collection.</div>
+              <div style={{marginTop:14,borderTop:"1px solid #ffffff10",paddingTop:12}}>
+                <button onClick={async()=>{
+                  if(!window.confirm("Supprimer tous tes geocoins achievement de ta collection pour re-tester ?")) return;
+                  const {apiResetAchievements}=await import('../../services/api.js');
+                  const {error}=await apiResetAchievements();
+                  if(error){setMsg("❌ Erreur reset");return;}
+                  setMsg("✅ Achievements réinitialisés — recharge la page pour re-tester !");
+                }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"7px 16px",borderRadius:8,fontSize:11}}>
+                  🔄 Réinitialiser mes achievements (test)
+                </button>
+                <div style={{fontSize:10,color:"#555",marginTop:6}}>Supprime les cartes achievement de ta collection. Recharge ensuite la page.</div>
+              </div>
             </div>
           )}
         </div>}

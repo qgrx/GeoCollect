@@ -3,9 +3,9 @@ import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetCurrentQuiz, apiJoinQuiz, apiAnswerQuiz } from '../services/api.js'
 import { getLang } from '../i18n/translations.js'
 
-export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool }) {
+export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements }
 
   const [nextQuizTime,  setNextQuizTime] = useState(Date.now() + QUIZ_INTERVAL * 1000)
   const [countdown,     setCountdown]    = useState(QUIZ_INTERVAL)
@@ -138,7 +138,11 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
         if (status === 404) return 'late'    // quiz expiré avant la soumission
         return false                          // mauvaise réponse (422)
       }
-      if (data.card_earned) earnCard(card)
+      if (data.card_earned) {
+        earnCard(card)
+        // Vérifier les achievements liés au quiz (First blood, Légendaire)
+        cbRef.current.checkAchievements?.({ quizCardEarned: card })
+      }
       if (data.gold_earned) earnGoldWithFx(data.gold_earned)
       if (data.streak != null) cbRef.current.onStreakUpdate?.(data.streak)
       setHistory(h => [{ card, winner: 'Moi', won: true }, ...h].slice(0, 10))

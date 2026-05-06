@@ -278,8 +278,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     if (dailyCards >= limit) return false
     setCollection(prev => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }))
     setDailyCards(d => d + 1)
+    // Vérifier cards_5 après gain de carte (setTimeout pour laisser le state se mettre à jour)
+    setTimeout(() => checkAchievements({}), 100)
     return true
-  }, [dailyCards, lim])
+  }, [dailyCards, lim, checkAchievements])
 
   // ── Achievements ──────────────────────────────────────────────────────────
   const checkAchievements = useCallback((overrides = {}) => {

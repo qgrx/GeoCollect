@@ -417,6 +417,7 @@ export default function App() {
     onStreakUpdate: gs.setStreak,
     onQuizEnd: () => setQuizSessionActive(false),
     cardPool: gs.cardPool,
+    checkAchievements: gs.checkAchievements,
   })
   const { countdown, setNextQuizTime, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
     nextCard, setNextCard, history, setHistory, quizKey, setQuizKey,
