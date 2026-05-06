@@ -37,6 +37,84 @@ import AdminPanel from './features/admin/AdminPanel.jsx';
 import ShopModal from './features/shop/ShopModal.jsx';
 import { AchievementToast, SaleNotif, TxHistoryModal } from './features/achievements/NotifComponents.jsx';
 
+function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
+  const imgRef = useRef(null)
+  const [tilt, setTilt] = useState({ x: 0, y: 0 })
+  const { c1, c2 } = cardCC(card.rarity)
+  const rc = RC[card.rarity] || RC.commun
+  const isLast = remaining === 1
+  const hasImage = !!(card.image || card.image_url)
+
+  const onMove = useCallback(e => {
+    const el = imgRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+    const cx = (clientX - r.left) / r.width - 0.5
+    const cy = (clientY - r.top) / r.height - 0.5
+    setTilt({ x: cy * -20, y: cx * 20 })
+  }, [])
+  const onLeave = useCallback(() => setTilt({ x: 0, y: 0 }), [])
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:8000, background:'#000000cc', backdropFilter:'blur(16px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, fontFamily:"'Nunito',sans-serif" }}>
+      <style>{`
+        @keyframes cardOfferPop{from{opacity:0;transform:scale(.8) translateY(24px)}to{opacity:1;transform:none}}
+        @keyframes shimmerOffer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+        @keyframes pulseGlow{0%,100%{opacity:.5}50%{opacity:1}}
+      `}</style>
+      <div style={{ width:'min(92vw,360px)', borderRadius:24, overflow:'hidden', background:`linear-gradient(160deg,${c1}22,#0f0f1e 50%)`, border:`2px solid ${c1}66`, boxShadow:`0 0 80px ${c1}44, 0 32px 80px #000e`, animation:'cardOfferPop .4s cubic-bezier(.34,1.56,.64,1) both' }}>
+
+        {/* Header */}
+        <div style={{ background:`linear-gradient(90deg,${c1},${c2})`, padding:'10px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,transparent 40%,#ffffff22 50%,transparent 60%)', backgroundSize:'400px 100%', animation:'shimmerOffer 2.5s linear infinite' }}/>
+          <div style={{ position:'relative' }}>
+            <div style={{ fontSize:11, fontWeight:900, color:'#fff', textTransform:'uppercase', letterSpacing:1 }}>🎁 Geocoin offert !</div>
+            {remaining > 1 && <div style={{ fontSize:10, color:'#ffffffaa' }}>{remaining} geocoins à recevoir</div>}
+          </div>
+          <div style={{ position:'relative', fontSize:10, fontWeight:800, color:'#ffffffcc', background:'#00000033', borderRadius:50, padding:'3px 10px' }}>{rarityLabel(card.rarity, t)}</div>
+        </div>
+
+        {/* Image avec tilt 3D */}
+        <div
+          ref={imgRef}
+          onMouseMove={onMove} onMouseLeave={onLeave}
+          onTouchMove={onMove} onTouchEnd={onLeave}
+          style={{ height: hasImage ? 260 : 180, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', padding:16, perspective:'800px', cursor:'default' }}
+        >
+          <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at center,${c1}33 0%,transparent 70%)`, animation:'pulseGlow 2s infinite', pointerEvents:'none' }}/>
+          {hasImage
+            ? <img
+                src={card.image || card.image_url}
+                alt={card.name}
+                style={{
+                  maxWidth:'100%', maxHeight:'100%', objectFit:'contain', borderRadius:12,
+                  filter:`drop-shadow(0 0 24px ${c1}88)`,
+                  transform:`rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${tilt.x || tilt.y ? 1.05 : 1})`,
+                  transition: tilt.x || tilt.y ? 'transform .1s ease-out' : 'transform .4s ease',
+                }}
+              />
+            : <div style={{ fontSize:80, opacity:.2 }}>🃏</div>
+          }
+        </div>
+
+        {/* Infos + bouton */}
+        <div style={{ padding:'0 20px 20px' }}>
+          <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:26, color:'#fff', marginBottom:4 }}>{cardName(card, lang)}</div>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+            <span style={{ color:rc.color, fontSize:14 }}>{'★'.repeat(rc.stars||1)}{'☆'.repeat(4-(rc.stars||1))}</span>
+            <span style={{ fontSize:11, fontWeight:800, color:rc.color, background:rc.bg, borderRadius:50, padding:'2px 10px' }}>{rarityLabel(card.rarity, t)}</span>
+          </div>
+          <button onClick={onDismiss} style={{ width:'100%', background:`linear-gradient(135deg,${c1},${c2})`, border:'none', color:'#fff', padding:'14px', borderRadius:14, fontFamily:"'Nunito',sans-serif", fontWeight:900, fontSize:16, cursor:'pointer', boxShadow:`0 4px 20px ${c1}66`, letterSpacing:.3 }}>
+            {isLast ? 'Recevoir 🎉' : 'Recevoir →'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const { t, lang } = useT();
 
@@ -841,60 +919,21 @@ export default function App() {
           onClearNewTransactions={gs.clearNewTransactions}
         />
       )}
-      {welcomeCards.length > 0 && (() => {
-        const card = welcomeCards[0]
-        const { c1 } = cardCC(card.rarity)
-        const isLast = welcomeCards.length === 1
-        const dismiss = () => {
-          const remaining = welcomeCards.slice(1)
-          setWelcomeCards(remaining)
-          if (remaining.length === 0 && !auth.profile?.welcome_given) {
-            setTimeout(() => setShowTour(true), 300)
-          }
-        }
-        return (
-          <div style={{ position:'fixed', inset:0, zIndex:8000, background:'#000000cc', backdropFilter:'blur(16px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, fontFamily:"'Nunito',sans-serif" }}>
-            <style>{`
-              @keyframes cardOfferPop{from{opacity:0;transform:scale(.8) translateY(24px)}to{opacity:1;transform:none}}
-              @keyframes shimmerOffer{0%{background-position:-400px 0}100%{background-position:400px 0}}
-              @keyframes pulseGlow{0%,100%{opacity:.5}50%{opacity:1}}
-            `}</style>
-            <div style={{ width:'min(92vw,360px)', borderRadius:24, overflow:'hidden', background:`linear-gradient(160deg,${c1}22,#0f0f1e 50%)`, border:`2px solid ${c1}66`, boxShadow:`0 0 80px ${c1}44, 0 32px 80px #000e`, animation:'cardOfferPop .4s cubic-bezier(.34,1.56,.64,1) both' }}>
-
-              {/* Header */}
-              <div style={{ background:`linear-gradient(90deg,${c1},${cardCC(card.rarity).c2})`, padding:'10px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', position:'relative', overflow:'hidden' }}>
-                <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,transparent 40%,#ffffff22 50%,transparent 60%)', backgroundSize:'400px 100%', animation:'shimmerOffer 2.5s linear infinite' }}/>
-                <div style={{ position:'relative' }}>
-                  <div style={{ fontSize:11, fontWeight:900, color:'#fff', textTransform:'uppercase', letterSpacing:1 }}>🎁 Geocoin offert !</div>
-                  {welcomeCards.length > 1 && <div style={{ fontSize:10, color:'#ffffffaa' }}>{welcomeCards.length} geocoin{welcomeCards.length > 1 ? 's' : ''} à recevoir</div>}
-                </div>
-                <div style={{ position:'relative', fontSize:10, fontWeight:800, color:'#ffffffcc', background:'#00000033', borderRadius:50, padding:'3px 10px' }}>{RC[card.rarity]?.label}</div>
-              </div>
-
-              {/* Image grande avec glow */}
-              <div style={{ height: (card.image || card.image_url) ? 260 : 180, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', padding:16 }}>
-                <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at center,${c1}33 0%,transparent 70%)`, animation:'pulseGlow 2s infinite', pointerEvents:'none' }}/>
-                {(card.image || card.image_url)
-                  ? <img src={card.image || card.image_url} alt={card.name} style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain', borderRadius:12, filter:`drop-shadow(0 0 24px ${c1}88)`, transition:'transform .3s' }} />
-                  : <div style={{ fontSize:80, opacity:.2 }}>🃏</div>
-                }
-              </div>
-
-              {/* Infos */}
-              <div style={{ padding:'0 20px 20px' }}>
-                <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:26, color:'#fff', marginBottom:4 }}>{cardName(card, lang)}</div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
-                  <span style={{ color:RC[card.rarity]?.color, fontSize:14 }}>{'★'.repeat(RC[card.rarity]?.stars||1)}{'☆'.repeat(4-(RC[card.rarity]?.stars||1))}</span>
-                  <span style={{ fontSize:11, fontWeight:800, color:RC[card.rarity]?.color, background:RC[card.rarity]?.bg, borderRadius:50, padding:'2px 10px' }}>{rarityLabel(card.rarity, t)}</span>
-                </div>
-                <button onClick={dismiss} style={{ width:'100%', background:`linear-gradient(135deg,${c1},${cardCC(card.rarity).c2})`, border:'none', color:'#fff', padding:'14px', borderRadius:14, fontFamily:"'Nunito',sans-serif", fontWeight:900, fontSize:16, cursor:'pointer', boxShadow:`0 4px 20px ${c1}66`, letterSpacing:.3 }}>
-                  {isLast ? 'Recevoir 🎉' : 'Recevoir →'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      {welcomeCards.length > 0 && (
+        <OfferedCardModal
+          card={welcomeCards[0]}
+          remaining={welcomeCards.length}
+          lang={lang}
+          t={t}
+          onDismiss={() => {
+            const next = welcomeCards.slice(1)
+            setWelcomeCards(next)
+            if (next.length === 0 && !auth.profile?.welcome_given) {
+              setTimeout(() => setShowTour(true), 300)
+            }
+          }}
+        />
+      )}
       {showTour && auth.profile && <OnboardingTour onDone={async () => {
         setShowTour(false)
         const { apiOnboardingDone } = await import('./services/api.js')
