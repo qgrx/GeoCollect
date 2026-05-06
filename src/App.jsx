@@ -42,7 +42,9 @@ export default function App() {
 
   // ── Game state (all logic lives in the hook) ───────────────────────────────
   const auth = useAuth()
-  const gs   = useGameState(auth);
+  const gs   = useGameState(auth, {
+    onAchievementCard: (card) => setWelcomeCards(prev => [...prev, card])
+  });
 
   const cardPoolRef = useRef(gs.cardPool);
   useEffect(() => { cardPoolRef.current = gs.cardPool }, [gs.cardPool]);

@@ -11,7 +11,7 @@ import {
 } from '../services/api.js'
 
 
-export function useGameState(auth) {
+export function useGameState(auth, { onAchievementCard } = {}) {
   const profile = auth?.profile
 
   // ── World state ────────────────────────────────────────────────────────────
@@ -292,7 +292,14 @@ export function useGameState(auth) {
       setPendingAch(prev => [...prev, def])
       // Mise à jour optimiste de la collection + persistance DB
       setCollection(p => p[def.cardId] > 0 ? p : { ...p, [def.cardId]: 1 })
-      if (def.cardId) apiGrantAchievement(def.cardId).catch(() => {})
+      if (def.cardId) {
+        apiGrantAchievement(def.cardId).catch(() => {})
+        // Afficher la modale "Geocoin offert !" pour le geocoin d'achievement
+        if (onAchievementCard) {
+          const achCard = cardPool.find(c => c.id === def.cardId)
+          if (achCard) onAchievementCard(achCard)
+        }
+      }
     })
   }, [collection, cardPool, totalBuys, totalSells, dailyCards, streak])
 
