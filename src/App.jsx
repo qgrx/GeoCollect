@@ -504,7 +504,7 @@ export default function App() {
     <div style={{ minHeight: '100vh', background: '#0f0f1e', fontFamily: "'Nunito',sans-serif", color: '#fff' }}>
       <style>{`@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}} @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.9}}`}</style>
       {/* Rainbow bar */}
-      <div style={{ background: 'linear-gradient(90deg,#e84393,#f9ca24,#00cec9,#6c5ce7)', height: 4 }}/>
+      <div style={{ background: 'linear-gradient(90deg,#74c7ec,#1565c0,#6a1b9a,#e65100,#ffd54f)', height: 4 }}/>
       {/* Header skeleton */}
       <div style={{ padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #ffffff0a' }}>
         <div style={{ width: 120, height: 28, borderRadius: 8, background: 'linear-gradient(90deg,#ffffff0a,#ffffff18,#ffffff0a)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite' }}/>
@@ -540,7 +540,7 @@ export default function App() {
       `}</style>
 
       {/* Rainbow bar */}
-      <div style={{ background: 'linear-gradient(90deg,#e84393,#f9ca24,#00cec9,#6c5ce7)',backgroundSize: '300% 100%',animation: 'shimmer 6s linear infinite',height: 4 }} />
+      <div style={{ background: 'linear-gradient(90deg,#74c7ec,#1565c0,#6a1b9a,#e65100,#ffd54f)',backgroundSize: '300% 100%',animation: 'shimmer 6s linear infinite',height: 4 }} />
 
       {/* ── Header ── */}
       <div style={{ position: 'relative', zIndex: 100, background: '#00000055', backdropFilter: 'blur(14px)', padding: isMobile ? '8px 10px' : '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #ffffff12', gap: 6 }}>
