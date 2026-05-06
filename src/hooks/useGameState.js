@@ -364,18 +364,20 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
     // Compteurs et historique — uniquement si l'achat a réellement eu lieu
     if (!profile || listing.id) {
-      const newBuys = totalBuys + 1
-      setTotalBuys(newBuys)
+      setTotalBuys(prev => {
+        const newBuys = prev + 1
+        setTimeout(() => checkAchievementsRef.current?.({ totalBuys: newBuys }), 50)
+        return newBuys
+      })
       const tx = {
         type: 'achat', cardName: listing.card.name, rarity: listing.card.rarity,
         counterpart: listing.seller, price: listing.price,
         date: new Date().toLocaleDateString('fr-FR'),
       }
       setTransactions(prev => [tx, ...prev])
-      setTimeout(() => checkAchievements({ totalBuys: newBuys }), 50)
     }
     return 'ok'
-  }, [gold, totalBuys, profile, checkAchievements])
+  }, [gold, profile])
 
   const handleListCard = useCallback(async (card, price, sellerName) => {
     setCollection(prev => ({ ...prev, [card.id]: Math.max(0, (prev[card.id] || 0) - 1) }))
@@ -416,7 +418,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     }
 
     return null
-  }, [profile, checkAchievements])
+  }, [profile])
 
   const handleCancelListing = useCallback(async (index, sellerName) => {
     const l = myListings[index]
@@ -455,7 +457,11 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   // ── Sale notification depuis WebSocket ────────────────────────────────────
   const handleSaleNotifFromSocket = useCallback(({ cardName, buyer, price, rarity }) => {
     setGold(g => g + price)
-    setTotalSells(s => s + 1)
+    setTotalSells(s => {
+      const newSells = s + 1
+      setTimeout(() => checkAchievementsRef.current?.({ totalSells: newSells }), 50)
+      return newSells
+    })
     setTransactions(prev => [{ type: 'vente', cardName, rarity: rarity || 'commun', counterpart: buyer, price, date: new Date().toLocaleDateString('fr-FR'), isNew: true }, ...prev])
     setSaleNotifs(prev => [...prev, { id: Date.now(), cardName, buyer, price }])
     setUnreadSales(n => n + 1)
