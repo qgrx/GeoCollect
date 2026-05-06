@@ -172,5 +172,5 @@ export function useAuth() {
     return { error }
   }, [user, profile])
 
-  return { user, profile, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
+  return { user, profile, setProfile, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
 }

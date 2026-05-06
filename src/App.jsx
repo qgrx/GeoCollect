@@ -255,7 +255,7 @@ export default function App() {
   const [showTour, setShowTour] = useState(false);
   const [avatarMenu, setAvatarMenu] = useState(false);
   const avatarMenuRef = useRef(null);
-  const [welcomeCard, setWelcomeCard] = useState(null);  // carte de bienvenue avant le tour
+  const [welcomeCards, setWelcomeCards] = useState([]);  // cartes offertes à afficher avant le tour
   const [marketUnlockBanner, setMarketUnlockBanner] = useState(false);
   const [toast,           setToast]           = useState(null);
   const [socketOnline,    setSocketOnline]    = useState(true);
@@ -365,24 +365,27 @@ export default function App() {
     }
   }
   // Called by AuthModal after successful login
-  async function handleLoginSuccess(profile) {
+  function handleLoginSuccess(profile) {
     showToast(t('toast_welcome').replace('{pseudo}', profile?.pseudo || ''))
-    if (!localStorage.getItem('geocoins_tour_done') && import.meta.env.VITE_API_URL) {
-      // D'abord offrir la carte, puis lancer le tour
+  }
+
+  // Welcome card + tuto — basé sur welcome_given en base (pas localStorage)
+  useEffect(() => {
+    if (!auth.profile || !import.meta.env.VITE_API_URL) return
+    if (auth.profile.welcome_given) return // onboarding déjà complété
+    const run = async () => {
       const { apiWelcomeCard } = await import('./services/api.js')
       const { data } = await apiWelcomeCard()
-      if (data?.card && !data.already_given) {
-        // Mettre à jour la collection locale pour refléter la carte ajoutée en DB
-        gs.setCollection(prev => ({
-          ...prev,
-          [data.card.id]: (prev[data.card.id] || 0) + 1,
-        }))
-        setTimeout(() => setWelcomeCard(data.card), 800)
-      } else {
+      const newCards = data?.cards || []
+      if (newCards.length > 0) {
+        newCards.forEach(c => gs.setCollection(prev => ({ ...prev, [c.id]: (prev[c.id] || 0) + 1 })))
+        setTimeout(() => setWelcomeCards(newCards), 800)
+      } else if (!auth.profile.welcome_given) {
         setTimeout(() => setShowTour(true), 1200)
       }
     }
-  }
+    run()
+  }, [auth.profile?.id])
 
   // Détecter un profil Google dont le pseudo vient du fournisseur (email-like ou nom complet)
   useEffect(() => {
@@ -390,7 +393,6 @@ export default function App() {
     const providers = auth.user.app_metadata?.providers || []
     const isOAuth = providers.includes('google') || providers.includes('github')
     if (!isOAuth) return
-    // Si le pseudo ressemble à un nom fourni par Google (contient espace ou @)
     const p = auth.profile.pseudo || ''
     if (p.includes(' ') || p.includes('@') || p.includes('.')) {
       setShowChoosePseudo(true)
@@ -812,39 +814,56 @@ export default function App() {
           onClearNewTransactions={gs.clearNewTransactions}
         />
       )}
-      {welcomeCard && (() => {
-        const { c1, c2 } = cardCC(welcomeCard.rarity)
-        const rc = RC[welcomeCard.rarity] || RC.commun
+      {welcomeCards.length > 0 && (() => {
+        const card = welcomeCards[0]
+        const { c1, c2 } = cardCC(card.rarity)
+        const rc = RC[card.rarity] || RC.commun
+        const isLast = welcomeCards.length === 1
+        const dismiss = () => {
+          const remaining = welcomeCards.slice(1)
+          setWelcomeCards(remaining)
+          if (remaining.length === 0 && !auth.profile?.welcome_given) {
+            setTimeout(() => setShowTour(true), 300)
+          }
+        }
         return (
           <div style={{ position:'fixed', inset:0, zIndex:8000, background:'#000000cc', backdropFilter:'blur(12px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, fontFamily:"'Nunito',sans-serif" }}>
             <style>{`@keyframes cardReveal{from{opacity:0;transform:scale(.6) rotateY(90deg)}to{opacity:1;transform:scale(1) rotateY(0)}}`}</style>
             <div style={{ textAlign:'center', animation:'fadeIn .3s ease' }}>
               <div style={{ fontSize:44, marginBottom:8 }}>🎁</div>
               <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:26, color:'#f9ca24', marginBottom:4 }}>
-                Bienvenue sur Geocoins !
+                Geocoin offert !
               </div>
-              <div style={{ color:'#aaa', fontSize:14, marginBottom:28, lineHeight:1.6 }}>
-                Voici une carte pour démarrer ta collection&nbsp;:
-              </div>
+              {welcomeCards.length > 1 && (
+                <div style={{ color:'#888', fontSize:12, marginBottom:8 }}>{welcomeCards.length} geocoin{welcomeCards.length > 1 ? 's' : ''} à recevoir</div>
+              )}
               <div style={{ animation:'cardReveal .6s .2s cubic-bezier(.34,1.56,.64,1) both', width:160, margin:'0 auto 28px', borderRadius:18, overflow:'hidden', border:`2px solid ${c1}`, background:`linear-gradient(145deg,${c1}33,${c2}55)`, boxShadow:`0 0 48px ${c1}66, 0 24px 60px #000c` }}>
                 <div style={{ background:`linear-gradient(90deg,${c1},${c2})`, padding:'7px 11px', display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ fontWeight:900, fontSize:11, color:'#fff', textTransform:'uppercase' }}>{welcomeCard.type}</span>
+                  <span style={{ fontWeight:900, fontSize:11, color:'#fff', textTransform:'uppercase' }}>{card.type}</span>
                   <span style={{ fontWeight:800, fontSize:10, color:'#ffffffbb' }}>{rc.label}</span>
                 </div>
-                <div style={{ height:90, background:`linear-gradient(135deg,${c1}22,${c2}44)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:44, opacity:.4 }}>🃏</div>
-                <div style={{ textAlign:'center', fontWeight:900, fontSize:14, color:'#1a1a2e', padding:'3px 7px', background:'#ffffff88' }}>{welcomeCard.name}</div>
+                {card.image_url
+                  ? <img src={card.image_url} alt={card.name} style={{ width:'100%', height:90, objectFit:'contain', background:`linear-gradient(135deg,${c1}22,${c2}44)` }} />
+                  : <div style={{ height:90, background:`linear-gradient(135deg,${c1}22,${c2}44)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:44, opacity:.4 }}>🃏</div>
+                }
+                <div style={{ textAlign:'center', fontWeight:900, fontSize:14, color:'#1a1a2e', padding:'3px 7px', background:'#ffffff88' }}>{card.name}</div>
                 <div style={{ textAlign:'center', fontSize:11, color:rc.color, padding:'2px 0' }}>{'★'.repeat(rc.stars||1)}{'☆'.repeat(4-(rc.stars||1))}</div>
                 <div style={{ background:rc.bg, color:rc.color, fontSize:9, fontWeight:800, textTransform:'uppercase', textAlign:'center', padding:'2px 0', letterSpacing:1 }}>{rc.label}</div>
               </div>
-              <button onClick={() => { setWelcomeCard(null); setTimeout(() => setShowTour(true), 300) }}
+              <button onClick={dismiss}
                 style={{ background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1a1a2e', padding:'13px 32px', borderRadius:14, fontFamily:"'Nunito',sans-serif", fontWeight:900, fontSize:16, cursor:'pointer', boxShadow:'0 4px 20px #f9ca2466' }}>
-                Découvrir Geocoins 🗺️
+                {isLast ? 'Recevoir 🎉' : 'Recevoir →'}
               </button>
             </div>
           </div>
         )
       })()}
-      {showTour && auth.profile && <OnboardingTour onDone={() => setShowTour(false)} />}
+      {showTour && auth.profile && <OnboardingTour onDone={async () => {
+        setShowTour(false)
+        const { apiOnboardingDone } = await import('./services/api.js')
+        await apiOnboardingDone()
+        auth.setProfile(p => p ? { ...p, welcome_given: true } : p)
+      }} />}
 
       {/* ── Prompt inscription — bloque la réponse au quiz pour les invités ── */}
       {showRegisterPrompt && !auth.profile && (
@@ -906,7 +925,7 @@ export default function App() {
       {showLeaderboard && <LeaderboardModal myCollection={gs.collection} myPseudo={auth.profile?.pseudo} myId={auth.profile?.id} cardPool={gs.cardPool} ranks={gs.limits.playerRanks} onClose={() => setShowLeaderboard(false)} />}
       {showAuth        && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
       {showChoosePseudo && <AuthModal auth={auth} initialMode="choose_pseudo" onClose={() => setShowChoosePseudo(false)} onSuccess={() => setShowChoosePseudo(false)} />}
-      {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true); localStorage.removeItem('geocoins_tour_done') }} onClose={() => setShowSettings(false)} />}
+      {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
       {showShop && <ShopModal onClose={() => setShowShop(false)} cardPool={gs.cardPool} onPurchase={handlePurchase} />}
       {showAdmin && (
         <AdminPanel
@@ -969,7 +988,7 @@ export default function App() {
       }}
           onTogglePlayer={gs.adminTogglePlayer} onBanIP={gs.adminBanIP} onUnbanIP={gs.adminUnbanIP}
           onUpdateCardInPool={card => gs.setCardPool(prev => prev.map(c => c.id === card.id ? {...c, ...card, desc: card.desc??card.description??''} : c))}
-          onStartTour={() => { setShowAdmin(false); localStorage.removeItem('geocoins_tour_done'); setShowTour(true) }}
+          onStartTour={() => { setShowAdmin(false); setShowTour(true) }}
         />
       )}
 

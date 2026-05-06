@@ -58,7 +58,6 @@ export default function OnboardingTour({ onDone }) {
     setTimeout(() => setStep(s => Math.max(0, s - 1)), 200)
   }
   const finish = () => {
-    localStorage.setItem('geocoins_tour_done', '1')
     onDone()
   }
 

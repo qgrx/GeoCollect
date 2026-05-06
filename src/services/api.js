@@ -85,6 +85,7 @@ export const apiUpdatePseudo  = (pseudo)   => apiFetch('/api/profile/pseudo', { 
 export const apiPingProfile     = ()       => apiFetch('/api/profile/ping',    { method: 'POST' })
 export const apiDeleteAccount   = ()       => apiFetch('/api/profile/account',      { method: 'DELETE' })
 export const apiWelcomeCard     = ()       => apiFetch('/api/profile/welcome-card', { method: 'POST' })
+export const apiOnboardingDone  = ()       => apiFetch('/api/profile/onboarding-done', { method: 'POST' })
 export const apiAdminReactivate       = (id)          => apiFetch(`/api/admin/players/${id}/reactivate`, { method: 'PATCH' })
 export const apiAdminSetGold             = (id, gold)    => apiFetch(`/api/admin/players/${id}/gold`, { method: 'PATCH', body: { gold } })
 export const apiAdminGetPlayerCollection = (id)          => apiFetch(`/api/admin/players/${id}/collection`)
