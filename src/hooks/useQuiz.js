@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetCurrentQuiz, apiJoinQuiz, apiAnswerQuiz } from '../services/api.js'
+import { getLang } from '../i18n/translations.js'
 
 export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool }) {
   const cbRef = useRef({})
@@ -41,11 +42,13 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
             if (data?.quiz) {
               const wc = data.quiz.answer_word_count || 1
               const poolCard = cbRef.current.cardPool?.find(c => c.id === data.quiz.card?.id) || {}
+              const curLang = getLang()
+              const trans = data.quiz.translations?.[curLang]
               setPendingQuiz({
                 ...data.quiz,
                 id:   data.quiz.id,
-                q:    data.quiz.question,
-                a:    Array(wc).fill('x').join(' '),
+                q:    trans?.question || data.quiz.question,
+                a:    trans?.answer ? Array((trans.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
                 h:    data.quiz.hint,
                 card: { ...data.quiz.card, ...poolCard, sellable: true, minPrice: null, desc: '' },
               })
@@ -81,11 +84,13 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
       if (!data?.quiz) return
       const wc = data.quiz.answer_word_count || 1
       const poolCard = cbRef.current.cardPool?.find(c => c.id === data.quiz.card?.id) || {}
+      const curLang2 = getLang()
+      const trans2 = data.quiz.translations?.[curLang2]
       quiz = {
         ...data.quiz,
         id:   data.quiz.id,
-        q:    data.quiz.question,
-        a:    Array(wc).fill('x').join(' '),
+        q:    trans2?.question || data.quiz.question,
+        a:    trans2?.answer ? Array((trans2.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
         h:    data.quiz.hint,
         card: { ...data.quiz.card, ...poolCard, sellable: true, minPrice: null, desc: '' },
       }

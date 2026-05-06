@@ -66,7 +66,7 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
         </div>
         <div style={{flex:1}}>
           <div style={{fontWeight:800,color:"#fff",fontSize:13,marginBottom:2}}>{quiz.card.name} <span style={{color:rc.color,fontWeight:700,fontSize:11}}>({rc.label})</span></div>
-          <div style={{fontSize:11,color:"#888",marginBottom:7}}>Réponds correctement · <span style={{color:"#f9ca24"}}>Réponse : {wc} mot{wc>1?"s":""}</span></div>
+          <div style={{fontSize:11,color:"#888",marginBottom:7}}>{t("quiz_answer_correctly")} · <span style={{color:"#f9ca24"}}>{t("quiz_answer_words")} {wc} {wc>1?t("quiz_words"):t("quiz_word")}</span></div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button onClick={onJoin} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1a1a2e"),padding:"8px 14px",borderRadius:12,fontSize:12}}>{t("quiz_join")}</button>
             <div style={{position:"relative"}}>
@@ -208,7 +208,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
           )}
           <div style={{display:"flex",gap:9}}>
             {submitError&&<div style={{fontSize:12,color:"#f39c12",fontWeight:700,padding:"7px 10px",background:"#f39c1218",borderRadius:9,marginBottom:6,border:"1px solid #f39c1233"}}>{submitError}</div>}
-            <input ref={ref} value={inp} disabled={isSubmitting} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={`Ta réponse (${wc} mot${wc>1?"s":""})…`}
+            <input ref={ref} value={inp} disabled={isSubmitting} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc)}
               style={{flex:1,background:isSubmitting?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":isSubmitting?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"12px 15px",borderRadius:13,fontFamily:"'Nunito',sans-serif",fontSize:15,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:isSubmitting?0.6:1}}/>
           <button onClick={submit} disabled={isSubmitting||!inp.trim()} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1a1a2e"),padding:"12px 20px",borderRadius:13,opacity:(isSubmitting||!inp.trim())?0.5:1,cursor:(isSubmitting||!inp.trim())?"not-allowed":"pointer",minWidth:110,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {isSubmitting ? (<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #1a1a2e",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.6s linear infinite"}}/>{t("quiz_validating") || "Validation…"}</>) : t("quiz_submit")}

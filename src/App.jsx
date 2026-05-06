@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
-import { useT, setLang, LANGS } from './i18n/translations.js'
+import { useT, setLang, LANGS, getLang } from './i18n/translations.js'
 import LangSelector from './i18n/LangSelector.jsx';
 import Logo from './components/Logo.jsx';
 
@@ -114,12 +114,14 @@ export default function App() {
         const poolCard = cardPoolRef.current?.find(c => c.id === data.quiz.card.id) || {}
         const card = { ...data.quiz.card, ...poolCard, sellable: true, minPrice: null, desc: '' }
         const wc   = data.quiz.answer_word_count || 1
+        const initLang = getLang()
+        const initTrans = data.quiz.translations?.[initLang]
         setPendingQuiz({
           ...data.quiz,
           card,
           id: data.quiz.id,
-          q:  data.quiz.question,
-          a:  Array(wc).fill('x').join(' '),
+          q:  initTrans?.question || data.quiz.question,
+          a:  initTrans?.answer ? Array((initTrans.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
           h:  data.quiz.hint,
           answer_length: data.quiz.answer_length,
         })
@@ -139,7 +141,7 @@ export default function App() {
         const card = { ...data.card, ...poolCard, sellable: true, minPrice: null, desc: '' }
         const wc = data.answer_word_count || 1
         const fakeAnswer = Array(wc).fill('x').join(' ')
-        const curLang = (typeof window !== 'undefined' && localStorage.getItem('geocards_lang')) || 'fr'
+        const curLang = getLang()
         const trans = data.translations?.[curLang]
         const q = {
           ...data,
@@ -270,10 +272,22 @@ export default function App() {
     if (!showAdmin || !auth.profile) return
     apiAdminGetQuestions().then(({ data }) => {
       if (data?.questions) setQuestions(data.questions.map(q => ({
-        id: q.id, q: q.question, a: q.answer, hint: q.hint || '', active: q.active
+        id: q.id, q: q.question, a: q.answer, hint: q.hint || '', active: q.active, translations: q.translations || {}
       })))
     })
   }, [showAdmin])
+
+  // ── Re-traduire le quiz courant quand la langue change ─────────────────────
+  useEffect(() => {
+    const applyTrans = q => {
+      if (!q) return null
+      const trans = q.translations?.[lang]
+      if (!trans?.question) return q
+      return { ...q, q: trans.question }
+    }
+    setPendingQuiz(applyTrans)
+    setActiveQuiz(applyTrans)
+  }, [lang])
 
   // ── Détection mobile ───────────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 520)

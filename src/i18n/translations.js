@@ -31,6 +31,7 @@ const TRANSLATIONS = {
     not_sellable:"Non vendable",
     unique_card:"Exemplaire unique",
     quiz_new_card:"Nouveau geocoin disponible !",
+    quiz_answer_correctly:"Réponds correctement",
     quiz_answer_words:"Réponse :",
     quiz_word:"mot",
     quiz_words:"mots",
@@ -261,6 +262,7 @@ const TRANSLATIONS = {
     not_sellable:"Not tradeable",
     unique_card:"Unique copy",
     quiz_new_card:"New geocoin available!",
+    quiz_answer_correctly:"Answer correctly",
     quiz_answer_words:"Answer:",
     quiz_word:"word",
     quiz_words:"words",
@@ -491,6 +493,7 @@ const TRANSLATIONS = {
     not_sellable:"Nicht handelbar",
     unique_card:"Einziges Exemplar",
     quiz_new_card:"Neuer Geocoin verfügbar!",
+    quiz_answer_correctly:"Antworte richtig",
     quiz_answer_words:"Antwort:",
     quiz_word:"Wort",
     quiz_words:"Wörter",
@@ -721,6 +724,7 @@ const TRANSLATIONS = {
     not_sellable:"No vendible",
     unique_card:"Ejemplar único",
     quiz_new_card:"¡Nuevo geocoin disponible!",
+    quiz_answer_correctly:"Responde correctamente",
     quiz_answer_words:"Respuesta:",
     quiz_word:"palabra",
     quiz_words:"palabras",
@@ -956,4 +960,5 @@ try {
   if(saved && TRANSLATIONS[saved]) _lang = saved;
 } catch(_e){ /* ignore */ }
 
+export function getLang() { return _lang }
 export { LANGS, TRANSLATIONS, useT, setLang };
