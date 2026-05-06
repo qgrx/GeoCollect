@@ -263,6 +263,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const totalUnique = cardPool.length
   const myScore     = useMemo(() => collScore(collection, cardPool), [collection, cardPool])
 
+  // Ref pour checkAchievements (évite dépendance circulaire avec earnCard)
+  const checkAchievementsRef = useRef(null)
+
   // ── Gold / Card limits (local, synced to API via profile) ─────────────────
   const earnGold = useCallback((n) => {
     const limit = lim?.dailyGold ?? 200
@@ -278,10 +281,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     if (dailyCards >= limit) return false
     setCollection(prev => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }))
     setDailyCards(d => d + 1)
-    // Vérifier cards_5 après gain de carte (setTimeout pour laisser le state se mettre à jour)
-    setTimeout(() => checkAchievements({}), 100)
+    // Vérifier cards_5 après gain de carte via le ref (évite dépendance circulaire)
+    setTimeout(() => checkAchievementsRef.current?.({}), 100)
     return true
-  }, [dailyCards, lim, checkAchievements])
+  }, [dailyCards, lim])
 
   // ── Achievements ──────────────────────────────────────────────────────────
   const checkAchievements = useCallback((overrides = {}) => {
@@ -304,6 +307,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       }
     })
   }, [collection, cardPool, totalBuys, totalSells, dailyCards, streak])
+
+  // Mettre à jour le ref après chaque redéfinition de checkAchievements
+  checkAchievementsRef.current = checkAchievements
 
   // ── Market actions ────────────────────────────────────────────────────────
   const handleBuy = useCallback(async (listing, index) => {
