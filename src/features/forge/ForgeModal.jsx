@@ -303,9 +303,10 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center' }}>
             {forgeableCards.map(card => {
               const { c1, c2 } = cardCC(card.rarity)
-              const owned    = (collection[card.id] || 0) > 0
-              const justDone = recentlyForged.has(card.id)
-              const canAfford = forgePoints >= (card.forge_cost || Infinity)
+              const owned     = (collection[card.id] || 0) > 0
+              const justDone  = recentlyForged.has(card.id)
+              const canForge  = !owned && !justDone
+              const canAfford = canForge && forgePoints >= (card.forge_cost || Infinity)
               const src = card.image || card.image_url
 
               return (
@@ -364,28 +365,36 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
                     <span style={{ fontSize: 10, color: '#555' }}>pts</span>
                   </div>
 
-                  <button
-                    onClick={() => handleForge(card)}
-                    disabled={!canAfford || !card.forge_cost}
-                    style={{
-                      width: '100%',
-                      padding: '8px 0', borderRadius: 10,
-                      border: 'none', cursor: canAfford ? 'pointer' : 'not-allowed',
-                      fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12,
-                      background: canAfford
-                        ? 'linear-gradient(135deg,#6c5ce7,#a29bfe)'
-                        : '#ffffff10',
-                      color: canAfford ? '#fff' : '#444',
-                      transition: 'all .2s',
-                      boxShadow: canAfford ? '0 4px 14px #6c5ce744' : 'none',
-                    }}
-                    onMouseEnter={e => { if (canAfford) e.currentTarget.style.transform = 'translateY(-1px)' }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}
-                  >
-                    {!card.forge_cost ? 'Coût non défini'
-                      : canAfford ? '🔨 Forger'
-                      : `Manque ${(card.forge_cost - forgePoints)} pts`}
-                  </button>
+                  {owned ? (
+                    <div style={{ width: '100%', padding: '8px 0', borderRadius: 10,
+                      background: '#00b89418', border: '1px solid #00b89433',
+                      textAlign: 'center', fontSize: 12, fontWeight: 800, color: '#00b894' }}>
+                      ✓ Déjà possédée
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleForge(card)}
+                      disabled={!canAfford || !card.forge_cost}
+                      style={{
+                        width: '100%',
+                        padding: '8px 0', borderRadius: 10,
+                        border: 'none', cursor: canAfford ? 'pointer' : 'not-allowed',
+                        fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12,
+                        background: canAfford
+                          ? 'linear-gradient(135deg,#6c5ce7,#a29bfe)'
+                          : '#ffffff10',
+                        color: canAfford ? '#fff' : '#444',
+                        transition: 'all .2s',
+                        boxShadow: canAfford ? '0 4px 14px #6c5ce744' : 'none',
+                      }}
+                      onMouseEnter={e => { if (canAfford) e.currentTarget.style.transform = 'translateY(-1px)' }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}
+                    >
+                      {!card.forge_cost ? 'Coût non défini'
+                        : canAfford ? '🔨 Forger'
+                        : `Manque ${(card.forge_cost - forgePoints)} pts`}
+                    </button>
+                  )}
                 </div>
               )
             })}
