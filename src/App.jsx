@@ -787,7 +787,7 @@ export default function App() {
             alignItems: 'flex-start',
             flexWrap: isMobile ? 'wrap' : 'nowrap',
           }}>
-            <DailyQuests questActivitySignal={gs.questActivitySignal} />
+            <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
 
             {!isMobile && <div style={{ width: 1, background: '#ffffff09', alignSelf: 'stretch', flexShrink: 0 }} />}
 

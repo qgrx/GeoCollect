@@ -10,17 +10,26 @@ const TRIGGER_LABELS = {
   collection_size: 'Cartes uniques',
 }
 
-export default function DailyQuests({ questActivitySignal }) {
-  const [quests, setQuests] = useState(null)
+export default function DailyQuests({ questActivitySignal, initialQuests }) {
+  // Pré-remplir immédiatement depuis les données chargées au démarrage
+  const [quests, setQuests] = useState(initialQuests ?? null)
 
   const load = useCallback(async () => {
     const { data } = await apiGetDailyQuests()
     if (data?.quests) setQuests(data.quests)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  // Si les données pré-chargées arrivent après le premier rendu, les accepter
+  useEffect(() => {
+    if (initialQuests) setQuests(initialQuests)
+  }, [initialQuests])
 
-  // Recharger après chaque action de jeu pertinente (achat, vente, quiz win)
+  // Premier fetch uniquement si rien de pré-chargé
+  useEffect(() => {
+    if (!initialQuests) load()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Recharger après chaque action de jeu pertinente
   useEffect(() => {
     if (questActivitySignal > 0) load()
   }, [questActivitySignal, load])

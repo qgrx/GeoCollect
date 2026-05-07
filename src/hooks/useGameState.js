@@ -7,6 +7,7 @@ import {
   apiBuyCard, apiListCard, apiCancelListing, apiGetTransactions,
   apiPingProfile, apiSetConfig, apiGetAdminConfig, apiGetPublicConfig,
   apiAdminAddCard, apiAdminEditCard, apiAdminDeleteCard, apiAdminDeleteType, apiAdminRenameType,
+  apiGetDailyQuests,
 } from '../services/api.js'
 
 
@@ -36,6 +37,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [pendingAch,          setPendingAch]         = useState([])
   const [saleNotifs,          setSaleNotifs]         = useState([])
   const [unreadSales,         _setUnreadSales]       = useState(0)
+  const [initialQuests,       setInitialQuests]     = useState(null)
   const [forgePoints,         setForgePoints]       = useState(profile?.forge_points ?? 0)
   const [forgePointsSignal,   setForgePointsSignal]  = useState(0)
   const [questActivitySignal, setQuestActivitySignal] = useState(0)
@@ -231,6 +233,11 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
         // Ping last_seen
         apiPingProfile()
+
+        // Quêtes du jour — en parallèle, déclenche aussi la génération lazy du planning
+        apiGetDailyQuests().then(({ data }) => {
+          if (data?.quests && mounted.current) setInitialQuests(data.quests)
+        })
 
       } catch (err) {
         if (import.meta.env.DEV) console.warn('[useGameState] load failed:', err.message)
@@ -611,7 +618,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,
     // Derived
     isGuest, lim, uniqueCards, totalUnique, myScore,
-    forgePoints, forgePointsSignal, questActivitySignal,
+    initialQuests, forgePoints, forgePointsSignal, questActivitySignal,
     addForgePoints: (pts) => {
       setQuestActivitySignal(s => s + 1)
       if (!pts) return
