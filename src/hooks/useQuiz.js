@@ -140,8 +140,10 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
       }
       if (data.card_earned) {
         earnCard(card)
-        // Vérifier les achievements liés au quiz (First blood, Légendaire)
-        cbRef.current.checkAchievements?.({ quizCardEarned: card })
+      }
+      // Achievements déclenchés côté serveur — on reçoit juste les card_id débloqués
+      if (data.achievements?.length) {
+        cbRef.current.checkAchievements?.(data.achievements)
       }
       if (data.gold_earned) earnGoldWithFx(data.gold_earned)
       if (data.streak != null) cbRef.current.onStreakUpdate?.(data.streak)

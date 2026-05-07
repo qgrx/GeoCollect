@@ -27,17 +27,18 @@ export const cardCC = (r) => {
   return { c1, c2 };
 };
 
-// Définitions des achievements (logique de déclenchement — pas de données de cartes)
+// Métadonnées d'affichage des achievements (icône, label) — la logique de déclenchement
+// est désormais entièrement gérée côté serveur (achievementService.js).
 export const ACHIEVEMENT_DEF = [
-  { id: 'first_blood',     label: 'First blood',      icon: '🩸', cardId: 901, check: (s) => !!s.quizCardEarned },
-  { id: 'first_legendary', label: 'Légendaire',       icon: '🐉', cardId: 909, check: (s) => !!s.quizCardEarned && s.quizCardEarned.rarity === 'légendaire' },
-  { id: 'cards_5',         label: 'Collectionneur',   icon: '🃏', cardId: 902, check: (s) => Object.keys(s.collection).filter(k => s.collection[k] > 0).length >= 5 },
-  { id: 'buy_1',           label: 'Premier achat',    icon: '🛍️', cardId: 903, check: (s) => s.totalBuys >= 1 },
-  { id: 'buy_10',          label: 'Acheteur vétéran', icon: '💳', cardId: 904, check: (s) => s.totalBuys >= 10 },
-  { id: 'buy_50',          label: 'Super acheteur',   icon: '🏅', cardId: 905, check: (s) => s.totalBuys >= 50 },
-  { id: 'sell_1',          label: 'Première vente',   icon: '🏷️', cardId: 906, check: (s) => s.totalSells >= 1 },
-  { id: 'sell_50',         label: 'Vendeur vétéran',  icon: '🏅', cardId: 907, check: (s) => s.totalSells >= 50 },
-  { id: 'sell_100',        label: 'Super vendeur',    icon: '🏆', cardId: 908, check: (s) => s.totalSells >= 100 },
-  { id: 'daily_20',        label: 'Endurant',         icon: '⚡', cardId: 910, check: (s) => s.dailyCards >= 20 },
-  { id: 'streak_30',       label: 'Fidèle',           icon: '🔥', cardId: 911, check: (s) => s.streak >= 30 },
+  { id: 'first_blood',     label: 'First blood',       icon: '🩸', cardId: 901 },
+  { id: 'quiz_1000',       label: 'Légendaire',        icon: '🐉', cardId: 909 },
+  { id: 'collector_100',   label: 'Collectionneur',    icon: '🃏', cardId: 902 },
+  { id: 'first_buy',       label: 'Premier achat',     icon: '🛍️', cardId: 903 },
+  { id: 'buyer_50',        label: 'Acheteur vétérant', icon: '💳', cardId: 904 },
+  { id: 'buyer_100',       label: 'Super acheteur',    icon: '🏅', cardId: 905 },
+  { id: 'first_sell',      label: 'Première vente',    icon: '🏷️', cardId: 906 },
+  { id: 'seller_50',       label: 'Vendeur vétéran',   icon: '🏅', cardId: 907 },
+  { id: 'seller_100',      label: 'Super vendeur',     icon: '🏆', cardId: 908 },
+  { id: 'streak_7',        label: 'Endurant',          icon: '⚡', cardId: 910 },
+  { id: 'streak_30',       label: 'Fidèle',            icon: '🔥', cardId: 911 },
 ];

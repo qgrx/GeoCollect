@@ -7,7 +7,6 @@ import {
   apiBuyCard, apiListCard, apiCancelListing, apiGetTransactions,
   apiPingProfile, apiSetConfig, apiGetAdminConfig, apiGetPublicConfig,
   apiAdminAddCard, apiAdminEditCard, apiAdminDeleteCard, apiAdminDeleteType, apiAdminRenameType,
-  apiGrantAchievement,
 } from '../services/api.js'
 
 
@@ -281,34 +280,28 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     if (dailyCards >= limit) return false
     setCollection(prev => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }))
     setDailyCards(d => d + 1)
-    // Vérifier cards_5 après gain de carte via le ref (évite dépendance circulaire)
-    setTimeout(() => checkAchievementsRef.current?.({}), 100)
     return true
   }, [dailyCards, lim])
 
   // ── Achievements ──────────────────────────────────────────────────────────
-  const checkAchievements = useCallback((overrides = {}) => {
-    const s = { collection, cardPool, totalBuys, totalSells, dailyCards, streak, ...overrides }
-    ACHIEVEMENT_DEF.forEach(def => {
-      if (unlockedAchRef.current.has(def.id)) return  // verrou synchrone
-      if (!def.check(s)) return
-      unlockedAchRef.current.add(def.id)  // marquer immédiatement avant tout setState
+  // Reçoit un tableau de card_id débloqués renvoyés par le serveur après chaque
+  // événement (achat, vente, quiz win). Affiche le toast et met à jour la collection.
+  const checkAchievements = useCallback((cardIds = []) => {
+    if (!Array.isArray(cardIds) || !cardIds.length) return
+    cardIds.forEach(cardId => {
+      const def = ACHIEVEMENT_DEF.find(d => d.cardId === cardId)
+      if (!def || unlockedAchRef.current.has(def.id)) return
+      unlockedAchRef.current.add(def.id)
       setUnlockedAch(prev => [...prev, def.id])
       setPendingAch(prev => [...prev, def])
-      // Mise à jour optimiste de la collection + persistance DB
       setCollection(p => p[def.cardId] > 0 ? p : { ...p, [def.cardId]: 1 })
-      if (def.cardId) {
-        apiGrantAchievement(def.cardId).catch(() => {})
-        // Afficher la modale "Geocoin offert !" pour le geocoin d'achievement
-        if (onAchievementCard) {
-          const achCard = cardPool.find(c => c.id === def.cardId)
-          if (achCard) onAchievementCard(achCard)
-        }
+      if (onAchievementCard) {
+        const achCard = cardPool.find(c => c.id === def.cardId)
+        if (achCard) onAchievementCard(achCard)
       }
     })
-  }, [collection, cardPool, totalBuys, totalSells, dailyCards, streak])
+  }, [cardPool, onAchievementCard])
 
-  // Mettre à jour le ref après chaque redéfinition de checkAchievements
   checkAchievementsRef.current = checkAchievements
 
   // ── Market actions ────────────────────────────────────────────────────────
@@ -335,6 +328,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         setMarket(prev => [...prev, listing])
         return error
       }
+      checkAchievementsRef.current?.(data?.achievements || [])
     }
 
     // Rafraîchir le marché depuis l'API pour éviter les annonces fantômes
@@ -364,11 +358,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
     // Compteurs et historique — uniquement si l'achat a réellement eu lieu
     if (!profile || listing.id) {
-      setTotalBuys(prev => {
-        const newBuys = prev + 1
-        setTimeout(() => checkAchievementsRef.current?.({ totalBuys: newBuys }), 50)
-        return newBuys
-      })
+      setTotalBuys(prev => prev + 1)
       const tx = {
         type: 'achat', cardName: listing.card.name, rarity: listing.card.rarity,
         counterpart: listing.seller, price: listing.price,
@@ -402,6 +392,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       // Remplacer l'ID temporaire par l'ID réel généré par la base de données
       setMyListings(prev => prev.map(l => l.id === tempId ? { ...l, id: data.listing_id, seller: profile.pseudo } : l))
       setMarket(prev => prev.map(l => l.id === tempId ? { ...l, id: data.listing_id, seller: profile.pseudo } : l))
+      checkAchievementsRef.current?.(data?.achievements || [])
 
       // Rafraîchir depuis l'API pour avoir l'état cohérent
       apiGetMarket().then(({ data: mkt }) => {
@@ -457,11 +448,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   // ── Sale notification depuis WebSocket ────────────────────────────────────
   const handleSaleNotifFromSocket = useCallback(({ cardName, buyer, price, rarity }) => {
     setGold(g => g + price)
-    setTotalSells(s => {
-      const newSells = s + 1
-      setTimeout(() => checkAchievementsRef.current?.({ totalSells: newSells }), 50)
-      return newSells
-    })
+    setTotalSells(s => s + 1)
     setTransactions(prev => [{ type: 'vente', cardName, rarity: rarity || 'commun', counterpart: buyer, price, date: new Date().toLocaleDateString('fr-FR'), isNew: true }, ...prev])
     setSaleNotifs(prev => [...prev, { id: Date.now(), cardName, buyer, price }])
     setUnreadSales(n => n + 1)
