@@ -757,92 +757,131 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Countdown ── */}
-      {auth.profile && (
-        <div style={{ padding: isMobile ? '8px 10px 0' : '10px 18px 0' }}>
-          {!activeQuiz && auth.profile?.status !== 'banni' && <div data-tour="countdown"><CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} /></div>}
-        </div>
-      )}
-
-      {/* ── Quêtes du jour + historique ── */}
-      {auth.profile && (
-        <div style={{ padding: '6px 18px 0', display: 'flex', gap: 14, alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <DailyQuests questActivitySignal={gs.questActivitySignal} />
-          {history.filter(h => !h.skipped).length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <div style={{ fontSize: 9,color: '#555',fontWeight: 700,textTransform: 'uppercase',letterSpacing: 1 }}>{t('last_cards')}</div>
-              <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                {history.filter(h => !h.skipped).slice(0, 5).map((h, i) => {
-                  const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
-                  return (
-                    <div key={i} title={h.card?.name} onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)} style={{ display: 'flex',flexDirection: 'column',alignItems: 'center',gap: 3, cursor: 'pointer' }}>
-                      <div style={{ position: 'relative', width: 40, height: 40, transition: 'all 0.2s', zIndex: 1 }} onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.7)'; e.currentTarget.style.zIndex = 10; }} onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
-                        <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', position: 'relative', border: `2px solid ${c1}`, background: '#1a1a2e', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 12px ${c1}aa` : 'none' }}>
-                          {h.card ? (
-                            (h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url) ? (
-                              <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
-                            ) : (
-                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{h.card.name[0]}</div>
-                            )
-                          ) : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:900,color:'#555'}}>?</div>}
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 8,fontWeight:700,color:'#ccc',maxWidth:36,textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
-                        {h.won ? '✓' : h.winner}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ── Landing — non connecté ── */}
       {!auth.profile && import.meta.env.VITE_API_URL && (
         <LandingSection onOpenAuth={() => setShowAuth(true)} />
       )}
 
-      {/* ── Filters ── */}
-      {(auth.profile || !import.meta.env.VITE_API_URL) && <div style={{ padding: isMobile ? '8px 10px 0' : '10px 18px 0' }}>
-        {/* ── Compteurs par type — scroll horizontal ── */}
-        {auth.profile && gs.cardPool.length > 0 && (
-          <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginBottom: 8, paddingBottom: 2, scrollbarWidth: 'none' }}>
-            {types.map(tp => {
-              const pool  = tp === 'Tous'
-                ? gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement')
-                : gs.cardPool.filter(c => c.type === tp)
-              const total = pool.length
-              const owned = pool.filter(c => (gs.collection[c.id] || 0) > 0).length
-              const pct   = total > 0 ? Math.round(owned / total * 100) : 0
-              const full  = owned === total && total > 0
-              const active = filter === tp
-              return (
-                <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }}
-                  style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0, background: active ? '#f9ca24' : '#ffffff08', border: `1px solid ${active ? '#f9ca24' : '#ffffff0f'}`, borderRadius: 8, padding: '5px 8px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', alignItems: 'center', minWidth: 58 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a1a2e' : full ? '#00b894' : '#999', whiteSpace: 'nowrap' }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: active ? '#1a1a2e' : full ? '#00b894' : '#f9ca24', whiteSpace: 'nowrap', lineHeight: 1 }}>{owned}<span style={{ color: active ? '#00000055' : '#555', fontWeight: 600 }}>/{total}</span></span>
-                    <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#00000022' : '#ffffff10', overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: active ? '#1a1a2e' : full ? '#00b894' : 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .6s' }}/>
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        )}
+      {/* ── Panneau principal : countdown + quêtes + historique + filtres ── */}
+      {auth.profile && (
+        <div style={{
+          margin: isMobile ? '6px 10px 0' : '8px 18px 0',
+          background: '#ffffff04',
+          border: '1px solid #ffffff09',
+          borderRadius: 18,
+          overflow: 'hidden',
+        }}>
+          {/* Countdown */}
+          {!activeQuiz && auth.profile?.status !== 'banni' && (
+            <div style={{ padding: isMobile ? '10px 12px 8px' : '12px 16px 10px' }} data-tour="countdown">
+              <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} />
+            </div>
+          )}
 
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
-          <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }}
-            placeholder={t('collection_search')}
-            style={{ flex: 1, boxSizing: 'border-box', background: '#ffffff0f', border: '1px solid #ffffff18', borderRadius: 10, color: '#fff', padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
-          <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }} style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : '#ffffff15', border: 'none', color: '#fff', padding: '7px 12px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {showMissing ? t('filter_owned') : t('filter_missing')}
-          </button>
+          {/* Quêtes du jour + last 8 geocoins sur 2 étages */}
+          <div style={{
+            borderTop: '1px solid #ffffff07',
+            padding: isMobile ? '8px 12px' : '10px 16px',
+            display: 'flex',
+            gap: isMobile ? 10 : 18,
+            alignItems: 'flex-start',
+            flexWrap: isMobile ? 'wrap' : 'nowrap',
+          }}>
+            <DailyQuests questActivitySignal={gs.questActivitySignal} />
+
+            {!isMobile && <div style={{ width: 1, background: '#ffffff09', alignSelf: 'stretch', flexShrink: 0 }} />}
+
+            {history.filter(h => !h.skipped).length > 0 && (
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 9, color: '#555', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
+                  {t('last_cards')}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 40px)', gap: 5 }}>
+                  {history.filter(h => !h.skipped).slice(0, 8).map((h, i) => {
+                    const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
+                    return (
+                      <div key={i} title={h.card?.name}
+                        onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)}
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, cursor: 'pointer' }}>
+                        <div style={{ position: 'relative', width: 40, height: 40, transition: 'transform 0.2s', zIndex: 1 }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.6)'; e.currentTarget.style.zIndex = 10; }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
+                          <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', border: `2px solid ${c1}`, background: '#1a1a2e', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
+                            {h.card ? (
+                              (h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url) ? (
+                                <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
+                              ) : (
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{h.card.name[0]}</div>
+                              )
+                            ) : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#555' }}>?</div>}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 7, fontWeight: 700, color: h.won ? '#00b894' : '#666', maxWidth: 40, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {h.won ? '✓' : h.winner}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Filtres — onglets types + recherche */}
+          <div style={{ borderTop: '1px solid #ffffff07', padding: isMobile ? '8px 12px 10px' : '8px 16px 12px' }}>
+            {gs.cardPool.length > 0 && (
+              <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginBottom: 8, paddingBottom: 2, scrollbarWidth: 'none' }}>
+                {types.map(tp => {
+                  const pool  = tp === 'Tous'
+                    ? gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement')
+                    : gs.cardPool.filter(c => c.type === tp)
+                  const total = pool.length
+                  const owned = pool.filter(c => (gs.collection[c.id] || 0) > 0).length
+                  const pct   = total > 0 ? Math.round(owned / total * 100) : 0
+                  const full  = owned === total && total > 0
+                  const active = filter === tp
+                  return (
+                    <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }}
+                      style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0, background: active ? '#f9ca24' : '#ffffff08', border: `1px solid ${active ? '#f9ca24' : '#ffffff0f'}`, borderRadius: 8, padding: '5px 8px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', alignItems: 'center', minWidth: 58 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a1a2e' : full ? '#00b894' : '#999', whiteSpace: 'nowrap' }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: active ? '#1a1a2e' : full ? '#00b894' : '#f9ca24', whiteSpace: 'nowrap', lineHeight: 1 }}>{owned}<span style={{ color: active ? '#00000055' : '#555', fontWeight: 600 }}>/{total}</span></span>
+                        <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#00000022' : '#ffffff10', overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: active ? '#1a1a2e' : full ? '#00b894' : 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .6s' }}/>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }}
+                placeholder={t('collection_search')}
+                style={{ flex: 1, boxSizing: 'border-box', background: '#ffffff0a', border: '1px solid #ffffff14', borderRadius: 10, color: '#fff', padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
+              <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
+                style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : '#ffffff12', border: 'none', color: '#fff', padding: '7px 12px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {showMissing ? t('filter_owned') : t('filter_missing')}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>}
+      )}
+
+      {/* Mode sans API (invité local) : filtres seuls */}
+      {!auth.profile && !import.meta.env.VITE_API_URL && (
+        <div style={{ padding: isMobile ? '8px 10px 0' : '10px 18px 0' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+            <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }}
+              placeholder={t('collection_search')}
+              style={{ flex: 1, boxSizing: 'border-box', background: '#ffffff0f', border: '1px solid #ffffff18', borderRadius: 10, color: '#fff', padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
+            <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
+              style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : '#ffffff15', border: 'none', color: '#fff', padding: '7px 12px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {showMissing ? t('filter_owned') : t('filter_missing')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Collection grid ── */}
       {(auth.profile || !import.meta.env.VITE_API_URL) && <div style={{ padding: isMobile ? '10px 10px' : '12px 18px' }}>
