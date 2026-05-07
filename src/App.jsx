@@ -372,13 +372,17 @@ export default function App() {
     setActiveQuiz(applyTrans)
   }, [lang])
 
-  // ── Détection mobile ───────────────────────────────────────────────────────
-  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 520)
+  // ── Détection mobile / desktop ────────────────────────────────────────────
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
+  const [isWide,   setIsWide]   = useState(() => typeof window !== 'undefined' && window.innerWidth >= 640)
   useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 520)
+    const handler = () => { setIsMobile(window.innerWidth < 640); setIsWide(window.innerWidth >= 640) }
     window.addEventListener('resize', handler)
     return () => window.removeEventListener('resize', handler)
   }, [])
+
+  // ── Navigation mobile (onglets) ────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState('home')
 
   // ── Clic en dehors du menu avatar ──────────────────────────────────────────
   useEffect(() => {
@@ -640,287 +644,251 @@ export default function App() {
   );
 
   return (
-    <div style={{ minHeight: '100vh',fontFamily: "'Nunito', sans-serif",color: '#fff',paddingBottom: 20 }}>
+    <div style={{ minHeight: '100vh', fontFamily: "'Nunito', sans-serif", color: '#e6edf3', background: '#0d1117', display: 'flex', flexDirection: 'column', paddingBottom: (auth.profile && isMobile) ? 68 : 0 }}>
       <style>{`
-        @keyframes pulseBadge {
-          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
-          70% { transform: scale(1.15); box-shadow: 0 0 0 5px rgba(231, 76, 60, 0); }
-          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
-        }
+        @keyframes pulseBadge { 0%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,.7)}70%{transform:scale(1.15);box-shadow:0 0 0 5px rgba(231,76,60,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,0)} }
+        @keyframes slideIn   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes goldPop   { 0%{opacity:1;transform:translate(-50%,-50%) scale(.8)} 60%{opacity:1;transform:translate(-50%,-80%) scale(1.1)} 100%{opacity:0;transform:translate(-50%,-120%) scale(1)} }
+        @keyframes toastIn   { from{opacity:0;transform:translateY(12px) scale(.97)} to{opacity:1;transform:none} }
+        @keyframes shimmer   { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
       `}</style>
 
-      {/* Rainbow bar */}
-      <div style={{ background: 'linear-gradient(90deg,#74c7ec,#1565c0,#6a1b9a,#e65100,#ffd54f)',backgroundSize: '300% 100%',animation: 'shimmer 6s linear infinite',height: 4 }} />
+      {/* ACCENT BAR */}
+      <div style={{ height: 3, background: 'linear-gradient(90deg,#58a6ff,#bc8cff,#f9ca24,#f85149)', flexShrink: 0 }} />
 
-      {/* ── Header ── */}
-      <div style={{ position: 'relative', zIndex: 100, background: '#00000055', backdropFilter: 'blur(14px)', padding: isMobile ? '8px 10px' : '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #ffffff12', gap: 6 }}>
+      {/* ── HEADER ── */}
+      <header style={{ position: 'sticky', top: 0, zIndex: 200, background: '#0d1117e8', backdropFilter: 'blur(20px)', borderBottom: '1px solid #21262d', padding: isMobile ? '9px 14px' : '9px 20px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <Logo iconSize={isMobile ? 26 : 30} textSize={isMobile ? 15 : 19} />
+        <div style={{ flex: 1 }} />
 
-        {/* Logo */}
-        <Logo iconSize={isMobile ? 28 : 34} textSize={isMobile ? 17 : 22} />
-
-        {/* Stats compactes — connecté seulement */}
+        {/* Currencies */}
         {auth.profile && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, justifyContent: 'center' }}>
-            <div style={{ fontWeight: 900, fontSize: isMobile ? 13 : 14, color: '#f9ca24' }} data-tour="gold">💰 {gs.gold}G</div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div data-tour="gold" style={{ background: '#f9ca2412', border: '1px solid #f9ca2430', borderRadius: 20, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ fontSize: 13 }}>💰</span>
+              <span style={{ fontWeight: 900, fontSize: 14, color: '#f9ca24', fontFamily: "'Fredoka One',sans-serif" }}>{gs.gold}</span>
+            </div>
             {gs.forgePoints > 0 && (
-              <div style={{ fontWeight: 900, fontSize: isMobile ? 11 : 12, color: '#a29bfe', display: 'flex', alignItems: 'center', gap: 3 }}>
-                🔨 {gs.forgePoints}
+              <div style={{ background: '#a29bfe12', border: '1px solid #a29bfe30', borderRadius: 20, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 13 }}>🔨</span>
+                <span style={{ fontWeight: 900, fontSize: 13, color: '#a29bfe', fontFamily: "'Fredoka One',sans-serif" }}>{gs.forgePoints}</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Actions droite */}
-        <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
-          {auth.profile ? (
-            <>
-              {/* Marché */}
-              {(auth.profile || hasDuplicate) && (
-                <button data-tour="market-btn" onClick={() => setShowMarket(true)}
-                  style={{ position: 'relative', background: 'linear-gradient(135deg,#00b894,#00cec9)', border: 'none', color: '#fff', padding: isMobile ? '7px 10px' : '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
-                  {isMobile ? '🏪' : t('btn_market')}
-                  {gs.unreadSales > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#e74c3c', color: '#fff', fontSize: 10, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: '1.5px solid #1a1a2e', animation: 'pulseBadge 1.5s infinite' }}>{gs.unreadSales}</span>}
-                </button>
-              )}
-              {/* Forge */}
-              {gs.cardPool.some(c => c.forgeable) && (
-                <button onClick={() => setShowForge(true)}
-                  style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: isMobile ? '7px 10px' : '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
-                  {isMobile ? '🔨' : '🔨 Forge'}
-                </button>
-              )}
-              {/* Classement */}
-              {gs.limits.leaderboardVisible !== false && (
-                <button data-tour="leaderboard-btn" onClick={() => setShowLeaderboard(true)}
-                  style={{ background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1a1a2e', padding: isMobile ? '7px 10px' : '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
-                  {t('btn_leaderboard')}
-                </button>
-              )}
-
-              {/* Avatar + menu déroulant */}
-              <div style={{ position: 'relative' }} ref={avatarMenuRef}>
-                <button onClick={() => setAvatarMenu(v => !v)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, background: avatarMenu ? '#ffffff22' : '#ffffff0a', borderRadius: 20, padding: isMobile ? '5px 8px 5px 5px' : '5px 10px 5px 5px', border: '1px solid #ffffff18', cursor: 'pointer', fontFamily: "'Nunito',sans-serif" }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#ffffff16'}
-                  onMouseLeave={e => e.currentTarget.style.background = avatarMenu ? '#ffffff22' : '#ffffff0a'}>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#1a1a2e', flexShrink: 0 }}>
-                    {auth.profile.pseudo[0].toUpperCase()}
-                  </div>
-                  {!isMobile && <PseudoDisplay pseudo={auth.profile.pseudo} score={userScore} ranks={gs.limits.playerRanks} style={{ fontSize: 12, fontWeight: 800, color: '#fff', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}/>}
-                  <span style={{ fontSize: 10, color: '#888' }}>▾</span>
-                </button>
-
-                {avatarMenu && (
-                  <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'linear-gradient(145deg,#1a1a2e,#16213e)', border: '1px solid #ffffff18', borderRadius: 14, boxShadow: '0 12px 40px #000b', zIndex: 99999, minWidth: 190, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
-                      {/* Sélecteur de langue */}
-                      <div style={{ padding: '8px 10px 4px', borderBottom: '1px solid #ffffff10' }}>
-                        <div style={{ fontSize: 9, color: '#555', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 5, paddingLeft: 4 }}>Langue</div>
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                          {Object.entries(LANGS).map(([code, label]) => (
-                            <button key={code} onClick={() => setLang(code)}
-                              style={{ background: lang === code ? '#f9ca2433' : '#ffffff0a', border: lang === code ? '1px solid #f9ca2455' : '1px solid #ffffff18', color: lang === code ? '#f9ca24' : '#aaa', padding: '3px 9px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      {/* Actions */}
-                      {[
-                        { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
-                        ...(gs.limits.supportVisible !== false ? [{ icon: '💝', label: t('menu_support') || 'Soutenir', fn: () => { setShowShop(true); setAvatarMenu(false) } }] : []),
-                        ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false) } }] : []),
-                        null,
-                        { icon: '↩', label: t('btn_logout'), color: '#e74c3c', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
-                      ].map((item, i) => item === null ? (
-                        <div key={i} style={{ height: 1, background: '#ffffff10' }}/>
-                      ) : (
-                        <button key={i} onClick={item.fn}
-                          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', color: item.color || '#fff', padding: '10px 14px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13, textAlign: 'left' }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#ffffff0f'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'none'}>
-                          <span style={{ fontSize: 15 }}>{item.icon}</span>{item.label}
-                        </button>
-                      ))}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <LangSelector />
-              <button onClick={() => setShowAuth(true)}
-                style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
-                {t('btn_login')}
+        {/* Desktop action buttons */}
+        {auth.profile && isWide && (
+          <div style={{ display: 'flex', gap: 6 }}>
+            {(auth.profile || hasDuplicate) && (
+              <button data-tour="market-btn" onClick={() => setShowMarket(true)} style={{ position: 'relative', background: '#3fb95014', border: '1px solid #3fb95030', color: '#3fb950', padding: '6px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>
+                🏪 {t('btn_market')}
+                {gs.unreadSales > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#e74c3c', color: '#fff', fontSize: 9, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: '1.5px solid #0d1117', animation: 'pulseBadge 1.5s infinite' }}>{gs.unreadSales}</span>}
               </button>
-            </>
-          )}
-        </div>
-      </div>
+            )}
+            {gs.cardPool.some(c => c.forgeable) && (
+              <button onClick={() => setShowForge(true)} style={{ background: '#a29bfe14', border: '1px solid #a29bfe30', color: '#a29bfe', padding: '6px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>🔨 Forge</button>
+            )}
+            {gs.limits.leaderboardVisible !== false && (
+              <button data-tour="leaderboard-btn" onClick={() => setShowLeaderboard(true)} style={{ background: '#f9ca2414', border: '1px solid #f9ca2430', color: '#f9ca24', padding: '6px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>🏆 {t('btn_leaderboard')}</button>
+            )}
+          </div>
+        )}
 
-      {/* ── Landing — non connecté ── */}
-      {!auth.profile && import.meta.env.VITE_API_URL && (
-        <LandingSection onOpenAuth={() => setShowAuth(true)} />
-      )}
-
-      {/* ── Panneau principal : countdown + quêtes + historique + filtres ── */}
-      {auth.profile && (
-        <div style={{
-          margin: isMobile ? '6px 10px 0' : '8px 18px 0',
-          background: '#ffffff04',
-          border: '1px solid #ffffff09',
-          borderRadius: 18,
-          overflow: 'hidden',
-        }}>
-          {/* Countdown */}
-          {!activeQuiz && auth.profile?.status !== 'banni' && (
-            <div style={{ padding: isMobile ? '10px 12px 8px' : '12px 16px 10px' }} data-tour="countdown">
-              <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} />
-            </div>
-          )}
-
-          {/* Quêtes du jour + last 8 geocoins sur 2 étages */}
-          <div style={{
-            borderTop: '1px solid #ffffff07',
-            padding: isMobile ? '8px 12px' : '10px 16px',
-            display: 'flex',
-            gap: isMobile ? 10 : 18,
-            alignItems: 'flex-start',
-            flexWrap: isMobile ? 'wrap' : 'nowrap',
-          }}>
-            <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
-
-            {!isMobile && <div style={{ width: 1, background: '#ffffff09', alignSelf: 'stretch', flexShrink: 0 }} />}
-
-            {history.filter(h => !h.skipped).length > 0 && (
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 9, color: '#555', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-                  {t('last_cards')}
+        {/* Avatar */}
+        {auth.profile ? (
+          <div style={{ position: 'relative' }} ref={avatarMenuRef}>
+            <button onClick={() => setAvatarMenu(v => !v)} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: '2px solid #f9ca2444', cursor: 'pointer', fontSize: 13, fontWeight: 900, color: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {auth.profile.pseudo[0].toUpperCase()}
+              {gs.unreadSales > 0 && isMobile && <span style={{ position: 'absolute', top: -3, right: -3, background: '#e74c3c', borderRadius: '50%', width: 14, height: 14, fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #0d1117', color: '#fff' }}>{gs.unreadSales > 9 ? '9+' : gs.unreadSales}</span>}
+            </button>
+            {avatarMenu && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#161b22', border: '1px solid #30363d', borderRadius: 12, boxShadow: '0 16px 48px #000d', zIndex: 99999, minWidth: 200, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
+                <div style={{ padding: '8px 10px 6px', borderBottom: '1px solid #21262d' }}>
+                  <div style={{ fontSize: 9, color: '#8b949e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 5, paddingLeft: 4 }}>Langue</div>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {Object.entries(LANGS).map(([code, label]) => (
+                      <button key={code} onClick={() => setLang(code)} style={{ background: lang === code ? '#f9ca2420' : '#21262d', border: lang === code ? '1px solid #f9ca2444' : '1px solid #30363d', color: lang === code ? '#f9ca24' : '#8b949e', padding: '3px 9px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>{label}</button>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 40px)', gap: 5 }}>
-                  {history.filter(h => !h.skipped).slice(0, 8).map((h, i) => {
-                    const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
-                    return (
-                      <div key={i} title={h.card?.name}
-                        onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)}
-                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, cursor: 'pointer' }}>
-                        <div style={{ position: 'relative', width: 40, height: 40, transition: 'transform 0.2s', zIndex: 1 }}
-                          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.6)'; e.currentTarget.style.zIndex = 10; }}
-                          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
-                          <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', border: `2px solid ${c1}`, background: '#1a1a2e', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
-                            {h.card ? (
-                              (h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url) ? (
-                                <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
-                              ) : (
-                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{h.card.name[0]}</div>
-                              )
-                            ) : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#555' }}>?</div>}
+                {[
+                  { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
+                  ...(gs.limits.supportVisible !== false ? [{ icon: '💝', label: t('menu_support') || 'Soutenir', fn: () => { setShowShop(true); setAvatarMenu(false) } }] : []),
+                  ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false) } }] : []),
+                  null,
+                  { icon: '↩', label: t('btn_logout'), color: '#f85149', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
+                ].map((item, i) => item === null ? (
+                  <div key={i} style={{ height: 1, background: '#21262d' }}/>
+                ) : (
+                  <button key={i} onClick={item.fn} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', color: item.color || '#e6edf3', padding: '10px 14px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, textAlign: 'left' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#21262d'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                    <span style={{ fontSize: 15 }}>{item.icon}</span>{item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <LangSelector />
+            <button onClick={() => setShowAuth(true)} style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>{t('btn_login')}</button>
+          </div>
+        )}
+      </header>
+
+      {/* ── MAIN CONTENT ── */}
+      {!auth.profile && import.meta.env.VITE_API_URL ? (
+        <LandingSection onOpenAuth={() => setShowAuth(true)} />
+      ) : (
+        <div style={{ flex: 1, display: isWide ? 'flex' : 'block', alignItems: 'flex-start' }}>
+
+          {/* LEFT SIDEBAR (desktop) / HOME TAB (mobile) */}
+          {/* ── LEFT SIDEBAR content ── */}
+          {(isWide || activeTab === 'home') && auth.profile && (
+            <aside style={{ width: isWide ? 288 : '100%', flexShrink: 0, padding: '14px 16px', borderRight: isWide ? '1px solid #21262d' : 'none', display: 'flex', flexDirection: 'column', gap: 14, ...(isWide ? { position: 'sticky', top: 53, maxHeight: 'calc(100vh - 53px)', overflowY: 'auto' } : {}) }}>
+
+              {/* Countdown hero */}
+              {!activeQuiz && auth.profile?.status !== 'banni' && (
+                <div data-tour="countdown">
+                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} />
+                </div>
+              )}
+
+              {/* Daily quests */}
+              <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
+
+              {/* Last 8 geocoins — 4×2 */}
+              {history.filter(h => !h.skipped).length > 0 && (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: '#8b949e', marginBottom: 8 }}>{t('last_cards')}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 40px)', gap: 5 }}>
+                    {history.filter(h => !h.skipped).slice(0, 8).map((h, i) => {
+                      const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
+                      return (
+                        <div key={i} title={h.card?.name} onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, cursor: 'pointer' }}>
+                          <div style={{ position: 'relative', width: 40, height: 40, transition: 'transform .15s', zIndex: 1 }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.6)'; e.currentTarget.style.zIndex = 10; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
+                            <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', border: `2px solid ${c1}`, background: '#161b22', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
+                              {h.card ? ((h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url)
+                                ? <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{h.card.name[0]}</div>
+                              ) : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 12 }}>?</div>}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 7, fontWeight: 700, color: h.won ? '#3fb950' : '#8b949e', maxWidth: 40, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {h.won ? '✓' : h.winner}
                           </div>
                         </div>
-                        <div style={{ fontSize: 7, fontWeight: 700, color: h.won ? '#00b894' : '#666', maxWidth: 40, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {h.won ? '✓' : h.winner}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Filtres — onglets types + recherche */}
-          <div style={{ borderTop: '1px solid #ffffff07', padding: isMobile ? '8px 12px 10px' : '8px 16px 12px' }}>
-            {gs.cardPool.length > 0 && (
-              <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginBottom: 8, paddingBottom: 2, scrollbarWidth: 'none' }}>
-                {types.map(tp => {
-                  const pool  = tp === 'Tous'
-                    ? gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement')
-                    : gs.cardPool.filter(c => c.type === tp)
-                  const total = pool.length
-                  const owned = pool.filter(c => (gs.collection[c.id] || 0) > 0).length
-                  const pct   = total > 0 ? Math.round(owned / total * 100) : 0
-                  const full  = owned === total && total > 0
-                  const active = filter === tp
-                  return (
-                    <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }}
-                      style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0, background: active ? '#f9ca24' : '#ffffff08', border: `1px solid ${active ? '#f9ca24' : '#ffffff0f'}`, borderRadius: 8, padding: '5px 8px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', alignItems: 'center', minWidth: 58 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a1a2e' : full ? '#00b894' : '#999', whiteSpace: 'nowrap' }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: active ? '#1a1a2e' : full ? '#00b894' : '#f9ca24', whiteSpace: 'nowrap', lineHeight: 1 }}>{owned}<span style={{ color: active ? '#00000055' : '#555', fontWeight: 600 }}>/{total}</span></span>
-                        <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#00000022' : '#ffffff10', overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: '100%', background: active ? '#1a1a2e' : full ? '#00b894' : 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .6s' }}/>
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }}
-                placeholder={t('collection_search')}
-                style={{ flex: 1, boxSizing: 'border-box', background: '#ffffff0a', border: '1px solid #ffffff14', borderRadius: 10, color: '#fff', padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
-              <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
-                style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : '#ffffff12', border: 'none', color: '#fff', padding: '7px 12px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                {showMissing ? t('filter_owned') : t('filter_missing')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mode sans API (invité local) : filtres seuls */}
-      {!auth.profile && !import.meta.env.VITE_API_URL && (
-        <div style={{ padding: isMobile ? '8px 10px 0' : '10px 18px 0' }}>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
-            <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }}
-              placeholder={t('collection_search')}
-              style={{ flex: 1, boxSizing: 'border-box', background: '#ffffff0f', border: '1px solid #ffffff18', borderRadius: 10, color: '#fff', padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
-            <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
-              style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : '#ffffff15', border: 'none', color: '#fff', padding: '7px 12px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              {showMissing ? t('filter_owned') : t('filter_missing')}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Collection grid ── */}
-      {(auth.profile || !import.meta.env.VITE_API_URL) && <div style={{ padding: isMobile ? '10px 10px' : '12px 18px' }}>
-        {displayCards.length === 0 ? (
-          <div style={{ textAlign: 'center',color: '#888',padding: '44px 0' }}>
-            <div style={{ fontSize: 52 }}>📭</div>
-            <div style={{ marginTop: 9,fontSize: 14 }}>{t('no_cards')}</div>
-          </div>
-        ) : (() => {
-          const totalPages = Math.ceil(displayCards.length / COLL_PAGE_SIZE)
-          const page = Math.min(collPage, totalPages - 1)
-          const slice = displayCards.slice(page * COLL_PAGE_SIZE, (page + 1) * COLL_PAGE_SIZE)
-          return (
-            <>
-              <div style={{ display: 'flex',flexWrap: 'wrap',gap: 12,marginBottom: 16 }}>
-                {slice.map(({ card, count, cnt, missing }, idx) => {
-                  const c = count || cnt || 0;
-                  return (
-                    <div key={card.id} style={{ animation: 'slideIn .35s ease both' }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
-                      <Card card={card} count={missing ? 0 : c} dimmed={missing}
-                        onClick={missing ? undefined : () => setSelectedCard(card)} />
-                    </div>
-                  );
-                })}
-              </div>
-              {totalPages > 1 && (
-                <div style={{ display: 'flex',alignItems: 'center',justifyContent: 'center',gap: 8,paddingBottom: 8 }}>
-                  <button onClick={() => setCollPage(p => Math.max(0, p - 1))} disabled={page === 0}
-                    style={{ background: page===0?'#ffffff0a':'#ffffff18',border:'none',color:page===0?'#444':'#fff',width:32,height:32,borderRadius:9,cursor:page===0?'default':'pointer',fontWeight:900,fontSize:15 }}>‹</button>
-                  <span style={{ fontSize: 12,color: '#888',fontWeight: 700 }}>{page + 1} / {totalPages}</span>
-                  <span style={{ fontSize: 11,color: '#555' }}>({displayCards.length} cartes)</span>
-                  <button onClick={() => setCollPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
-                    style={{ background: page===totalPages-1?'#ffffff0a':'#ffffff18',border:'none',color:page===totalPages-1?'#444':'#fff',width:32,height:32,borderRadius:9,cursor:page===totalPages-1?'default':'pointer',fontWeight:900,fontSize:15 }}>›</button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-            </>
-          )
-        })()}
-      </div>}
+            </aside>
+          )}
+
+          {/* ── RIGHT PANEL : collection ── */}
+          {(isWide || activeTab === 'collection' || !auth.profile) && (
+            <main style={{ flex: 1, padding: isWide ? '14px 20px' : '12px 14px', minWidth: 0 }}>
+
+              {/* Type filter tabs */}
+              {gs.cardPool.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 10, paddingBottom: 2, scrollbarWidth: 'none' }}>
+                  {types.map(tp => {
+                    const pool  = tp === 'Tous' ? gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement') : gs.cardPool.filter(c => c.type === tp)
+                    const total = pool.length
+                    const owned = pool.filter(c => (gs.collection[c.id] || 0) > 0).length
+                    const pct   = total > 0 ? Math.round(owned / total * 100) : 0
+                    const full  = owned === total && total > 0
+                    const active = filter === tp
+                    return (
+                      <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }} style={{ flexShrink: 0, background: active ? '#f9ca24' : '#161b22', border: `1px solid ${active ? '#f9ca24' : '#30363d'}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', textAlign: 'center', minWidth: 60 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: active ? '#0d1117' : full ? '#3fb950' : '#8b949e', whiteSpace: 'nowrap', marginBottom: 2 }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: active ? '#0d111766' : full ? '#3fb950' : '#f9ca24' }}>{owned}/{total}</span>
+                          <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#0000001a' : '#30363d', overflow: 'hidden', minWidth: 16 }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: active ? '#0d1117' : full ? '#3fb950' : 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .6s' }}/>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Search + missing toggle */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }} placeholder={t('collection_search')}
+                  style={{ flex: 1, background: '#161b22', border: '1px solid #30363d', borderRadius: 8, color: '#e6edf3', padding: '8px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
+                <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }} style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : '#161b22', border: `1px solid ${showMissing ? '#6c5ce7' : '#30363d'}`, color: showMissing ? '#fff' : '#8b949e', padding: '8px 12px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {showMissing ? t('filter_owned') : t('filter_missing')}
+                </button>
+              </div>
+
+              {/* Card grid */}
+              {displayCards.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#8b949e', padding: '60px 0' }}>
+                  <div style={{ fontSize: 52, marginBottom: 12 }}>📭</div>
+                  <div style={{ fontSize: 15 }}>{t('no_cards')}</div>
+                </div>
+              ) : (() => {
+                const totalPages = Math.ceil(displayCards.length / COLL_PAGE_SIZE)
+                const page = Math.min(collPage, totalPages - 1)
+                const slice = displayCards.slice(page * COLL_PAGE_SIZE, (page + 1) * COLL_PAGE_SIZE)
+                return (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+                      {slice.map(({ card, count, cnt, missing }, idx) => {
+                        const c = count || cnt || 0;
+                        return (
+                          <div key={card.id} style={{ animation: 'slideIn .35s ease both' }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
+                            <Card card={card} count={missing ? 0 : c} dimmed={missing} onClick={missing ? undefined : () => setSelectedCard(card)} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {totalPages > 1 && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, paddingBottom: 8 }}>
+                        <button onClick={() => setCollPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ background: page===0?'#161b22':'#21262d', border: '1px solid #30363d', color: page===0?'#555':'#e6edf3', width: 32, height: 32, borderRadius: 8, cursor: page===0?'default':'pointer', fontWeight: 900, fontSize: 15 }}>‹</button>
+                        <span style={{ fontSize: 12, color: '#8b949e', fontWeight: 700 }}>{page+1} / {totalPages}</span>
+                        <span style={{ fontSize: 11, color: '#555' }}>({displayCards.length})</span>
+                        <button onClick={() => setCollPage(p => Math.min(totalPages-1, p+1))} disabled={page===totalPages-1} style={{ background: page===totalPages-1?'#161b22':'#21262d', border: '1px solid #30363d', color: page===totalPages-1?'#555':'#e6edf3', width: 32, height: 32, borderRadius: 8, cursor: page===totalPages-1?'default':'pointer', fontWeight: 900, fontSize: 15 }}>›</button>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </main>
+          )}
+        </div>
+      )}
+
+      {/* ── BOTTOM NAV (mobile) ── */}
+      {auth.profile && isMobile && (
+        <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: '#0d1117f2', backdropFilter: 'blur(20px)', borderTop: '1px solid #21262d', display: 'flex' }}>
+          {[
+            { id: 'home',        icon: '🏠', label: 'Accueil' },
+            { id: 'collection',  icon: '🃏', label: 'Collection' },
+            { id: 'market',      icon: '🏪', label: 'Marché',    badge: gs.unreadSales, action: () => setShowMarket(true) },
+            ...(gs.cardPool.some(c => c.forgeable) ? [{ id: 'forge', icon: '🔨', label: 'Forge', action: () => setShowForge(true) }] : []),
+            { id: 'top',         icon: '🏆', label: 'Top',       action: () => setShowLeaderboard(true) },
+          ].map(item => {
+            const active = !item.action && activeTab === item.id
+            return (
+              <button key={item.id} onClick={item.action ? item.action : () => setActiveTab(item.id)}
+                style={{ flex: 1, background: 'none', border: 'none', color: active ? '#f9ca24' : '#8b949e', padding: '9px 4px 11px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
+                <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{item.label}</span>
+                {item.badge > 0 && <span style={{ position: 'absolute', top: 7, left: '55%', background: '#e74c3c', color: '#fff', width: 15, height: 15, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #0d1117' }}>{item.badge > 9 ? '9+' : item.badge}</span>}
+                {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '0 0 3px 3px' }} />}
+              </button>
+            )
+          })}
+        </nav>
+      )}
 
       {/* ── Gold flash ── */}
       {goldFlash && (
