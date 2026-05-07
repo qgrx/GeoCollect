@@ -10,6 +10,8 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdmi
   apiAdminSaveTranslations,
   apiGetAchievementDefs, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef,
   apiAdminAddCard,
+  apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
+  apiGetDailySchedule, apiRegenerateDailySchedule,
 } from '../../services/api.js';
 
 const DEFAULT_TYPE = 'Normal';
@@ -58,6 +60,10 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [newDef,setNewDef]=useState(null);
   const [newAchCard,setNewAchCard]=useState(null);
   const newAchFileRef=useRef();
+  const [dailyQuests,setDailyQuests]=useState([]);
+  const [editQuest,setEditQuest]=useState(null);
+  const [newQuest,setNewQuest]=useState(null);
+  const [questSchedule,setQuestSchedule]=useState([]);
   const achFileRef=useRef();
   const [listingsData,setListingsData]=useState({listings:[],total:0,loading:false});
   const [quizStats,setQuizStats]=useState(null);
@@ -166,6 +172,12 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   },[tab]);
 
   useEffect(()=>{
+    if(tab!=='quests') return;
+    apiGetAdminDailyQuests().then(({data})=>{ if(data?.quests) setDailyQuests(data.quests); });
+    apiGetDailySchedule().then(({data})=>{ if(data?.schedule) setQuestSchedule(data.schedule); });
+  },[tab]);
+
+  useEffect(()=>{
     if(tab!=='bots') return;
     apiAdminGetBots().then(({data})=>{ if(data?.bots) setBots(data.bots); });
   },[tab]);
@@ -225,6 +237,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           <Tb id="ips"         lbl={`🌐 IPs (${bannedIPs.length})`}   tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="maintenance"  lbl="🛠️ Maintenance"                   tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="achievements"  lbl="🏆 Achievements"                  tab={tab} setTab={setTab} setMsg={setMsg}/>
+          <Tb id="quests"        lbl="🔨 Quêtes"                         tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="bots"         lbl="🤖 Bots"                           tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="cache"        lbl="⚡ Cache"                           tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="stats"        lbl="📊 Stats"                          tab={tab} setTab={setTab} setMsg={setMsg}/>
@@ -1071,6 +1084,139 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>
             </div>
           )}
+        </div>}
+
+        {/* ── QUÊTES QUOTIDIENNES ── */}
+        {tab==="quests"&&<div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+            <div style={{fontWeight:900,color:"#a29bfe",fontSize:14}}>🔨 Pool de quêtes quotidiennes</div>
+            <button onClick={()=>setNewQuest({name:'',description:'',type:'quiz_win',threshold:1,forge_points:10})}
+              style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"6px 14px",borderRadius:8,fontSize:11}}>
+              {newQuest?"✕ Annuler":"+ Nouvelle quête"}
+            </button>
+          </div>
+
+          {/* Formulaire création */}
+          {newQuest&&(
+            <div style={{marginBottom:16,padding:14,background:"#6c5ce710",border:"1px solid #6c5ce744",borderRadius:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                <Fld lbl="Nom"><input value={newQuest.name} onChange={e=>setNewQuest({...newQuest,name:e.target.value})} placeholder="Quiz enchaîné" style={INP}/></Fld>
+                <Fld lbl="Description"><input value={newQuest.description} onChange={e=>setNewQuest({...newQuest,description:e.target.value})} placeholder="Remporte 2 quiz" style={INP}/></Fld>
+                <Fld lbl="Trigger">
+                  <select value={newQuest.type} onChange={e=>setNewQuest({...newQuest,type:e.target.value})} style={SEL}>
+                    {['buy_count','sell_count','quiz_win','new_card','streak'].map(t=><option key={t} value={t}>{t}</option>)}
+                  </select>
+                </Fld>
+                <Fld lbl="Seuil"><input type="number" value={newQuest.threshold} onChange={e=>setNewQuest({...newQuest,threshold:+e.target.value})} min={1} style={INP}/></Fld>
+                <Fld lbl="Points de forge"><input type="number" value={newQuest.forge_points} onChange={e=>setNewQuest({...newQuest,forge_points:+e.target.value})} min={1} style={INP}/></Fld>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={async()=>{
+                  if(!newQuest.name.trim()){setMsg("❌ Nom requis.");return;}
+                  const {data,error}=await apiCreateAdminDailyQuest(newQuest);
+                  if(error){setMsg("❌ "+error);return;}
+                  setDailyQuests(prev=>[...prev,data.quest]);
+                  setNewQuest(null);setMsg("✅ Quête créée !");
+                }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"7px 16px",borderRadius:8,fontSize:11}}>Créer</button>
+                <button onClick={()=>setNewQuest(null)} style={{...BTN("#ffffff18"),padding:"7px 12px",borderRadius:8,fontSize:11}}>Annuler</button>
+              </div>
+            </div>
+          )}
+
+          {/* Tableau des quêtes */}
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:"'Nunito',sans-serif",marginBottom:24}}>
+            <thead>
+              <tr style={{color:"#888",textAlign:"left"}}>
+                {["Nom","Trigger","Seuil","🔨 Points","Actif",""].map(h=>(
+                  <th key={h} style={{padding:"4px 8px",borderBottom:"1px solid #ffffff10",fontWeight:700}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dailyQuests.map(q=>(
+                <tr key={q.id} style={{borderBottom:"1px solid #ffffff08",background:editQuest?.id===q.id?"#6c5ce710":"transparent"}}>
+                  {editQuest?.id===q.id?(
+                    <td colSpan={6} style={{padding:"8px"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginBottom:6}}>
+                        <Fld lbl="Nom"><input value={editQuest.name} onChange={e=>setEditQuest({...editQuest,name:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
+                        <Fld lbl="Trigger">
+                          <select value={editQuest.type} onChange={e=>setEditQuest({...editQuest,type:e.target.value})} style={{...SEL,fontSize:11}}>
+                            {['buy_count','sell_count','quiz_win','new_card','streak'].map(t=><option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </Fld>
+                        <Fld lbl="Seuil"><input type="number" value={editQuest.threshold} onChange={e=>setEditQuest({...editQuest,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                        <Fld lbl="🔨 Points"><input type="number" value={editQuest.forge_points} onChange={e=>setEditQuest({...editQuest,forge_points:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                        <Fld lbl="Actif">
+                          <select value={editQuest.active?"1":"0"} onChange={e=>setEditQuest({...editQuest,active:e.target.value==="1"})} style={{...SEL,fontSize:11}}>
+                            <option value="1">✅ Actif</option><option value="0">⏸ Inactif</option>
+                          </select>
+                        </Fld>
+                      </div>
+                      <div style={{display:"flex",gap:6}}>
+                        <button onClick={async()=>{
+                          const {data,error}=await apiUpdateAdminDailyQuest(editQuest.id,editQuest);
+                          if(error){setMsg("❌ "+error);return;}
+                          setDailyQuests(prev=>prev.map(d=>d.id===editQuest.id?data.quest:d));
+                          setEditQuest(null);setMsg("✅ Mis à jour !");
+                        }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"5px 12px",borderRadius:7,fontSize:11}}>Enregistrer</button>
+                        <button onClick={()=>setEditQuest(null)} style={{...BTN("#ffffff18"),padding:"5px 10px",borderRadius:7,fontSize:11}}>Annuler</button>
+                        <button onClick={async()=>{
+                          if(!window.confirm(`Supprimer "${q.name}" ?`)) return;
+                          const {error}=await apiDeleteAdminDailyQuest(q.id);
+                          if(error){setMsg("❌ "+error);return;}
+                          setDailyQuests(prev=>prev.filter(d=>d.id!==q.id));
+                          setEditQuest(null);setMsg("✅ Supprimée.");
+                        }} style={{...BTN("#e74c3c22"),border:"1px solid #e74c3c44",color:"#e74c3c",padding:"5px 10px",borderRadius:7,fontSize:11,marginLeft:"auto"}}>🗑 Supprimer</button>
+                      </div>
+                    </td>
+                  ):(
+                    <>
+                      <td style={{padding:"5px 8px",color:"#fff",fontWeight:700}}>{q.name}<div style={{fontSize:9,color:"#555",fontWeight:400}}>{q.description}</div></td>
+                      <td style={{padding:"5px 8px"}}><span style={{background:"#ffffff12",borderRadius:5,padding:"2px 7px",fontSize:10}}>{q.type}</span></td>
+                      <td style={{padding:"5px 8px",color:"#f9ca24",fontWeight:700}}>{q.threshold}</td>
+                      <td style={{padding:"5px 8px",color:"#a29bfe",fontWeight:900}}>🔨 {q.forge_points}</td>
+                      <td style={{padding:"5px 8px"}}><span style={{color:q.active?"#00b894":"#e74c3c",fontWeight:800}}>●</span></td>
+                      <td style={{padding:"5px 8px"}}><button onClick={()=>setEditQuest({...q})} style={{...BTN("#ffffff12"),padding:"3px 10px",borderRadius:6,fontSize:10}}>✏️</button></td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Planning du jour */}
+          <div style={{background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:12,padding:14}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{fontWeight:900,color:"#f9ca24",fontSize:12}}>
+                📅 Quêtes du jour — {new Date().toLocaleDateString('fr-FR')}
+                <span style={{fontSize:10,color:"#555",fontWeight:400,marginLeft:8}}>({questSchedule.length}/3)</span>
+              </div>
+              <button onClick={async()=>{
+                if(!window.confirm("Régénérer aléatoirement les 3 quêtes du jour ?")) return;
+                const {error}=await apiRegenerateDailySchedule();
+                if(error){setMsg("❌ "+error);return;}
+                const {data}=await apiGetDailySchedule();
+                if(data?.schedule) setQuestSchedule(data.schedule);
+                setMsg("✅ Quêtes du jour régénérées !");
+              }} style={{...BTN("#ffffff18"),padding:"5px 12px",borderRadius:8,fontSize:11}}>🎲 Régénérer</button>
+            </div>
+            {questSchedule.length===0
+              ?<div style={{color:"#555",fontSize:11}}>Aucune quête planifiée. Le planning se crée automatiquement à la première connexion du jour.</div>
+              :<div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {questSchedule.map((s,i)=>{
+                  const q=s.daily_quest_definitions;
+                  return(
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:10,background:"#ffffff08",borderRadius:8,padding:"6px 12px"}}>
+                      <span style={{color:"#a29bfe",fontWeight:900,fontSize:11}}>#{i+1}</span>
+                      <span style={{flex:1,fontWeight:700,fontSize:12}}>{q?.name}</span>
+                      <span style={{fontSize:10,color:"#555"}}>{q?.type} × {q?.threshold}</span>
+                      <span style={{color:"#a29bfe",fontWeight:900,fontSize:11}}>🔨 {q?.forge_points}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            }
+          </div>
         </div>}
 
         {/* ── BOTS ── */}

@@ -3,9 +3,9 @@ import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetCurrentQuiz, apiJoinQuiz, apiAnswerQuiz } from '../services/api.js'
 import { getLang } from '../i18n/translations.js'
 
-export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements }) {
+export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned }
 
   const [nextQuizTime,  setNextQuizTime] = useState(Date.now() + QUIZ_INTERVAL * 1000)
   const [countdown,     setCountdown]    = useState(QUIZ_INTERVAL)
@@ -141,10 +141,11 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
       if (data.card_earned) {
         earnCard(card)
       }
-      // Achievements déclenchés côté serveur — on reçoit juste les card_id débloqués
       if (data.achievements?.length) {
         cbRef.current.checkAchievements?.(data.achievements)
       }
+      // Toujours notifier l'activité quête (même si forge_points = 0, la progression change)
+      cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
       if (data.gold_earned) earnGoldWithFx(data.gold_earned)
       if (data.streak != null) cbRef.current.onStreakUpdate?.(data.streak)
       setHistory(h => [{ card, winner: 'Moi', won: true }, ...h].slice(0, 10))
