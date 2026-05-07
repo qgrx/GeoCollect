@@ -9,6 +9,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdmi
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
   apiAdminSaveTranslations,
   apiGetAchievementDefs, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef,
+  apiAdminAddCard,
 } from '../../services/api.js';
 
 const DEFAULT_TYPE = 'Normal';
@@ -55,6 +56,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [achDefs,setAchDefs]=useState([]);
   const [editDef,setEditDef]=useState(null);
   const [newDef,setNewDef]=useState(null);
+  const [newAchCard,setNewAchCard]=useState(null);
+  const newAchFileRef=useRef();
   const achFileRef=useRef();
   const [listingsData,setListingsData]=useState({listings:[],total:0,loading:false});
   const [quizStats,setQuizStats]=useState(null);
@@ -713,7 +716,122 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
         {/* ── ACHIEVEMENTS ── */}
         {tab==="achievements"&&<div>
-          <div style={{fontWeight:900,color:"#e74c3c",marginBottom:14,fontSize:14}}>🏆 Cartes Achievement ({achCards.length})</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+            <div style={{fontWeight:900,color:"#e74c3c",fontSize:14}}>🏆 Cartes Achievement ({achCards.length})</div>
+            <button onClick={()=>setNewAchCard(newAchCard?null:{name:"",description:"",rarity:"commun",image:null,trigger:"buy_count",threshold:1,category:"permanent",points:0})}
+              style={{...BTN(newAchCard?"#ffffff18":"linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"6px 14px",borderRadius:8,fontSize:11}}>
+              {newAchCard?"✕ Annuler":"➕ Nouvelle carte achievement"}
+            </button>
+          </div>
+
+          {/* ── Formulaire création carte achievement ── */}
+          {newAchCard&&(()=>{
+            const {c1,c2}=cardCC(newAchCard.rarity);
+            const isLeg=newAchCard.rarity==="légendaire";
+            return(
+              <div style={{marginBottom:20,padding:16,background:"#ffffff08",border:"1.5px solid #e74c3c44",borderRadius:14}}>
+                <div style={{fontWeight:900,color:"#e74c3c",marginBottom:14,fontSize:13}}>✨ Nouvelle carte achievement</div>
+                <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"flex-start"}}>
+                  {/* Champs */}
+                  <div style={{flex:1,minWidth:240}}>
+                    <div style={{fontWeight:800,color:"#aaa",fontSize:10,textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>🃏 Carte</div>
+                    <Fld lbl="Nom de la carte">
+                      <input value={newAchCard.name} onChange={e=>setNewAchCard({...newAchCard,name:e.target.value})} placeholder="ex: Grand collectionneur" style={INP}/>
+                    </Fld>
+                    <Fld lbl="Description">
+                      <input value={newAchCard.description} onChange={e=>setNewAchCard({...newAchCard,description:e.target.value})} placeholder="ex: Obtiens 200 cartes uniques" style={INP}/>
+                    </Fld>
+                    <Fld lbl="Rareté">
+                      <select value={newAchCard.rarity} onChange={e=>setNewAchCard({...newAchCard,rarity:e.target.value})} style={SEL}>
+                        {["commun","rare","épique","légendaire"].map(r=><option key={r} value={r}>{RC[r].label}</option>)}
+                      </select>
+                      <div style={{marginTop:5,height:5,borderRadius:3,background:`linear-gradient(90deg,${c1},${c2})`}}/>
+                    </Fld>
+                    <Fld lbl="Image PNG">
+                      <div onClick={()=>newAchFileRef.current.click()} style={{border:"2px dashed #ffffff33",borderRadius:9,padding:"11px",textAlign:"center",cursor:"pointer",background:"#ffffff08"}}
+                        onMouseEnter={e=>e.currentTarget.style.borderColor="#f9ca2466"}
+                        onMouseLeave={e=>e.currentTarget.style.borderColor="#ffffff33"}>
+                        {newAchCard.image
+                          ?<img src={newAchCard.image} style={{maxWidth:"100%",maxHeight:70,objectFit:"contain",borderRadius:5}} alt="prev"/>
+                          :<div style={{color:"#888",fontSize:12}}>📁 Choisir un PNG</div>}
+                      </div>
+                      <input ref={newAchFileRef} type="file" accept=".png,image/png"
+                        onChange={e=>imgUpload(e,({imageBase64})=>{if(imageBase64)setNewAchCard(p=>({...p,image:imageBase64}));},{name:newAchCard.name,type:"Achievements",rarity:newAchCard.rarity})}
+                        style={{display:"none"}}/>
+                    </Fld>
+                    <div style={{fontWeight:800,color:"#aaa",fontSize:10,textTransform:"uppercase",letterSpacing:.8,marginBottom:10,marginTop:6}}>🎯 Condition achievement</div>
+                    <Fld lbl="Trigger">
+                      <select value={newAchCard.trigger} onChange={e=>setNewAchCard({...newAchCard,trigger:e.target.value})} style={SEL}>
+                        {['buy_count','sell_count','quiz_win','new_card','streak','collection_size'].map(t=><option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </Fld>
+                    <Fld lbl="Seuil (nombre d'événements)">
+                      <input type="number" value={newAchCard.threshold} onChange={e=>setNewAchCard({...newAchCard,threshold:+e.target.value})} min={1} style={INP}/>
+                    </Fld>
+                    <div style={{display:"flex",gap:10}}>
+                      <Fld lbl="Catégorie"><select value={newAchCard.category} onChange={e=>setNewAchCard({...newAchCard,category:e.target.value})} style={{...SEL,fontSize:11}}>
+                        <option value="permanent">permanent</option><option value="daily">daily</option>
+                      </select></Fld>
+                      <Fld lbl="Points bonus"><input type="number" value={newAchCard.points} onChange={e=>setNewAchCard({...newAchCard,points:+e.target.value})} min={0} style={{...INP,fontSize:11}}/></Fld>
+                    </div>
+                    <button onClick={async()=>{
+                      if(!newAchCard.name.trim()){setMsg("❌ Nom requis.");return;}
+                      if(!newAchCard.threshold||newAchCard.threshold<1){setMsg("❌ Seuil ≥ 1.");return;}
+                      setMsg("⏳ Création en cours…");
+                      // 1. Créer la carte
+                      const {data:cardData,error:cardErr}=await apiAdminAddCard({
+                        name:newAchCard.name.trim(),type:"Achievements",rarity:newAchCard.rarity,
+                        image_url:newAchCard.image||null,desc:newAchCard.description,
+                        sellable:false,min_price:null,
+                      });
+                      if(cardErr||!cardData?.card){setMsg("❌ Carte: "+(cardErr||"erreur"));return;}
+                      const card=cardData.card;
+                      // 2. Créer la définition avec clé auto
+                      const key=`ach_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,5)}`;
+                      const {data:defData,error:defErr}=await apiCreateAchievementDef({
+                        key,name:newAchCard.name.trim(),description:newAchCard.description,
+                        type:newAchCard.trigger,threshold:newAchCard.threshold,
+                        card_id:card.id,points:newAchCard.points,category:newAchCard.category,
+                      });
+                      if(defErr){setMsg("❌ Définition: "+defErr);return;}
+                      // 3. Mettre à jour le state
+                      const normalized={...card,desc:card.description??''};
+                      setAchCards(prev=>[...prev,normalized]);
+                      onUpdateCardInPool?.(normalized);
+                      setAchDefs(prev=>[...prev,defData.definition]);
+                      setNewAchCard(null);
+                      if(newAchFileRef.current)newAchFileRef.current.value='';
+                      setMsg(`✅ "${card.name}" créée (id ${card.id}) + condition liée !`);
+                    }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10,marginTop:4,width:"100%",textAlign:"center"}}>
+                      Créer la carte + la condition ✨
+                    </button>
+                  </div>
+                  {/* Aperçu */}
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,flexShrink:0}}>
+                    <div style={{fontSize:10,color:"#888",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Aperçu</div>
+                    <div style={{position:"relative",width:148,height:190,borderRadius:16,
+                      border:isLeg?`2px solid ${c1}`:`1.5px solid ${c1}66`,
+                      boxShadow:isLeg?`0 0 20px ${c1}66,0 4px 20px #0004`:"0 4px 14px #0003",
+                      overflow:"hidden",background:newAchCard.image?"transparent":`linear-gradient(145deg,${c1}44,${c2}66)`,
+                      fontFamily:"'Nunito',sans-serif"}}>
+                      {isLeg&&<div style={{position:"absolute",inset:0,borderRadius:16,zIndex:2,background:"linear-gradient(135deg,transparent 40%,#ffffff1a 50%,transparent 60%)",backgroundSize:"400px 100%",animation:"shimmer 2.5s linear infinite",pointerEvents:"none"}}/>}
+                      <div style={{position:"absolute",inset:0,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:6}}>
+                        {newAchCard.image?<img src={newAchCard.image} style={{width:"100%",height:"88%",objectFit:"contain"}} alt=""/>:<div style={{fontSize:52,opacity:.22,marginTop:40}}>🏆</div>}
+                      </div>
+                      <div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,background:`linear-gradient(to top,${c1}ee,${c1}99 50%,transparent)`,padding:"28px 8px 7px",textAlign:"center"}}>
+                        <div style={{fontWeight:900,fontSize:13,color:"#fff",textShadow:"0 1px 4px #0008",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{newAchCard.name||"Nom"}</div>
+                      </div>
+                      <div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:4,height:4,background:`linear-gradient(90deg,${c1},${c2})`}}/>
+                      <div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#e74c3ccc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>NON VENDABLE</div>
+                    </div>
+                    <div style={{fontSize:9,color:"#555",textAlign:"center",maxWidth:148}}>
+                      type: Achievements<br/>trigger: {newAchCard.trigger}<br/>seuil: {newAchCard.threshold}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"flex-start"}}>
 
             {/* Grille de cartes */}
