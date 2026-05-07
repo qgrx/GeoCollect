@@ -37,6 +37,7 @@ import AdminPanel from './features/admin/AdminPanel.jsx';
 import ShopModal from './features/shop/ShopModal.jsx';
 import { AchievementToast, SaleNotif, TxHistoryModal } from './features/achievements/NotifComponents.jsx';
 import DailyQuests from './features/quests/DailyQuests.jsx';
+import ForgeModal  from './features/forge/ForgeModal.jsx';
 
 function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
   const imgRef = useRef(null)
@@ -319,6 +320,7 @@ export default function App() {
 
   // ── Local UI state ─────────────────────────────────────────────────────────
   const [showMarket,      setShowMarket]      = useState(false);
+  const [showForge,       setShowForge]       = useState(false);
   useEffect(() => { gs.marketOpenRef.current = showMarket }, [showMarket]);
   const [marketTab,       setMarketTab]       = useState('acheter');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -680,6 +682,13 @@ export default function App() {
                   {gs.unreadSales > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#e74c3c', color: '#fff', fontSize: 10, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: '1.5px solid #1a1a2e', animation: 'pulseBadge 1.5s infinite' }}>{gs.unreadSales}</span>}
                 </button>
               )}
+              {/* Forge */}
+              {gs.cardPool.some(c => c.forgeable) && (
+                <button onClick={() => setShowForge(true)}
+                  style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: isMobile ? '7px 10px' : '7px 13px', borderRadius: 20, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900 }}>
+                  {isMobile ? '🔨' : '🔨 Forge'}
+                </button>
+              )}
               {/* Classement */}
               {gs.limits.leaderboardVisible !== false && (
                 <button data-tour="leaderboard-btn" onClick={() => setShowLeaderboard(true)}
@@ -916,6 +925,26 @@ export default function App() {
       {/* ── Modals ── */}
       {pendingQuiz && !activeQuiz && <QuizNotif key={quizKey} quiz={pendingQuiz} onJoin={handleJoin} onSkip={handleSkip} />}
       {activeQuiz  && <QuizModal quiz={activeQuiz} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
+
+      {showForge && (
+        <ForgeModal
+          cardPool={gs.cardPool}
+          collection={gs.collection}
+          forgePoints={gs.forgePoints}
+          onClose={() => setShowForge(false)}
+          onForged={(data) => {
+            if (data?.forge_points_remaining !== undefined) {
+              gs.addForgePoints(data.forge_points_remaining - gs.forgePoints)
+            }
+            if (data?.card) {
+              gs.setCollection(prev => ({
+                ...prev,
+                [data.card.id]: (prev[data.card.id] || 0) + 1,
+              }))
+            }
+          }}
+        />
+      )}
 
       {showMarket && (
         <MarketModal

@@ -129,6 +129,7 @@ export const apiAdminDeleteCard       = (id)   => apiFetch(`/api/cards/${id}`, {
 export const apiGetAchievements        = ()       => apiFetch('/api/achievements')
 export const apiGetDailyAchievements   = ()       => apiFetch('/api/achievements/daily')
 export const apiGetDailyQuests         = ()       => apiFetch('/api/quests/daily')
+export const apiForgeCard              = (cardId) => apiFetch(`/api/forge/${cardId}`, { method: 'POST' })
 export const apiGetAdminDailyQuests    = ()       => apiFetch('/api/admin/daily-quests')
 export const apiCreateAdminDailyQuest  = (body)   => apiFetch('/api/admin/daily-quests', { method: 'POST', body })
 export const apiUpdateAdminDailyQuest  = (id, body) => apiFetch(`/api/admin/daily-quests/${id}`, { method: 'PATCH', body })
