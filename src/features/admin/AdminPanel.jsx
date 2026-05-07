@@ -7,7 +7,9 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdmi
   apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminReactivate,
   apiAdminGetBots, apiAdminCreateBot, apiAdminUpdateBot, apiAdminDeleteBot,
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
-  apiAdminSaveTranslations } from '../../services/api.js';
+  apiAdminSaveTranslations,
+  apiGetAchievementDefs, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef,
+} from '../../services/api.js';
 
 const DEFAULT_TYPE = 'Normal';
 
@@ -50,6 +52,9 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [qSearch,setQSearch]=useState("");
   const [achCards,setAchCards]=useState([]);
   const [editAch,setEditAch]=useState(null);
+  const [achDefs,setAchDefs]=useState([]);
+  const [editDef,setEditDef]=useState(null);
+  const [newDef,setNewDef]=useState(null);
   const achFileRef=useRef();
   const [listingsData,setListingsData]=useState({listings:[],total:0,loading:false});
   const [quizStats,setQuizStats]=useState(null);
@@ -146,6 +151,9 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
     if(tab!=='achievements') return;
     apiGetAchievementCards().then(({data})=>{
       if(data?.cards) setAchCards(data.cards.map(c=>({...c, desc: c.desc ?? c.description ?? ''})));
+    });
+    apiGetAchievementDefs().then(({data})=>{
+      if(data?.definitions) setAchDefs(data.definitions);
     });
   },[tab]);
 
@@ -781,6 +789,138 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 </div>
               </div>
             )}
+          </div>
+
+          {/* ── Conditions (achievement_definitions) ── */}
+          <div style={{marginTop:22,background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:12,padding:14}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+              <div style={{fontWeight:900,color:"#f9ca24",fontSize:13}}>⚙️ Conditions déclenchantes</div>
+              <button onClick={()=>setNewDef({key:'',name:'',description:'',type:'buy_count',threshold:1,card_id:'',points:0,category:'permanent',active:true})}
+                style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"5px 12px",borderRadius:8,fontSize:11}}>+ Nouvelle</button>
+            </div>
+
+            {/* Formulaire nouvelle définition */}
+            {newDef&&(
+              <div style={{marginBottom:14,padding:12,background:"#ffffff0a",borderRadius:10,border:"1px solid #00b89444"}}>
+                <div style={{fontWeight:800,color:"#00b894",marginBottom:10,fontSize:12}}>✨ Nouvelle condition</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  <Fld lbl="Clé unique"><input value={newDef.key} onChange={e=>setNewDef({...newDef,key:e.target.value})} placeholder="ex: buyer_200" style={INP}/></Fld>
+                  <Fld lbl="Nom affiché"><input value={newDef.name} onChange={e=>setNewDef({...newDef,name:e.target.value})} placeholder="ex: Méga acheteur" style={INP}/></Fld>
+                  <Fld lbl="Type de déclencheur">
+                    <select value={newDef.type} onChange={e=>setNewDef({...newDef,type:e.target.value})} style={SEL}>
+                      {['buy_count','sell_count','quiz_win','new_card','streak','collection_size'].map(t=><option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </Fld>
+                  <Fld lbl="Seuil"><input type="number" value={newDef.threshold} onChange={e=>setNewDef({...newDef,threshold:+e.target.value})} min={1} style={INP}/></Fld>
+                  <Fld lbl="card_id (carte à débloquer)"><input type="number" value={newDef.card_id} onChange={e=>setNewDef({...newDef,card_id:+e.target.value||''})} placeholder="ex: 901" style={INP}/></Fld>
+                  <Fld lbl="Points bonus"><input type="number" value={newDef.points} onChange={e=>setNewDef({...newDef,points:+e.target.value})} min={0} style={INP}/></Fld>
+                  <Fld lbl="Catégorie">
+                    <select value={newDef.category} onChange={e=>setNewDef({...newDef,category:e.target.value})} style={SEL}>
+                      <option value="permanent">permanent</option>
+                      <option value="daily">daily</option>
+                    </select>
+                  </Fld>
+                  <Fld lbl="Description"><input value={newDef.description} onChange={e=>setNewDef({...newDef,description:e.target.value})} style={INP}/></Fld>
+                </div>
+                <div style={{display:"flex",gap:8,marginTop:8}}>
+                  <button onClick={async()=>{
+                    if(!newDef.key.trim()||!newDef.name.trim()){setMsg("❌ Clé et nom requis.");return;}
+                    const {data,error}=await apiCreateAchievementDef({...newDef,card_id:newDef.card_id||null});
+                    if(error){setMsg("❌ "+error);return;}
+                    setAchDefs(prev=>[...prev,data.definition]);
+                    setNewDef(null);setMsg("✅ Condition créée !");
+                  }} style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"7px 14px",borderRadius:8,fontSize:11}}>Créer</button>
+                  <button onClick={()=>setNewDef(null)} style={{...BTN("#ffffff18"),padding:"7px 12px",borderRadius:8,fontSize:11}}>Annuler</button>
+                </div>
+              </div>
+            )}
+
+            {/* Tableau des définitions */}
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:"'Nunito',sans-serif"}}>
+                <thead>
+                  <tr style={{color:"#888",textAlign:"left"}}>
+                    {["Clé","Trigger","Seuil","Carte","Points","Catégorie","Actif",""].map(h=>(
+                      <th key={h} style={{padding:"4px 8px",borderBottom:"1px solid #ffffff10",fontWeight:700}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {achDefs.map(def=>(
+                    <tr key={def.id} style={{borderBottom:"1px solid #ffffff08",background:editDef?.id===def.id?"#ffffff0a":"transparent"}}>
+                      {editDef?.id===def.id ? (
+                        // ── Ligne d'édition inline ──
+                        <>
+                          <td style={{padding:"6px 8px"}} colSpan={7}>
+                            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:6}}>
+                              <Fld lbl="Nom"><input value={editDef.name} onChange={e=>setEditDef({...editDef,name:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
+                              <Fld lbl="Trigger">
+                                <select value={editDef.type} onChange={e=>setEditDef({...editDef,type:e.target.value})} style={{...SEL,fontSize:11}}>
+                                  {['buy_count','sell_count','quiz_win','new_card','streak','collection_size'].map(t=><option key={t} value={t}>{t}</option>)}
+                                </select>
+                              </Fld>
+                              <Fld lbl="Seuil"><input type="number" value={editDef.threshold} onChange={e=>setEditDef({...editDef,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                              <Fld lbl="card_id"><input type="number" value={editDef.card_id??''} onChange={e=>setEditDef({...editDef,card_id:+e.target.value||null})} style={{...INP,fontSize:11}}/></Fld>
+                              <Fld lbl="Points"><input type="number" value={editDef.points} onChange={e=>setEditDef({...editDef,points:+e.target.value})} min={0} style={{...INP,fontSize:11}}/></Fld>
+                              <Fld lbl="Catégorie">
+                                <select value={editDef.category} onChange={e=>setEditDef({...editDef,category:e.target.value})} style={{...SEL,fontSize:11}}>
+                                  <option value="permanent">permanent</option>
+                                  <option value="daily">daily</option>
+                                </select>
+                              </Fld>
+                              <Fld lbl="Description"><input value={editDef.description??''} onChange={e=>setEditDef({...editDef,description:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
+                              <Fld lbl="Actif">
+                                <select value={editDef.active?"1":"0"} onChange={e=>setEditDef({...editDef,active:e.target.value==="1"})} style={{...SEL,fontSize:11}}>
+                                  <option value="1">✅ Actif</option>
+                                  <option value="0">⏸ Inactif</option>
+                                </select>
+                              </Fld>
+                            </div>
+                            <div style={{display:"flex",gap:6}}>
+                              <button onClick={async()=>{
+                                const {data,error}=await apiUpdateAchievementDef(editDef.id,editDef);
+                                if(error){setMsg("❌ "+error);return;}
+                                setAchDefs(prev=>prev.map(d=>d.id===editDef.id?data.definition:d));
+                                setEditDef(null);setMsg("✅ Mis à jour !");
+                              }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"5px 12px",borderRadius:7,fontSize:11}}>Enregistrer</button>
+                              <button onClick={()=>setEditDef(null)} style={{...BTN("#ffffff18"),padding:"5px 10px",borderRadius:7,fontSize:11}}>Annuler</button>
+                              <button onClick={async()=>{
+                                if(!window.confirm(`Supprimer "${def.key}" ?`)) return;
+                                const {error}=await apiDeleteAchievementDef(def.id);
+                                if(error){setMsg("❌ "+error);return;}
+                                setAchDefs(prev=>prev.filter(d=>d.id!==def.id));
+                                setEditDef(null);setMsg("✅ Supprimé.");
+                              }} style={{...BTN("#e74c3c22"),border:"1px solid #e74c3c44",color:"#e74c3c",padding:"5px 10px",borderRadius:7,fontSize:11,marginLeft:"auto"}}>🗑 Supprimer</button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        // ── Ligne normale ──
+                        <>
+                          <td style={{padding:"5px 8px",color:"#aaa",fontFamily:"monospace"}}>{def.key}</td>
+                          <td style={{padding:"5px 8px"}}>
+                            <span style={{background:"#ffffff12",borderRadius:5,padding:"2px 7px",fontSize:10}}>{def.type}</span>
+                          </td>
+                          <td style={{padding:"5px 8px",color:"#f9ca24",fontWeight:700}}>{def.threshold}</td>
+                          <td style={{padding:"5px 8px",color:"#aaa"}}>{def.cards ? `#${def.card_id} ${def.cards.name}` : def.card_id ? `#${def.card_id}` : '—'}</td>
+                          <td style={{padding:"5px 8px",color:"#aaa"}}>{def.points||'—'}</td>
+                          <td style={{padding:"5px 8px"}}>
+                            <span style={{background:def.category==="daily"?"#f9ca2422":"#ffffff10",color:def.category==="daily"?"#f9ca24":"#aaa",borderRadius:5,padding:"2px 7px",fontSize:10}}>{def.category}</span>
+                          </td>
+                          <td style={{padding:"5px 8px"}}>
+                            <span style={{color:def.active?"#00b894":"#e74c3c",fontWeight:800,fontSize:12}}>{def.active?"●":"○"}</span>
+                          </td>
+                          <td style={{padding:"5px 8px"}}>
+                            <button onClick={()=>setEditDef({...def})} style={{...BTN("#ffffff12"),padding:"3px 10px",borderRadius:6,fontSize:10,cursor:"pointer"}}>✏️</button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {achDefs.length===0&&<div style={{color:"#555",fontSize:11,textAlign:"center",padding:16}}>Aucune définition chargée.</div>}
+            </div>
           </div>
 
           {/* ── Test des notifications achievement ── */}
