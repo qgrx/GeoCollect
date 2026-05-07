@@ -36,6 +36,7 @@ import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
 import ShopModal from './features/shop/ShopModal.jsx';
 import { AchievementToast, SaleNotif, TxHistoryModal } from './features/achievements/NotifComponents.jsx';
+import DailyQuests from './features/quests/DailyQuests.jsx';
 
 function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
   const imgRef = useRef(null)
@@ -418,6 +419,7 @@ export default function App() {
     onQuizEnd: () => setQuizSessionActive(false),
     cardPool: gs.cardPool,
     checkAchievements: gs.checkAchievements,
+    onForgePointsEarned: gs.addForgePoints,
   })
   const { countdown, setNextQuizTime, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
     nextCard, setNextCard, history, setHistory, quizKey, setQuizKey,
@@ -658,6 +660,11 @@ export default function App() {
         {auth.profile && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, justifyContent: 'center' }}>
             <div style={{ fontWeight: 900, fontSize: isMobile ? 13 : 14, color: '#f9ca24' }} data-tour="gold">💰 {gs.gold}G</div>
+            {gs.forgePoints > 0 && (
+              <div style={{ fontWeight: 900, fontSize: isMobile ? 11 : 12, color: '#a29bfe', display: 'flex', alignItems: 'center', gap: 3 }}>
+                🔨 {gs.forgePoints}
+              </div>
+            )}
           </div>
         )}
 
@@ -748,33 +755,38 @@ export default function App() {
         </div>
       )}
 
-      {/* ── History strip (last 5) — version compacte centrée ── */}
-      {history.filter(h => !h.skipped).length > 0 && (
-        <div style={{ padding: '6px 18px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <div style={{ fontSize: 9,color: '#555',fontWeight: 700,textTransform: 'uppercase',letterSpacing: 1 }}>{t('last_cards')}</div>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-            {history.filter(h => !h.skipped).slice(0, 5).map((h, i) => {
-              const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
-              return (
-              <div key={i} title={h.card?.name} onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)} style={{ display: 'flex',flexDirection: 'column',alignItems: 'center',gap: 3, cursor: 'pointer' }}>
-              <div style={{ position: 'relative', width: 40, height: 40, transition: 'all 0.2s', zIndex: 1 }} onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.7)'; e.currentTarget.style.zIndex = 10; }} onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
-                <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', position: 'relative', border: `2px solid ${c1}`, background: '#1a1a2e', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 12px ${c1}aa` : 'none' }}>
-                    {h.card ? (
-                      (h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url) ? (
-                        <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
-                      ) : (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{h.card.name[0]}</div>
-                      )
-                    ) : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:900,color:'#555'}}>?</div>}
-                  </div>
-                </div>
-                <div style={{ fontSize: 8,fontWeight:700,color:'#ccc',maxWidth:36,textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
-                  {h.won ? '✓' : h.winner}
-                </div>
+      {/* ── Quêtes du jour + historique ── */}
+      {auth.profile && (
+        <div style={{ padding: '6px 18px 0', display: 'flex', gap: 14, alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <DailyQuests forgePointsEarnedSignal={gs.forgePointsSignal} />
+          {history.filter(h => !h.skipped).length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div style={{ fontSize: 9,color: '#555',fontWeight: 700,textTransform: 'uppercase',letterSpacing: 1 }}>{t('last_cards')}</div>
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                {history.filter(h => !h.skipped).slice(0, 5).map((h, i) => {
+                  const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
+                  return (
+                    <div key={i} title={h.card?.name} onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)} style={{ display: 'flex',flexDirection: 'column',alignItems: 'center',gap: 3, cursor: 'pointer' }}>
+                      <div style={{ position: 'relative', width: 40, height: 40, transition: 'all 0.2s', zIndex: 1 }} onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.7)'; e.currentTarget.style.zIndex = 10; }} onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
+                        <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', position: 'relative', border: `2px solid ${c1}`, background: '#1a1a2e', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 12px ${c1}aa` : 'none' }}>
+                          {h.card ? (
+                            (h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url) ? (
+                              <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{h.card.name[0]}</div>
+                            )
+                          ) : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:900,color:'#555'}}>?</div>}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 8,fontWeight:700,color:'#ccc',maxWidth:36,textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
+                        {h.won ? '✓' : h.winner}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              );
-            })}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

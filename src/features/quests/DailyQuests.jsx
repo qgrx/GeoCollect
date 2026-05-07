@@ -1,0 +1,111 @@
+import { useEffect, useState, useCallback } from 'react'
+import { apiGetDailyQuests } from '../../services/api.js'
+
+const TRIGGER_LABELS = {
+  buy_count:       'Achats marché',
+  sell_count:      'Mises en vente',
+  quiz_win:        'Quiz gagnés',
+  new_card:        'Nouvelles cartes',
+  streak:          'Streak',
+  collection_size: 'Cartes uniques',
+}
+
+export default function DailyQuests({ forgePointsEarnedSignal }) {
+  const [quests, setQuests] = useState(null) // null = chargement
+
+  const load = useCallback(async () => {
+    const { data } = await apiGetDailyQuests()
+    if (data?.quests) setQuests(data.quests)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  // Recharger quand des forge_points ont été gagnés (signal du parent)
+  useEffect(() => {
+    if (forgePointsEarnedSignal > 0) load()
+  }, [forgePointsEarnedSignal, load])
+
+  if (!quests) return null
+  if (!quests.length) return null
+
+  const allDone = quests.every(q => q.completed_at)
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 4,
+      minWidth: 170, maxWidth: 220, flexShrink: 0,
+    }}>
+      <div style={{
+        fontSize: 9, color: '#555', fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2,
+        display: 'flex', alignItems: 'center', gap: 4,
+      }}>
+        🔨 Quêtes du jour
+        {allDone && <span style={{ color: '#f9ca24', fontSize: 8 }}>✦ COMPLÈTES</span>}
+      </div>
+
+      {quests.map(q => {
+        const done = !!q.completed_at
+        const pct  = Math.min(100, Math.round((q.progress / q.threshold) * 100))
+
+        return (
+          <div key={q.id} style={{
+            background: done ? '#00b89410' : '#ffffff08',
+            border: `1px solid ${done ? '#00b89433' : '#ffffff10'}`,
+            borderRadius: 8, padding: '5px 8px',
+            transition: 'all .2s',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              {/* Statut */}
+              <span style={{
+                fontSize: 12, flexShrink: 0,
+                color: done ? '#00b894' : '#555',
+              }}>
+                {done ? '✔' : '○'}
+              </span>
+
+              {/* Texte */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 800,
+                  color: done ? '#00b894' : '#ccc',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {q.name}
+                </div>
+                {!done && (
+                  <div style={{ fontSize: 9, color: '#555', marginTop: 1 }}>
+                    {q.progress}/{q.threshold} {TRIGGER_LABELS[q.type] || q.type}
+                  </div>
+                )}
+              </div>
+
+              {/* Points */}
+              <div style={{
+                fontSize: 10, fontWeight: 900, flexShrink: 0,
+                color: done ? '#f9ca24' : '#666',
+                display: 'flex', alignItems: 'center', gap: 2,
+              }}>
+                🔨 {q.forge_points}
+              </div>
+            </div>
+
+            {/* Barre de progression */}
+            {!done && q.progress > 0 && (
+              <div style={{
+                marginTop: 4, height: 2, borderRadius: 1,
+                background: '#ffffff0a', overflow: 'hidden',
+              }}>
+                <div style={{
+                  width: `${pct}%`, height: '100%',
+                  background: 'linear-gradient(90deg,#6c5ce7,#a29bfe)',
+                  transition: 'width .3s',
+                }} />
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
