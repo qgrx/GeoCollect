@@ -10,8 +10,8 @@ const TRIGGER_LABELS = {
   collection_size: 'Cartes uniques',
 }
 
-export default function DailyQuests({ forgePointsEarnedSignal }) {
-  const [quests, setQuests] = useState(null) // null = chargement
+export default function DailyQuests({ questActivitySignal }) {
+  const [quests, setQuests] = useState(null)
 
   const load = useCallback(async () => {
     const { data } = await apiGetDailyQuests()
@@ -20,10 +20,10 @@ export default function DailyQuests({ forgePointsEarnedSignal }) {
 
   useEffect(() => { load() }, [load])
 
-  // Recharger quand des forge_points ont été gagnés (signal du parent)
+  // Recharger après chaque action de jeu pertinente (achat, vente, quiz win)
   useEffect(() => {
-    if (forgePointsEarnedSignal > 0) load()
-  }, [forgePointsEarnedSignal, load])
+    if (questActivitySignal > 0) load()
+  }, [questActivitySignal, load])
 
   if (!quests) return null
   if (!quests.length) return null

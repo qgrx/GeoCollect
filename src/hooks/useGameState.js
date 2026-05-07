@@ -36,8 +36,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [pendingAch,          setPendingAch]         = useState([])
   const [saleNotifs,          setSaleNotifs]         = useState([])
   const [unreadSales,         _setUnreadSales]       = useState(0)
-  const [forgePoints,       setForgePoints]      = useState(profile?.forge_points ?? 0)
-  const [forgePointsSignal, setForgePointsSignal] = useState(0)
+  const [forgePoints,         setForgePoints]       = useState(profile?.forge_points ?? 0)
+  const [forgePointsSignal,   setForgePointsSignal]  = useState(0)
+  const [questActivitySignal, setQuestActivitySignal] = useState(0)
 
   // Sync forgePoints si le profil auth change (connexion/rechargement)
   useEffect(() => {
@@ -336,6 +337,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         return error
       }
       checkAchievementsRef.current?.(data?.achievements || [])
+      setQuestActivitySignal(s => s + 1)
       if (data?.forge_points_earned > 0) {
         setForgePoints(fp => fp + data.forge_points_earned)
         setForgePointsSignal(s => s + data.forge_points_earned)
@@ -404,6 +406,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       setMyListings(prev => prev.map(l => l.id === tempId ? { ...l, id: data.listing_id, seller: profile.pseudo } : l))
       setMarket(prev => prev.map(l => l.id === tempId ? { ...l, id: data.listing_id, seller: profile.pseudo } : l))
       checkAchievementsRef.current?.(data?.achievements || [])
+      setQuestActivitySignal(s => s + 1)
       if (data?.forge_points_earned > 0) {
         setForgePoints(fp => fp + data.forge_points_earned)
         setForgePointsSignal(s => s + data.forge_points_earned)
@@ -608,8 +611,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,
     // Derived
     isGuest, lim, uniqueCards, totalUnique, myScore,
-    forgePoints, forgePointsSignal,
+    forgePoints, forgePointsSignal, questActivitySignal,
     addForgePoints: (pts) => {
+      setQuestActivitySignal(s => s + 1)
       if (!pts) return
       setForgePoints(fp => fp + pts)
       setForgePointsSignal(s => s + pts)

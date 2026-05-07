@@ -144,9 +144,8 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
       if (data.achievements?.length) {
         cbRef.current.checkAchievements?.(data.achievements)
       }
-      if (data.forge_points_earned > 0) {
-        cbRef.current.onForgePointsEarned?.(data.forge_points_earned)
-      }
+      // Toujours notifier l'activité quête (même si forge_points = 0, la progression change)
+      cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
       if (data.gold_earned) earnGoldWithFx(data.gold_earned)
       if (data.streak != null) cbRef.current.onStreakUpdate?.(data.streak)
       setHistory(h => [{ card, winner: 'Moi', won: true }, ...h].slice(0, 10))

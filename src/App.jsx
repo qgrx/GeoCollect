@@ -758,7 +758,7 @@ export default function App() {
       {/* ── Quêtes du jour + historique ── */}
       {auth.profile && (
         <div style={{ padding: '6px 18px 0', display: 'flex', gap: 14, alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <DailyQuests forgePointsEarnedSignal={gs.forgePointsSignal} />
+          <DailyQuests questActivitySignal={gs.questActivitySignal} />
           {history.filter(h => !h.skipped).length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
               <div style={{ fontSize: 9,color: '#555',fontWeight: 700,textTransform: 'uppercase',letterSpacing: 1 }}>{t('last_cards')}</div>
