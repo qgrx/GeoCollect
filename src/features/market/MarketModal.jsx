@@ -77,8 +77,12 @@ export default function MarketModal({
   }, [onClearNewTransactions])
 
   return (
-    <div style={{ position: 'fixed',inset: 0,background: '#000c',display: 'flex',alignItems: 'center',justifyContent: 'center',zIndex: 700,backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: 'linear-gradient(135deg,#1a1a2e,#16213e)',borderRadius: 22,padding: 22,width: 'min(96vw,900px)',maxHeight: '90vh',overflowY: 'auto',boxShadow: '0 24px 80px #000a',border: '1.5px solid #ffffff18',fontFamily: "'Nunito',sans-serif" }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end' }}>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
+      {/* Panel */}
+      <div style={{ position: 'relative', background: '#161b22', width: 'min(100vw, 620px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: '1px solid #30363d', fontFamily: "'Nunito',sans-serif", animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '18px 20px', flex: 1 }}>
 
         {/* Header */}
         <div style={{ display: 'flex',justifyContent: 'space-between',alignItems: 'center',marginBottom: 14 }}>
@@ -382,5 +386,6 @@ export default function MarketModal({
 
       </div>
     </div>
+  </div>
   )
 }

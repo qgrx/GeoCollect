@@ -217,11 +217,9 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
   useEffect(() => () => clearTimers(), [])
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: '#000d', zIndex: 700,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      backdropFilter: 'blur(6px)', fontFamily: "'Nunito',sans-serif",
-    }} onClick={e => { if (e.target === e.currentTarget && !forgingId) onClose() }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end', fontFamily: "'Nunito',sans-serif" }}>
+      <div onClick={() => { if (!forgingId) onClose() }} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
+      <div style={{ position: 'relative', background: '#161b22', width: 'min(100vw, 600px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: '1px solid #30363d', animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
 
       {/* Overlay animation de forge (plein écran centré) */}
       {forgingId && (() => {
@@ -255,11 +253,8 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
 
       {/* Panneau principal */}
       <div style={{
-        background: 'linear-gradient(135deg,#1a1a2e,#16213e)',
-        borderRadius: 22, padding: 22,
-        width: 'min(96vw, 760px)', maxHeight: '88vh',
-        overflowY: 'auto', boxShadow: '0 24px 80px #000a',
-        border: '1.5px solid #6c5ce744',
+        padding: 22,
+        flex: 1,
         opacity: forgingId ? 0.15 : 1,
         transition: 'opacity .3s',
         pointerEvents: forgingId ? 'none' : 'auto',
@@ -402,5 +397,6 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
         )}
       </div>
     </div>
+  </div>
   )
 }

@@ -651,6 +651,8 @@ export default function App() {
         @keyframes goldPop   { 0%{opacity:1;transform:translate(-50%,-50%) scale(.8)} 60%{opacity:1;transform:translate(-50%,-80%) scale(1.1)} 100%{opacity:0;transform:translate(-50%,-120%) scale(1)} }
         @keyframes toastIn   { from{opacity:0;transform:translateY(12px) scale(.97)} to{opacity:1;transform:none} }
         @keyframes shimmer   { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+        @keyframes slideFromRight { from{transform:translateX(100%)} to{transform:translateX(0)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
       `}</style>
 
       {/* ACCENT BAR */}
@@ -664,14 +666,14 @@ export default function App() {
         {/* Currencies */}
         {auth.profile && (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <div data-tour="gold" style={{ background: '#f9ca2412', border: '1px solid #f9ca2430', borderRadius: 20, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div data-tour="gold" style={{ background: '#f9ca2410', border: '1px solid #f9ca2428', borderRadius: 20, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontSize: 13 }}>💰</span>
-              <span style={{ fontWeight: 900, fontSize: 14, color: '#f9ca24', fontFamily: "'Fredoka One',sans-serif" }}>{gs.gold}</span>
+              <span style={{ fontWeight: 700, fontSize: 14, color: '#f9ca24' }}>{gs.gold}<span style={{ fontWeight: 500, fontSize: 11, opacity: .6 }}>G</span></span>
             </div>
             {gs.forgePoints > 0 && (
-              <div style={{ background: '#a29bfe12', border: '1px solid #a29bfe30', borderRadius: 20, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ background: '#a29bfe10', border: '1px solid #a29bfe28', borderRadius: 20, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ fontSize: 13 }}>🔨</span>
-                <span style={{ fontWeight: 900, fontSize: 13, color: '#a29bfe', fontFamily: "'Fredoka One',sans-serif" }}>{gs.forgePoints}</span>
+                <span style={{ fontWeight: 700, fontSize: 13, color: '#a29bfe' }}>{gs.forgePoints}</span>
               </div>
             )}
           </div>
@@ -682,7 +684,7 @@ export default function App() {
           <div style={{ display: 'flex', gap: 6 }}>
             {(auth.profile || hasDuplicate) && (
               <button data-tour="market-btn" onClick={() => setShowMarket(true)} style={{ position: 'relative', background: '#3fb95014', border: '1px solid #3fb95030', color: '#3fb950', padding: '6px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>
-                🏪 {t('btn_market')}
+                {t('btn_market')}
                 {gs.unreadSales > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#e74c3c', color: '#fff', fontSize: 9, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: '1.5px solid #0d1117', animation: 'pulseBadge 1.5s infinite' }}>{gs.unreadSales}</span>}
               </button>
             )}
@@ -690,7 +692,7 @@ export default function App() {
               <button onClick={() => setShowForge(true)} style={{ background: '#a29bfe14', border: '1px solid #a29bfe30', color: '#a29bfe', padding: '6px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>🔨 Forge</button>
             )}
             {gs.limits.leaderboardVisible !== false && (
-              <button data-tour="leaderboard-btn" onClick={() => setShowLeaderboard(true)} style={{ background: '#f9ca2414', border: '1px solid #f9ca2430', color: '#f9ca24', padding: '6px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>🏆 {t('btn_leaderboard')}</button>
+              <button data-tour="leaderboard-btn" onClick={() => setShowLeaderboard(true)} style={{ background: '#f9ca2414', border: '1px solid #f9ca2430', color: '#f9ca24', padding: '6px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>{t('btn_leaderboard')}</button>
             )}
           </div>
         )}
