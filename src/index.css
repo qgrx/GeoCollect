@@ -15,7 +15,7 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #f9ca2466; border-radius: 3px; }
 
-select option { background: #1a1a2e; color: #fff; }
+select option { background: #1e3045; color: #fff; }
 
 input, select, textarea, button {
   font-family: 'Nunito', sans-serif;

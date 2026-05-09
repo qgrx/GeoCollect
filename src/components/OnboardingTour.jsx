@@ -105,7 +105,7 @@ export default function OnboardingTour({ onDone }) {
       {/* Tooltip */}
       <div ref={boxRef} style={{
         ...tooltipStyle(),
-        background: 'linear-gradient(145deg,#1a1a2e,#16213e)',
+        background: 'linear-gradient(145deg,#1e3045,#1a2d42)',
         border: '1.5px solid #f9ca2466',
         borderRadius: 16,
         padding: '18px 20px',
@@ -131,7 +131,7 @@ export default function OnboardingTour({ onDone }) {
           </button>
           <span style={{ fontSize:11, color:'#666' }}>{step + 1}/{STEPS.length}</span>
           <button onClick={step === STEPS.length - 1 ? finish : next}
-            style={{ background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1a1a2e', padding:'7px 16px', borderRadius:9, fontFamily:"'Nunito',sans-serif", fontWeight:900, fontSize:12, cursor:'pointer' }}>
+            style={{ background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1e3045', padding:'7px 16px', borderRadius:9, fontFamily:"'Nunito',sans-serif", fontWeight:900, fontSize:12, cursor:'pointer' }}>
             {step === STEPS.length - 1 ? t('tour_finish') : t('tour_next')}
           </button>
         </div>

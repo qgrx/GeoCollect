@@ -17,15 +17,15 @@ export function AchievementToast({ achievement, cardPool, onClose }) {
     <div style={{
       position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
       zIndex: 3500, width: 'min(96vw,420px)',
-      background: 'linear-gradient(135deg,#1a1a2e,#0f3460)',
+      background: 'linear-gradient(135deg,#1e3045,#1a4a7a)',
       border: '2px solid #f9ca2466', borderRadius: 18,
       boxShadow: '0 16px 60px #000b', fontFamily: "'Nunito',sans-serif",
       animation: 'slideUp .4s cubic-bezier(.34,1.56,.64,1) both', overflow: 'hidden',
     }}>
       <div style={{ background: 'linear-gradient(90deg,#f9ca24,#e17055)',padding: '7px 14px',display: 'flex',alignItems: 'center',gap: 8 }}>
         <span style={{ fontSize: 18 }}>{achievement.icon}</span>
-        <span style={{ fontWeight: 900,fontSize: 13,color: '#1a1a2e' }}>{t('ach_unlocked')}</span>
-        <button onClick={onClose} style={{ marginLeft: 'auto',background: 'none',border: 'none',color: '#1a1a2e',fontSize: 16,cursor: 'pointer',fontWeight: 900 }}>✕</button>
+        <span style={{ fontWeight: 900,fontSize: 13,color: '#1e3045' }}>{t('ach_unlocked')}</span>
+        <button onClick={onClose} style={{ marginLeft: 'auto',background: 'none',border: 'none',color: '#1e3045',fontSize: 16,cursor: 'pointer',fontWeight: 900 }}>✕</button>
       </div>
       <div style={{ padding: '12px 16px',display: 'flex',gap: 14,alignItems: 'center' }}>
         <div style={{ fontSize: 36,flexShrink: 0 }}>{achievement.icon}</div>
@@ -145,7 +145,7 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setFilter(tab.id)} style={{
             background: filter === tab.id ? '#f9ca24' : '#ffffff22',
-            border: 'none', color: filter === tab.id ? '#1a1a2e' : '#fff',
+            border: 'none', color: filter === tab.id ? '#1e3045' : '#fff',
             padding: '6px 14px', borderRadius: 50,
             fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer',
           }}>{tab.label}</button>
@@ -208,7 +208,7 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
 
   return (
     <div style={{ position: 'fixed',inset: 0,background: '#000c',display: 'flex',alignItems: 'center',justifyContent: 'center',zIndex: 700,backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: 'linear-gradient(135deg,#1a1a2e,#16213e)',borderRadius: 22,padding: 22,width: 'min(96vw,680px)',maxHeight: '88vh',overflowY: 'auto',boxShadow: '0 24px 80px #000a',border: '1.5px solid #ffffff18',fontFamily: "'Nunito',sans-serif" }}>
+      <div style={{ background: 'linear-gradient(135deg,#1e3045,#1a2d42)',borderRadius: 22,padding: 22,width: 'min(96vw,680px)',maxHeight: '88vh',overflowY: 'auto',boxShadow: '0 24px 80px #000a',border: '1.5px solid #ffffff18',fontFamily: "'Nunito',sans-serif" }}>
         {content}
       </div>
     </div>

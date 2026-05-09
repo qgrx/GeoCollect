@@ -168,7 +168,7 @@ function ForgingCard({ card, phase }) {
 }
 
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
-export default function ForgeModal({ cardPool, collection, forgePoints, onClose, onForged }) {
+export default function ForgeModal({ cardPool, collection, forgePoints, onClose, onForged, inline = false }) {
   useEffect(() => { injectStyle() }, [])
 
   const [forgingId, setForgingId]   = useState(null) // card en cours de forge
@@ -216,10 +216,19 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
 
   useEffect(() => () => clearTimers(), [])
 
-  return (
+  const PanelWrapper = ({ children }) => inline ? (
+    <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
+  ) : (
     <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end', fontFamily: "'Nunito',sans-serif" }}>
       <div onClick={() => { if (!forgingId) onClose() }} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
-      <div style={{ position: 'relative', background: '#161b22', width: 'min(100vw, 600px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: '1px solid #30363d', animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'relative', background: '#243447', width: 'min(100vw, 600px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: '1px solid #344e68', animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
+    </div>
+  )
+
+  return (
+    <PanelWrapper>
 
       {/* Overlay animation de forge (plein écran centré) */}
       {forgingId && (() => {
@@ -272,9 +281,9 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
               <div style={{ fontSize: 10, color: '#555', fontWeight: 700, textTransform: 'uppercase' }}>Tes points</div>
               <div style={{ fontWeight: 900, fontSize: 22, color: '#a29bfe' }}>🔨 {forgePoints}</div>
             </div>
-            <button onClick={onClose} style={{ background: '#ffffff18', border: 'none',
+            {!inline && <button onClick={onClose} style={{ background: '#ffffff18', border: 'none',
               color: '#fff', width: 32, height: 32, borderRadius: '50%',
-              fontSize: 16, cursor: 'pointer' }}>✕</button>
+              fontSize: 16, cursor: 'pointer' }}>✕</button>}
           </div>
         </div>
 
@@ -396,7 +405,6 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
           </div>
         )}
       </div>
-    </div>
-  </div>
+    </PanelWrapper>
   )
 }

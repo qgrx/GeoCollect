@@ -42,7 +42,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 4,
-      minWidth: 170, maxWidth: 220, flexShrink: 0,
+      width: '100%',
     }}>
       <div style={{
         fontSize: 9, color: '#555', fontWeight: 700,

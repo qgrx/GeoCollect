@@ -23,7 +23,7 @@ import Card from './components/Card.jsx';
 import CardDetailModal from './components/CardDetailModal.jsx';
 import OnboardingTour from './components/OnboardingTour.jsx';
 import PseudoDisplay from './components/PseudoDisplay.jsx';
-import { getRank, isTopRank } from './utils/rankUtils.js';
+import { getRank, isTopRank, rankCC } from './utils/rankUtils.js';
 import MaintenanceScreen from './components/MaintenanceScreen.jsx';
 
 // ─── Features ────────────────────────────────────────────────────────────────
@@ -321,7 +321,6 @@ export default function App() {
   // ── Local UI state ─────────────────────────────────────────────────────────
   const [showMarket,      setShowMarket]      = useState(false);
   const [showForge,       setShowForge]       = useState(false);
-  useEffect(() => { gs.marketOpenRef.current = showMarket }, [showMarket]);
   const [marketTab,       setMarketTab]       = useState('acheter');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdmin,       setShowAdmin]       = useState(false);
@@ -383,6 +382,7 @@ export default function App() {
 
   // ── Navigation mobile (onglets) ────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('home')
+  useEffect(() => { gs.marketOpenRef.current = activeTab === 'market' }, [activeTab])
 
   // ── Clic en dehors du menu avatar ──────────────────────────────────────────
   useEffect(() => {
@@ -519,8 +519,7 @@ export default function App() {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
       if (e.key === 'Escape') {
         if (selectedCard)       { setSelectedCard(null); return }
-        if (showMarket)         { setShowMarket(false); setMarketTab('acheter'); return }
-        if (showLeaderboard)    { setShowLeaderboard(false); return }
+        if (['market','forge','top'].includes(activeTab)) { setActiveTab('collection'); return }
         if (showSettings)       { setShowSettings(false); return }
         if (showAuth)           { setShowAuth(false); return }
         if (showTxHistory)      { setShowTxHistory(false); return }
@@ -529,11 +528,11 @@ export default function App() {
         if (menuOpen)           { setMenuOpen(false); return }
       }
       if (e.key === 'Enter' && pendingQuiz && !activeQuiz) { handleJoin(); return }
-      if (e.key === 'm' && !e.ctrlKey) { setShowMarket(v => !v); return }
+      if (e.key === 'm' && !e.ctrlKey) { setActiveTab(t => t === 'market' ? 'collection' : 'market'); return }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedCard, showMarket, showLeaderboard, showSettings, showAuth,
+  }, [selectedCard, activeTab, showSettings, showAuth,
       showTxHistory, showAdmin, showShop, menuOpen, pendingQuiz, activeQuiz])
 
   // ── Scroll to Top ─────────────────────────────────────────────────────────────
@@ -644,7 +643,7 @@ export default function App() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', fontFamily: "'Nunito', sans-serif", color: '#e6edf3', background: '#0d1117', display: 'flex', flexDirection: 'column', paddingBottom: (auth.profile && isMobile) ? 68 : 0 }}>
+    <div style={{ minHeight: '100vh', fontFamily: "'Nunito', sans-serif", color: '#d4e8f8', background: '#1a2538', display: 'flex', flexDirection: 'column', paddingBottom: (auth.profile && isMobile) ? 68 : 0 }}>
       <style>{`
         @keyframes pulseBadge { 0%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,.7)}70%{transform:scale(1.15);box-shadow:0 0 0 5px rgba(231,76,60,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,0)} }
         @keyframes slideIn   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -659,12 +658,40 @@ export default function App() {
       <div style={{ height: 3, background: 'linear-gradient(90deg,#58a6ff,#bc8cff,#f9ca24,#f85149)', flexShrink: 0 }} />
 
       {/* ── HEADER ── */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 200, background: '#0d1117e8', backdropFilter: 'blur(20px)', borderBottom: '1px solid #21262d', padding: isMobile ? '9px 14px' : '9px 20px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 200, background: '#1a2538e8', backdropFilter: 'blur(20px)', borderBottom: '1px solid #2e4158', padding: isMobile ? '9px 14px' : '9px 20px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <Logo iconSize={isMobile ? 26 : 30} textSize={isMobile ? 15 : 19} />
-        <div style={{ flex: 1 }} />
 
-        {/* Currencies */}
-        {auth.profile && (
+        {/* Desktop tab nav — même style que mobile, centré dans le header */}
+        {isWide && auth.profile ? (
+          <>
+            <div style={{ flex: 1 }} />
+            <nav style={{ display: 'flex' }}>
+              {[
+                { id: 'collection', icon: '🃏', label: 'Collection' },
+                { id: 'market',     icon: '🏪', label: 'Marché', badge: gs.unreadSales },
+                ...(gs.cardPool.some(c => c.forgeable) ? [{ id: 'forge', icon: '🔨', label: 'Forge' }] : []),
+                { id: 'top',        icon: '🏆', label: 'Classement' },
+              ].map(tb => {
+                const active = activeTab === tb.id
+                return (
+                  <button key={tb.id} onClick={() => setActiveTab(tb.id)}
+                    style={{ position: 'relative', background: 'none', border: 'none', color: active ? '#f9ca24' : '#8daacc', padding: '6px 18px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>{tb.icon}</span>
+                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{tb.label}</span>
+                    {tb.badge > 0 && <span style={{ position: 'absolute', top: 4, left: '55%', background: '#e74c3c', color: '#fff', width: 14, height: 14, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #1a2538' }}>{tb.badge > 9 ? '9+' : tb.badge}</span>}
+                    {active && <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '3px 3px 0 0' }} />}
+                  </button>
+                )
+              })}
+            </nav>
+            <div style={{ flex: 1 }} />
+          </>
+        ) : (
+          <div style={{ flex: 1 }} />
+        )}
+
+        {/* Currencies (mobile only — desktop shows in sidebar profile) */}
+        {auth.profile && isMobile && (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <div data-tour="gold" style={{ background: '#f9ca2410', border: '1px solid #f9ca2428', borderRadius: 20, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontSize: 13 }}>💰</span>
@@ -679,38 +706,20 @@ export default function App() {
           </div>
         )}
 
-        {/* Desktop action buttons */}
-        {auth.profile && isWide && (
-          <div style={{ display: 'flex', gap: 6 }}>
-            {(auth.profile || hasDuplicate) && (
-              <button data-tour="market-btn" onClick={() => setShowMarket(true)} style={{ position: 'relative', background: '#3fb95014', border: '1px solid #3fb95030', color: '#3fb950', padding: '6px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>
-                {t('btn_market')}
-                {gs.unreadSales > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#e74c3c', color: '#fff', fontSize: 9, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: '1.5px solid #0d1117', animation: 'pulseBadge 1.5s infinite' }}>{gs.unreadSales}</span>}
-              </button>
-            )}
-            {gs.cardPool.some(c => c.forgeable) && (
-              <button onClick={() => setShowForge(true)} style={{ background: '#a29bfe14', border: '1px solid #a29bfe30', color: '#a29bfe', padding: '6px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>🔨 Forge</button>
-            )}
-            {gs.limits.leaderboardVisible !== false && (
-              <button data-tour="leaderboard-btn" onClick={() => setShowLeaderboard(true)} style={{ background: '#f9ca2414', border: '1px solid #f9ca2430', color: '#f9ca24', padding: '6px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>{t('btn_leaderboard')}</button>
-            )}
-          </div>
-        )}
-
         {/* Avatar */}
         {auth.profile ? (
           <div style={{ position: 'relative' }} ref={avatarMenuRef}>
-            <button onClick={() => setAvatarMenu(v => !v)} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: '2px solid #f9ca2444', cursor: 'pointer', fontSize: 13, fontWeight: 900, color: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <button onClick={() => setAvatarMenu(v => !v)} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: '2px solid #f9ca2444', cursor: 'pointer', fontSize: 13, fontWeight: 900, color: '#1a2538', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {auth.profile.pseudo[0].toUpperCase()}
-              {gs.unreadSales > 0 && isMobile && <span style={{ position: 'absolute', top: -3, right: -3, background: '#e74c3c', borderRadius: '50%', width: 14, height: 14, fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #0d1117', color: '#fff' }}>{gs.unreadSales > 9 ? '9+' : gs.unreadSales}</span>}
+              {gs.unreadSales > 0 && isMobile && <span style={{ position: 'absolute', top: -3, right: -3, background: '#e74c3c', borderRadius: '50%', width: 14, height: 14, fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #1a2538', color: '#fff' }}>{gs.unreadSales > 9 ? '9+' : gs.unreadSales}</span>}
             </button>
             {avatarMenu && (
-              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#161b22', border: '1px solid #30363d', borderRadius: 12, boxShadow: '0 16px 48px #000d', zIndex: 99999, minWidth: 200, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
-                <div style={{ padding: '8px 10px 6px', borderBottom: '1px solid #21262d' }}>
-                  <div style={{ fontSize: 9, color: '#8b949e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 5, paddingLeft: 4 }}>Langue</div>
+              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#243447', border: '1px solid #344e68', borderRadius: 12, boxShadow: '0 16px 48px #000d', zIndex: 99999, minWidth: 200, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
+                <div style={{ padding: '8px 10px 6px', borderBottom: '1px solid #2e4158' }}>
+                  <div style={{ fontSize: 9, color: '#8daacc', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 5, paddingLeft: 4 }}>Langue</div>
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     {Object.entries(LANGS).map(([code, label]) => (
-                      <button key={code} onClick={() => setLang(code)} style={{ background: lang === code ? '#f9ca2420' : '#21262d', border: lang === code ? '1px solid #f9ca2444' : '1px solid #30363d', color: lang === code ? '#f9ca24' : '#8b949e', padding: '3px 9px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>{label}</button>
+                      <button key={code} onClick={() => setLang(code)} style={{ background: lang === code ? '#f9ca2420' : '#2e4158', border: lang === code ? '1px solid #f9ca2444' : '1px solid #344e68', color: lang === code ? '#f9ca24' : '#8daacc', padding: '3px 9px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>{label}</button>
                     ))}
                   </div>
                 </div>
@@ -721,10 +730,10 @@ export default function App() {
                   null,
                   { icon: '↩', label: t('btn_logout'), color: '#f85149', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
                 ].map((item, i) => item === null ? (
-                  <div key={i} style={{ height: 1, background: '#21262d' }}/>
+                  <div key={i} style={{ height: 1, background: '#2e4158' }}/>
                 ) : (
-                  <button key={i} onClick={item.fn} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', color: item.color || '#e6edf3', padding: '10px 14px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, textAlign: 'left' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#21262d'}
+                  <button key={i} onClick={item.fn} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', color: item.color || '#d4e8f8', padding: '10px 14px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, textAlign: 'left' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#2e4158'}
                     onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                     <span style={{ fontSize: 15 }}>{item.icon}</span>{item.label}
                   </button>
@@ -749,14 +758,70 @@ export default function App() {
           {/* LEFT SIDEBAR (desktop) / HOME TAB (mobile) */}
           {/* ── LEFT SIDEBAR content ── */}
           {(isWide || activeTab === 'home') && auth.profile && (
-            <aside style={{ width: isWide ? 288 : '100%', flexShrink: 0, padding: '14px 16px', borderRight: isWide ? '1px solid #21262d' : 'none', display: 'flex', flexDirection: 'column', gap: 14, ...(isWide ? { position: 'sticky', top: 53, maxHeight: 'calc(100vh - 53px)', overflowY: 'auto' } : {}) }}>
+            <aside style={{ width: isWide ? 288 : '100%', flexShrink: 0, padding: '14px 16px', borderRight: isWide ? '1px solid #2e4158' : 'none', display: 'flex', flexDirection: 'column', gap: 14, ...(isWide ? { position: 'sticky', top: 53, maxHeight: 'calc(100vh - 53px)', overflowY: 'auto' } : {}) }}>
 
-              {/* Countdown hero */}
-              {!activeQuiz && auth.profile?.status !== 'banni' && (
+              {/* Countdown hero (mobile only — en haut) */}
+              {!isWide && !activeQuiz && auth.profile?.status !== 'banni' && (
                 <div data-tour="countdown">
                   <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} />
                 </div>
               )}
+
+              {/* User profile mini card */}
+              {(() => {
+                const rank = getRank(userScore, gs.limits.playerRanks)
+                const { c1, c2 } = rankCC(rank)
+                const sortedRanks = [...(gs.limits.playerRanks || DEFAULT_RANKS)].sort((a, b) => a.min - b.min)
+                const nextRank = sortedRanks.find(r => r.min > userScore)
+                const prevMin = [...sortedRanks].reverse().find(r => r.min <= userScore)?.min || 0
+                const pct = nextRank ? Math.round(((userScore - prevMin) / (nextRank.min - prevMin)) * 100) : 100
+                const uniqueCards = Object.values(gs.collection).filter(n => n > 0).length
+                return (
+                  <div style={{ background: `linear-gradient(135deg,${c1}33,${c2}18,#1e3045)`, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}44`, position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}18`, pointerEvents: 'none' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 16px ${c1}55, 0 2px 8px #0006`, border: '2px solid #ffffff22' }}>
+                        {auth.profile.pseudo?.[0]?.toUpperCase() || '?'}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: '#fff', textShadow: '0 1px 4px #0006', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <PseudoDisplay pseudo={auth.profile.pseudo} score={userScore} ranks={gs.limits.playerRanks} style={{ color: '#fff' }}/>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <span style={{ fontSize: 13 }}>{rank?.icon}</span>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: rank?.color || '#888' }}>{rank?.label}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
+                      {[
+                        { icon: '💰', value: gs.gold,       label: 'Or',     color: '#f9ca24' },
+                        { icon: '🔨', value: gs.forgePoints, label: 'Forge',  color: '#a29bfe' },
+                        { icon: '🃏', value: uniqueCards,    label: 'Cartes', color: '#fff' },
+                      ].map(({ icon, value, label, color }) => (
+                        <div key={label} style={{ background: '#00000033', borderRadius: 8, padding: '6px 2px', textAlign: 'center', backdropFilter: 'blur(4px)' }}>
+                          <div style={{ fontSize: 12 }}>{icon}</div>
+                          <div style={{ fontWeight: 900, fontSize: 12, color, lineHeight: 1.2 }}>{value}</div>
+                          <div style={{ fontSize: 7, color: '#ffffff88', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .2 }}>{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {nextRank ? (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: '#888' }}>
+                          <span>{t('rank_next')} <span style={{ color: nextRank.color, fontWeight: 800 }}>{nextRank.icon} {nextRank.label}</span></span>
+                          <span style={{ fontWeight: 700 }}>{userScore}/{nextRank.min}</span>
+                        </div>
+                        <div style={{ background: '#ffffff0f', borderRadius: 50, height: 5, overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#f9ca24', textAlign: 'center' }}>{t('rank_max')}</div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Daily quests */}
               <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
@@ -764,23 +829,24 @@ export default function App() {
               {/* Last 8 geocoins — 4×2 */}
               {history.filter(h => !h.skipped).length > 0 && (
                 <div>
-                  <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: '#8b949e', marginBottom: 8 }}>{t('last_cards')}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 40px)', gap: 5 }}>
+                  <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: '#8daacc', marginBottom: 8 }}>{t('last_cards')}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: isWide ? 'repeat(4, 40px)' : 'repeat(auto-fill, minmax(56px, 1fr))', gap: isWide ? 5 : 8 }}>
                     {history.filter(h => !h.skipped).slice(0, 8).map((h, i) => {
                       const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
+                      const sz = isWide ? 40 : 56;
                       return (
-                        <div key={i} title={h.card?.name} onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, cursor: 'pointer' }}>
-                          <div style={{ position: 'relative', width: 40, height: 40, transition: 'transform .15s', zIndex: 1 }}
-                            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.6)'; e.currentTarget.style.zIndex = 10; }}
+                        <div key={i} title={h.card?.name} onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
+                          <div style={{ position: 'relative', width: sz, height: sz, transition: 'transform .15s', zIndex: 1 }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.zIndex = 10; }}
                             onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
-                            <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', border: `2px solid ${c1}`, background: '#161b22', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
+                            <div style={{ width: '100%', height: '100%', borderRadius: 8, overflow: 'hidden', border: `2px solid ${c1}`, background: '#243447', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
                               {h.card ? ((h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url)
                                 ? <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{h.card.name[0]}</div>
+                                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{h.card.name[0]}</div>
                               ) : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 12 }}>?</div>}
                             </div>
                           </div>
-                          <div style={{ fontSize: 7, fontWeight: 700, color: h.won ? '#3fb950' : '#8b949e', maxWidth: 40, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 8, fontWeight: 700, color: h.won ? '#3fb950' : '#8daacc', width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {h.won ? '✓' : h.winner}
                           </div>
                         </div>
@@ -792,12 +858,19 @@ export default function App() {
             </aside>
           )}
 
-          {/* ── RIGHT PANEL : collection ── */}
-          {(isWide || activeTab === 'collection' || !auth.profile) && (
+          {/* ── RIGHT PANEL : collection / market / forge / top ── */}
+          {(isWide || !auth.profile || activeTab !== 'home') && (
             <main style={{ flex: 1, padding: isWide ? '14px 20px' : '12px 14px', minWidth: 0 }}>
 
+              {/* New geocoin available — above type filter */}
+              {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && (
+                <div data-tour="countdown" style={{ marginBottom: 14 }}>
+                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} />
+                </div>
+              )}
+
               {/* Type filter tabs */}
-              {gs.cardPool.length > 0 && (
+              {(!auth.profile || activeTab === 'collection') && gs.cardPool.length > 0 && (
                 <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 10, paddingBottom: 2, scrollbarWidth: 'none' }}>
                   {types.map(tp => {
                     const pool  = tp === 'Tous' ? gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement') : gs.cardPool.filter(c => c.type === tp)
@@ -807,12 +880,12 @@ export default function App() {
                     const full  = owned === total && total > 0
                     const active = filter === tp
                     return (
-                      <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }} style={{ flexShrink: 0, background: active ? '#f9ca24' : '#161b22', border: `1px solid ${active ? '#f9ca24' : '#30363d'}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', textAlign: 'center', minWidth: 60 }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: active ? '#0d1117' : full ? '#3fb950' : '#8b949e', whiteSpace: 'nowrap', marginBottom: 2 }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}</div>
+                      <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }} style={{ flexShrink: 0, background: active ? '#f9ca24' : '#243447', border: `1px solid ${active ? '#f9ca24' : '#344e68'}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', textAlign: 'center', minWidth: 60 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a2538' : full ? '#3fb950' : '#8daacc', whiteSpace: 'nowrap', marginBottom: 2 }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: active ? '#0d111766' : full ? '#3fb950' : '#f9ca24' }}>{owned}/{total}</span>
-                          <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#0000001a' : '#30363d', overflow: 'hidden', minWidth: 16 }}>
-                            <div style={{ width: `${pct}%`, height: '100%', background: active ? '#0d1117' : full ? '#3fb950' : 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .6s' }}/>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: active ? '#1a253866' : full ? '#3fb950' : '#f9ca24' }}>{owned}/{total}</span>
+                          <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#0000001a' : '#344e68', overflow: 'hidden', minWidth: 16 }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: active ? '#1a2538' : full ? '#3fb950' : 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .6s' }}/>
                           </div>
                         </div>
                       </button>
@@ -821,48 +894,97 @@ export default function App() {
                 </div>
               )}
 
-              {/* Search + missing toggle */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-                <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }} placeholder={t('collection_search')}
-                  style={{ flex: 1, background: '#161b22', border: '1px solid #30363d', borderRadius: 8, color: '#e6edf3', padding: '8px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
-                <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }} style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : '#161b22', border: `1px solid ${showMissing ? '#6c5ce7' : '#30363d'}`, color: showMissing ? '#fff' : '#8b949e', padding: '8px 12px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  {showMissing ? t('filter_owned') : t('filter_missing')}
-                </button>
-              </div>
+              {/* Collection content (search + grid) */}
+              {(!auth.profile || activeTab === 'collection') && (
+                <>
+                  {/* Search + missing toggle */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                    <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }} placeholder={t('collection_search')}
+                      style={{ flex: 1, background: '#1a2538', border: '1px solid #344e68', borderRadius: 8, color: '#d4e8f8', padding: '8px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
+                    <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }} style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : '#1a2538', border: `1px solid ${showMissing ? '#6c5ce7' : '#344e68'}`, color: showMissing ? '#fff' : '#8daacc', padding: '8px 12px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      {showMissing ? t('filter_owned') : t('filter_missing')}
+                    </button>
+                  </div>
 
-              {/* Card grid */}
-              {displayCards.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#8b949e', padding: '60px 0' }}>
-                  <div style={{ fontSize: 52, marginBottom: 12 }}>📭</div>
-                  <div style={{ fontSize: 15 }}>{t('no_cards')}</div>
-                </div>
-              ) : (() => {
-                const totalPages = Math.ceil(displayCards.length / COLL_PAGE_SIZE)
-                const page = Math.min(collPage, totalPages - 1)
-                const slice = displayCards.slice(page * COLL_PAGE_SIZE, (page + 1) * COLL_PAGE_SIZE)
-                return (
-                  <>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-                      {slice.map(({ card, count, cnt, missing }, idx) => {
-                        const c = count || cnt || 0;
-                        return (
-                          <div key={card.id} style={{ animation: 'slideIn .35s ease both' }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
-                            <Card card={card} count={missing ? 0 : c} dimmed={missing} onClick={missing ? undefined : () => setSelectedCard(card)} />
-                          </div>
-                        );
-                      })}
+                  {/* Card grid */}
+                  {displayCards.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#8daacc', padding: '60px 0' }}>
+                      <div style={{ fontSize: 52, marginBottom: 12 }}>📭</div>
+                      <div style={{ fontSize: 15 }}>{t('no_cards')}</div>
                     </div>
-                    {totalPages > 1 && (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, paddingBottom: 8 }}>
-                        <button onClick={() => setCollPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ background: page===0?'#161b22':'#21262d', border: '1px solid #30363d', color: page===0?'#555':'#e6edf3', width: 32, height: 32, borderRadius: 8, cursor: page===0?'default':'pointer', fontWeight: 900, fontSize: 15 }}>‹</button>
-                        <span style={{ fontSize: 12, color: '#8b949e', fontWeight: 700 }}>{page+1} / {totalPages}</span>
-                        <span style={{ fontSize: 11, color: '#555' }}>({displayCards.length})</span>
-                        <button onClick={() => setCollPage(p => Math.min(totalPages-1, p+1))} disabled={page===totalPages-1} style={{ background: page===totalPages-1?'#161b22':'#21262d', border: '1px solid #30363d', color: page===totalPages-1?'#555':'#e6edf3', width: 32, height: 32, borderRadius: 8, cursor: page===totalPages-1?'default':'pointer', fontWeight: 900, fontSize: 15 }}>›</button>
-                      </div>
-                    )}
-                  </>
-                )
-              })()}
+                  ) : (() => {
+                    const totalPages = Math.ceil(displayCards.length / COLL_PAGE_SIZE)
+                    const page = Math.min(collPage, totalPages - 1)
+                    const slice = displayCards.slice(page * COLL_PAGE_SIZE, (page + 1) * COLL_PAGE_SIZE)
+                    return (
+                      <>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+                          {slice.map(({ card, count, cnt, missing }, idx) => {
+                            const c = count || cnt || 0;
+                            return (
+                              <div key={card.id} style={{ animation: 'slideIn .35s ease both' }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
+                                <Card card={card} count={missing ? 0 : c} dimmed={missing} onClick={missing ? undefined : () => setSelectedCard(card)} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {totalPages > 1 && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, paddingBottom: 8 }}>
+                            <button onClick={() => setCollPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ background: page===0?'#1a2538':'#2e4158', border: '1px solid #344e68', color: page===0?'#555':'#d4e8f8', width: 32, height: 32, borderRadius: 8, cursor: page===0?'default':'pointer', fontWeight: 900, fontSize: 15 }}>‹</button>
+                            <span style={{ fontSize: 12, color: '#8daacc', fontWeight: 700 }}>{page+1} / {totalPages}</span>
+                            <span style={{ fontSize: 11, color: '#555' }}>({displayCards.length})</span>
+                            <button onClick={() => setCollPage(p => Math.min(totalPages-1, p+1))} disabled={page===totalPages-1} style={{ background: page===totalPages-1?'#1a2538':'#2e4158', border: '1px solid #344e68', color: page===totalPages-1?'#555':'#d4e8f8', width: 32, height: 32, borderRadius: 8, cursor: page===totalPages-1?'default':'pointer', fontWeight: 900, fontSize: 15 }}>›</button>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+                </>
+              )}
+
+              {/* Market inline */}
+              {auth.profile && activeTab === 'market' && (
+                <MarketModal inline
+                  myCollection={gs.collection} market={gs.market} gold={gs.gold} cardPool={gs.cardPool}
+                  myListings={gs.myListings} transactions={gs.transactions}
+                  onClose={() => setActiveTab('collection')}
+                  onBuy={handleBuy} onListCard={handleListCard} onCancelListing={handleCancelListing} onCancelAllListings={handleCancelAllListings}
+                  initialTab={marketTab} initialSellCard={marketTab === 'vendre' ? selectedCard : null}
+                  ranks={gs.limits.playerRanks}
+                  marketSalesOpen={gs.limits.marketSalesOpen !== false}
+                  myPseudo={auth.profile?.pseudo}
+                  unreadSales={gs.unreadSales}
+                  onClearUnreadSales={() => gs.setUnreadSales(0)}
+                  onClearNewTransactions={gs.clearNewTransactions}
+                />
+              )}
+
+              {/* Forge inline */}
+              {auth.profile && activeTab === 'forge' && gs.cardPool.some(c => c.forgeable) && (
+                <ForgeModal inline
+                  cardPool={gs.cardPool}
+                  collection={gs.collection}
+                  forgePoints={gs.forgePoints}
+                  onClose={() => setActiveTab('collection')}
+                  onForged={(data) => {
+                    if (data?.forge_points_remaining !== undefined) {
+                      gs.addForgePoints(data.forge_points_remaining - gs.forgePoints)
+                    }
+                    if (data?.card) {
+                      gs.setCollection(prev => ({ ...prev, [data.card.id]: (prev[data.card.id] || 0) + 1 }))
+                    }
+                  }}
+                />
+              )}
+
+              {/* Leaderboard inline */}
+              {auth.profile && activeTab === 'top' && (
+                <LeaderboardModal inline
+                  myCollection={gs.collection} myPseudo={auth.profile?.pseudo} myId={auth.profile?.id}
+                  cardPool={gs.cardPool} ranks={gs.limits.playerRanks}
+                  onClose={() => setActiveTab('collection')}
+                />
+              )}
             </main>
           )}
         </div>
@@ -870,21 +992,21 @@ export default function App() {
 
       {/* ── BOTTOM NAV (mobile) ── */}
       {auth.profile && isMobile && (
-        <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: '#0d1117f2', backdropFilter: 'blur(20px)', borderTop: '1px solid #21262d', display: 'flex' }}>
+        <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: '#1a2538f2', backdropFilter: 'blur(20px)', borderTop: '1px solid #2e4158', display: 'flex' }}>
           {[
             { id: 'home',        icon: '🏠', label: 'Accueil' },
             { id: 'collection',  icon: '🃏', label: 'Collection' },
-            { id: 'market',      icon: '🏪', label: 'Marché',    badge: gs.unreadSales, action: () => setShowMarket(true) },
-            ...(gs.cardPool.some(c => c.forgeable) ? [{ id: 'forge', icon: '🔨', label: 'Forge', action: () => setShowForge(true) }] : []),
-            { id: 'top',         icon: '🏆', label: 'Top',       action: () => setShowLeaderboard(true) },
+            { id: 'market',      icon: '🏪', label: 'Marché', badge: gs.unreadSales },
+            ...(gs.cardPool.some(c => c.forgeable) ? [{ id: 'forge', icon: '🔨', label: 'Forge' }] : []),
+            { id: 'top',         icon: '🏆', label: 'Classement' },
           ].map(item => {
-            const active = !item.action && activeTab === item.id
+            const active = activeTab === item.id
             return (
-              <button key={item.id} onClick={item.action ? item.action : () => setActiveTab(item.id)}
-                style={{ flex: 1, background: 'none', border: 'none', color: active ? '#f9ca24' : '#8b949e', padding: '9px 4px 11px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
+              <button key={item.id} onClick={() => setActiveTab(item.id)}
+                style={{ flex: 1, background: 'none', border: 'none', color: active ? '#f9ca24' : '#8daacc', padding: '9px 4px 11px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
                 <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
                 <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{item.label}</span>
-                {item.badge > 0 && <span style={{ position: 'absolute', top: 7, left: '55%', background: '#e74c3c', color: '#fff', width: 15, height: 15, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #0d1117' }}>{item.badge > 9 ? '9+' : item.badge}</span>}
+                {item.badge > 0 && <span style={{ position: 'absolute', top: 7, left: '55%', background: '#e74c3c', color: '#fff', width: 15, height: 15, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #1a2538' }}>{item.badge > 9 ? '9+' : item.badge}</span>}
                 {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '0 0 3px 3px' }} />}
               </button>
             )
@@ -932,44 +1054,9 @@ export default function App() {
       )}
 
       {/* ── Modals ── */}
-      {pendingQuiz && !activeQuiz && <QuizNotif key={quizKey} quiz={pendingQuiz} onJoin={handleJoin} onSkip={handleSkip} />}
+      {/* QuizNotif popup disabled */}
       {activeQuiz  && <QuizModal quiz={activeQuiz} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
 
-      {showForge && (
-        <ForgeModal
-          cardPool={gs.cardPool}
-          collection={gs.collection}
-          forgePoints={gs.forgePoints}
-          onClose={() => setShowForge(false)}
-          onForged={(data) => {
-            if (data?.forge_points_remaining !== undefined) {
-              gs.addForgePoints(data.forge_points_remaining - gs.forgePoints)
-            }
-            if (data?.card) {
-              gs.setCollection(prev => ({
-                ...prev,
-                [data.card.id]: (prev[data.card.id] || 0) + 1,
-              }))
-            }
-          }}
-        />
-      )}
-
-      {showMarket && (
-        <MarketModal
-          myCollection={gs.collection} market={gs.market} gold={gs.gold} cardPool={gs.cardPool}
-          myListings={gs.myListings} transactions={gs.transactions}
-          onClose={() => { setShowMarket(false); setMarketTab('acheter'); setSelectedCard(null); }}
-          onBuy={handleBuy} onListCard={handleListCard} onCancelListing={handleCancelListing} onCancelAllListings={handleCancelAllListings}
-          initialTab={marketTab} initialSellCard={marketTab === 'vendre' ? selectedCard : null}
-          ranks={gs.limits.playerRanks}
-          marketSalesOpen={gs.limits.marketSalesOpen !== false}
-          myPseudo={auth.profile?.pseudo}
-          unreadSales={gs.unreadSales}
-          onClearUnreadSales={() => gs.setUnreadSales(0)}
-          onClearNewTransactions={gs.clearNewTransactions}
-        />
-      )}
       {welcomeCards.length > 0 && (
         <OfferedCardModal
           card={welcomeCards[0]}
@@ -995,7 +1082,7 @@ export default function App() {
       {/* ── Prompt inscription — bloque la réponse au quiz pour les invités ── */}
       {showRegisterPrompt && !auth.profile && (
         <div style={{ position: 'fixed', inset: 0, background: '#000d', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000, backdropFilter: 'blur(10px)', padding: 20 }}>
-          <div style={{ background: 'linear-gradient(145deg,#1a1a2e,#16213e)', borderRadius: 24, padding: '32px 28px', width: 'min(94vw,400px)', border: '1.5px solid #6c5ce744', boxShadow: '0 32px 80px #000b', fontFamily: "'Nunito',sans-serif", textAlign: 'center' }}>
+          <div style={{ background: 'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius: 24, padding: '32px 28px', width: 'min(94vw,400px)', border: '1.5px solid #6c5ce744', boxShadow: '0 32px 80px #000b', fontFamily: "'Nunito',sans-serif", textAlign: 'center' }}>
             <div style={{ fontSize: 52, marginBottom: 12 }}>🗺️</div>
             <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 22, color: '#f9ca24', marginBottom: 8 }}>
               {t('register_prompt_title')}
@@ -1028,7 +1115,7 @@ export default function App() {
               <div style={{ fontSize: 12, color: '#aaa', lineHeight: 1.5 }}>{t('market_unlock_body')}</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-              <button onClick={() => { setMarketUnlockBanner(false); setShowMarket(true); }}
+              <button onClick={() => { setMarketUnlockBanner(false); setActiveTab('market'); }}
                 style={{ background: 'linear-gradient(135deg,#00b894,#00cec9)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {t('market_unlock_sell')}
               </button>
@@ -1046,10 +1133,9 @@ export default function App() {
           card={selectedCard}
           count={gs.collection[selectedCard.id] || 0}
           onClose={() => setSelectedCard(null)}
-          onSell={() => { setSelectedCard(null); setMarketTab('vendre'); setShowMarket(true); }}
+          onSell={() => { setSelectedCard(null); setMarketTab('vendre'); setActiveTab('market'); }}
         />
       )}
-      {showLeaderboard && <LeaderboardModal myCollection={gs.collection} myPseudo={auth.profile?.pseudo} myId={auth.profile?.id} cardPool={gs.cardPool} ranks={gs.limits.playerRanks} onClose={() => setShowLeaderboard(false)} />}
       {showAuth        && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
       {showChoosePseudo && <AuthModal auth={auth} initialMode="choose_pseudo" onClose={() => setShowChoosePseudo(false)} onSuccess={() => setShowChoosePseudo(false)} />}
       {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
@@ -1136,7 +1222,7 @@ export default function App() {
       {showScrollTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          style={{ position: 'fixed', bottom: 28, left: 28, zIndex: 2500, background: 'linear-gradient(135deg,#1a1a2e,#16213e)', border: '1.5px solid #6c5ce788', color: '#a29bfe', width: 44, height: 44, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 8px 32px #0008', transition: 'all .2s ease', fontFamily: "'Nunito',sans-serif" }}
+          style={{ position: 'fixed', bottom: 28, left: 28, zIndex: 2500, background: 'linear-gradient(135deg,#1e3045,#1a2d42)', border: '1.5px solid #6c5ce788', color: '#a29bfe', width: 44, height: 44, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 8px 32px #0008', transition: 'all .2s ease', fontFamily: "'Nunito',sans-serif" }}
           onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 40px #000c'; e.currentTarget.style.borderColor = '#a29bfe'; e.currentTarget.style.color = '#fff' }}
           onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 8px 32px #0008'; e.currentTarget.style.borderColor = '#6c5ce788'; e.currentTarget.style.color = '#a29bfe' }}
           title="Remonter en haut"

@@ -33,7 +33,7 @@ export default function ShopModal({onClose, cardPool, onPurchase}){ const {t}=us
 
   return (
     <div style={{position:"fixed",inset:0,background:"#000d",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(10px)"}}>
-      <div style={{background:"linear-gradient(145deg,#1a1a2e,#16213e)",borderRadius:24,padding:"0",width:"min(96vw,640px)",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 32px 80px #000c",border:"2px solid #f9ca2444",fontFamily:"'Nunito',sans-serif",overflow:"hidden"}}>
+      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:24,padding:"0",width:"min(96vw,640px)",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 32px 80px #000c",border:"2px solid #f9ca2444",fontFamily:"'Nunito',sans-serif",overflow:"hidden"}}>
 
         {/* Header */}
         <div style={{background:"linear-gradient(90deg,#e84393,#f9ca24,#e17055)",backgroundSize:"200% 100%",animation:"shimmer 3s linear infinite",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -84,7 +84,7 @@ export default function ShopModal({onClose, cardPool, onPurchase}){ const {t}=us
           {/* Payment buttons */}
           <div style={{fontSize:12,color:"#888",marginBottom:10,textAlign:"center"}}>{t("shop_payment_label")}</div>
           <div style={{display:"flex",flexDirection:"column",gap:9}}>
-            <button onClick={()=>handleBuy("card")} style={{display:"flex",alignItems:"center",gap:12,background:"#fff",border:"none",padding:"13px 18px",borderRadius:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a2e",transition:"opacity .15s"}}
+            <button onClick={()=>handleBuy("card")} style={{display:"flex",alignItems:"center",gap:12,background:"#fff",border:"none",padding:"13px 18px",borderRadius:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:14,color:"#1e3045",transition:"opacity .15s"}}
               onMouseEnter={e=>e.currentTarget.style.opacity=".9"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
               <span style={{fontSize:22}}>💳</span>
               <span style={{flex:1,textAlign:"left"}}>{t("shop_card")}</span>
@@ -115,7 +115,7 @@ export default function ShopModal({onClose, cardPool, onPurchase}){ const {t}=us
           <div style={{color:"#888",fontSize:12,marginBottom:24}}>{t("shop_confirm_cards")}</div>
           <div style={{display:"flex",gap:10}}>
             <button onClick={()=>setStep("shop")} style={{flex:1,background:"#ffffff18",border:"1px solid #ffffff22",color:"#aaa",padding:"13px",borderRadius:12,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("shop_cancel")}</button>
-            <button onClick={handleConfirm} style={{flex:2,background:"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:"#1a1a2e",padding:"13px",borderRadius:12,fontFamily:"'Nunito',sans-serif",fontWeight:900,fontSize:15,cursor:"pointer",boxShadow:"0 4px 20px #f9ca2444"}}>
+            <button onClick={handleConfirm} style={{flex:2,background:"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:"#1e3045",padding:"13px",borderRadius:12,fontFamily:"'Nunito',sans-serif",fontWeight:900,fontSize:15,cursor:"pointer",boxShadow:"0 4px 20px #f9ca2444"}}>
               Confirmer — {PACK_PRICE}
             </button>
           </div>
@@ -160,7 +160,7 @@ export default function ShopModal({onClose, cardPool, onPurchase}){ const {t}=us
                     <>
                       <div style={{background:`linear-gradient(90deg,${c1},${c2})`,padding:"4px 7px",fontSize:9,fontWeight:900,color:"#fff"}}>{card.type.toUpperCase()}</div>
                       <div style={{height:50,background:`linear-gradient(135deg,${c1}22,${c2}44)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:800}}>{card.name[0]}</div>
-                      <div style={{textAlign:"center",fontWeight:900,fontSize:10,color:"#1a1a2e",padding:"2px 4px",background:"#ffffff88"}}>{card.name}</div>
+                      <div style={{textAlign:"center",fontWeight:900,fontSize:10,color:"#1e3045",padding:"2px 4px",background:"#ffffff88"}}>{card.name}</div>
                       <div style={{background:rc.bg,color:rc.color,fontSize:7,fontWeight:800,textAlign:"center",padding:"2px 0",letterSpacing:.5}}>{rarityLabel(card.rarity,t).toUpperCase()}</div>
                     </>
                   ):(

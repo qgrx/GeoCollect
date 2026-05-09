@@ -17,6 +17,7 @@ export default function MarketModal({
   unreadSales = 0,
   onClearUnreadSales = () => {},
   onClearNewTransactions = () => {},
+  inline = false,
 }) {
   const { t } = useT()
   const [tab, setTab] = useState(initialTab)
@@ -63,6 +64,17 @@ export default function MarketModal({
 
   const visitedHistoryRef = useRef(false)
 
+  const PanelWrapper = ({ children }) => inline ? (
+    <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
+  ) : (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
+      <div style={{ position: 'relative', background: '#243447', width: 'min(100vw, 620px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: '1px solid #344e68', fontFamily: "'Nunito',sans-serif", animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
+    </div>
+  )
+
   useEffect(() => {
     if (tab === 'historique') {
       visitedHistoryRef.current = true
@@ -77,26 +89,22 @@ export default function MarketModal({
   }, [onClearNewTransactions])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end' }}>
-      {/* Backdrop */}
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
-      {/* Panel */}
-      <div style={{ position: 'relative', background: '#161b22', width: 'min(100vw, 620px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: '1px solid #30363d', fontFamily: "'Nunito',sans-serif", animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
+    <PanelWrapper>
       <div style={{ padding: '18px 20px', flex: 1 }}>
 
         {/* Header */}
         <div style={{ display: 'flex',justifyContent: 'space-between',alignItems: 'center',marginBottom: 14 }}>
           <div style={{ color: '#f9ca24',fontWeight: 900,fontSize: 20 }}>{t('market_title')}</div>
-          <button onClick={onClose} style={{ background: '#ffffff22',border: 'none',color: '#fff',width: 32,height: 32,borderRadius: '50%',fontSize: 16,cursor: 'pointer' }}>✕</button>
+          {!inline && <button onClick={onClose} style={{ background: '#ffffff22',border: 'none',color: '#fff',width: 32,height: 32,borderRadius: '50%',fontSize: 16,cursor: 'pointer' }}>✕</button>}
         </div>
 
         {/* Tabs */}
         <div style={{ display: 'flex',gap: 7,marginBottom: 18,flexWrap: 'wrap' }}>
           {tabs.map(tab_ => (
             <button key={tab_.id} onClick={() => { setTab(tab_.id); setMsg(''); setExp(null) }}
-              style={{ position: 'relative', background: tab === tab_.id ? '#f9ca24' : '#ffffff22',border: 'none',color: tab === tab_.id ? '#1a1a2e' : '#fff',padding: '7px 15px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 12,cursor: 'pointer',whiteSpace: 'nowrap' }}>
+              style={{ position: 'relative', background: tab === tab_.id ? '#f9ca24' : '#ffffff22',border: 'none',color: tab === tab_.id ? '#1e3045' : '#fff',padding: '7px 15px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 12,cursor: 'pointer',whiteSpace: 'nowrap' }}>
               {tab_.label}
-              {tab_.badge > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#e74c3c', color: '#fff', fontSize: 9, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: `1.5px solid ${tab === tab_.id ? '#f9ca24' : '#1a1a2e'}`, animation: 'pulseBadge 1.5s infinite' }}>{tab_.badge}</span>}
+              {tab_.badge > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#e74c3c', color: '#fff', fontSize: 9, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: `1.5px solid ${tab === tab_.id ? '#f9ca24' : '#1e3045'}`, animation: 'pulseBadge 1.5s infinite' }}>{tab_.badge}</span>}
             </button>
           ))}
         </div>
@@ -156,7 +164,7 @@ export default function MarketModal({
                             return (
                               <div key={tier.price} style={{ display: 'grid',gridTemplateColumns: '65px 1fr 50px auto',gap: 5,alignItems: 'center',padding: '4px 3px',borderRadius: 6,background: isOwn ? '#f9ca2408' : ib ? '#00b89412' : 'transparent',border: isOwn ? '1px solid #f9ca2428' : ib ? '1px solid #00b89428' : '1px solid transparent', opacity: ca ? 1 : 0.4 }}>
                                 <div style={{ fontWeight: 900,fontSize: 13,color: isOwn ? '#f9ca24' : ib ? '#00b894' : '#f9ca24',display: 'flex',alignItems: 'center',gap: 3,flexWrap: 'wrap' }}>
-                                  {isOwn && <span style={{ fontSize: 7,background: '#f9ca24',color: '#1a1a2e',borderRadius: 3,padding: '1px 4px',fontWeight: 800 }}>Moi</span>}
+                                  {isOwn && <span style={{ fontSize: 7,background: '#f9ca24',color: '#1e3045',borderRadius: 3,padding: '1px 4px',fontWeight: 800 }}>Moi</span>}
                                   {!isOwn && ib && <span style={{ fontSize: 7,background: '#00b894',color: '#fff',borderRadius: 3,padding: '1px 4px',fontWeight: 800 }}>{t('market_best')}</span>}
                                   {tier.price}G
                                 </div>
@@ -266,7 +274,7 @@ export default function MarketModal({
                   <button 
                     disabled={sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)}
                     onClick={() => { onListCard(sellCard, sellPrice); setMsg(''); setSellCard(null); setSellPrice(0); setTab('meslistes'); }}
-                    style={{ width: '100%',background: 'linear-gradient(135deg,#f9ca24,#e17055)',border: 'none',color: '#1a1a2e',padding: '11px',borderRadius: 10,fontFamily: "'Nunito',sans-serif",fontWeight: 900,fontSize: 14,cursor: (sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)) ? 'not-allowed' : 'pointer',opacity: (sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)) ? 0.5 : 1 }}>
+                    style={{ width: '100%',background: 'linear-gradient(135deg,#f9ca24,#e17055)',border: 'none',color: '#1e3045',padding: '11px',borderRadius: 10,fontFamily: "'Nunito',sans-serif",fontWeight: 900,fontSize: 14,cursor: (sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)) ? 'not-allowed' : 'pointer',opacity: (sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)) ? 0.5 : 1 }}>
                     {t('market_list_btn')}
                   </button>
                 </div>
@@ -385,7 +393,6 @@ export default function MarketModal({
         )}
 
       </div>
-    </div>
-  </div>
+    </PanelWrapper>
   )
 }

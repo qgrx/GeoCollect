@@ -42,7 +42,7 @@ function ProfileView({ player, cardPool, myPseudo, onBack }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: 'linear-gradient(135deg,#1a1a2e,#16213e)', borderRadius: 22, padding: 22, width: 'min(96vw,860px)', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: '1.5px solid #ffffff18', fontFamily: "'Nunito',sans-serif" }}>
+      <div style={{ background: 'linear-gradient(135deg,#1e3045,#1a2d42)', borderRadius: 22, padding: 22, width: 'min(96vw,860px)', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: '1.5px solid #ffffff18', fontFamily: "'Nunito',sans-serif" }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>←</button>
           <div style={{ color: '#f9ca24', fontWeight: 900, fontSize: 18 }}>
@@ -70,7 +70,7 @@ function ProfileView({ player, cardPool, myPseudo, onBack }) {
 }
 
 // ─── Leaderboard Modal ────────────────────────────────────────────────────────
-export default function LeaderboardModal({ myCollection, myPseudo, myId, cardPool, ranks, onClose }) {
+export default function LeaderboardModal({ myCollection, myPseudo, myId, cardPool, ranks, onClose, inline = false }) {
   const { t } = useT();
   const [players, setPlayers] = useState([]);
   const [total, setTotal] = useState(0);
@@ -100,16 +100,25 @@ export default function LeaderboardModal({ myCollection, myPseudo, myId, cardPoo
   const pages = Math.ceil(total / PG);
   const medal = ['🥇', '🥈', '🥉'];
 
+  const PanelWrapper = ({ children }) => inline ? (
+    <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
+  ) : (
+    <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
+      <div style={{ background: 'linear-gradient(135deg,#1e3045,#1a2d42)', borderRadius: 22, padding: 22, width: 'min(96vw,500px)', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: '1.5px solid #ffffff18', fontFamily: "'Nunito',sans-serif" }}>
+        {children}
+      </div>
+    </div>
+  )
+
   if (viewing) {
     return <ProfileView player={viewing} cardPool={cardPool} myPseudo={myPseudo} onBack={() => setViewing(null)} />;
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: 'linear-gradient(135deg,#1a1a2e,#16213e)', borderRadius: 22, padding: 22, width: 'min(96vw,500px)', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: '1.5px solid #ffffff18', fontFamily: "'Nunito',sans-serif" }}>
+    <PanelWrapper>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ color: '#f9ca24', fontWeight: 900, fontSize: 20 }}>{t('lb_title')}</div>
-          <button onClick={onClose} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>✕</button>
+          {!inline && <button onClick={onClose} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>✕</button>}
         </div>
         <input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
           placeholder="🔍 Rechercher un joueur…"
@@ -151,7 +160,6 @@ export default function LeaderboardModal({ myCollection, myPseudo, myId, cardPoo
             <button onClick={() => setPage(p => Math.min(pages - 1, p + 1))} disabled={page === pages - 1} style={{ background: page === pages - 1 ? '#222' : '#ffffff22', border: 'none', color: page === pages - 1 ? '#444' : '#fff', padding: '5px 13px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: page === pages - 1 ? 'default' : 'pointer' }}>{t('lb_next')}</button>
           </div>
         )}
-      </div>
-    </div>
+    </PanelWrapper>
   );
 }

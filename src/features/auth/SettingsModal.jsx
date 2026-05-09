@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../../i18n/translations.js'
 import { BTN, INP } from '../../utils/styles.js'
-import { RC, cardCC, ACHIEVEMENT_DEF } from '../../data/cards.js'
+import { RC, ACHIEVEMENT_DEF } from '../../data/cards.js'
+import { rankCC } from '../../utils/rankUtils.js'
 import { PSEUDO_CHANGE_DAYS } from '../../data/constants.js'
 import { apiDeleteAccount } from '../../services/api.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
@@ -70,9 +71,8 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const canChange  = daysSince >= PSEUDO_CHANGE_DAYS
   const history    = profile.pseudo_history || []
   const score = scoreProp ?? computedScore
-  const rank     = getrank(score, ranks)
-  const topRarity = bestRarity(collection, cardPool)
-  const { c1, c2 } = cardCC(topRarity)
+  const rank = getrank(score, ranks)
+  const { c1, c2 } = rankCC(rank)
   const uniqueCards = Object.values(collection).filter(n => n > 0).length
   const memberStr   = memberSince(profile.joined_at)
 
@@ -94,7 +94,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center',
       justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(8px)', padding: 16 }}>
-      <div style={{ background: 'linear-gradient(145deg,#1a1a2e,#16213e)', borderRadius: 24,
+      <div style={{ background: 'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius: 24,
         width: 'min(94vw,440px)', maxHeight: '92vh', overflowY: 'auto',
         border: '1.5px solid #ffffff18', boxShadow: '0 32px 80px #000b',
         fontFamily: "'Nunito',sans-serif", position: 'relative' }}>
@@ -105,7 +105,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           borderRadius: '50%', fontSize: 15, cursor: 'pointer', fontWeight: 900 }}>✕</button>
 
         {/* ── Hero card ── */}
-        <div style={{ background: `linear-gradient(135deg,${c1}cc,${c2}88,#0f3460)`,
+        <div style={{ background: `linear-gradient(135deg,${c1}cc,${c2}88,#1a4a7a)`,
           borderRadius: '22px 22px 0 0', padding: '32px 24px 24px', position: 'relative', overflow: 'hidden' }}>
 
           {/* Fond décoratif */}
