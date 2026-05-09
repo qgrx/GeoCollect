@@ -375,13 +375,20 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
   const [isWide,   setIsWide]   = useState(() => typeof window !== 'undefined' && window.innerWidth >= 640)
   useEffect(() => {
-    const handler = () => { setIsMobile(window.innerWidth < 640); setIsWide(window.innerWidth >= 640) }
+    const handler = () => {
+      const wide = window.innerWidth >= 640
+      setIsMobile(!wide)
+      setIsWide(wide)
+      if (wide) setActiveTab(t => t === 'home' ? 'collection' : t)
+    }
     window.addEventListener('resize', handler)
     return () => window.removeEventListener('resize', handler)
   }, [])
 
   // ── Navigation mobile (onglets) ────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState('home')
+  const [activeTab, setActiveTab] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth >= 640 ? 'collection' : 'home'
+  )
   useEffect(() => { gs.marketOpenRef.current = activeTab === 'market' }, [activeTab])
 
   // ── Clic en dehors du menu avatar ──────────────────────────────────────────
