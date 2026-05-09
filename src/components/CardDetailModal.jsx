@@ -5,6 +5,7 @@ import { ShinyEffect } from './Card.jsx'
 
 export default function CardDetailModal({ card, count, onClose, onSell, isShiny = false }) {
   const { t } = useT()
+
   const imgRef = useRef()
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const onMove = useCallback(e => {
@@ -116,7 +117,7 @@ export default function CardDetailModal({ card, count, onClose, onSell, isShiny 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span style={{ color: rc.color, fontSize: 14 }}>{'★'.repeat(rc.stars)}{'☆'.repeat(4 - rc.stars)}</span>
             <span style={{ fontSize: 11, color: rc.color, fontWeight: 800, background: rc.bg, borderRadius: 50, padding: '2px 10px' }}>{rarityLabel(card.rarity, t)}</span>
-            {isShiny && <span style={{ fontSize: 11, color: '#f9ca24', fontWeight: 900, background: '#f9ca2422', borderRadius: 50, padding: '2px 10px', border: '1px solid #f9ca2444' }}>✨ Brillant</span>}
+            {isShiny && <span style={{ fontSize: 11, color: '#f9ca24', fontWeight: 900, background: '#f9ca2422', borderRadius: 50, padding: '2px 10px', border: '1px solid #f9ca2444' }}>✨ {t('shiny_label')}</span>}
           </div>
           {card.desc && (
             <div style={{ fontSize: 13, color: '#aaa', lineHeight: 1.6, fontStyle: 'italic',

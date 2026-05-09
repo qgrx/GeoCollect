@@ -752,11 +752,11 @@ export default function App() {
           </div>
         )}
 
-        {/* Theme toggle */}
-        <button onClick={toggle} title={mode === 'dark' ? 'Mode clair' : 'Mode sombre'}
+        {/* Theme toggle — connecté uniquement */}
+        {auth.profile && <button onClick={toggle} title={mode === 'dark' ? 'Mode clair' : 'Mode sombre'}
           style={{ background: 'none', border: `1px solid ${theme.headerMuted}44`, color: theme.headerMuted, width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           {mode === 'dark' ? '☀️' : '🌙'}
-        </button>
+        </button>}
 
         {/* Avatar */}
         {auth.profile ? (
