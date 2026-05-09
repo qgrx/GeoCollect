@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { cardCC } from '../../data/cards.js'
 import { apiForgeCard } from '../../services/api.js'
+import { useTheme } from '../../ThemeContext.jsx'
 
 // ─── Keyframes injectés une seule fois ───────────────────────────────────────
 const STYLE = `
@@ -170,6 +171,7 @@ function ForgingCard({ card, phase }) {
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
 export default function ForgeModal({ cardPool, collection, forgePoints, onClose, onForged, inline = false }) {
   useEffect(() => { injectStyle() }, [])
+  const { theme } = useTheme()
 
   const [forgingId, setForgingId]   = useState(null) // card en cours de forge
   const [phase, setPhase]           = useState(null)  // heating | reveal | done
@@ -221,7 +223,7 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
   ) : (
     <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end', fontFamily: "'Nunito',sans-serif" }}>
       <div onClick={() => { if (!forgingId) onClose() }} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
-      <div style={{ position: 'relative', background: '#243447', width: 'min(100vw, 600px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: '1px solid #344e68', animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'relative', background: theme.bgSurface, width: 'min(100vw, 600px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: `1px solid ${theme.border}`, animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
         {children}
       </div>
     </div>
@@ -272,13 +274,13 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <div>
             <div style={{ fontWeight: 900, color: '#a29bfe', fontSize: 20 }}>🔨 Atelier de Forge</div>
-            <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>
               Dépense tes points de forge pour acquérir des cartes exclusives
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 10, color: '#555', fontWeight: 700, textTransform: 'uppercase' }}>Tes points</div>
+              <div style={{ fontSize: 10, color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase' }}>Tes points</div>
               <div style={{ fontWeight: 900, fontSize: 22, color: '#a29bfe' }}>🔨 {forgePoints}</div>
             </div>
             {!inline && <button onClick={onClose} style={{ background: '#ffffff18', border: 'none',
@@ -296,10 +298,10 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
         )}
 
         {forgeableCards.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#555', padding: '40px 0' }}>
+          <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⚒️</div>
             <div>Aucune carte forgeable disponible.</div>
-            <div style={{ fontSize: 11, color: '#444', marginTop: 6 }}>
+            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 6 }}>
               L'admin peut en créer depuis le panneau Cartes.
             </div>
           </div>
@@ -317,8 +319,8 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
                 <div key={card.id} style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
                   padding: '12px 10px',
-                  background: justDone ? '#00b89410' : '#ffffff06',
-                  border: `1px solid ${justDone ? '#00b89444' : '#ffffff10'}`,
+                  background: justDone ? '#00b89410' : theme.overlay,
+                  border: `1px solid ${justDone ? '#00b89444' : theme.border}`,
                   borderRadius: 16, width: 160,
                   transition: 'all .3s',
                 }}>
@@ -363,10 +365,10 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
                   {/* Coût + bouton */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontWeight: 900, fontSize: 14,
-                      color: canAfford ? '#a29bfe' : '#444' }}>
+                      color: canAfford ? '#a29bfe' : theme.textMuted }}>
                       🔨 {card.forge_cost ?? '?'}
                     </span>
-                    <span style={{ fontSize: 10, color: '#555' }}>pts</span>
+                    <span style={{ fontSize: 10, color: theme.textMuted }}>pts</span>
                   </div>
 
                   {owned ? (
@@ -386,8 +388,8 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
                         fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12,
                         background: canAfford
                           ? 'linear-gradient(135deg,#6c5ce7,#a29bfe)'
-                          : '#ffffff10',
-                        color: canAfford ? '#fff' : '#444',
+                          : theme.overlay,
+                        color: canAfford ? '#fff' : theme.textMuted,
                         transition: 'all .2s',
                         boxShadow: canAfford ? '0 4px 14px #6c5ce744' : 'none',
                       }}

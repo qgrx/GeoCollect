@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useT } from '../../i18n/translations.js'
+import { useTheme } from '../../ThemeContext.jsx'
 import { RC, cardCC, rarityLabel } from '../../data/cards.js'
 import Card from '../../components/Card.jsx'
 import { TxHistoryModal } from '../achievements/NotifComponents.jsx'
@@ -20,6 +21,7 @@ export default function MarketModal({
   inline = false,
 }) {
   const { t } = useT()
+  const { theme } = useTheme()
   const [tab, setTab] = useState(initialTab)
   const [sellCard, setSellCard] = useState(initialSellCard)
   const [sellPrice, setSellPrice] = useState(0)
@@ -69,7 +71,7 @@ export default function MarketModal({
   ) : (
     <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
-      <div style={{ position: 'relative', background: '#243447', width: 'min(100vw, 620px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: '1px solid #344e68', fontFamily: "'Nunito',sans-serif", animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'relative', background: theme.bgSurface, width: 'min(100vw, 620px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: `1px solid ${theme.border}`, fontFamily: "'Nunito',sans-serif", animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
         {children}
       </div>
     </div>
@@ -115,7 +117,7 @@ export default function MarketModal({
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
               <input value={buySearch} onChange={e => setBuySearch(e.target.value)}
                 placeholder="🔍 Rechercher une carte…"
-                style={{ flex: 1, background: '#ffffff0f', border: '1px solid #ffffff18', borderRadius: 9, color: '#fff', padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none' }}/>
+                style={{ flex: 1, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none' }}/>
               {buySearch && <button onClick={() => setBuySearch('')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 16 }}>✕</button>}
             </div>
             {(() => {
@@ -134,16 +136,16 @@ export default function MarketModal({
                   const { c1, c2 } = cardCC(card.rarity)
                   const owned = (myCollection[card.id] || 0) > 0
                   return (
-                    <div key={card.id} style={{ background: '#ffffff07',border: isO ? '1.5px solid #f9ca2455' : '1.5px solid #ffffff12',borderRadius: 13,overflow: 'hidden' }}>
+                    <div key={card.id} style={{ background: theme.overlay,border: isO ? `1.5px solid #f9ca2455` : `1.5px solid ${theme.border}`,borderRadius: 13,overflow: 'hidden' }}>
                       <div onClick={() => setExp(isO ? null : card.id)} style={{ display: 'flex',alignItems: 'center',gap: 11,padding: '9px 13px',cursor: 'pointer' }}>
                         <div style={{ width: 34, height: 34, borderRadius: 9, background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0 }}>{card.name[0]}</div>
                         <div style={{ flex: 1,minWidth: 0 }}>
                           <div style={{ display: 'flex',alignItems: 'center',gap: 7,flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 900,fontSize: 14,color: '#fff' }}>{card.name}</span>
+                            <span style={{ fontWeight: 900,fontSize: 14,color: theme.textPrimary }}>{card.name}</span>
                             <span style={{ background: rc.bg,color: rc.color,fontSize: 8,fontWeight: 800,padding: '1px 6px',borderRadius: 50,textTransform: 'uppercase' }}>{rarityLabel(card.rarity, t)}</span>
                             {owned && <span style={{ background: '#f9ca2422',color: '#f9ca24',fontSize: 8,fontWeight: 800,padding: '1px 6px',borderRadius: 50 }}>{t('market_already_owned')}</span>}
                           </div>
-                          <div style={{ fontSize: 10,color: '#aaa',marginTop: 2,display: 'flex',gap: 10,flexWrap: 'wrap' }}>
+                          <div style={{ fontSize: 10,color: theme.textMuted,marginTop: 2,display: 'flex',gap: 10,flexWrap: 'wrap' }}>
                             <span style={{ color: '#f9ca24',fontWeight: 800 }}>{totalQty.toLocaleString()} {t('market_for_sale')}</span>
                             <span>{tiersArr.length} {tiersArr.length > 1 ? t('market_tiers_pl') : t('market_tiers')}</span>
                             <span>{t('market_from')} <span style={{ color: '#00b894',fontWeight: 800 }}>{tiersArr[0].price}G</span></span>
@@ -152,8 +154,8 @@ export default function MarketModal({
                         <div style={{ color: isO ? '#f9ca24' : '#666',fontSize: 17,transform: isO ? 'rotate(180deg)' : 'none',flexShrink: 0,transition: 'transform .25s' }}>⌄</div>
                       </div>
                       {isO && (
-                        <div style={{ borderTop: '1px solid #ffffff10',padding: '9px 13px 11px',display: 'flex',flexDirection: 'column',gap: 4 }}>
-                          <div style={{ display: 'grid',gridTemplateColumns: '65px 1fr 50px auto',gap: 5,padding: '0 3px 4px',borderBottom: '1px solid #ffffff10',fontSize: 9,color: '#666',fontWeight: 700,textTransform: 'uppercase' }}>
+                        <div style={{ borderTop: `1px solid ${theme.border}`,padding: '9px 13px 11px',display: 'flex',flexDirection: 'column',gap: 4 }}>
+                          <div style={{ display: 'grid',gridTemplateColumns: '65px 1fr 50px auto',gap: 5,padding: '0 3px 4px',borderBottom: `1px solid ${theme.border}`,fontSize: 9,color: theme.textMuted,fontWeight: 700,textTransform: 'uppercase' }}>
                             <span>{t('market_price')}</span><span>{t('market_volume')}</span><span style={{ textAlign: 'right' }}>{t('market_qty')}</span><span style={{ textAlign: 'right' }}>{t('market_buy_btn')}</span>
                           </div>
                           {tiersArr.slice(0, 5).map((tier, i) => {
@@ -180,7 +182,7 @@ export default function MarketModal({
                                     ))}{tier.qty > tier.sellers.length ? ` +${tier.qty - tier.sellers.length}` : ''}
                                   </div>
                                 </div>
-                                <div style={{ textAlign: 'right',fontWeight: 800,color: '#ccc',fontSize: 11 }}>{tier.qty.toLocaleString()}</div>
+                                <div style={{ textAlign: 'right',fontWeight: 800,color: theme.textSecondary,fontSize: 11 }}>{tier.qty.toLocaleString()}</div>
                                 <div style={{ textAlign: 'right' }}>
                                   {isOwn ? (
                                     <span style={{ fontSize: 9,color: '#f9ca24',fontWeight: 700,opacity: .7 }}>Votre annonce</span>
@@ -246,7 +248,7 @@ export default function MarketModal({
             </div>
             <div style={{ flex: 1,minWidth: 180 }}>
               {sellCard ? (
-                <div style={{ background: '#ffffff0a',border: '1.5px solid #ffffff18',borderRadius: 15,padding: 18 }}>
+                <div style={{ background: theme.overlay,border: `1.5px solid ${theme.border}`,borderRadius: 15,padding: 18 }}>
                   <div style={{ color: '#f9ca24',fontWeight: 900,marginBottom: 11,fontSize: 14 }}>🏷️ Mettre en vente</div>
                   <div style={{ display: 'flex',justifyContent: 'center',marginBottom: 11 }}><Card card={sellCard} /></div>
                   {sellCard.minPrice && <div style={{ fontSize: 11,color: '#f39c12',marginBottom: 7 }}>⚠️ {t('market_min_price')} {sellCard.minPrice}G</div>}
@@ -279,7 +281,7 @@ export default function MarketModal({
                   </button>
                 </div>
               ) : (
-                <div style={{ background: '#ffffff08',border: '1.5px dashed #ffffff22',borderRadius: 15,padding: 22,textAlign: 'center',color: '#666' }}>
+                <div style={{ background: theme.overlay,border: `1.5px dashed ${theme.border}`,borderRadius: 15,padding: 22,textAlign: 'center',color: theme.textMuted }}>
                   <div style={{ fontSize: 32 }}>👈</div>
                   <div style={{ marginTop: 7,fontSize: 12 }}>{t('market_select_hint')}</div>
                 </div>
@@ -338,14 +340,14 @@ export default function MarketModal({
                       const isConfirming = cancelConfirm === realIdx
                       const isTemp = String(l.id).startsWith('temp_')
                       return (
-                        <div key={l.id || realIdx} style={{ display: 'flex',alignItems: 'center',gap: 11,background: isConfirming ? '#e74c3c12' : (isTemp ? '#00b89415' : '#ffffff08'),border: `1px solid ${isConfirming ? '#e74c3c44' : (isTemp ? '#00b89466' : '#ffffff12')}`,borderRadius: 12,padding: '10px 14px',transition: 'all .3s ease', animation: isTemp ? 'highlightNewListing .4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both' : 'none' }}>
+                        <div key={l.id || realIdx} style={{ display: 'flex',alignItems: 'center',gap: 11,background: isConfirming ? '#e74c3c12' : (isTemp ? '#00b89415' : theme.overlay),border: `1px solid ${isConfirming ? '#e74c3c44' : (isTemp ? '#00b89466' : theme.border)}`,borderRadius: 12,padding: '10px 14px',transition: 'all .3s ease', animation: isTemp ? 'highlightNewListing .4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both' : 'none' }}>
                           {/* Indicateur rareté */}
                           <div style={{ width: 38,height: 38,borderRadius: 10,background: `linear-gradient(135deg,${c1},${c2})`,display: 'flex',alignItems: 'center',justifyContent: 'center',fontSize: 12,fontWeight: 900,color: '#fff',flexShrink: 0 }}>
                             {l.card.name[0]}
                           </div>
                           {/* Infos */}
                           <div style={{ flex: 1,minWidth: 0 }}>
-                            <div style={{ fontWeight: 900,color: '#fff',fontSize: 14,whiteSpace: 'nowrap',overflow: 'hidden',textOverflow: 'ellipsis' }}>{l.card.name}</div>
+                            <div style={{ fontWeight: 900,color: theme.textPrimary,fontSize: 14,whiteSpace: 'nowrap',overflow: 'hidden',textOverflow: 'ellipsis' }}>{l.card.name}</div>
                             <div style={{ fontSize: 10,color: rc.color,fontWeight: 700,marginTop: 1 }}>{rarityLabel(l.card.rarity, t)} · {l.card.type}</div>
                           </div>
                           {/* Prix */}

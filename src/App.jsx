@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useTheme } from './ThemeContext.jsx';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 import { useT, setLang, LANGS, getLang } from './i18n/translations.js'
@@ -119,6 +120,7 @@ function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
 
 export default function App() {
   const { t, lang } = useT();
+  const { theme, mode, toggle } = useTheme();
 
   // ── Game state (all logic lives in the hook) ───────────────────────────────
   const auth = useAuth()
@@ -650,7 +652,7 @@ export default function App() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', fontFamily: "'Nunito', sans-serif", color: '#d4e8f8', background: '#1a2538', display: 'flex', flexDirection: 'column', paddingBottom: (auth.profile && isMobile) ? 68 : 0 }}>
+    <div style={{ minHeight: '100vh', fontFamily: "'Nunito', sans-serif", color: theme.textPrimary, background: theme.bgMain, display: 'flex', flexDirection: 'column', paddingBottom: (auth.profile && isMobile) ? 68 : 0 }}>
       <style>{`
         @keyframes pulseBadge { 0%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,.7)}70%{transform:scale(1.15);box-shadow:0 0 0 5px rgba(231,76,60,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,0)} }
         @keyframes slideIn   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -665,7 +667,7 @@ export default function App() {
       <div style={{ height: 3, background: 'linear-gradient(90deg,#58a6ff,#bc8cff,#f9ca24,#f85149)', flexShrink: 0 }} />
 
       {/* ── HEADER ── */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 200, background: '#1a2538e8', backdropFilter: 'blur(20px)', borderBottom: '1px solid #2e4158', padding: isMobile ? '9px 14px' : '9px 20px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 200, background: theme.headerBg, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${theme.border}`, padding: isMobile ? '9px 14px' : '9px 20px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <Logo iconSize={isMobile ? 26 : 30} textSize={isMobile ? 15 : 19} />
 
         {/* Desktop tab nav — même style que mobile, centré dans le header */}
@@ -682,10 +684,10 @@ export default function App() {
                 const active = activeTab === tb.id
                 return (
                   <button key={tb.id} onClick={() => setActiveTab(tb.id)}
-                    style={{ position: 'relative', background: 'none', border: 'none', color: active ? '#f9ca24' : '#8daacc', padding: '6px 18px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
+                    style={{ position: 'relative', background: 'none', border: 'none', color: active ? '#f9ca24' : theme.textSecondary, padding: '6px 18px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>{tb.icon}</span>
                     <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{tb.label}</span>
-                    {tb.badge > 0 && <span style={{ position: 'absolute', top: 4, left: '55%', background: '#e74c3c', color: '#fff', width: 14, height: 14, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #1a2538' }}>{tb.badge > 9 ? '9+' : tb.badge}</span>}
+                    {tb.badge > 0 && <span style={{ position: 'absolute', top: 4, left: '55%', background: '#e74c3c', color: '#fff', width: 14, height: 14, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${theme.badgeBorder}` }}>{tb.badge > 9 ? '9+' : tb.badge}</span>}
                     {active && <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '3px 3px 0 0' }} />}
                   </button>
                 )
@@ -713,20 +715,26 @@ export default function App() {
           </div>
         )}
 
+        {/* Theme toggle */}
+        <button onClick={toggle} title={mode === 'dark' ? 'Mode clair' : 'Mode sombre'}
+          style={{ background: 'none', border: `1px solid ${theme.border}`, color: theme.textSecondary, width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {mode === 'dark' ? '☀️' : '🌙'}
+        </button>
+
         {/* Avatar */}
         {auth.profile ? (
           <div style={{ position: 'relative' }} ref={avatarMenuRef}>
             <button onClick={() => setAvatarMenu(v => !v)} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: '2px solid #f9ca2444', cursor: 'pointer', fontSize: 13, fontWeight: 900, color: '#1a2538', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {auth.profile.pseudo[0].toUpperCase()}
-              {gs.unreadSales > 0 && isMobile && <span style={{ position: 'absolute', top: -3, right: -3, background: '#e74c3c', borderRadius: '50%', width: 14, height: 14, fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #1a2538', color: '#fff' }}>{gs.unreadSales > 9 ? '9+' : gs.unreadSales}</span>}
+              {gs.unreadSales > 0 && isMobile && <span style={{ position: 'absolute', top: -3, right: -3, background: '#e74c3c', borderRadius: '50%', width: 14, height: 14, fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${theme.badgeBorder}`, color: '#fff' }}>{gs.unreadSales > 9 ? '9+' : gs.unreadSales}</span>}
             </button>
             {avatarMenu && (
-              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#243447', border: '1px solid #344e68', borderRadius: 12, boxShadow: '0 16px 48px #000d', zIndex: 99999, minWidth: 200, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
-                <div style={{ padding: '8px 10px 6px', borderBottom: '1px solid #2e4158' }}>
-                  <div style={{ fontSize: 9, color: '#8daacc', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 5, paddingLeft: 4 }}>Langue</div>
+              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 12, boxShadow: '0 16px 48px #000d', zIndex: 99999, minWidth: 200, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
+                <div style={{ padding: '8px 10px 6px', borderBottom: `1px solid ${theme.borderLight}` }}>
+                  <div style={{ fontSize: 9, color: theme.textSecondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 5, paddingLeft: 4 }}>Langue</div>
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     {Object.entries(LANGS).map(([code, label]) => (
-                      <button key={code} onClick={() => setLang(code)} style={{ background: lang === code ? '#f9ca2420' : '#2e4158', border: lang === code ? '1px solid #f9ca2444' : '1px solid #344e68', color: lang === code ? '#f9ca24' : '#8daacc', padding: '3px 9px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>{label}</button>
+                      <button key={code} onClick={() => setLang(code)} style={{ background: lang === code ? '#f9ca2420' : theme.bgElevated, border: lang === code ? '1px solid #f9ca2444' : `1px solid ${theme.border}`, color: lang === code ? '#f9ca24' : theme.textSecondary, padding: '3px 9px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>{label}</button>
                     ))}
                   </div>
                 </div>
@@ -737,10 +745,10 @@ export default function App() {
                   null,
                   { icon: '↩', label: t('btn_logout'), color: '#f85149', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
                 ].map((item, i) => item === null ? (
-                  <div key={i} style={{ height: 1, background: '#2e4158' }}/>
+                  <div key={i} style={{ height: 1, background: theme.borderLight }}/>
                 ) : (
-                  <button key={i} onClick={item.fn} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', color: item.color || '#d4e8f8', padding: '10px 14px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, textAlign: 'left' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#2e4158'}
+                  <button key={i} onClick={item.fn} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', color: item.color || theme.textPrimary, padding: '10px 14px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, textAlign: 'left' }}
+                    onMouseEnter={e => e.currentTarget.style.background = theme.bgElevated}
                     onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                     <span style={{ fontSize: 15 }}>{item.icon}</span>{item.label}
                   </button>
@@ -765,7 +773,7 @@ export default function App() {
           {/* LEFT SIDEBAR (desktop) / HOME TAB (mobile) */}
           {/* ── LEFT SIDEBAR content ── */}
           {(isWide || activeTab === 'home') && auth.profile && (
-            <aside style={{ width: isWide ? 288 : '100%', flexShrink: 0, padding: '14px 16px', borderRight: isWide ? '1px solid #2e4158' : 'none', display: 'flex', flexDirection: 'column', gap: 14, ...(isWide ? { position: 'sticky', top: 53, maxHeight: 'calc(100vh - 53px)', overflowY: 'auto' } : {}) }}>
+            <aside style={{ width: isWide ? 288 : '100%', flexShrink: 0, padding: '14px 16px', borderRight: isWide ? `1px solid ${theme.border}` : 'none', display: 'flex', flexDirection: 'column', gap: 14, ...(isWide ? { position: 'sticky', top: 53, maxHeight: 'calc(100vh - 53px)', overflowY: 'auto' } : {}) }}>
 
               {/* Countdown hero (mobile only — en haut) */}
               {!isWide && !activeQuiz && auth.profile?.status !== 'banni' && (
@@ -784,7 +792,7 @@ export default function App() {
                 const pct = nextRank ? Math.round(((userScore - prevMin) / (nextRank.min - prevMin)) * 100) : 100
                 const uniqueCards = Object.values(gs.collection).filter(n => n > 0).length
                 return (
-                  <div style={{ background: `linear-gradient(135deg,${c1}33,${c2}18,#1e3045)`, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}44`, position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ background: `linear-gradient(135deg,${c1}33,${c2}18,${theme.bgMain})`, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}44`, position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}18`, pointerEvents: 'none' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                       <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 16px ${c1}55, 0 2px 8px #0006`, border: '2px solid #ffffff22' }}>
@@ -815,11 +823,11 @@ export default function App() {
                     </div>
                     {nextRank ? (
                       <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: '#888' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: theme.textMuted }}>
                           <span>{t('rank_next')} <span style={{ color: nextRank.color, fontWeight: 800 }}>{nextRank.icon} {nextRank.label}</span></span>
                           <span style={{ fontWeight: 700 }}>{userScore}/{nextRank.min}</span>
                         </div>
-                        <div style={{ background: '#ffffff0f', borderRadius: 50, height: 5, overflow: 'hidden' }}>
+                        <div style={{ background: theme.overlay, borderRadius: 50, height: 5, overflow: 'hidden' }}>
                           <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
                         </div>
                       </>
@@ -836,7 +844,7 @@ export default function App() {
               {/* Last 8 geocoins — 4×2 */}
               {history.filter(h => !h.skipped).length > 0 && (
                 <div>
-                  <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: '#8daacc', marginBottom: 8 }}>{t('last_cards')}</div>
+                  <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: theme.textSecondary, marginBottom: 8 }}>{t('last_cards')}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: isWide ? 'repeat(4, 40px)' : 'repeat(auto-fill, minmax(56px, 1fr))', gap: isWide ? 5 : 8 }}>
                     {history.filter(h => !h.skipped).slice(0, 8).map((h, i) => {
                       const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
@@ -846,14 +854,14 @@ export default function App() {
                           <div style={{ position: 'relative', width: sz, height: sz, transition: 'transform .15s', zIndex: 1 }}
                             onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.zIndex = 10; }}
                             onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
-                            <div style={{ width: '100%', height: '100%', borderRadius: 8, overflow: 'hidden', border: `2px solid ${c1}`, background: '#243447', boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
+                            <div style={{ width: '100%', height: '100%', borderRadius: 8, overflow: 'hidden', border: `2px solid ${c1}`, background: theme.bgSurface, boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
                               {h.card ? ((h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url)
                                 ? <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                 : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{h.card.name[0]}</div>
                               ) : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 12 }}>?</div>}
                             </div>
                           </div>
-                          <div style={{ fontSize: 8, fontWeight: 700, color: h.won ? '#3fb950' : '#8daacc', width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 8, fontWeight: 700, color: h.won ? '#3fb950' : theme.textSecondary, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {h.won ? '✓' : h.winner}
                           </div>
                         </div>
@@ -887,11 +895,11 @@ export default function App() {
                     const full  = owned === total && total > 0
                     const active = filter === tp
                     return (
-                      <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }} style={{ flexShrink: 0, background: active ? '#f9ca24' : '#243447', border: `1px solid ${active ? '#f9ca24' : '#344e68'}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', textAlign: 'center', minWidth: 60 }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a2538' : full ? '#3fb950' : '#8daacc', whiteSpace: 'nowrap', marginBottom: 2 }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}</div>
+                      <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }} style={{ flexShrink: 0, background: active ? '#f9ca24' : theme.bgSurface, border: `1px solid ${active ? '#f9ca24' : theme.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', textAlign: 'center', minWidth: 60 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a2538' : full ? '#3fb950' : theme.textSecondary, whiteSpace: 'nowrap', marginBottom: 2 }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                           <span style={{ fontSize: 10, fontWeight: 700, color: active ? '#1a253866' : full ? '#3fb950' : '#f9ca24' }}>{owned}/{total}</span>
-                          <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#0000001a' : '#344e68', overflow: 'hidden', minWidth: 16 }}>
+                          <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#0000001a' : theme.border, overflow: 'hidden', minWidth: 16 }}>
                             <div style={{ width: `${pct}%`, height: '100%', background: active ? '#1a2538' : full ? '#3fb950' : 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .6s' }}/>
                           </div>
                         </div>
@@ -907,15 +915,15 @@ export default function App() {
                   {/* Search + missing toggle */}
                   <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
                     <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }} placeholder={t('collection_search')}
-                      style={{ flex: 1, background: '#1a2538', border: '1px solid #344e68', borderRadius: 8, color: '#d4e8f8', padding: '8px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
-                    <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }} style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : '#1a2538', border: `1px solid ${showMissing ? '#6c5ce7' : '#344e68'}`, color: showMissing ? '#fff' : '#8daacc', padding: '8px 12px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      style={{ flex: 1, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, padding: '8px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
+                    <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }} style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : theme.bgInput, border: `1px solid ${showMissing ? '#6c5ce7' : theme.border}`, color: showMissing ? '#fff' : theme.textSecondary, padding: '8px 12px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       {showMissing ? t('filter_owned') : t('filter_missing')}
                     </button>
                   </div>
 
                   {/* Card grid */}
                   {displayCards.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#8daacc', padding: '60px 0' }}>
+                    <div style={{ textAlign: 'center', color: theme.textSecondary, padding: '60px 0' }}>
                       <div style={{ fontSize: 52, marginBottom: 12 }}>📭</div>
                       <div style={{ fontSize: 15 }}>{t('no_cards')}</div>
                     </div>
@@ -937,10 +945,10 @@ export default function App() {
                         </div>
                         {totalPages > 1 && (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, paddingBottom: 8 }}>
-                            <button onClick={() => setCollPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ background: page===0?'#1a2538':'#2e4158', border: '1px solid #344e68', color: page===0?'#555':'#d4e8f8', width: 32, height: 32, borderRadius: 8, cursor: page===0?'default':'pointer', fontWeight: 900, fontSize: 15 }}>‹</button>
-                            <span style={{ fontSize: 12, color: '#8daacc', fontWeight: 700 }}>{page+1} / {totalPages}</span>
-                            <span style={{ fontSize: 11, color: '#555' }}>({displayCards.length})</span>
-                            <button onClick={() => setCollPage(p => Math.min(totalPages-1, p+1))} disabled={page===totalPages-1} style={{ background: page===totalPages-1?'#1a2538':'#2e4158', border: '1px solid #344e68', color: page===totalPages-1?'#555':'#d4e8f8', width: 32, height: 32, borderRadius: 8, cursor: page===totalPages-1?'default':'pointer', fontWeight: 900, fontSize: 15 }}>›</button>
+                            <button onClick={() => setCollPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ background: page===0?theme.bgInput:theme.bgElevated, border: `1px solid ${theme.border}`, color: page===0?theme.textMuted:theme.textPrimary, width: 32, height: 32, borderRadius: 8, cursor: page===0?'default':'pointer', fontWeight: 900, fontSize: 15 }}>‹</button>
+                            <span style={{ fontSize: 12, color: theme.textSecondary, fontWeight: 700 }}>{page+1} / {totalPages}</span>
+                            <span style={{ fontSize: 11, color: theme.textMuted }}>({displayCards.length})</span>
+                            <button onClick={() => setCollPage(p => Math.min(totalPages-1, p+1))} disabled={page===totalPages-1} style={{ background: page===totalPages-1?theme.bgInput:theme.bgElevated, border: `1px solid ${theme.border}`, color: page===totalPages-1?theme.textMuted:theme.textPrimary, width: 32, height: 32, borderRadius: 8, cursor: page===totalPages-1?'default':'pointer', fontWeight: 900, fontSize: 15 }}>›</button>
                           </div>
                         )}
                       </>
@@ -999,7 +1007,7 @@ export default function App() {
 
       {/* ── BOTTOM NAV (mobile) ── */}
       {auth.profile && isMobile && (
-        <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: '#1a2538f2', backdropFilter: 'blur(20px)', borderTop: '1px solid #2e4158', display: 'flex' }}>
+        <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: theme.navBg, backdropFilter: 'blur(20px)', borderTop: `1px solid ${theme.border}`, display: 'flex' }}>
           {[
             { id: 'home',        icon: '🏠', label: 'Accueil' },
             { id: 'collection',  icon: '🃏', label: 'Collection' },
@@ -1010,10 +1018,10 @@ export default function App() {
             const active = activeTab === item.id
             return (
               <button key={item.id} onClick={() => setActiveTab(item.id)}
-                style={{ flex: 1, background: 'none', border: 'none', color: active ? '#f9ca24' : '#8daacc', padding: '9px 4px 11px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
+                style={{ flex: 1, background: 'none', border: 'none', color: active ? '#f9ca24' : theme.textSecondary, padding: '9px 4px 11px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
                 <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
                 <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{item.label}</span>
-                {item.badge > 0 && <span style={{ position: 'absolute', top: 7, left: '55%', background: '#e74c3c', color: '#fff', width: 15, height: 15, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #1a2538' }}>{item.badge > 9 ? '9+' : item.badge}</span>}
+                {item.badge > 0 && <span style={{ position: 'absolute', top: 7, left: '55%', background: '#e74c3c', color: '#fff', width: 15, height: 15, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${theme.badgeBorder}` }}>{item.badge > 9 ? '9+' : item.badge}</span>}
                 {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '0 0 3px 3px' }} />}
               </button>
             )
@@ -1089,12 +1097,12 @@ export default function App() {
       {/* ── Prompt inscription — bloque la réponse au quiz pour les invités ── */}
       {showRegisterPrompt && !auth.profile && (
         <div style={{ position: 'fixed', inset: 0, background: '#000d', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000, backdropFilter: 'blur(10px)', padding: 20 }}>
-          <div style={{ background: 'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius: 24, padding: '32px 28px', width: 'min(94vw,400px)', border: '1.5px solid #6c5ce744', boxShadow: '0 32px 80px #000b', fontFamily: "'Nunito',sans-serif", textAlign: 'center' }}>
+          <div style={{ background: `linear-gradient(145deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 24, padding: '32px 28px', width: 'min(94vw,400px)', border: '1.5px solid #6c5ce744', boxShadow: '0 32px 80px #000b', fontFamily: "'Nunito',sans-serif", textAlign: 'center' }}>
             <div style={{ fontSize: 52, marginBottom: 12 }}>🗺️</div>
             <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 22, color: '#f9ca24', marginBottom: 8 }}>
               {t('register_prompt_title')}
             </div>
-            <div style={{ fontSize: 14, color: '#aaa', lineHeight: 1.6, marginBottom: 20 }}>
+            <div style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, marginBottom: 20 }}>
               {t('register_prompt_body')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1229,7 +1237,7 @@ export default function App() {
       {showScrollTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          style={{ position: 'fixed', bottom: 28, left: 28, zIndex: 2500, background: 'linear-gradient(135deg,#1e3045,#1a2d42)', border: '1.5px solid #6c5ce788', color: '#a29bfe', width: 44, height: 44, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 8px 32px #0008', transition: 'all .2s ease', fontFamily: "'Nunito',sans-serif" }}
+          style={{ position: 'fixed', bottom: 28, left: 28, zIndex: 2500, background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, border: '1.5px solid #6c5ce788', color: '#a29bfe', width: 44, height: 44, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 8px 32px #0008', transition: 'all .2s ease', fontFamily: "'Nunito',sans-serif" }}
           onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 40px #000c'; e.currentTarget.style.borderColor = '#a29bfe'; e.currentTarget.style.color = '#fff' }}
           onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 8px 32px #0008'; e.currentTarget.style.borderColor = '#6c5ce788'; e.currentTarget.style.color = '#a29bfe' }}
           title="Remonter en haut"

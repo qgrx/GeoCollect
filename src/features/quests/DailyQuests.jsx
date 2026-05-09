@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { apiGetDailyQuests } from '../../services/api.js'
+import { useTheme } from '../../ThemeContext.jsx'
 
 const TRIGGER_LABELS = {
   buy_count:       'Achats marché',
@@ -11,6 +12,7 @@ const TRIGGER_LABELS = {
 }
 
 export default function DailyQuests({ questActivitySignal, initialQuests }) {
+  const { theme } = useTheme()
   // Pré-remplir immédiatement depuis les données chargées au démarrage
   const [quests, setQuests] = useState(initialQuests ?? null)
 
@@ -45,7 +47,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
       width: '100%',
     }}>
       <div style={{
-        fontSize: 9, color: '#555', fontWeight: 700,
+        fontSize: 9, color: theme.textMuted, fontWeight: 700,
         textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2,
         display: 'flex', alignItems: 'center', gap: 4,
       }}>
@@ -59,8 +61,8 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
 
         return (
           <div key={q.id} style={{
-            background: done ? '#00b89410' : '#ffffff08',
-            border: `1px solid ${done ? '#00b89433' : '#ffffff10'}`,
+            background: done ? '#00b89410' : theme.overlay,
+            border: `1px solid ${done ? '#00b89433' : theme.border}`,
             borderRadius: 8, padding: '5px 8px',
             transition: 'all .2s',
           }}>
@@ -68,7 +70,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
               {/* Statut */}
               <span style={{
                 fontSize: 12, flexShrink: 0,
-                color: done ? '#00b894' : '#555',
+                color: done ? '#00b894' : theme.textMuted,
               }}>
                 {done ? '✔' : '○'}
               </span>
@@ -77,13 +79,13 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontSize: 11, fontWeight: 800,
-                  color: done ? '#00b894' : '#ccc',
+                  color: done ? '#00b894' : theme.textPrimary,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
                   {q.name}
                 </div>
                 {!done && (
-                  <div style={{ fontSize: 9, color: '#555', marginTop: 1 }}>
+                  <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 1 }}>
                     {q.progress}/{q.threshold} {TRIGGER_LABELS[q.type] || q.type}
                   </div>
                 )}
@@ -92,7 +94,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
               {/* Points */}
               <div style={{
                 fontSize: 10, fontWeight: 900, flexShrink: 0,
-                color: done ? '#f9ca24' : '#666',
+                color: done ? '#f9ca24' : theme.textMuted,
                 display: 'flex', alignItems: 'center', gap: 2,
               }}>
                 🔨 {q.forge_points}
@@ -103,7 +105,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
             {!done && q.progress > 0 && (
               <div style={{
                 marginTop: 4, height: 2, borderRadius: 1,
-                background: '#ffffff0a', overflow: 'hidden',
+                background: theme.overlay, overflow: 'hidden',
               }}>
                 <div style={{
                   width: `${pct}%`, height: '100%',
