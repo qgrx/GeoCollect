@@ -31,7 +31,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
   // Premier fetch uniquement si rien de pré-chargé
   useEffect(() => {
     if (!initialQuests) load()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   // Recharger après chaque action de jeu pertinente
   useEffect(() => {

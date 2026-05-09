@@ -24,7 +24,7 @@ function getrank(score, ranks) {
 }
 
 function scoreFromCol(col, cardPool) {
-  // W n'est plus utilisé directement — score calculé via collScore avec les règles du serveur
+  const W = { commun: 1, rare: 3, épique: 7, légendaire: 20 }
   return Object.entries(col || {}).reduce((s, [id, n]) => {
     if (!n) return s
     const c = cardPool.find(x => x.id === +id)
