@@ -680,14 +680,15 @@ export default function App() {
             <div style={{ flex: 1 }} />
             <nav style={{ display: 'flex' }}>
               {[
-                { id: 'collection', icon: '🃏', label: t('nav_collection') },
-                { id: 'market',     icon: '🏪', label: t('nav_market'), badge: gs.unreadSales },
-                ...(gs.cardPool.some(c => c.forgeable) ? [{ id: 'forge', icon: '🔨', label: t('nav_forge') }] : []),
-                { id: 'top',        icon: '🏆', label: t('nav_top') },
+                { id: 'collection', icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
+                { id: 'market',     icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market' },
+                ...(gs.cardPool.some(c => c.forgeable) ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge' }] : []),
+                { id: 'top',        icon: '🏆', label: t('nav_top'), tour: 'nav-top' },
               ].map(tb => {
                 const active = activeTab === tb.id
                 return (
                   <button key={tb.id} onClick={() => setActiveTab(tb.id)}
+                    data-tour={tb.tour}
                     style={{ position: 'relative', background: 'none', border: 'none', color: active ? '#f9ca24' : theme.headerMuted, padding: '6px 18px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>{tb.icon}</span>
                     <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{tb.label}</span>
@@ -796,7 +797,7 @@ export default function App() {
                 const pct = nextRank ? Math.round(((userScore - prevMin) / (nextRank.min - prevMin)) * 100) : 100
                 const uniqueCards = Object.values(gs.collection).filter(n => n > 0).length
                 return (
-                  <div style={{ background: theme.overlay, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden' }}>
+                  <div data-tour="profile" style={{ background: theme.overlay, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                       <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 14px ${c1}44`, border: `2px solid ${c1}44` }}>
@@ -842,7 +843,9 @@ export default function App() {
               })()}
 
               {/* Daily quests */}
-              <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
+              <div data-tour="quests">
+                <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
+              </div>
 
               {/* Last 8 geocoins — 4×2 */}
               {history.filter(h => !h.skipped).length > 0 && (
@@ -1016,14 +1019,15 @@ export default function App() {
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: theme.navBg, backdropFilter: 'blur(20px)', borderTop: `1px solid ${theme.border}`, display: 'flex' }}>
           {[
             { id: 'home',        icon: '🏠', label: t('nav_home') },
-            { id: 'collection',  icon: '🃏', label: t('nav_collection') },
-            { id: 'market',      icon: '🏪', label: t('nav_market'), badge: gs.unreadSales },
-            ...(gs.cardPool.some(c => c.forgeable) ? [{ id: 'forge', icon: '🔨', label: t('nav_forge') }] : []),
-            { id: 'top',         icon: '🏆', label: t('nav_top') },
+            { id: 'collection',  icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
+            { id: 'market',      icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market' },
+            ...(gs.cardPool.some(c => c.forgeable) ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge' }] : []),
+            { id: 'top',         icon: '🏆', label: t('nav_top'), tour: 'nav-top' },
           ].map(item => {
             const active = activeTab === item.id
             return (
               <button key={item.id} onClick={() => setActiveTab(item.id)}
+                data-tour={item.tour}
                 style={{ flex: 1, background: 'none', border: 'none', color: active ? '#f9ca24' : theme.textSecondary, padding: '9px 4px 11px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
                 <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
                 <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{item.label}</span>
@@ -1093,7 +1097,7 @@ export default function App() {
           }}
         />
       )}
-      {showTour && auth.profile && <OnboardingTour onDone={async () => {
+      {showTour && auth.profile && <OnboardingTour setActiveTab={setActiveTab} isMobile={isMobile} onDone={async () => {
         setShowTour(false)
         const { apiOnboardingDone } = await import('./services/api.js')
         await apiOnboardingDone()
