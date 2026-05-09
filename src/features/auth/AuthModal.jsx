@@ -217,7 +217,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
   // ── Rendu ─────────────────────────────────────────────────────────────────────
   const BtnMain = ({ onClick, gradient, children }) => (
     <button onClick={onClick} disabled={busy}
-      style={{ ...BTN(gradient || 'linear-gradient(135deg,#f9ca24,#e17055)', gradient ? '#fff' : '#1a1a2e'),
+      style={{ ...BTN(gradient || 'linear-gradient(135deg,#f9ca24,#e17055)', gradient ? '#fff' : '#1e3045'),
         padding: '12px', borderRadius: 12, textAlign: 'center',
         opacity: busy ? 0.6 : 1, cursor: busy ? 'not-allowed' : 'pointer' }}>
       {busy ? <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite', verticalAlign: 'middle' }}/> : children}
@@ -245,7 +245,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
     <div style={{ position: 'fixed', inset: 0, background: '#000d', display: 'flex', alignItems: 'center',
       justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(10px)' }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}`}</style>
-      <div style={{ background: 'linear-gradient(145deg,#1a1a2e,#16213e)', borderRadius: 24,
+      <div style={{ background: 'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius: 24,
         padding: '32px 28px', width: 'min(94vw,420px)', border: '1.5px solid #ffffff18',
         boxShadow: '0 32px 80px #000b', fontFamily: "'Nunito',sans-serif", position: 'relative',
         animation: 'fadeIn .3s ease' }}>
@@ -272,7 +272,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <button onClick={doGoogle} disabled={busy}
               style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff',
-                border: 'none', color: '#1a1a2e', padding: '12px 16px', borderRadius: 12,
+                border: 'none', color: '#1e3045', padding: '12px 16px', borderRadius: 12,
                 fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
               <svg width="18" height="18" viewBox="0 0 48 48">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>

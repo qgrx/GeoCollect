@@ -210,7 +210,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
   return (
     <div style={{position:"fixed",inset:0,background:"#000d",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(8px)"}}>
-      <div style={{background:"linear-gradient(135deg,#1a0505,#1a1a2e)",borderRadius:20,padding:22,width:"min(96vw,940px)",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px #000b",border:"2px solid #e74c3c55",fontFamily:"'Nunito',sans-serif"}}>
+      <div style={{background:"linear-gradient(135deg,#1a0505,#1e3045)",borderRadius:20,padding:22,width:"min(96vw,940px)",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px #000b",border:"2px solid #e74c3c55",fontFamily:"'Nunito',sans-serif"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <div>
             <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:21,color:"#e74c3c"}}>{t("admin_title")}</div>
@@ -696,7 +696,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 const{error}=await apiAdminAnnounce(maintText.trim(),type);
                 if(error) setMsg("❌ "+error);
                 else{setMsg("✅ Message envoyé !");setMaintText("");}
-              }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1a1a2e"),padding:"9px 16px",borderRadius:9}}>
+              }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"9px 16px",borderRadius:9}}>
                 Envoyer
               </button>
             </div>

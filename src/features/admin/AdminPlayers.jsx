@@ -122,7 +122,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
                 if(actual!==g) { setPlayerView({...playerView,gold:actual}); setPlayersData(prev => ({ ...prev, players: prev.players.map(x => x.id === playerView.id ? { ...x, gold: actual } : x) })); }
                 else { setPlayersData(prev => ({ ...prev, players: prev.players.map(x => x.id === playerView.id ? { ...x, gold: actual } : x) })); }
                 setMsg(`✅ Or de ${playerView.name} → ${actual}G`);
-              }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1a1a2e"),padding:"7px 14px",borderRadius:8,fontSize:12}}>Appliquer</button>
+              }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"7px 14px",borderRadius:8,fontSize:12}}>Appliquer</button>
             </div>
           </div>
 

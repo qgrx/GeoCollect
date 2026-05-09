@@ -41,7 +41,7 @@ export default function LangSelector() {
       {open && (
         <div style={{
             position: 'fixed', top: pos.top, right: pos.right,
-            background: '#1a1a2e', border: '1px solid #ffffff22',
+            background: '#1e3045', border: '1px solid #ffffff22',
             borderRadius: 12, overflow: 'hidden',
             boxShadow: '0 8px 32px #000a', zIndex: 9999, minWidth: 140,
           }}>

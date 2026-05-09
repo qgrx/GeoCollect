@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../../i18n/translations.js'
+import { useTheme } from '../../ThemeContext.jsx'
 import { BTN, INP } from '../../utils/styles.js'
-import { RC, cardCC, ACHIEVEMENT_DEF } from '../../data/cards.js'
+import { RC, ACHIEVEMENT_DEF } from '../../data/cards.js'
+import { rankCC } from '../../utils/rankUtils.js'
 import { PSEUDO_CHANGE_DAYS } from '../../data/constants.js'
 import { apiDeleteAccount } from '../../services/api.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
@@ -54,6 +56,7 @@ function memberSince(dateStr) {
 // ─── SettingsModal ────────────────────────────────────────────────────────────
 export default function SettingsModal({ auth, collection = {}, cardPool = [], unlockedAch = [], ranks = [], score: scoreProp, onClose, onStartTour }) {
   const { t } = useT()
+  const { theme } = useTheme()
   const { profile } = auth
   const [tab,     setTab]     = useState('profil')   // profil | achievements
   const [newP,    setNewP]    = useState('')
@@ -70,9 +73,8 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const canChange  = daysSince >= PSEUDO_CHANGE_DAYS
   const history    = profile.pseudo_history || []
   const score = scoreProp ?? computedScore
-  const rank     = getrank(score, ranks)
-  const topRarity = bestRarity(collection, cardPool)
-  const { c1, c2 } = cardCC(topRarity)
+  const rank = getrank(score, ranks)
+  const { c1, c2 } = rankCC(rank)
   const uniqueCards = Object.values(collection).filter(n => n > 0).length
   const memberStr   = memberSince(profile.joined_at)
 
@@ -94,9 +96,9 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center',
       justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(8px)', padding: 16 }}>
-      <div style={{ background: 'linear-gradient(145deg,#1a1a2e,#16213e)', borderRadius: 24,
+      <div style={{ background: `linear-gradient(145deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 24,
         width: 'min(94vw,440px)', maxHeight: '92vh', overflowY: 'auto',
-        border: '1.5px solid #ffffff18', boxShadow: '0 32px 80px #000b',
+        border: `1.5px solid ${theme.borderLight}`, boxShadow: '0 32px 80px #000b',
         fontFamily: "'Nunito',sans-serif", position: 'relative' }}>
 
         {/* ── Bouton fermer ── */}
@@ -105,7 +107,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           borderRadius: '50%', fontSize: 15, cursor: 'pointer', fontWeight: 900 }}>✕</button>
 
         {/* ── Hero card ── */}
-        <div style={{ background: `linear-gradient(135deg,${c1}cc,${c2}88,#0f3460)`,
+        <div style={{ background: `linear-gradient(135deg,${c1}cc,${c2}88,#1a4a7a)`,
           borderRadius: '22px 22px 0 0', padding: '32px 24px 24px', position: 'relative', overflow: 'hidden' }}>
 
           {/* Fond décoratif */}
@@ -160,7 +162,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           {/* Score + membre depuis */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
             <div style={{ fontSize: 11, color: '#ffffff88' }}>
-              Score : <span style={{ color: '#f9ca24', fontWeight: 900 }}>{score} pts</span>
+              Score : <span style={{ color: theme.gold, fontWeight: 900 }}>{score} pts</span>
             </div>
             {memberStr && (
               <div style={{ fontSize: 11, color: '#ffffff66' }}>
@@ -176,19 +178,19 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           const nextRank = activeRanks.find(r => r.min > score)
           if (!nextRank) return (
             <div style={{ padding: '12px 24px', background: '#f9ca2412', textAlign: 'center',
-              fontSize: 12, fontWeight: 800, color: '#f9ca24', borderBottom: '1px solid #ffffff0a' }}>
+              fontSize: 12, fontWeight: 800, color: theme.gold, borderBottom: `1px solid ${theme.borderLight}` }}>
               {t('rank_max')}
             </div>
           )
           const prevMin = [...activeRanks].reverse().find(r => r.min <= score)?.min || 0
           const pct = Math.round(((score - prevMin) / (nextRank.min - prevMin)) * 100)
           return (
-            <div style={{ padding: '12px 24px', borderBottom: '1px solid #ffffff0a' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, color: '#888' }}>
+            <div style={{ padding: '12px 24px', borderBottom: `1px solid ${theme.borderLight}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, color: theme.textMuted }}>
                 <span>{t('rank_next')} <span style={{ color: nextRank.color, fontWeight: 800 }}>{nextRank.icon} {nextRank.label}</span></span>
                 <span style={{ fontWeight: 700 }}>{t('rank_progress').replace('{score}',score).replace('{max}',nextRank.min)}</span>
               </div>
-              <div style={{ background: '#ffffff0f', borderRadius: 50, height: 6, overflow: 'hidden' }}>
+              <div style={{ background: theme.overlay, borderRadius: 50, height: 6, overflow: 'hidden' }}>
                 <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50,
                   background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
               </div>
@@ -197,11 +199,11 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
         })()}
 
         {/* ── Onglets ── */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #ffffff0a' }}>
+        <div style={{ display: 'flex', borderBottom: `1px solid ${theme.borderLight}` }}>
           {[['profil','👤 Profil']].map(([id, lbl]) => (
             <button key={id} onClick={() => setTab(id)}
               style={{ flex: 1, background: 'none', border: 'none', borderBottom: `2px solid ${tab===id?'#f9ca24':'transparent'}`,
-                color: tab===id?'#f9ca24':'#666', padding: '11px 0', fontFamily: "'Nunito',sans-serif",
+                color: tab===id?'#f9ca24':theme.textMuted, padding: '11px 0', fontFamily: "'Nunito',sans-serif",
                 fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all .2s' }}>
               {lbl}
             </button>
@@ -213,7 +215,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
 
         {/* ── Changer le pseudo ── */}
         <div style={{ padding: '20px 24px' }}>
-          <div style={{ fontWeight: 900, fontSize: 14, color: '#f9ca24', marginBottom: 14 }}>
+          <div style={{ fontWeight: 900, fontSize: 14, color: theme.gold, marginBottom: 14 }}>
             ✏️ {t('settings_title')}
           </div>
 
@@ -251,17 +253,17 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
         {/* ── Historique pseudos ── */}
         {history.length > 1 && (
           <div style={{ padding: '0 24px 20px' }}>
-            <div style={{ fontSize: 10, color: '#444', fontWeight: 700, textTransform: 'uppercase',
+            <div style={{ fontSize: 10, color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase',
               letterSpacing: .8, marginBottom: 8 }}>
               {t('settings_pseudo_history')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {history.slice().reverse().map((h, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between',
-                  fontSize: 11, color: '#555', padding: '3px 0',
-                  borderBottom: '1px solid #ffffff08' }}>
-                  <span style={{ color: '#888', fontWeight: 700 }}>{h.pseudo}</span>
-                  <span style={{ color: '#444' }}>{h.date}</span>
+                  fontSize: 11, color: theme.textMuted, padding: '3px 0',
+                  borderBottom: `1px solid ${theme.borderLight}` }}>
+                  <span style={{ color: theme.textSecondary, fontWeight: 700 }}>{h.pseudo}</span>
+                  <span style={{ color: theme.textMuted }}>{h.date}</span>
                 </div>
               ))}
             </div>
@@ -277,13 +279,13 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
 
         {/* ── Désactivation compte ── */}
         {tab === 'profil' && (
-          <div style={{ padding: '0 24px 20px', borderTop: '1px solid #ffffff08', paddingTop: 16, marginTop: 4 }}>
+          <div style={{ padding: '0 24px 20px', borderTop: `1px solid ${theme.borderLight}`, paddingTop: 16, marginTop: 4 }}>
             <details>
-              <summary style={{ fontSize: 11, color: '#444', cursor: 'pointer', fontWeight: 700, userSelect: 'none' }}>
+              <summary style={{ fontSize: 11, color: theme.textMuted, cursor: 'pointer', fontWeight: 700, userSelect: 'none' }}>
                 {t('account_danger_zone')}
               </summary>
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, color: '#888', marginBottom: 10, lineHeight: 1.5 }}
+                <div style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 10, lineHeight: 1.5 }}
                   dangerouslySetInnerHTML={{ __html: t('account_deactivate_warning').replace('permanente', '<strong style="color:#e74c3c">permanente</strong>').replace('définitive', '<strong style="color:#e74c3c">définitive</strong>').replace('endgültig', '<strong style="color:#e74c3c">endgültig</strong>') }}/>
                 <button onClick={async () => {
                   if (!window.confirm(t('account_deactivate_confirm'))) return

@@ -69,7 +69,7 @@ export default function Logo({ iconSize = 34, textSize = 22, showText = true, di
 
         {/* Cercle intérieur sombre */}
         <circle cx="16" cy="15" r="10.5" fill="#12001a"/>
-        <circle cx="16" cy="15" r="9.5"  fill="#1a1a2e"/>
+        <circle cx="16" cy="15" r="9.5"  fill="#1e3045"/>
 
         {/* Anneau de cadran */}
         <circle cx="16" cy="15" r="9" stroke="#f9ca2430" strokeWidth="0.6" fill="none"/>
