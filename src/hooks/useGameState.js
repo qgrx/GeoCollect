@@ -26,6 +26,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   // ── Player state ───────────────────────────────────────────────────────────
   const [gold,         setGold]        = useState(profile?.gold ?? 0)
   const [collection,   setCollection]  = useState({})
+  const [shinyCollection, setShinyCollection] = useState({})
   const [myListings,   setMyListings]  = useState([])
   const [dailyGold,    setDailyGold]   = useState(0)
   const [dailyCards,   setDailyCards]  = useState(0)
@@ -85,6 +86,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           supportVisible:    cfg.support_visible !== undefined ? (cfg.support_visible === 'true' || cfg.support_visible === true) : prev.supportVisible,
           leaderboardVisible:cfg.leaderboard_visible !== undefined ? (cfg.leaderboard_visible === 'true' || cfg.leaderboard_visible === true) : prev.leaderboardVisible,
           typeTranslations: cfg.type_translations ?? prev.typeTranslations,
+          shinyRate:        cfg.shiny_rate        !== undefined ? +cfg.shiny_rate : prev.shinyRate,
+          shinyForgeOpen:   cfg.shiny_forge_open  !== undefined ? (cfg.shiny_forge_open === 'true' || cfg.shiny_forge_open === true) : prev.shinyForgeOpen,
         }))
       }
     })
@@ -94,7 +97,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   useEffect(() => {
     if (!profile) {
       // Logout — réinitialiser tout l'état joueur
-      setGold(0); setCollection({}); setMarket([]); setMyListings([])
+      setGold(0); setCollection({}); setShinyCollection({}); setMarket([]); setMyListings([])
       setTransactions([]); setTotalBuys(0); setTotalSells(0); setStreak(0)
       _setUnreadSales(0); setSaleNotifs([]); setUnlockedAch([]); setPendingAch([])
       return
@@ -130,6 +133,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         const { data: colData } = await apiGetCollection()
         if (colData?.collection && mounted.current) {
           setCollection(colData.collection)
+          if (colData.shiny_collection) setShinyCollection(colData.shiny_collection)
           // Pré-remplir depuis les cartes achievement déjà en collection
           const alreadyUnlocked = ACHIEVEMENT_DEF
             .filter(def => (colData.collection[def.cardId] || 0) > 0)
@@ -200,6 +204,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             supportVisible:    cfg.support_visible !== undefined ? (cfg.support_visible === 'true' || cfg.support_visible === true) : prev.supportVisible,
             leaderboardVisible:cfg.leaderboard_visible !== undefined ? (cfg.leaderboard_visible === 'true' || cfg.leaderboard_visible === true) : prev.leaderboardVisible,
             typeTranslations: cfg.type_translations ?? prev.typeTranslations,
+            shinyRate:        cfg.shiny_rate !== undefined ? +cfg.shiny_rate : prev.shinyRate,
+            shinyForgeOpen:   cfg.shiny_forge_open !== undefined ? (cfg.shiny_forge_open === 'true' || cfg.shiny_forge_open === true) : prev.shinyForgeOpen,
           }))
         }
 
@@ -290,10 +296,14 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     return can
   }, [lim, dailyGold])
 
-  const earnCard = useCallback((card) => {
+  const earnCard = useCallback((card, isShiny = false) => {
     const limit = lim?.dailyCards ?? 20
     if (dailyCards >= limit) return false
-    setCollection(prev => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }))
+    if (isShiny) {
+      setShinyCollection(prev => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }))
+    } else {
+      setCollection(prev => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }))
+    }
     setDailyCards(d => d + 1)
     return true
   }, [dailyCards, lim])
@@ -324,7 +334,11 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     // Optimistic update
     if (gold < listing.price) return 'insufficient'
     setGold(g => g - listing.price)
-    setCollection(prev => ({ ...prev, [listing.card.id]: (prev[listing.card.id] || 0) + 1 }))
+    if (listing.isShiny) {
+      setShinyCollection(prev => ({ ...prev, [listing.card.id]: (prev[listing.card.id] || 0) + 1 }))
+    } else {
+      setCollection(prev => ({ ...prev, [listing.card.id]: (prev[listing.card.id] || 0) + 1 }))
+    }
     setMarket(prev => prev.filter((_, i) => i !== index))
 
     // API call — obligatoire si connecté, rollback sinon
@@ -332,14 +346,22 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       if (!listing.id) {
         // Pas d'id DB → rollback immédiat, on ne peut pas persister
         setGold(g => g + listing.price)
-        setCollection(prev => ({ ...prev, [listing.card.id]: Math.max(0, (prev[listing.card.id] || 0) - 1) }))
+        if (listing.isShiny) {
+          setShinyCollection(prev => ({ ...prev, [listing.card.id]: Math.max(0, (prev[listing.card.id] || 0) - 1) }))
+        } else {
+          setCollection(prev => ({ ...prev, [listing.card.id]: Math.max(0, (prev[listing.card.id] || 0) - 1) }))
+        }
         setMarket(prev => [...prev, listing])
         return 'error_no_id'
       }
       const { data, error } = await apiBuyCard(listing.id)
       if (error) {
         setGold(g => g + listing.price)
-        setCollection(prev => ({ ...prev, [listing.card.id]: Math.max(0, (prev[listing.card.id] || 0) - 1) }))
+        if (listing.isShiny) {
+          setShinyCollection(prev => ({ ...prev, [listing.card.id]: Math.max(0, (prev[listing.card.id] || 0) - 1) }))
+        } else {
+          setCollection(prev => ({ ...prev, [listing.card.id]: Math.max(0, (prev[listing.card.id] || 0) - 1) }))
+        }
         setMarket(prev => [...prev, listing])
         return error
       }
@@ -613,7 +635,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs,
     limits, setLimits, maintenance, setMaintenance, loadingData,
     // Player
-    gold, collection, setCollection, myListings, dailyGold, dailyCards, totalBuys, totalSells,
+    gold, collection, setCollection, shinyCollection, setShinyCollection, myListings, dailyGold, dailyCards, totalBuys, totalSells,
     streak, setStreak, transactions, setTransactions, unlockedAch, pendingAch, setPendingAch,
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,
     // Derived

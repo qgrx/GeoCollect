@@ -139,7 +139,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
         return false                          // mauvaise réponse (422)
       }
       if (data.card_earned) {
-        earnCard(card)
+        earnCard(card, data.is_shiny || false)
       }
       if (data.achievements?.length) {
         cbRef.current.checkAchievements?.(data.achievements)

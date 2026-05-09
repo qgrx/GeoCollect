@@ -5,13 +5,19 @@ export const normA = (s) =>
 
 export const wordCount = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 
-export function collScore(col, pool) {
-  return Object.entries(col).reduce((sum, [id, n]) => {
-    if (!n) return sum;
-    const c = pool.find(x => x.id === +id);
-    if (!c) return sum;
-    return sum + ({ commun: 1, rare: 3, épique: 7, légendaire: 20 }[c.rarity] || 1);
-  }, 0);
+export function collScore(col, pool, shinyCol = {}) {
+  const W = { commun: 1, rare: 3, épique: 7, légendaire: 20 }
+  const normal = Object.entries(col).reduce((sum, [id, n]) => {
+    if (!n) return sum
+    const c = pool.find(x => x.id === +id)
+    return sum + (W[c?.rarity] || 1)
+  }, 0)
+  const shiny = Object.entries(shinyCol).reduce((sum, [id, n]) => {
+    if (!n) return sum
+    const c = pool.find(x => x.id === +id)
+    return sum + (W[c?.rarity] || 1) * 2
+  }, 0)
+  return normal + shiny
 }
 
 export function drawPackCards(cardPool) {

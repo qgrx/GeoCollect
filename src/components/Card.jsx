@@ -1,7 +1,27 @@
 import { RARITY_CONFIG as RC, cardCC } from '../data/cards.js';
 import { useT } from '../i18n/translations.js';
 
-export default function Card({ card, count, onClick, selected, small, dimmed }) {
+const SHINY_CSS = `
+@keyframes shinyRainbow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes shinySparkle {
+  0%, 100% { opacity: 0; transform: scale(0.8) rotate(0deg); }
+  50%       { opacity: 1; transform: scale(1.2) rotate(180deg); }
+}
+`
+function injectShinyStyle() {
+  if (document.getElementById('shiny-styles')) return
+  const s = document.createElement('style')
+  s.id = 'shiny-styles'
+  s.textContent = SHINY_CSS
+  document.head.appendChild(s)
+}
+injectShinyStyle()
+
+export default function Card({ card, count, onClick, selected, small, dimmed, isShiny = false }) {
   const { t } = useT();
   const rc = RC[card.rarity] || RC.commun;
   const { c1, c2 } = cardCC(card.rarity);
@@ -17,14 +37,18 @@ export default function Card({ card, count, onClick, selected, small, dimmed }) 
         position: 'relative',
         width: w, minWidth: w, height: h,
         borderRadius: 16,
-        border: selected
+        border: isShiny
+          ? '2px solid #f9ca24'
+          : selected
           ? '2.5px solid #f9ca24'
           : isLeg
           ? `2px solid ${c1}`
           : dimmed
           ? '1.5px solid #ffffff18'
           : `1.5px solid ${c1}66`,
-        boxShadow: selected
+        boxShadow: isShiny
+          ? `0 0 16px #f9ca2466, 0 4px 20px #0004`
+          : selected
           ? `0 0 0 3px #f9ca2466, 0 8px 28px #0004`
           : isLeg
           ? `0 0 20px ${c1}66, 0 4px 20px #0004`
@@ -54,6 +78,27 @@ export default function Card({ card, count, onClick, selected, small, dimmed }) 
         <div style={{ position: 'absolute', inset: 0, borderRadius: 16, zIndex: 2,
           background: 'linear-gradient(135deg,transparent 40%,#ffffff1a 50%,transparent 60%)',
           backgroundSize: '400px 100%', animation: 'shimmer 2.5s linear infinite', pointerEvents: 'none' }}/>
+      )}
+
+      {/* Shiny rainbow overlay */}
+      {isShiny && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1, borderRadius: 14, pointerEvents: 'none',
+          background: 'linear-gradient(135deg, rgba(255,0,128,0.15), rgba(255,165,0,0.15), rgba(0,255,128,0.15), rgba(0,128,255,0.15), rgba(128,0,255,0.15))',
+          backgroundSize: '300% 300%',
+          animation: 'shinyRainbow 3s ease infinite',
+          mixBlendMode: 'screen',
+        }}/>
+      )}
+
+      {/* Shiny sparkle badge */}
+      {isShiny && (
+        <div style={{
+          position: 'absolute', top: 5, left: 5, zIndex: 6,
+          fontSize: small ? 10 : 13,
+          animation: 'shinySparkle 2s ease-in-out infinite',
+          filter: 'drop-shadow(0 0 4px gold)',
+        }}>✨</div>
       )}
 
       {/* Image — légèrement remontée */}

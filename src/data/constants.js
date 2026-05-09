@@ -26,4 +26,6 @@ export const INIT_LIMITS = {
   supportVisible: true,
   leaderboardVisible: true,
   typeTranslations: {},
+  shinyRate: 0.1,
+  shinyForgeOpen: true,
 };
