@@ -47,12 +47,12 @@ function ProfileView({ player, cardPool, myPseudo, onBack }) {
       <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: 'min(96vw,860px)', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif" }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>←</button>
-          <div style={{ color: '#f9ca24', fontWeight: 900, fontSize: 18 }}>
+          <div style={{ color: theme.gold, fontWeight: 900, fontSize: 18 }}>
             Collection de {player.pseudo || player.name}{player.isMe && ' (toi)'}
           </div>
           {!loading && (
             <div style={{ marginLeft: 'auto', background: theme.bgElevated, borderRadius: 50, padding: '2px 11px', fontSize: 12, fontWeight: 800, color: theme.textSecondary }}>
-              Score : <span style={{ color: '#f9ca24' }}>{score}</span>
+              Score : <span style={{ color: theme.gold }}>{score}</span>
             </div>
           )}
         </div>
@@ -120,11 +120,11 @@ export default function LeaderboardModal({ myCollection, myPseudo, myId, cardPoo
   return (
     <PanelWrapper>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ color: '#f9ca24', fontWeight: 900, fontSize: 20 }}>{t('lb_title')}</div>
+          <div style={{ color: theme.gold, fontWeight: 900, fontSize: 20 }}>{t('lb_title')}</div>
           {!inline && <button onClick={onClose} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>✕</button>}
         </div>
         <input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
-          placeholder="🔍 Rechercher un joueur…"
+          placeholder={t('lb_search')}
           style={{ width: '100%', boxSizing: 'border-box', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none', marginBottom: 14 }}/>
 
         {loading ? (
@@ -144,11 +144,11 @@ export default function LeaderboardModal({ myCollection, myPseudo, myId, cardPoo
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 900, fontSize: 13 }}>
-                      <PseudoDisplay pseudo={(p.pseudo||p.name)+(p.isMe?' (toi)':'')} score={p.score||0} ranks={ranks} style={{ color: p.isMe ? '#f9ca24' : '#fff' }}/>
+                      <PseudoDisplay pseudo={(p.pseudo||p.name)+(p.isMe?` ${t('lb_you')}`:'')} score={p.score||0} ranks={ranks} style={{ color: p.isMe ? theme.gold : theme.textPrimary }}/>
                     </div>
                     <div style={{ fontSize: 10, color: theme.textMuted }}>{p.gold ?? '—'} G · {p.streak ?? 0} 🔥</div>
                   </div>
-                  <div style={{ fontWeight: 900, fontSize: 14, color: '#f9ca24' }}>{p.score ?? '—'} pts</div>
+                  <div style={{ fontWeight: 900, fontSize: 14, color: theme.gold }}>{p.score ?? '—'} pts</div>
                   <div style={{ color: '#888', fontSize: 12 }}>→</div>
                 </div>
               );

@@ -1,5 +1,6 @@
 export const THEMES = {
   dark: {
+    gold:         '#f9ca24',
     bgMain:       '#1a2538',
     bgSurface:    '#243447',
     bgElevated:   '#2e4158',
@@ -10,6 +11,8 @@ export const THEMES = {
     textPrimary:  '#d4e8f8',
     textSecondary:'#8daacc',
     textMuted:    '#6b7d92',
+    headerText:   '#d4e8f8',
+    headerMuted:  '#8daacc',
     overlay:      'rgba(255,255,255,0.06)',
     overlayMd:    'rgba(255,255,255,0.12)',
     overlayLg:    'rgba(255,255,255,0.20)',
@@ -19,6 +22,7 @@ export const THEMES = {
     shimmer:      '#243447',
   },
   light: {
+    gold:         '#b8860b',
     bgMain:       '#f0f4f8',
     bgSurface:    '#ffffff',
     bgElevated:   '#e8eef5',
@@ -29,12 +33,14 @@ export const THEMES = {
     textPrimary:  '#1e2d3d',
     textSecondary:'#4a6278',
     textMuted:    '#7a94aa',
+    headerText:   '#d4e8f8',
+    headerMuted:  '#8daacc',
     overlay:      'rgba(0,0,0,0.04)',
     overlayMd:    'rgba(0,0,0,0.08)',
     overlayLg:    'rgba(0,0,0,0.14)',
-    headerBg:     '#f0f4f8e8',
-    navBg:        '#f0f4f8f2',
-    badgeBorder:  '#f0f4f8',
+    headerBg:     '#1e2d3de8',
+    navBg:        '#1e2d3df2',
+    badgeBorder:  '#1e2d3d',
     shimmer:      '#ffffff',
   },
 }

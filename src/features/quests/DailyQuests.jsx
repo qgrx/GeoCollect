@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { apiGetDailyQuests } from '../../services/api.js'
 import { useTheme } from '../../ThemeContext.jsx'
+import { useT } from '../../i18n/translations.js'
 
 const TRIGGER_LABELS = {
   buy_count:       'Achats marché',
@@ -13,6 +14,7 @@ const TRIGGER_LABELS = {
 
 export default function DailyQuests({ questActivitySignal, initialQuests }) {
   const { theme } = useTheme()
+  const { t } = useT()
   // Pré-remplir immédiatement depuis les données chargées au démarrage
   const [quests, setQuests] = useState(initialQuests ?? null)
 
@@ -51,8 +53,8 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
         textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2,
         display: 'flex', alignItems: 'center', gap: 4,
       }}>
-        🔨 Quêtes du jour
-        {allDone && <span style={{ color: '#f9ca24', fontSize: 8 }}>✦ COMPLÈTES</span>}
+        {t('quest_title')}
+        {allDone && <span style={{ color: theme.gold, fontSize: 8 }}>✦ COMPLÈTES</span>}
       </div>
 
       {quests.map(q => {

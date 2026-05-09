@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { soundCorrect, soundWrong } from '../../utils/sounds.js';
 import { useT } from '../../i18n/translations.js';
+import { useTheme } from '../../ThemeContext.jsx';
 import { normA, wordCount } from '../../utils/gameUtils.js';
 import { RC, cardCC, rarityLabel, cardName } from '../../data/cards.js';
 import { getLang } from '../../i18n/translations.js';
@@ -226,7 +227,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
 }
 
 // ─── Countdown Widget ─────────────────────────────────────────────────────────
-export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycleTime=60}){ const {t}=useT();
+export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycleTime=60}){ const {t}=useT(); const {theme}=useTheme();
   const pct = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
   const urgent = !hasPendingQuiz && secondsLeft <= 10 && secondsLeft > 0
   const hasCard = !!nextCard && hasPendingQuiz
@@ -235,7 +236,7 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycl
   const showColors = urgent || hasPendingQuiz
   const {c1, c2} = (nextCard && showColors) ? cardCC(nextCard.rarity) : { c1: '#6c7c93', c2: '#48576b' }
   return (
-    <div style={{display:"flex",alignItems:"center",gap:11,background:urgent?`${c1}12`:"#ffffff09",border:`1.5px solid ${urgent?`${c1}44`:"#ffffff16"}`,borderRadius:13,padding:"9px 14px",transition:"all .5s",boxShadow:urgent?`0 0 15px ${c1}22`:"none"}}>
+    <div style={{display:"flex",alignItems:"center",gap:11,background:urgent?`${c1}12`:theme.overlay,border:`1.5px solid ${urgent?`${c1}44`:theme.border}`,borderRadius:13,padding:"9px 14px",transition:"all .5s",boxShadow:urgent?`0 0 15px ${c1}22`:"none"}}>
       <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
         <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', position: 'relative', border: `2px solid ${c1}`, background: '#1e3045', boxSizing: 'border-box', boxShadow: (hasCard && nextCard.rarity === 'légendaire') ? `0 0 12px ${c1}aa` : (urgent ? `0 0 10px ${c1}66` : 'none') }}>
           {hasCard ? (
@@ -251,16 +252,16 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycl
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-          <span style={{fontSize:11,color:hasPendingQuiz?"#f9ca24":"#aaa",fontWeight:700}}>{hasPendingQuiz ? t("quiz_new_card") : t("next_card")}</span>
-          {!hasPendingQuiz && <span style={{fontSize:13,fontWeight:900,color:urgent?c1:"#f9ca24",transition:"color .5s",textShadow:urgent?`0 0 8px ${c1}88`:"none"}}>{secondsLeft > 0 ? `${secondsLeft}s` : '...'}</span>}
+          <span style={{fontSize:11,color:hasPendingQuiz?theme.gold:"#aaa",fontWeight:700}}>{hasPendingQuiz ? t("quiz_new_card") : t("next_card")}</span>
+          {!hasPendingQuiz && <span style={{fontSize:13,fontWeight:900,color:urgent?c1:theme.gold,transition:"color .5s",textShadow:urgent?`0 0 8px ${c1}88`:"none"}}>{secondsLeft > 0 ? `${secondsLeft}s` : '...'}</span>}
         </div>
-        <div style={{background:"#ffffff15",borderRadius:50,height:5,overflow:"hidden",marginBottom:3}}>
+        <div style={{background:theme.overlayMd,borderRadius:50,height:5,overflow:"hidden",marginBottom:3}}>
           <div style={{width:hasPendingQuiz?"100%":`${pct}%`,height:"100%",background:`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:"width 1s linear,background .5s",boxShadow:urgent?`0 0 10px ${c1}`:""}}/>
         </div>
         <div style={{fontSize:10,color:"#666"}}>
           {hasCard
-            ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity, t)}</span> — <span style={{color:"#ccc"}}>{cardName(nextCard, getLang())}</span></>
-            : <span style={{color:urgent?c1:"#888",fontStyle:"italic",transition:"color .5s"}}>Geocoin mystère…</span>}
+            ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity, t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard, getLang())}</span></>
+            : <span style={{color:urgent?c1:theme.textMuted,fontStyle:"italic",transition:"color .5s"}}>Geocoin mystère…</span>}
         </div>
       </div>
       {onJoin&&(

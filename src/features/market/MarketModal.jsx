@@ -96,7 +96,7 @@ export default function MarketModal({
 
         {/* Header */}
         <div style={{ display: 'flex',justifyContent: 'space-between',alignItems: 'center',marginBottom: 14 }}>
-          <div style={{ color: '#f9ca24',fontWeight: 900,fontSize: 20 }}>{t('market_title')}</div>
+          <div style={{ color: theme.gold,fontWeight: 900,fontSize: 20 }}>{t('market_title')}</div>
           {!inline && <button onClick={onClose} style={{ background: '#ffffff22',border: 'none',color: '#fff',width: 32,height: 32,borderRadius: '50%',fontSize: 16,cursor: 'pointer' }}>✕</button>}
         </div>
 
@@ -104,7 +104,7 @@ export default function MarketModal({
         <div style={{ display: 'flex',gap: 7,marginBottom: 18,flexWrap: 'wrap' }}>
           {tabs.map(tab_ => (
             <button key={tab_.id} onClick={() => { setTab(tab_.id); setMsg(''); setExp(null) }}
-              style={{ position: 'relative', background: tab === tab_.id ? '#f9ca24' : '#ffffff22',border: 'none',color: tab === tab_.id ? '#1e3045' : '#fff',padding: '7px 15px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 12,cursor: 'pointer',whiteSpace: 'nowrap' }}>
+              style={{ position: 'relative', background: tab === tab_.id ? '#f9ca24' : theme.bgElevated, border: `1px solid ${tab === tab_.id ? '#f9ca24' : theme.border}`, color: tab === tab_.id ? '#1e3045' : theme.textPrimary, padding: '7px 15px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {tab_.label}
               {tab_.badge > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#e74c3c', color: '#fff', fontSize: 9, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: `1.5px solid ${tab === tab_.id ? '#f9ca24' : '#1e3045'}`, animation: 'pulseBadge 1.5s infinite' }}>{tab_.badge}</span>}
             </button>
@@ -116,7 +116,7 @@ export default function MarketModal({
           <div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
               <input value={buySearch} onChange={e => setBuySearch(e.target.value)}
-                placeholder="🔍 Rechercher une carte…"
+                placeholder={t('collection_search')}
                 style={{ flex: 1, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none' }}/>
               {buySearch && <button onClick={() => setBuySearch('')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 16 }}>✕</button>}
             </div>
@@ -143,10 +143,10 @@ export default function MarketModal({
                           <div style={{ display: 'flex',alignItems: 'center',gap: 7,flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 900,fontSize: 14,color: theme.textPrimary }}>{card.name}</span>
                             <span style={{ background: rc.bg,color: rc.color,fontSize: 8,fontWeight: 800,padding: '1px 6px',borderRadius: 50,textTransform: 'uppercase' }}>{rarityLabel(card.rarity, t)}</span>
-                            {owned && <span style={{ background: '#f9ca2422',color: '#f9ca24',fontSize: 8,fontWeight: 800,padding: '1px 6px',borderRadius: 50 }}>{t('market_already_owned')}</span>}
+                            {owned && <span style={{ background: '#f9ca2422',color: theme.gold,fontSize: 8,fontWeight: 800,padding: '1px 6px',borderRadius: 50 }}>{t('market_already_owned')}</span>}
                           </div>
                           <div style={{ fontSize: 10,color: theme.textMuted,marginTop: 2,display: 'flex',gap: 10,flexWrap: 'wrap' }}>
-                            <span style={{ color: '#f9ca24',fontWeight: 800 }}>{totalQty.toLocaleString()} {t('market_for_sale')}</span>
+                            <span style={{ color: theme.gold,fontWeight: 800 }}>{totalQty.toLocaleString()} {t('market_for_sale')}</span>
                             <span>{tiersArr.length} {tiersArr.length > 1 ? t('market_tiers_pl') : t('market_tiers')}</span>
                             <span>{t('market_from')} <span style={{ color: '#00b894',fontWeight: 800 }}>{tiersArr[0].price}G</span></span>
                           </div>
@@ -165,16 +165,16 @@ export default function MarketModal({
                             const isOwn = myPseudo && tier.sellers.includes(myPseudo)
                             return (
                               <div key={tier.price} style={{ display: 'grid',gridTemplateColumns: '65px 1fr 50px auto',gap: 5,alignItems: 'center',padding: '4px 3px',borderRadius: 6,background: isOwn ? '#f9ca2408' : ib ? '#00b89412' : 'transparent',border: isOwn ? '1px solid #f9ca2428' : ib ? '1px solid #00b89428' : '1px solid transparent', opacity: ca ? 1 : 0.4 }}>
-                                <div style={{ fontWeight: 900,fontSize: 13,color: isOwn ? '#f9ca24' : ib ? '#00b894' : '#f9ca24',display: 'flex',alignItems: 'center',gap: 3,flexWrap: 'wrap' }}>
+                                <div style={{ fontWeight: 900,fontSize: 13,color: isOwn ? theme.gold : ib ? '#00b894' : theme.textPrimary,display: 'flex',alignItems: 'center',gap: 3,flexWrap: 'wrap' }}>
                                   {isOwn && <span style={{ fontSize: 7,background: '#f9ca24',color: '#1e3045',borderRadius: 3,padding: '1px 4px',fontWeight: 800 }}>Moi</span>}
                                   {!isOwn && ib && <span style={{ fontSize: 7,background: '#00b894',color: '#fff',borderRadius: 3,padding: '1px 4px',fontWeight: 800 }}>{t('market_best')}</span>}
                                   {tier.price}G
                                 </div>
                                 <div>
-                                  <div style={{ background: '#ffffff12',borderRadius: 3,height: 5,overflow: 'hidden',marginBottom: 2 }}>
+                                  <div style={{ background: theme.overlayMd,borderRadius: 3,height: 5,overflow: 'hidden',marginBottom: 2 }}>
                                     <div style={{ width: `${bp}%`, height: '100%', background: ib ? 'linear-gradient(90deg,#00b894,#00cec9)' : `linear-gradient(90deg,${c1}88,${c2}88)`, borderRadius: 3, transition: 'width .4s' }} />
                                   </div>
-                                  <div style={{ fontSize: 9,color: '#555',whiteSpace: 'nowrap',overflow: 'hidden',textOverflow: 'ellipsis' }}>
+                                  <div style={{ fontSize: 9,color: theme.textMuted,whiteSpace: 'nowrap',overflow: 'hidden',textOverflow: 'ellipsis' }}>
                                     {tier.sellers.slice(0, 3).map((s, si) => (
                                       <span key={si}>{si > 0 && ', '}
                                         <PseudoDisplay pseudo={s} score={topSellerScores[s] || 0} ranks={ranks} tag="span" style={{ fontSize: 9 }}/>
@@ -185,7 +185,7 @@ export default function MarketModal({
                                 <div style={{ textAlign: 'right',fontWeight: 800,color: theme.textSecondary,fontSize: 11 }}>{tier.qty.toLocaleString()}</div>
                                 <div style={{ textAlign: 'right' }}>
                                   {isOwn ? (
-                                    <span style={{ fontSize: 9,color: '#f9ca24',fontWeight: 700,opacity: .7 }}>Votre annonce</span>
+                                    <span style={{ fontSize: 9,color: theme.gold,fontWeight: 700,opacity: .7 }}>Votre annonce</span>
                                   ) : (
                                     <button
                                       onClick={() => {
@@ -195,7 +195,7 @@ export default function MarketModal({
                                         onBuy(fullListing, tier.indices[0])
                                       }}
                                       disabled={!ca}
-                                    style={{ background: ca ? 'linear-gradient(135deg,#00b894,#00cec9)' : '#2a2a2a',border: 'none',color: ca ? '#fff' : '#555',padding: '5px 9px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 10,cursor: ca ? 'pointer' : 'not-allowed',whiteSpace: 'nowrap' }}>
+                                    style={{ background: ca ? 'linear-gradient(135deg,#00b894,#00cec9)' : theme.bgElevated, border: `1px solid ${ca ? 'transparent' : theme.border}`, color: ca ? '#fff' : theme.textMuted, padding: '5px 9px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 10, cursor: ca ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>
                                     {ca ? t('market_buy_btn') : t('market_insufficient')}
                                     </button>
                                   )}
@@ -231,14 +231,15 @@ export default function MarketModal({
             </div>
           )}
             <div style={{ flex: 2,minWidth: 220 }}>
-              <div style={{ color: '#f9ca24',fontWeight: 800,marginBottom: 9,fontSize: 13 }}>{t('market_duplicates')}</div>
+              <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 10, padding: '7px 10px', background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 8 }}>
+                ℹ️ {t('market_no_duplicates_hint2')}
+              </div>
               {myCards.length === 0 ? (
-                <div style={{ color: '#888',padding: '16px 0',textAlign: 'center',fontSize: 13 }}>
-                  {t('market_no_duplicates')}<br />
-                  <span style={{ fontSize: 11,color: '#555' }}>{t('market_no_duplicates_hint2')}</span>
+                <div style={{ color: theme.textMuted,padding: '16px 0',textAlign: 'center',fontSize: 13 }}>
+                  {t('market_no_duplicates')}
                 </div>
               ) : (
-                <div style={{ display: 'flex',flexWrap: 'wrap',gap: 7,maxHeight: 280,overflowY: 'auto' }}>
+                <div style={{ display: 'flex',flexWrap: 'wrap',columnGap: 7,rowGap: 12,padding: '4px' }}>
                   {myCards.map(({ card, cnt }) => (
                     <Card key={card.id} card={card} count={cnt} small selected={sellCard?.id === card.id}
                       onClick={() => { setSellCard(sellCard?.id === card.id ? null : card); setSellPrice(0); setMsg('') }} />
@@ -248,35 +249,43 @@ export default function MarketModal({
             </div>
             <div style={{ flex: 1,minWidth: 180 }}>
               {sellCard ? (
-                <div style={{ background: theme.overlay,border: `1.5px solid ${theme.border}`,borderRadius: 15,padding: 18 }}>
-                  <div style={{ color: '#f9ca24',fontWeight: 900,marginBottom: 11,fontSize: 14 }}>🏷️ Mettre en vente</div>
-                  <div style={{ display: 'flex',justifyContent: 'center',marginBottom: 11 }}><Card card={sellCard} /></div>
-                  {sellCard.minPrice && <div style={{ fontSize: 11,color: '#f39c12',marginBottom: 7 }}>⚠️ {t('market_min_price')} {sellCard.minPrice}G</div>}
-                  <div style={{ display: 'flex',alignItems: 'center',gap: 8,marginBottom: 9 }}>
-                    <span style={{ color: '#fff',fontWeight: 800 }}>💰</span>
-                    <input type="number" min={sellCard.minPrice || 1} max={9999} value={sellPrice || ''} placeholder="0"
-                      onChange={e => setSellPrice(+e.target.value)}
-                      style={{ background: '#ffffff15',border: '1px solid #f9ca2466',color: '#f9ca24',padding: '7px 10px',borderRadius: 8,width: 80,fontFamily: "'Nunito',sans-serif",fontSize: 15,fontWeight: 900,outline: 'none' }} />
-                    <span style={{ color: '#aaa' }}>G</span>
-                  </div>
-                  {(() => {
-                    const lowestPrice = ob[sellCard.id]?.tiersArr?.[0]?.price;
-                    if (!lowestPrice) return null;
-                    const targetPrice = Math.max(sellCard.minPrice || 1, lowestPrice);
-                    return (
-                      <div style={{ marginBottom: 11 }}>
+                <div style={{ background: theme.overlay, border: `1.5px solid ${theme.border}`, borderRadius: 15, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {/* Carte sélectionnée */}
+                  <div style={{ display: 'flex', justifyContent: 'center' }}><Card card={sellCard} /></div>
+
+                  {/* Prix */}
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, display: 'block', marginBottom: 6 }}>{t('market_price_label')}</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                      <input type="number" min={sellCard.minPrice || 1} max={9999} value={sellPrice || ''} placeholder="0"
+                        onChange={e => setSellPrice(+e.target.value)}
+                        style={{ flex: 1, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRight: 'none', color: theme.textPrimary, padding: '9px 12px', borderRadius: '8px 0 0 8px', fontFamily: "'Nunito',sans-serif", fontSize: 16, fontWeight: 900, outline: 'none' }} />
+                      <span style={{ background: theme.bgElevated, border: `1px solid ${theme.border}`, color: theme.textMuted, padding: '9px 12px', borderRadius: '0 8px 8px 0', fontWeight: 800, fontSize: 14 }}>G</span>
+                    </div>
+                    {(() => {
+                      const lowestPrice = ob[sellCard.id]?.tiersArr?.[0]?.price;
+                      if (!lowestPrice) return null;
+                      const targetPrice = Math.max(sellCard.minPrice || 1, lowestPrice);
+                      return (
                         <button onClick={() => { setSellPrice(targetPrice); setMsg(''); }}
-                          style={{ background: '#00b89415',border: '1px solid #00b89444',color: '#00b894',padding: '5px 12px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 11,cursor: 'pointer' }}>
-                          👇 Prix le plus bas actuel : {targetPrice}G
+                          style={{ marginTop: 6, background: 'none', border: 'none', color: '#00b894', padding: 0, fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11, cursor: 'pointer', textDecoration: 'underline', display: 'block' }}>
+                          {t('market_lowest_price')} {targetPrice}G
                         </button>
+                      )
+                    })()}
+                    {sellCard.minPrice && (
+                      <div style={{ marginTop: 5, fontSize: 10, color: theme.textMuted }}>
+                        {t('market_min_price')} {sellCard.minPrice}G
                       </div>
-                    )
-                  })()}
-                  {msg && <div style={{ color: '#00b894',fontWeight: 800,marginBottom: 8,fontSize: 11 }}>{msg}</div>}
-                  <button 
+                    )}
+                  </div>
+
+                  {msg && <div style={{ color: '#00b894', fontWeight: 800, fontSize: 11 }}>{msg}</div>}
+
+                  <button
                     disabled={sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)}
                     onClick={() => { onListCard(sellCard, sellPrice); setMsg(''); setSellCard(null); setSellPrice(0); setTab('meslistes'); }}
-                    style={{ width: '100%',background: 'linear-gradient(135deg,#f9ca24,#e17055)',border: 'none',color: '#1e3045',padding: '11px',borderRadius: 10,fontFamily: "'Nunito',sans-serif",fontWeight: 900,fontSize: 14,cursor: (sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)) ? 'not-allowed' : 'pointer',opacity: (sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)) ? 0.5 : 1 }}>
+                    style={{ width: '100%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', padding: '11px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: (sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)) ? 'not-allowed' : 'pointer', opacity: (sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)) ? 0.5 : 1 }}>
                     {t('market_list_btn')}
                   </button>
                 </div>
@@ -307,7 +316,7 @@ export default function MarketModal({
                 <div style={{ textAlign: 'center',color: '#888',padding: '36px 0' }}>
                   <div style={{ fontSize: 36 }}>📭</div>
                   <div style={{ marginTop: 8,fontSize: 13 }}>{t('market_no_listings')}</div>
-                  <button onClick={() => setTab('vendre')} style={{ marginTop: 12, background: '#00b89415', border: '1px solid #00b89444', color: '#00b894', padding: '6px 14px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>+ Vendre une carte</button>
+                  <button onClick={() => setTab('vendre')} style={{ marginTop: 12, background: 'none', border: 'none', color: '#00b894', padding: '4px 0', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}>{t('market_sell_geocoin')}</button>
                 </div>
               ) : (
                 <>
@@ -316,7 +325,7 @@ export default function MarketModal({
                       <div style={{ fontSize: 12,color: '#888',fontWeight: 700 }}>
                         {myListings.length} annonce{myListings.length > 1 ? 's' : ''} en cours
                       </div>
-                      <button onClick={() => setTab('vendre')} style={{ background: '#00b89415', border: '1px solid #00b89444', color: '#00b894', padding: '4px 10px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 10, cursor: 'pointer' }}>+ Vendre une autre carte</button>
+                      <button onClick={() => setTab('vendre')} style={{ background: 'none', border: 'none', color: '#00b894', padding: '4px 0', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }}>{t('market_sell_geocoin')}</button>
                       {myListings.length > 1 && (
                         <button onClick={onCancelAllListings} style={{ background: '#e74c3c15', border: '1px solid #e74c3c44', color: '#e74c3c', padding: '4px 10px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 10, cursor: 'pointer' }}>✕ Tout retirer</button>
                       )}
@@ -324,10 +333,10 @@ export default function MarketModal({
                     {totalPages > 1 && (
                       <div style={{ display: 'flex',alignItems: 'center',gap: 6 }}>
                         <button onClick={() => setListPage(p => Math.max(0, p - 1))} disabled={page === 0}
-                          style={{ background: page===0?'#ffffff0a':'#ffffff18',border:'none',color:page===0?'#444':'#fff',width:28,height:28,borderRadius:8,cursor:page===0?'default':'pointer',fontWeight:900,fontSize:14 }}>‹</button>
-                        <span style={{ fontSize: 11,color: '#888',fontWeight: 700 }}>{page + 1} / {totalPages}</span>
+                          style={{ background: page===0?theme.overlay:theme.bgElevated,border:`1px solid ${theme.border}`,color:page===0?theme.textMuted:theme.textPrimary,width:28,height:28,borderRadius:8,cursor:page===0?'default':'pointer',fontWeight:900,fontSize:14 }}>‹</button>
+                        <span style={{ fontSize: 11,color: theme.textMuted,fontWeight: 700 }}>{page + 1} / {totalPages}</span>
                         <button onClick={() => setListPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
-                          style={{ background: page===totalPages-1?'#ffffff0a':'#ffffff18',border:'none',color:page===totalPages-1?'#444':'#fff',width:28,height:28,borderRadius:8,cursor:page===totalPages-1?'default':'pointer',fontWeight:900,fontSize:14 }}>›</button>
+                          style={{ background: page===totalPages-1?theme.overlay:theme.bgElevated,border:`1px solid ${theme.border}`,color:page===totalPages-1?theme.textMuted:theme.textPrimary,width:28,height:28,borderRadius:8,cursor:page===totalPages-1?'default':'pointer',fontWeight:900,fontSize:14 }}>›</button>
                       </div>
                     )}
                   </div>
@@ -351,7 +360,7 @@ export default function MarketModal({
                             <div style={{ fontSize: 10,color: rc.color,fontWeight: 700,marginTop: 1 }}>{rarityLabel(l.card.rarity, t)} · {l.card.type}</div>
                           </div>
                           {/* Prix */}
-                          <div style={{ fontWeight: 900,fontSize: 17,color: '#f9ca24',flexShrink: 0 }}>{l.price}G</div>
+                          <div style={{ fontWeight: 900,fontSize: 17,color: theme.gold,flexShrink: 0 }}>{l.price}G</div>
                           {/* Actions */}
                           {isConfirming ? (
                             <div style={{ display: 'flex',gap: 6,flexShrink: 0 }}>
@@ -360,7 +369,7 @@ export default function MarketModal({
                                 Confirmer
                               </button>
                               <button onClick={() => setCancelConfirm(null)}
-                                style={{ background: '#ffffff18',border: 'none',color: '#aaa',padding: '5px 10px',borderRadius: 8,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 11,cursor: 'pointer' }}>
+                                style={{ background: theme.bgElevated,border: `1px solid ${theme.border}`,color: theme.textMuted,padding: '5px 10px',borderRadius: 8,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 11,cursor: 'pointer' }}>
                                 Annuler
                               </button>
                             </div>

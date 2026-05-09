@@ -162,7 +162,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           {/* Score + membre depuis */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
             <div style={{ fontSize: 11, color: '#ffffff88' }}>
-              Score : <span style={{ color: '#f9ca24', fontWeight: 900 }}>{score} pts</span>
+              Score : <span style={{ color: theme.gold, fontWeight: 900 }}>{score} pts</span>
             </div>
             {memberStr && (
               <div style={{ fontSize: 11, color: '#ffffff66' }}>
@@ -178,7 +178,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           const nextRank = activeRanks.find(r => r.min > score)
           if (!nextRank) return (
             <div style={{ padding: '12px 24px', background: '#f9ca2412', textAlign: 'center',
-              fontSize: 12, fontWeight: 800, color: '#f9ca24', borderBottom: `1px solid ${theme.borderLight}` }}>
+              fontSize: 12, fontWeight: 800, color: theme.gold, borderBottom: `1px solid ${theme.borderLight}` }}>
               {t('rank_max')}
             </div>
           )
@@ -215,7 +215,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
 
         {/* ── Changer le pseudo ── */}
         <div style={{ padding: '20px 24px' }}>
-          <div style={{ fontWeight: 900, fontSize: 14, color: '#f9ca24', marginBottom: 14 }}>
+          <div style={{ fontWeight: 900, fontSize: 14, color: theme.gold, marginBottom: 14 }}>
             ✏️ {t('settings_title')}
           </div>
 

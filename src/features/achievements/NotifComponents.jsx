@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useT } from '../../i18n/translations.js'
+import { useTheme } from '../../ThemeContext.jsx'
 import { RC, cardCC } from '../../data/cards.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
 
@@ -113,69 +114,59 @@ export function SaleNotif({ notif, onClose, ranks, buyerScore }) {
 // ─── Transaction History Modal ────────────────────────────────────────────────
 export function TxHistoryModal({ transactions = [], onClose, embedded = false, onRead }) {
   const { t } = useT()
-  const [filter, setFilter] = useState('vente')
+  const { theme } = useTheme()
+  const [page, setPage] = useState(0)
+  const PAGE_SIZE = 10
 
   // Marquer tout comme lu à l'ouverture
   useEffect(() => { onRead?.() }, [])
 
-  const filtered = transactions.filter(tx => tx.type === filter)
+  const totalPages = Math.ceil(transactions.length / PAGE_SIZE)
+  const pageItems = transactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
-  const tabs = [
-    { id: 'vente', label: t('tx_sells') },
-    { id: 'achat', label: t('tx_buys') },
-  ]
-
-  const stats = [
-    { label: t('tx_total_buys'),   value: transactions.filter(tx => tx.type === 'achat').length,                                    color: '#e74c3c' },
-    { label: t('tx_total_spent'),  value: transactions.filter(tx => tx.type === 'achat').reduce((s, tx) => s + tx.price, 0) + 'G',  color: '#e17055' },
-    { label: t('tx_total_sells'),  value: transactions.filter(tx => tx.type === 'vente').length,                                    color: '#00b894' },
-    { label: t('tx_total_earned'), value: transactions.filter(tx => tx.type === 'vente').reduce((s, tx) => s + tx.price, 0) + 'G', color: '#f9ca24' },
-  ]
+  const totalSpent  = transactions.filter(tx => tx.type === 'achat').reduce((s, tx) => s + tx.price, 0)
+  const totalEarned = transactions.filter(tx => tx.type === 'vente').reduce((s, tx) => s + tx.price, 0)
 
   const content = (
     <>
       {!embedded && (
         <div style={{ display: 'flex',justifyContent: 'space-between',alignItems: 'center',marginBottom: 16 }}>
-          <div style={{ color: '#f9ca24',fontWeight: 900,fontSize: 20 }}>{t('tx_title')}</div>
-          <button onClick={onClose} style={{ background: '#ffffff22',border: 'none',color: '#fff',width: 32,height: 32,borderRadius: '50%',fontSize: 16,cursor: 'pointer' }}>✕</button>
+          <div style={{ color: theme.gold,fontWeight: 900,fontSize: 20 }}>{t('tx_title')}</div>
+          <button onClick={onClose} style={{ background: theme.bgElevated,border: `1px solid ${theme.border}`,color: theme.textPrimary,width: 32,height: 32,borderRadius: '50%',fontSize: 16,cursor: 'pointer' }}>✕</button>
         </div>
       )}
 
-      <div style={{ display: 'flex',gap: 8,marginBottom: 18,flexWrap: 'wrap' }}>
-        {tabs.map(tab => (
-          <button key={tab.id} onClick={() => setFilter(tab.id)} style={{
-            background: filter === tab.id ? '#f9ca24' : '#ffffff22',
-            border: 'none', color: filter === tab.id ? '#1e3045' : '#fff',
-            padding: '6px 14px', borderRadius: 50,
-            fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer',
-          }}>{tab.label}</button>
-        ))}
+      {/* Stats compactes */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 14, fontSize: 12, color: theme.textMuted }}>
+        <span>🟢 <strong style={{ color: '#00b894' }}>+{totalEarned}G</strong> {t('tx_total_sells')}</span>
+        <span style={{ color: theme.border }}>|</span>
+        <span>🔴 <strong style={{ color: '#e74c3c' }}>-{totalSpent}G</strong> {t('tx_total_buys')}</span>
       </div>
 
-      {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center',color: '#888',padding: '36px 0' }}>
+      {transactions.length === 0 ? (
+        <div style={{ textAlign: 'center', color: theme.textMuted, padding: '36px 0' }}>
           <div style={{ fontSize: 40 }}>📭</div>
           <div style={{ marginTop: 8 }}>{t('tx_empty')}</div>
         </div>
       ) : (
         <div style={{ display: 'flex',flexDirection: 'column',gap: 7 }}>
-          {filtered.map((tx, i) => {
+          {pageItems.map((tx, i) => {
             const isAchat = tx.type === 'achat'
             const { c1, c2 } = cardCC(tx.rarity || 'commun')
             return (
               <div key={i} onClick={() => tx.isNew && onRead && onRead(i)}
                 style={{ display: 'flex',alignItems: 'center',gap: 10,
-                  background: tx.isNew ? '#00b89412' : '#ffffff08',
-                  border: `1px solid ${tx.isNew ? '#00b89444' : '#ffffff10'}`,
+                  background: tx.isNew ? '#00b89412' : theme.overlay,
+                  border: `1px solid ${tx.isNew ? '#00b89444' : theme.border}`,
                   borderRadius: 11,padding: '10px 14px',flexWrap: 'wrap',
                   cursor: tx.isNew ? 'pointer' : 'default' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0 }}>{tx.cardName[0]}</div>
                 <div style={{ flex: 1,minWidth: 120 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontWeight: 800,color: '#fff',fontSize: 13 }}>{tx.cardName}</span>
+                    <span style={{ fontWeight: 800,color: theme.textPrimary,fontSize: 13 }}>{tx.cardName}</span>
                     {tx.isNew && <span style={{ display: 'inline-block', fontSize: 9, background: '#e74c3c', color: '#fff', borderRadius: 4, padding: '2px 6px', fontWeight: 900, animation: 'pulseBadge 1.5s infinite' }}>NEW</span>}
                   </div>
-                  <div style={{ fontSize: 10,color: '#aaa',marginTop: 2 }}>
+                  <div style={{ fontSize: 10,color: theme.textMuted,marginTop: 2 }}>
                     {isAchat ? t('tx_bought_from') : t('tx_sold_to')} {tx.counterpart} · {tx.date}
                   </div>
                 </div>
@@ -183,7 +174,7 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
                   <span style={{ fontSize: 11, background: isAchat ? '#e74c3c22' : '#00b89422', color: isAchat ? '#e74c3c' : '#00b894', border: `1px solid ${isAchat ? '#e74c3c44' : '#00b89444'}`, borderRadius: 50, padding: '3px 10px', fontWeight: 800 }}>
                     {isAchat ? t('tx_buy_label') : t('tx_sell_label')}
                   </span>
-                  <span style={{ fontWeight: 900,fontSize: 15,color: isAchat ? '#e74c3c' : '#f9ca24' }}>
+                  <span style={{ fontWeight: 900,fontSize: 15,color: isAchat ? '#e74c3c' : theme.gold }}>
                     {isAchat ? '-' : '+'}{tx.price}G
                   </span>
                 </div>
@@ -193,14 +184,16 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
         </div>
       )}
 
-      <div style={{ marginTop: 14,padding: '10px 14px',background: '#ffffff08',borderRadius: 10,display: 'flex',gap: 20,flexWrap: 'wrap' }}>
-        {stats.map(s => (
-          <div key={s.label} style={{ textAlign: 'center' }}>
-            <div style={{ fontWeight: 900,fontSize: 16,color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 10,color: '#888' }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 }}>
+          <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+            style={{ background: page === 0 ? theme.overlay : theme.bgElevated, border: `1px solid ${theme.border}`, color: page === 0 ? theme.textMuted : theme.textPrimary, width: 30, height: 30, borderRadius: 8, cursor: page === 0 ? 'default' : 'pointer', fontWeight: 900, fontSize: 14 }}>‹</button>
+          <span style={{ fontSize: 12, color: theme.textMuted, fontWeight: 700 }}>{page + 1} / {totalPages}</span>
+          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
+            style={{ background: page === totalPages - 1 ? theme.overlay : theme.bgElevated, border: `1px solid ${theme.border}`, color: page === totalPages - 1 ? theme.textMuted : theme.textPrimary, width: 30, height: 30, borderRadius: 8, cursor: page === totalPages - 1 ? 'default' : 'pointer', fontWeight: 900, fontSize: 14 }}>›</button>
+        </div>
+      )}
+
     </>
   )
 

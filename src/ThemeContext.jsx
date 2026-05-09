@@ -4,8 +4,8 @@ import { THEMES } from './theme.js'
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  const [mode, setMode] = useState(() => localStorage.getItem('geocoins_theme') || 'dark')
-  const theme = THEMES[mode] || THEMES.dark
+  const [mode, setMode] = useState(() => localStorage.getItem('geocoins_theme') || 'light')
+  const theme = THEMES[mode] || THEMES.light
 
   useEffect(() => { localStorage.setItem('geocoins_theme', mode) }, [mode])
 
