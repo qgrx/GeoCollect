@@ -88,6 +88,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           typeTranslations: cfg.type_translations ?? prev.typeTranslations,
           shinyRate:        cfg.shiny_rate        !== undefined ? +cfg.shiny_rate : prev.shinyRate,
           shinyForgeOpen:   cfg.shiny_forge_open  !== undefined ? (cfg.shiny_forge_open === 'true' || cfg.shiny_forge_open === true) : prev.shinyForgeOpen,
+          scoreRules:       cfg.score_rules       ?? prev.scoreRules,
+          shinyMultiplier:         cfg.shiny_multiplier           !== undefined ? +cfg.shiny_multiplier           : prev.shinyMultiplier,
+          shinyForgeCostByRarity:  cfg.shiny_forge_cost_by_rarity ?? prev.shinyForgeCostByRarity,
         }))
       }
     })

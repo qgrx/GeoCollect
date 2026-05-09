@@ -171,7 +171,7 @@ function ForgingCard({ card, phase }) {
 }
 
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
-export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, inline = false }) {
+export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, inline = false, shinyForgeCostByRarity = {} }) {
   useEffect(() => { injectStyle() }, [])
   const { theme } = useTheme()
   const { t } = useT()
@@ -438,7 +438,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
               </div>
             ) : ownedCards.map(card => {
               const alreadyShiny = (shinyCollection[card.id] || 0) > 0
-              const cost = card.shiny_forge_cost || 50
+              const cost = card.shiny_forge_cost ?? shinyForgeCostByRarity[card.rarity] ?? null
               const canAfford = forgePoints >= cost
               return (
                 <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny ? 0.5 : 1 }}>

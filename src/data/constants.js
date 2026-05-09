@@ -15,6 +15,8 @@ export const DEFAULT_RANKS = [
 
 export const DEFAULT_RARITY_RATES = { commun: 50, rare: 30, épique: 15, légendaire: 5 };
 
+export const DEFAULT_SCORE_RULES = { commun: 1, rare: 3, épique: 7, légendaire: 20 };
+
 export const INIT_LIMITS = {
   connected:     { dailyGold: 200, dailyCards: 20 },
   quizInterval:  60,
@@ -28,4 +30,7 @@ export const INIT_LIMITS = {
   typeTranslations: {},
   shinyRate: 0.1,
   shinyForgeOpen: true,
+  scoreRules: DEFAULT_SCORE_RULES,
+  shinyMultiplier: 2,
+  shinyForgeCostByRarity: { commun: null, rare: null, épique: null, légendaire: null },
 };

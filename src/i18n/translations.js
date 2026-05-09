@@ -4,6 +4,7 @@ const LANGS = { fr:"Français", en:"English", de:"Deutsch", es:"Español" };
 
 const TRANSLATIONS = {
   fr: {
+    score_detail_title:"Détail du score", score_detail_total:"Total", score_detail_tiers:"Paliers de rang", score_detail_current:"actuel",
     forge_subtitle:"Dépense tes points de forge pour acquérir des geocoins exclusifs",
     forge_title:"Atelier de Forge",
     forge_missing_pts:"Manque {n} pts",
@@ -265,6 +266,7 @@ const TRANSLATIONS = {
   },
 
   en: {
+    score_detail_title:"Score breakdown", score_detail_total:"Total", score_detail_tiers:"Rank tiers", score_detail_current:"current",
     forge_subtitle:"Spend your forge points to acquire exclusive geocoins",
     forge_title:"Forge Workshop",
     forge_missing_pts:"Missing {n} pts",
@@ -526,6 +528,7 @@ const TRANSLATIONS = {
   },
 
   de: {
+    score_detail_title:"Score-Aufschlüsselung", score_detail_total:"Gesamt", score_detail_tiers:"Rangstufen", score_detail_current:"aktuell",
     forge_subtitle:"Gib deine Schmiedepunkte aus, um exklusive Geocoins zu erwerben",
     forge_title:"Schmiedewerkstatt",
     forge_missing_pts:"Fehlen {n} Pkt.",
@@ -787,6 +790,7 @@ const TRANSLATIONS = {
   },
 
   es: {
+    score_detail_title:"Detalle del score", score_detail_total:"Total", score_detail_tiers:"Niveles de rango", score_detail_current:"actual",
     forge_subtitle:"Gasta tus puntos de forja para adquirir geocoins exclusivos",
     forge_title:"Taller de Forja",
     forge_missing_pts:"Faltan {n} pts",

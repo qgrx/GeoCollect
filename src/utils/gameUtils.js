@@ -5,17 +5,16 @@ export const normA = (s) =>
 
 export const wordCount = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 
-export function collScore(col, pool, shinyCol = {}) {
-  const W = { commun: 1, rare: 3, épique: 7, légendaire: 20 }
+export function collScore(col, pool, shinyCol = {}, rules = { commun: 1, rare: 3, épique: 7, légendaire: 20 }, shinyMult = 2) {
   const normal = Object.entries(col).reduce((sum, [id, n]) => {
     if (!n) return sum
     const c = pool.find(x => x.id === +id)
-    return sum + (W[c?.rarity] || 1)
+    return sum + (rules[c?.rarity] || 1)
   }, 0)
   const shiny = Object.entries(shinyCol).reduce((sum, [id, n]) => {
     if (!n) return sum
     const c = pool.find(x => x.id === +id)
-    return sum + (W[c?.rarity] || 1) * 2
+    return sum + (rules[c?.rarity] || 1) * shinyMult
   }, 0)
   return normal + shiny
 }

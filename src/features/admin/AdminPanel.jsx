@@ -603,6 +603,26 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
             </div>
           </div>
 
+          {/* Règles de score */}
+          <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
+            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:10,fontSize:13}}>🎯 Points par rareté</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+              {['commun','rare','épique','légendaire'].map(r=>(
+                <div key={r}>
+                  <div style={{fontSize:11,color:"#aaa",marginBottom:4,textTransform:"capitalize"}}>{r}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <input type="number" min={1} max={999}
+                      value={(limEdit.scoreRules ?? {commun:1,rare:3,épique:7,légendaire:20})[r] ?? 1}
+                      onChange={e=>setLimEdit({...limEdit,scoreRules:{...(limEdit.scoreRules??{commun:1,rare:3,épique:7,légendaire:20}),[r]:Math.max(1,+e.target.value)}})}
+                      style={{...INP,width:70}}/>
+                    <span style={{color:"#aaa",fontSize:11}}>pts</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{fontSize:10,color:"#555",marginTop:8}}>Les cartes brillantes rapportent le double. Les changements s'appliquent immédiatement.</div>
+          </div>
+
           {/* Brillance */}
           <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
             <div style={{fontWeight:800,color:"#f9ca24",marginBottom:10,fontSize:13}}>✨ Geocoins Brillants</div>
@@ -617,6 +637,40 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <span style={{color:"#aaa",fontSize:12}}>%</span>
                 </div>
                 <div style={{fontSize:10,color:"#555",marginTop:4}}>Probabilité qu'un quiz génère un geocoin brillant</div>
+              </div>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Multiplicateur de score ✨</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="number" min={1} max={10} step={0.5}
+                    value={limEdit.shinyMultiplier ?? 2}
+                    onChange={e=>setLimEdit({...limEdit,shinyMultiplier:Math.max(1,+e.target.value)})}
+                    style={{...INP,width:80}}/>
+                  <span style={{color:"#aaa",fontSize:12}}>×</span>
+                </div>
+                <div style={{fontSize:10,color:"#555",marginTop:4}}>Points × ce coefficient pour les geocoins brillants</div>
+              </div>
+              <div style={{flex:'0 0 100%'}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Coût forge brillance par rareté (si non défini sur la carte)</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+                  {['commun','rare','épique','légendaire'].map(r=>{
+                    const cur = (limEdit.shinyForgeCostByRarity ?? {})[r]
+                    return (
+                      <div key={r}>
+                        <div style={{fontSize:10,color:"#aaa",marginBottom:3,textTransform:"capitalize"}}>{r}</div>
+                        <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <input type="number" min={1} max={9999} placeholder="—"
+                            value={cur ?? ''}
+                            onChange={e=>{
+                              const val = e.target.value === '' ? null : Math.max(1,+e.target.value)
+                              setLimEdit({...limEdit,shinyForgeCostByRarity:{...(limEdit.shinyForgeCostByRarity??{}),[r]:val}})
+                            }}
+                            style={{...INP,width:70}}/>
+                          <span style={{color:"#aaa",fontSize:11}}>pts</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
               <div style={{flex:1,minWidth:180}}>
                 <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Forge Brillance</div>

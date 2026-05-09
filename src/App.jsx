@@ -342,6 +342,8 @@ export default function App() {
   const COLL_PAGE_SIZE = 24;
   const [menuOpen,        setMenuOpen]        = useState(false);
   const [selectedCard,    setSelectedCard]    = useState(null);
+  const [showScoreDetail, setShowScoreDetail] = useState(false);
+  const [selectedCardIsShiny, setSelectedCardIsShiny] = useState(false);
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [avatarMenu, setAvatarMenu] = useState(false);
@@ -565,8 +567,8 @@ export default function App() {
     [gs.collection]
   )
   const userScore = useMemo(
-    () => collScore(gs.collection, gs.cardPool, gs.shinyCollection || {}),
-    [gs.collection, gs.cardPool, gs.shinyCollection]
+    () => collScore(gs.collection, gs.cardPool, gs.shinyCollection || {}, gs.limits.scoreRules, gs.limits.shinyMultiplier ?? 2),
+    [gs.collection, gs.cardPool, gs.shinyCollection, gs.limits.scoreRules, gs.limits.shinyMultiplier]
   )
   const prevHadDuplicate = useRef(false)
   useEffect(() => {
@@ -600,18 +602,32 @@ export default function App() {
         .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
         .sort((a, b) => RARITY_CONFIG[a.card.rarity].order - RARITY_CONFIG[b.card.rarity].order);
     }
-    const shinyEntries = Object.entries(gs.shinyCollection || {})
-      .filter(([, n]) => n > 0)
-      .map(([id, n]) => {
-        const card = gs.cardPool.find(c => c.id === +id)
-        if (!card) return null
-        if (!(af || card.type === filter)) return null
-        if (!matchSearch(card)) return null
-        return { card, count: n, isShiny: true, missing: false }
-      })
-      .filter(Boolean)
-      .sort((a, b) => RARITY_CONFIG[a.card.rarity].order - RARITY_CONFIG[b.card.rarity].order)
-    return [...normalList, ...shinyEntries]
+    // Interleaver les cartes shiny juste après leur version normale
+    const shinyMap = {}
+    Object.entries(gs.shinyCollection || {}).forEach(([id, n]) => {
+      if (n > 0) shinyMap[+id] = n
+    })
+    const result = []
+    const shinyInserted = new Set()
+    for (const entry of normalList) {
+      result.push(entry)
+      const sid = entry.card?.id
+      if (sid && shinyMap[sid] && !shinyInserted.has(sid)) {
+        const card = entry.card
+        if ((af || card.type === filter) && matchSearch(card)) {
+          result.push({ card, count: shinyMap[sid], isShiny: true, missing: false })
+          shinyInserted.add(sid)
+        }
+      }
+    }
+    // Cartes shiny sans version normale dans la liste courante
+    Object.entries(shinyMap).forEach(([id, n]) => {
+      if (shinyInserted.has(+id)) return
+      const card = gs.cardPool.find(c => c.id === +id)
+      if (!card || !(af || card.type === filter) || !matchSearch(card)) return
+      result.push({ card, count: n, isShiny: true, missing: false })
+    })
+    return result
   }, [showMissing, filter, cardSearch, gs.collection, gs.cardPool, gs.shinyCollection]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0
@@ -845,7 +861,7 @@ export default function App() {
                       <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: theme.textMuted }}>
                           <span>{t('rank_next')} <span style={{ background: nextRank.color, color: '#fff', fontWeight: 800, padding: '1px 6px', borderRadius: 4, fontSize: 9, textShadow: '0 1px 2px #0004' }}>{nextRank.label}</span></span>
-                          <span style={{ fontWeight: 700 }}>{userScore}/{nextRank.min}</span>
+                          <span onClick={() => setShowScoreDetail(true)} style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{userScore}/{nextRank.min}</span>
                         </div>
                         <div style={{ background: theme.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden' }}>
                           <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
@@ -963,7 +979,7 @@ export default function App() {
                             const c = count || cnt || 0;
                             return (
                               <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ animation: 'slideIn .35s ease both' }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
-                                <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={missing ? undefined : () => setSelectedCard(card)} />
+                                <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={missing ? undefined : () => { setSelectedCard(card); setSelectedCardIsShiny(!!isShiny) }} />
                               </div>
                             );
                           })}
@@ -1006,6 +1022,7 @@ export default function App() {
                   collection={gs.collection}
                   shinyCollection={gs.shinyCollection || {}}
                   forgePoints={gs.forgePoints}
+                  shinyForgeCostByRarity={gs.limits.shinyForgeCostByRarity ?? {}}
                   onClose={() => setActiveTab('collection')}
                   onForged={(data) => {
                     if (data?.forge_points_remaining !== undefined) {
@@ -1176,13 +1193,83 @@ export default function App() {
       {selectedCard && (
         <CardDetailModal
           card={selectedCard}
-          count={gs.collection[selectedCard.id] || 0}
-          onClose={() => setSelectedCard(null)}
-          onSell={() => { setMarketSellCard(selectedCard); setSelectedCard(null); setMarketTab('vendre'); setActiveTab('market'); }}
+          count={selectedCardIsShiny ? (gs.shinyCollection?.[selectedCard.id] || 0) : (gs.collection[selectedCard.id] || 0)}
+          isShiny={selectedCardIsShiny}
+          onClose={() => { setSelectedCard(null); setSelectedCardIsShiny(false) }}
+          onSell={() => { setMarketSellCard(selectedCard); setSelectedCard(null); setSelectedCardIsShiny(false); setMarketTab('vendre'); setActiveTab('market'); }}
         />
       )}
       {showAuth        && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
       {showChoosePseudo && <AuthModal auth={auth} initialMode="choose_pseudo" onClose={() => setShowChoosePseudo(false)} onSuccess={() => setShowChoosePseudo(false)} />}
+      {showScoreDetail && (() => {
+        const W = gs.limits.scoreRules || { commun: 1, rare: 3, épique: 7, légendaire: 20 }
+        const rarities = ['légendaire', 'épique', 'rare', 'commun']
+        const rows = rarities.map(r => {
+          const normal = Object.entries(gs.collection).filter(([id, n]) => n > 0 && gs.cardPool.find(c => c.id === +id)?.rarity === r).length
+          const shiny  = Object.entries(gs.shinyCollection || {}).filter(([id, n]) => n > 0 && gs.cardPool.find(c => c.id === +id)?.rarity === r).length
+          return { r, normal, shiny, pts: W[r] }
+        }).filter(row => row.normal > 0 || row.shiny > 0)
+        const labels = { commun: t('rarity_commun'), rare: t('rarity_rare'), épique: t('rarity_epique'), légendaire: t('rarity_legendaire') }
+        const { c1 } = rankCC(getRank(userScore, gs.limits.playerRanks))
+        return (
+          <div onClick={() => setShowScoreDetail(false)} style={{ position:'fixed', inset:0, background:'#000c', display:'flex', alignItems:'center', justifyContent:'center', zIndex:3500, backdropFilter:'blur(8px)', padding:16 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: theme.bgSurface, border:`1px solid ${theme.border}`, borderRadius:16, padding:'20px 24px', width:'min(94vw,360px)', fontFamily:"'Nunito',sans-serif", boxShadow:'0 24px 60px #0008' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:18, color:theme.textPrimary }}>{t('score_detail_title')}</div>
+                <button onClick={() => setShowScoreDetail(false)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:theme.textMuted }}>✕</button>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {rows.map(({ r, normal, shiny, pts }) => (
+                  <div key={r}>
+                    {normal > 0 && (
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', background:theme.overlay, borderRadius:8 }}>
+                        <span style={{ fontSize:13, color:theme.textPrimary, fontWeight:700 }}>{normal} × {labels[r]}</span>
+                        <span style={{ fontSize:13, color:theme.gold, fontWeight:900 }}>+{normal * pts} pts</span>
+                      </div>
+                    )}
+                    {shiny > 0 && (
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', background:theme.overlay, borderRadius:8, marginTop: normal > 0 ? 4 : 0 }}>
+                        <span style={{ fontSize:13, color:theme.textPrimary, fontWeight:700 }}>{shiny} × {labels[r]} ✨</span>
+                        <span style={{ fontSize:13, color:theme.gold, fontWeight:900 }}>+{shiny * pts * (gs.limits.shinyMultiplier ?? 2)} pts</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop:14, paddingTop:12, borderTop:`1px solid ${theme.border}`, display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                <span style={{ fontSize:14, fontWeight:800, color:theme.textPrimary }}>{t('score_detail_total')}</span>
+                <span style={{ fontSize:18, fontWeight:900, color:c1 }}>{userScore} pts</span>
+              </div>
+
+              {/* Paliers de rang */}
+              {(() => {
+                const ranks = [...(gs.limits.playerRanks || DEFAULT_RANKS)].sort((a,b) => a.min - b.min)
+                const currentRank = getRank(userScore, gs.limits.playerRanks)
+                return (
+                  <div>
+                    <div style={{ fontSize:9, fontWeight:800, textTransform:'uppercase', letterSpacing:1.5, color:theme.textMuted, marginBottom:8 }}>{t('score_detail_tiers')}</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                      {ranks.map(rank => {
+                        const isCurrent = rank.label === currentRank?.label
+                        const reached = userScore >= rank.min
+                        return (
+                          <div key={rank.label} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 10px', borderRadius:8, background: isCurrent ? `${rank.color}22` : theme.overlay, border: isCurrent ? `1px solid ${rank.color}66` : `1px solid ${theme.border}`, opacity: reached ? 1 : 0.5 }}>
+                            <span style={{ fontSize:14 }}>{rank.icon}</span>
+                            <span style={{ flex:1, fontSize:12, fontWeight: isCurrent ? 900 : 700, color: isCurrent ? rank.color : theme.textPrimary }}>{rank.label}</span>
+                            <span style={{ fontSize:11, fontWeight:700, color: reached ? rank.color : theme.textMuted }}>{rank.min} pts</span>
+                            {isCurrent && <span style={{ fontSize:9, fontWeight:900, color:rank.color, background:`${rank.color}22`, padding:'1px 6px', borderRadius:50 }}>{t('score_detail_current')}</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        )
+      })()}
+
       {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
       {showShop && <ShopModal onClose={() => setShowShop(false)} cardPool={gs.cardPool} onPurchase={handlePurchase} />}
       {showAdmin && (
@@ -1243,6 +1330,9 @@ export default function App() {
                 ...(limEdit.registrationWhitelist != null ? [apiSetConfig('registration_whitelist', limEdit.registrationWhitelist)] : []),
                 apiSetConfig('shiny_rate',        limEdit.shinyRate        ?? 0.1),
                 apiSetConfig('shiny_forge_open',  limEdit.shinyForgeOpen   ?? true),
+                apiSetConfig('score_rules',       limEdit.scoreRules       ?? { commun:1, rare:3, épique:7, légendaire:20 }),
+                apiSetConfig('shiny_multiplier',          limEdit.shinyMultiplier        ?? 2),
+                ...(limEdit.shinyForgeCostByRarity != null ? [apiSetConfig('shiny_forge_cost_by_rarity', limEdit.shinyForgeCostByRarity)] : []),
               ])
             } catch (err) {
               gs.setLimits(prevLimits)
