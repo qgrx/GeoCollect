@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { cardCC } from '../../data/cards.js'
-import { apiForgeCard } from '../../services/api.js'
+import { apiForgeCard, apiForgeShiny } from '../../services/api.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
+import Card from '../../components/Card.jsx'
 
 // ─── Keyframes injectés une seule fois ───────────────────────────────────────
 const STYLE = `
@@ -170,7 +171,7 @@ function ForgingCard({ card, phase }) {
 }
 
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
-export default function ForgeModal({ cardPool, collection, forgePoints, onClose, onForged, inline = false }) {
+export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, inline = false }) {
   useEffect(() => { injectStyle() }, [])
   const { theme } = useTheme()
   const { t } = useT()
@@ -179,9 +180,11 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
   const [phase, setPhase]           = useState(null)  // heating | reveal | done
   const [error, setError]           = useState(null)
   const [recentlyForged, setRecentlyForged] = useState(new Set())
+  const [activeTab, setActiveTab]   = useState('normal')
   const timerRef = useRef([])
 
   const forgeableCards = (cardPool || []).filter(c => c.forgeable && !(collection[c.id] > 0))
+  const ownedCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 0 && c.type !== 'Achievement')
 
   function clearTimers() { timerRef.current.forEach(clearTimeout); timerRef.current = [] }
 
@@ -218,6 +221,15 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
     }, 800))
   }
 
+  async function handleForgeShiny(card) {
+    if (forgingId) return
+    setForgingId(card.id)
+    const { data, error: apiErr } = await apiForgeShiny(card.id)
+    setForgingId(null)
+    if (apiErr) { setError(apiErr); return }
+    onForged?.(data)
+  }
+
   useEffect(() => () => clearTimers(), [])
 
   const PanelWrapper = ({ children }) => inline ? (
@@ -235,8 +247,8 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
     <PanelWrapper>
 
       {/* Overlay animation de forge (plein écran centré) */}
-      {forgingId && (() => {
-        const card = forgeableCards.find(c => c.id === forgingId)
+      {forgingId && phase && (() => {
+        const card = forgeableCards.find(c => c.id === forgingId) || ownedCards.find(c => c.id === forgingId)
         if (!card) return null
         return (
           <div style={{
@@ -299,7 +311,23 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
           </div>
         )}
 
-        {forgeableCards.length === 0 ? (
+        {/* Onglets Forger / Brillance */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          {[
+            { id: 'normal',    label: t('forge_tab_normal') || 'Forger' },
+            { id: 'brillance', label: t('forge_tab_shiny')  || '✨ Brillance' },
+          ].map(tb => (
+            <button key={tb.id} onClick={() => setActiveTab(tb.id)} style={{
+              background: activeTab === tb.id ? 'linear-gradient(135deg,#6c5ce7,#a29bfe)' : theme.bgElevated,
+              border: `1px solid ${activeTab === tb.id ? '#6c5ce7' : theme.border}`,
+              color: activeTab === tb.id ? '#fff' : theme.textPrimary,
+              padding: '7px 16px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13, cursor: 'pointer',
+            }}>{tb.label}</button>
+          ))}
+        </div>
+
+        {/* Tab Normal */}
+        {activeTab === 'normal' && (forgeableCards.length === 0 ? (
           <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⚒️</div>
             <div>Aucune carte forgeable disponible.</div>
@@ -392,6 +420,40 @@ export default function ForgeModal({ cardPool, collection, forgePoints, onClose,
                       {!card.forge_cost ? t('forge_undefined_cost')
                         : canAfford ? t('forge_btn')
                         : t('forge_missing_pts').replace('{n}', card.forge_cost - forgePoints)}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ))}
+
+        {/* Tab Brillance */}
+        {activeTab === 'brillance' && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            {ownedCards.length === 0 ? (
+              <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0', width: '100%' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>✨</div>
+                <div>Tu ne possèdes aucune carte à rendre brillante.</div>
+              </div>
+            ) : ownedCards.map(card => {
+              const alreadyShiny = (shinyCollection[card.id] || 0) > 0
+              const cost = card.shiny_forge_cost || 50
+              const canAfford = forgePoints >= cost
+              return (
+                <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny ? 0.5 : 1 }}>
+                  <Card card={card} isShiny={alreadyShiny} />
+                  <div style={{ fontSize: 11, color: canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>✨ {cost} pts</div>
+                  {alreadyShiny ? (
+                    <div style={{ fontSize: 11, color: '#00b894', fontWeight: 800 }}>{t('forge_shiny_already') || '✨ Déjà brillant'}</div>
+                  ) : (
+                    <button onClick={() => handleForgeShiny(card)} disabled={!canAfford}
+                      style={{ width: '100%', padding: '8px 0', borderRadius: 10, border: 'none',
+                        background: canAfford ? 'linear-gradient(135deg,#f9ca24,#e17055)' : theme.overlay,
+                        color: canAfford ? '#1e3045' : theme.textMuted,
+                        fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12,
+                        cursor: canAfford ? 'pointer' : 'not-allowed' }}>
+                      {t('forge_shiny_btn') || '✨ Rendre brillant'}
                     </button>
                   )}
                 </div>

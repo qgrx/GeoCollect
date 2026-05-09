@@ -237,6 +237,7 @@ export default function App() {
           answer_length: data.answer_length,
         }
         setNextCard(card)
+        setQuizIsShiny(data.is_shiny || false)
 
         // Si le backend envoie le quiz en avance (désynchro de ~10s due au temps de réponse),
         // on patiente pour que le compte à rebours tombe parfaitement à zéro !
@@ -321,6 +322,7 @@ export default function App() {
   }, [auth.profile?.id])
 
   // ── Local UI state ─────────────────────────────────────────────────────────
+  const [quizIsShiny,     setQuizIsShiny]     = useState(false);
   const [showMarket,      setShowMarket]      = useState(false);
   const [showForge,       setShowForge]       = useState(false);
   const [marketTab,       setMarketTab]       = useState('acheter');
@@ -563,8 +565,8 @@ export default function App() {
     [gs.collection]
   )
   const userScore = useMemo(
-    () => collScore(gs.collection, gs.cardPool),
-    [gs.collection, gs.cardPool]
+    () => collScore(gs.collection, gs.cardPool, gs.shinyCollection || {}),
+    [gs.collection, gs.cardPool, gs.shinyCollection]
   )
   const prevHadDuplicate = useRef(false)
   useEffect(() => {
@@ -585,18 +587,32 @@ export default function App() {
     const af = filter === 'Tous';
     const q = cardSearch.trim().toLowerCase();
     const matchSearch = card => !q || card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q);
+    let normalList;
     if (showMissing) {
-      return gs.cardPool
+      normalList = gs.cardPool
         .filter(c => (af || c.type === filter) && matchSearch(c))
         .map(c => ({ card: c, count: gs.collection[c.id] || 0, missing: !(gs.collection[c.id] > 0) }))
         .sort((a, b) => RARITY_CONFIG[a.card.rarity].order - RARITY_CONFIG[b.card.rarity].order);
+    } else {
+      normalList = Object.entries(gs.collection)
+        .filter(([, v]) => v > 0)
+        .map(([id, cnt]) => ({ card: gs.cardPool.find(c => c.id === +id), cnt, missing: false }))
+        .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
+        .sort((a, b) => RARITY_CONFIG[a.card.rarity].order - RARITY_CONFIG[b.card.rarity].order);
     }
-    return Object.entries(gs.collection)
-      .filter(([, v]) => v > 0)
-      .map(([id, cnt]) => ({ card: gs.cardPool.find(c => c.id === +id), cnt, missing: false }))
-      .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
-      .sort((a, b) => RARITY_CONFIG[a.card.rarity].order - RARITY_CONFIG[b.card.rarity].order);
-  }, [showMissing, filter, cardSearch, gs.collection, gs.cardPool]);
+    const shinyEntries = Object.entries(gs.shinyCollection || {})
+      .filter(([, n]) => n > 0)
+      .map(([id, n]) => {
+        const card = gs.cardPool.find(c => c.id === +id)
+        if (!card) return null
+        if (!(af || card.type === filter)) return null
+        if (!matchSearch(card)) return null
+        return { card, count: n, isShiny: true, missing: false }
+      })
+      .filter(Boolean)
+      .sort((a, b) => RARITY_CONFIG[a.card.rarity].order - RARITY_CONFIG[b.card.rarity].order)
+    return [...normalList, ...shinyEntries]
+  }, [showMissing, filter, cardSearch, gs.collection, gs.cardPool, gs.shinyCollection]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0
   const pseudoChanged   = pseudoChangedAt > 0 && (Date.now() - pseudoChangedAt) < PSEUDO_NOTIF_DAYS * 864e5
@@ -682,7 +698,7 @@ export default function App() {
               {[
                 { id: 'collection', icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
                 { id: 'market',     icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market' },
-                ...(gs.cardPool.some(c => c.forgeable) ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge' }] : []),
+                ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge' }] : []),
                 { id: 'top',        icon: '🏆', label: t('nav_top'), tour: 'nav-top' },
               ].map(tb => {
                 const active = activeTab === tb.id
@@ -783,7 +799,7 @@ export default function App() {
               {/* Countdown hero (mobile only — en haut) */}
               {!isWide && !activeQuiz && auth.profile?.status !== 'banni' && (
                 <div data-tour="countdown">
-                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} />
+                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} isShiny={quizIsShiny} />
                 </div>
               )}
 
@@ -889,7 +905,7 @@ export default function App() {
               {/* New geocoin available — above type filter */}
               {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && (
                 <div data-tour="countdown" style={{ marginBottom: 14 }}>
-                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} />
+                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={quizSessionActive} onJoin={handleJoin} isShiny={quizIsShiny} />
                 </div>
               )}
 
@@ -943,11 +959,11 @@ export default function App() {
                     return (
                       <>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-                          {slice.map(({ card, count, cnt, missing }, idx) => {
+                          {slice.map(({ card, count, cnt, missing, isShiny }, idx) => {
                             const c = count || cnt || 0;
                             return (
-                              <div key={card.id} style={{ animation: 'slideIn .35s ease both' }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
-                                <Card card={card} count={missing ? 0 : c} dimmed={missing} onClick={missing ? undefined : () => setSelectedCard(card)} />
+                              <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ animation: 'slideIn .35s ease both' }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
+                                <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={missing ? undefined : () => setSelectedCard(card)} />
                               </div>
                             );
                           })}
@@ -984,10 +1000,11 @@ export default function App() {
               )}
 
               {/* Forge inline */}
-              {auth.profile && activeTab === 'forge' && gs.cardPool.some(c => c.forgeable) && (
+              {auth.profile && activeTab === 'forge' && (gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false) && (
                 <ForgeModal inline
                   cardPool={gs.cardPool}
                   collection={gs.collection}
+                  shinyCollection={gs.shinyCollection || {}}
                   forgePoints={gs.forgePoints}
                   onClose={() => setActiveTab('collection')}
                   onForged={(data) => {
@@ -996,6 +1013,9 @@ export default function App() {
                     }
                     if (data?.card) {
                       gs.setCollection(prev => ({ ...prev, [data.card.id]: (prev[data.card.id] || 0) + 1 }))
+                    }
+                    if (data?.shiny_card_id) {
+                      gs.setShinyCollection(prev => ({ ...prev, [data.shiny_card_id]: (prev[data.shiny_card_id] || 0) + 1 }))
                     }
                   }}
                 />
@@ -1021,7 +1041,7 @@ export default function App() {
             { id: 'home',        icon: '🏠', label: t('nav_home') },
             { id: 'collection',  icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
             { id: 'market',      icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market' },
-            ...(gs.cardPool.some(c => c.forgeable) ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge' }] : []),
+            ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge' }] : []),
             { id: 'top',         icon: '🏆', label: t('nav_top'), tour: 'nav-top' },
           ].map(item => {
             const active = activeTab === item.id
@@ -1221,6 +1241,8 @@ export default function App() {
                 apiSetConfig('market_expire_days',  limEdit.marketExpireDays  ?? 30),
                 ...(limEdit.typeTranslations != null ? [apiSetConfig('type_translations', limEdit.typeTranslations)] : []),
                 ...(limEdit.registrationWhitelist != null ? [apiSetConfig('registration_whitelist', limEdit.registrationWhitelist)] : []),
+                apiSetConfig('shiny_rate',        limEdit.shinyRate        ?? 0.1),
+                apiSetConfig('shiny_forge_open',  limEdit.shinyForgeOpen   ?? true),
               ])
             } catch (err) {
               gs.setLimits(prevLimits)

@@ -603,6 +603,32 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
             </div>
           </div>
 
+          {/* Brillance */}
+          <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
+            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:10,fontSize:13}}>✨ Geocoins Brillants</div>
+            <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Taux de brillance (%)</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="number" min={0} max={100}
+                    value={Math.round((limEdit.shinyRate ?? 0.1) * 100)}
+                    onChange={e=>setLimEdit({...limEdit,shinyRate:Math.min(1,Math.max(0,+e.target.value/100))})}
+                    style={{...INP,width:80}}/>
+                  <span style={{color:"#aaa",fontSize:12}}>%</span>
+                </div>
+                <div style={{fontSize:10,color:"#555",marginTop:4}}>Probabilité qu'un quiz génère un geocoin brillant</div>
+              </div>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Forge Brillance</div>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                  <input type="checkbox" checked={limEdit.shinyForgeOpen!==false}
+                    onChange={e=>setLimEdit({...limEdit,shinyForgeOpen:e.target.checked})} style={{width:16,height:16}}/>
+                  <span style={{color:"#fff",fontSize:13}}>Activer l'onglet Brillance dans la Forge</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
             <button onClick={async ()=>{
               await onSetLimits(limEdit);

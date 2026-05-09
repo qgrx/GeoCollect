@@ -227,16 +227,16 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
 }
 
 // ─── Countdown Widget ─────────────────────────────────────────────────────────
-export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycleTime=60}){ const {t}=useT(); const {theme}=useTheme();
+export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycleTime=60,isShiny=false}){ const {t}=useT(); const {theme}=useTheme();
   const pct = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
   const urgent = !hasPendingQuiz && secondsLeft <= 10 && secondsLeft > 0
   const hasCard = !!nextCard && hasPendingQuiz
   const rc = hasCard ? RC[nextCard.rarity] : null
-  
+
   const showColors = urgent || hasPendingQuiz
   const {c1, c2} = (nextCard && showColors) ? cardCC(nextCard.rarity) : { c1: '#6c7c93', c2: '#48576b' }
   return (
-    <div style={{display:"flex",alignItems:"center",gap:11,background:urgent?`${c1}12`:theme.overlay,border:`1.5px solid ${urgent?`${c1}44`:theme.border}`,borderRadius:13,padding:"9px 14px",transition:"all .5s",boxShadow:urgent?`0 0 15px ${c1}22`:"none"}}>
+    <div style={{display:"flex",alignItems:"center",gap:11,background:urgent?`${c1}12`:theme.overlay,border:`1.5px solid ${isShiny&&hasPendingQuiz?'#f9ca2488':urgent?`${c1}44`:theme.border}`,borderRadius:13,padding:"9px 14px",transition:"all .5s",boxShadow:isShiny&&hasPendingQuiz?`0 0 15px #f9ca2433`:urgent?`0 0 15px ${c1}22`:"none"}}>
       <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
         <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', position: 'relative', border: `2px solid ${c1}`, background: '#1e3045', boxSizing: 'border-box', boxShadow: (hasCard && nextCard.rarity === 'légendaire') ? `0 0 12px ${c1}aa` : (urgent ? `0 0 10px ${c1}66` : 'none') }}>
           {hasCard ? (
@@ -249,6 +249,13 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycl
             <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:900,color:urgent?c1:'#888'}}>?</div>
           )}
         </div>
+        {isShiny && hasPendingQuiz && (
+          <div style={{
+            position: 'absolute', top: -4, right: -4, zIndex: 15,
+            fontSize: 12, animation: 'shinySparkle 2s ease-in-out infinite',
+            filter: 'drop-shadow(0 0 3px gold)',
+          }}>✨</div>
+        )}
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
@@ -256,11 +263,11 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycl
           {!hasPendingQuiz && <span style={{fontSize:13,fontWeight:900,color:urgent?c1:theme.gold,transition:"color .5s",textShadow:urgent?`0 0 8px ${c1}88`:"none"}}>{secondsLeft > 0 ? `${secondsLeft}s` : '...'}</span>}
         </div>
         <div style={{background:theme.overlayMd,borderRadius:50,height:5,overflow:"hidden",marginBottom:3}}>
-          <div style={{width:hasPendingQuiz?"100%":`${pct}%`,height:"100%",background:`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:"width 1s linear,background .5s",boxShadow:urgent?`0 0 10px ${c1}`:""}}/>
+          <div style={{width:hasPendingQuiz?"100%":`${pct}%`,height:"100%",background:isShiny&&hasPendingQuiz?'linear-gradient(90deg,#f9ca24,#e17055)':`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:"width 1s linear,background .5s",boxShadow:urgent?`0 0 10px ${c1}`:""}}/>
         </div>
         <div style={{fontSize:10,color:"#666"}}>
           {hasCard
-            ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity, t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard, getLang())}</span></>
+            ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity, t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard, getLang())}</span>{isShiny && <span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}</>
             : <span style={{color:urgent?c1:theme.textMuted,fontStyle:"italic",transition:"color .5s"}}>Geocoin mystère…</span>}
         </div>
       </div>
