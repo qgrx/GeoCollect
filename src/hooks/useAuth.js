@@ -82,11 +82,13 @@ export function useAuth() {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
+  const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin
+
   const signInWithGoogle = useCallback(async () => {
     return supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}`,
+        redirectTo: APP_URL,
         queryParams: { prompt: 'select_account' },
       },
     })
@@ -120,14 +122,14 @@ export function useAuth() {
       email, password,
       options: {
         data: { pseudo, locale },
-        emailRedirectTo: `${window.location.origin}`,
+        emailRedirectTo: APP_URL,
       },
     })
   }, [])
 
   const resetPassword = useCallback(async (email) => {
     return supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}?reset=1`,
+      redirectTo: `${APP_URL}?reset=1`,
     })
   }, [])
 
