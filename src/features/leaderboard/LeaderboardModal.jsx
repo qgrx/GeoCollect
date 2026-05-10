@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useT } from '../../i18n/translations.js';
 import { useTheme } from '../../ThemeContext.jsx';
+import { RC } from '../../data/cards.js';
 import { apiGetLeaderboard, apiGetUserCollection } from '../../services/api.js';
+import Card from '../../components/Card.jsx';
 import PseudoDisplay from '../../components/PseudoDisplay.jsx';
 import { getRank, rankCC } from '../../utils/rankUtils.js';
 import { DEFAULT_RANKS } from '../../data/constants.js';
@@ -10,22 +12,30 @@ import { DEFAULT_RANKS } from '../../data/constants.js';
 function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, onBack }) {
   const { t } = useT();
   const { theme } = useTheme();
-  const [uniqueCards, setUniqueCards] = useState(null);
+  const [col, setCol] = useState(null);       // { cardId: qty }
   const [loading, setLoading] = useState(true);
+  const [showCol, setShowCol] = useState(false);
 
   useEffect(() => {
     if (player.isMe) {
-      const count = Object.values(player.col || {}).filter(n => n > 0).length;
-      setUniqueCards(count);
+      setCol(player.col || {});
       setLoading(false);
       return;
     }
     apiGetUserCollection(player.id).then(({ data }) => {
-      const col = data?.collection || [];
-      setUniqueCards(Array.isArray(col) ? col.filter(r => r.quantity > 0).length : Object.values(col).filter(n => n > 0).length);
+      const raw = data?.collection || [];
+      if (Array.isArray(raw)) {
+        const obj = {};
+        raw.forEach(r => { obj[r.card_id] = r.quantity });
+        setCol(obj);
+      } else {
+        setCol(raw);
+      }
       setLoading(false);
     });
   }, [player.id]);
+
+  const uniqueCards = col ? Object.values(col).filter(n => n > 0).length : null;
 
   const score       = player.isMe ? (myScore ?? player.score ?? 0) : (player.score ?? 0);
   const gold        = player.isMe ? (myGold  ?? player.gold  ?? 0) : (player.gold  ?? 0);
@@ -38,60 +48,86 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
   const prevMin  = [...sortedRanks].reverse().find(r => r.min <= score)?.min || 0;
   const pct      = nextRank ? Math.round(((score - prevMin) / (nextRank.min - prevMin)) * 100) : 100;
 
+  const cards = col
+    ? Object.entries(col).filter(([, n]) => n > 0)
+        .map(([id, cnt]) => ({ card: cardPool.find(c => c.id === +id) || { id: +id, name: `#${id}`, type: '?', rarity: 'commun' }, cnt }))
+        .sort((a, b) => (RC[b.card.rarity]?.order ?? 9) - (RC[a.card.rarity]?.order ?? 9))
+    : [];
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: 'min(96vw,360px)', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif" }}>
+      <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: showCol ? 'min(96vw,860px)' : 'min(96vw,360px)', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif", transition: 'width .3s' }}>
         <button onClick={onBack} style={{ background: theme.overlay, border: `1px solid ${theme.border}`, color: theme.textPrimary, width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer', marginBottom: 16 }}>←</button>
 
         {loading ? (
           <div style={{ textAlign: 'center', color: '#888', padding: '24px 0', fontSize: 13 }}>{t('lb_loading')}</div>
         ) : (
-          <div style={{ background: theme.overlay, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none' }} />
+          <>
+            <div style={{ background: theme.overlay, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden', marginBottom: 12 }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none' }} />
 
-            {/* Avatar + pseudo + rang */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-              <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 14px ${c1}44`, border: `2px solid ${c1}44` }}>
-                {(player.pseudo || '?')[0].toUpperCase()}
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <PseudoDisplay pseudo={player.pseudo + (player.isMe ? ` ${t('lb_you')}` : '')} score={score} ranks={ranks} style={{ color: theme.textPrimary }} />
+              {/* Avatar + pseudo + rang */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 14px ${c1}44`, border: `2px solid ${c1}44` }}>
+                  {(player.pseudo || '?')[0].toUpperCase()}
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 800, color: c1 }}>{rank?.label}</span>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <PseudoDisplay pseudo={player.pseudo + (player.isMe ? ` ${t('lb_you')}` : '')} score={score} ranks={ranks} style={{ color: theme.textPrimary }} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: c1 }}>{rank?.label}</span>
+                </div>
               </div>
+
+              {/* Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
+                {[
+                  { icon: '🃏', value: uniqueCards ?? '—', label: t('stat_geocoins') },
+                  { icon: '💰', value: gold,               label: t('stat_gold') },
+                  { icon: '🔨', value: forgePoints,         label: t('stat_forge') },
+                ].map(({ icon, value, label }) => (
+                  <div key={label} style={{ background: theme.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 12 }}>{icon}</div>
+                    <div style={{ fontWeight: 900, fontSize: 12, color: theme.textPrimary, lineHeight: 1.2 }}>{value}</div>
+                    <div style={{ fontSize: 7, color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .2 }}>{label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Progression de rang */}
+              {nextRank ? (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: theme.textMuted }}>
+                    <span>{t('rank_next')} <span style={{ background: nextRank.color, color: '#fff', fontWeight: 800, padding: '1px 6px', borderRadius: 4, fontSize: 9, textShadow: '0 1px 2px #0004' }}>{nextRank.label}</span></span>
+                    <span style={{ fontWeight: 700 }}>{score}/{nextRank.min}</span>
+                  </div>
+                  <div style={{ background: theme.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }} />
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 11, fontWeight: 800, color: c1, textAlign: 'center' }}>{t('rank_max')}</div>
+              )}
             </div>
 
-            {/* Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
-              {[
-                { icon: '🃏', value: uniqueCards ?? '—', label: t('stat_geocoins') },
-                { icon: '💰', value: gold,        label: t('stat_gold') },
-                { icon: '🔨', value: forgePoints,  label: t('stat_forge') },
-              ].map(({ icon, value, label }) => (
-                <div key={label} style={{ background: theme.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 12 }}>{icon}</div>
-                  <div style={{ fontWeight: 900, fontSize: 12, color: theme.textPrimary, lineHeight: 1.2 }}>{value}</div>
-                  <div style={{ fontSize: 7, color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .2 }}>{label}</div>
-                </div>
-              ))}
-            </div>
+            {/* Bouton voir collection */}
+            <button onClick={() => setShowCol(v => !v)}
+              style={{ width: '100%', background: showCol ? theme.overlay : 'linear-gradient(135deg,#f9ca24,#e17055)', border: `1px solid ${theme.border}`, color: showCol ? theme.textPrimary : '#1e3045', padding: '9px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: 'pointer', transition: 'all .2s' }}>
+              {showCol ? '▲ Masquer la collection' : `🃏 Voir sa collection (${uniqueCards ?? 0})`}
+            </button>
 
-            {/* Progression de rang */}
-            {nextRank ? (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: theme.textMuted }}>
-                  <span>{t('rank_next')} <span style={{ background: nextRank.color, color: '#fff', fontWeight: 800, padding: '1px 6px', borderRadius: 4, fontSize: 9, textShadow: '0 1px 2px #0004' }}>{nextRank.label}</span></span>
-                  <span style={{ fontWeight: 700 }}>{score}/{nextRank.min}</span>
-                </div>
-                <div style={{ background: theme.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden' }}>
-                  <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }} />
-                </div>
-              </>
-            ) : (
-              <div style={{ fontSize: 11, fontWeight: 800, color: c1, textAlign: 'center' }}>{t('rank_max')}</div>
+            {/* Grille de cartes */}
+            {showCol && (
+              <div style={{ marginTop: 14 }}>
+                {cards.length === 0
+                  ? <div style={{ color: theme.textMuted, textAlign: 'center', padding: '18px 0', fontSize: 13 }}>{t('lb_empty')}</div>
+                  : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
+                      {cards.map(({ card, cnt }) => <Card key={card.id} card={card} count={cnt} small />)}
+                    </div>
+                }
+              </div>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>
