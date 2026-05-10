@@ -7,6 +7,25 @@ import Card from '../../components/Card.jsx'
 
 // ─── Keyframes injectés une seule fois ───────────────────────────────────────
 const STYLE = `
+@keyframes starAppear {
+  0%   { opacity: 0; transform: scale(0) rotate(-20deg); }
+  60%  { opacity: 1; transform: scale(1.35) rotate(8deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes starTwinkle {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%     { opacity: .35; transform: scale(.7) rotate(15deg); }
+}
+@keyframes cardToShiny {
+  0%   { filter: none; }
+  18%  { filter: brightness(4) saturate(0); }
+  55%  { filter: brightness(1.8) saturate(2.5); }
+  100% { filter: brightness(1.1) saturate(1.3); }
+}
+@keyframes shinyCardGlow {
+  0%,100% { box-shadow: 0 0 18px #f9ca2466; }
+  50%     { box-shadow: 0 0 40px #f9ca24cc, 0 0 80px #ffffff22; }
+}
 @keyframes forgeHeat {
   0%,100% { box-shadow: 0 0 20px #e17055aa, 0 0 60px #e1705544; }
   50%      { box-shadow: 0 0 40px #f9ca24cc, 0 0 100px #f9ca2466; }
@@ -170,6 +189,92 @@ function ForgingCard({ card, phase }) {
   )
 }
 
+// Étoiles positionnées autour de la carte (148×190), apparition progressive
+const STAR_DEFS = [
+  { x: -28, y: 10,  fs: 16, d: 0.00 },
+  { x: 155, y: 20,  fs: 12, d: 0.18 },
+  { x: 60,  y: -28, fs: 14, d: 0.36 },
+  { x: -22, y: 155, fs: 10, d: 0.54 },
+  // — reveal phase (≥0.8 s) —
+  { x: 158, y: 130, fs: 18, d: 0.84 },
+  { x: 30,  y: 200, fs: 12, d: 1.00 },
+  { x: -26, y: 75,  fs: 10, d: 1.16 },
+  { x: 120, y: -24, fs: 14, d: 1.32 },
+  { x: 158, y: 175, fs: 10, d: 1.48 },
+  { x: -24, y: 110, fs: 16, d: 1.64 },
+  { x: 90,  y: 205, fs: 12, d: 1.80 },
+  { x: 135, y: 200, fs: 10, d: 1.96 },
+  { x: -20, y: 40,  fs: 14, d: 2.12 },
+  { x: 155, y: 65,  fs: 12, d: 2.28 },
+]
+
+// ─── Étoiles progressives ─────────────────────────────────────────────────────
+function ShinyStars() {
+  return (
+    <div style={{ position: 'absolute', inset: -30, pointerEvents: 'none', zIndex: 20 }}>
+      {STAR_DEFS.map((s, i) => (
+        <div key={i} style={{
+          position: 'absolute', left: s.x + 30, top: s.y + 30,
+          fontSize: s.fs, lineHeight: 1,
+          animation: `starAppear .4s ${s.d}s both, starTwinkle 1.6s ${s.d + .4}s ease-in-out infinite`,
+        }}>✨</div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Carte en cours de brillance ─────────────────────────────────────────────
+function ShinyCard({ card, phase }) {
+  const { c1, c2 } = cardCC(card.rarity)
+  const src  = card.image || card.image_url
+  const done = phase === 'done'
+  return (
+    <div style={{ position: 'relative', width: 148, height: 190 }}>
+      <ShinyStars />
+      <div style={{
+        position: 'relative', width: 148, height: 190, borderRadius: 16, overflow: 'hidden',
+        border: `2px solid ${done ? '#f9ca24' : '#ffffff33'}`,
+        animation: phase === 'reveal'
+          ? 'cardToShiny 1.2s ease-out forwards'
+          : done ? 'shinyCardGlow 2s ease-in-out infinite' : 'none',
+        transition: 'border-color .4s',
+      }}>
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-start',
+          justifyContent: 'center', paddingTop: 6,
+          background: src ? 'transparent' : `linear-gradient(145deg,${c1}44,${c2}66)`,
+        }}>
+          {src
+            ? <img src={src} alt={card.name} style={{ width: '100%', height: '88%', objectFit: 'contain' }}/>
+            : <div style={{ fontSize: 52, opacity: .22 }}>✨</div>
+          }
+        </div>
+        {done && (
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: 16, zIndex: 13,
+            background: 'linear-gradient(135deg,transparent 35%,#ffffff33 50%,transparent 65%)',
+            backgroundSize: '300px 100%', animation: 'shimmer 1.8s linear infinite', pointerEvents: 'none',
+          }}/>
+        )}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 11,
+          background: `linear-gradient(to top,${done ? '#f9ca24' : c1}ee 0%,${done ? '#f9ca24' : c1}99 50%,transparent 100%)`,
+          padding: '28px 8px 7px', textAlign: 'center',
+        }}>
+          <div style={{ fontWeight: 900, fontSize: 13, color: done ? '#1e3045' : '#fff',
+            textShadow: done ? '0 1px 4px #f9ca2488' : '0 1px 4px #0008',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            fontFamily: "'Nunito',sans-serif" }}>
+            {done ? '✨ ' : ''}{card.name}
+          </div>
+        </div>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 12,
+          height: 4, background: done ? 'linear-gradient(90deg,#f9ca24,#fff,#f9ca24)' : `linear-gradient(90deg,${c1},${c2})` }}/>
+      </div>
+    </div>
+  )
+}
+
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
 export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, inline = false, shinyForgeCostByRarity = {} }) {
   useEffect(() => { injectStyle() }, [])
@@ -178,6 +283,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
 
   const [forgingId, setForgingId]   = useState(null) // card en cours de forge
   const [phase, setPhase]           = useState(null)  // heating | reveal | done
+  const [shinyMode, setShinyMode]   = useState(false) // true = animation brillance
   const [error, setError]           = useState(null)
   const [recentlyForged, setRecentlyForged] = useState(new Set())
   const [activeTab, setActiveTab]   = useState('normal')
@@ -223,11 +329,33 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
 
   async function handleForgeShiny(card) {
     if (forgingId) return
+    setError(null)
+    setShinyMode(true)
     setForgingId(card.id)
-    const { data, error: apiErr } = await apiForgeShiny(card.id)
-    setForgingId(null)
-    if (apiErr) { setError(apiErr); return }
-    onForged?.(data)
+    setPhase('heating')
+
+    timerRef.current.push(setTimeout(async () => {
+      setPhase('reveal')
+      const { data, error: apiErr } = await apiForgeShiny(card.id)
+
+      timerRef.current.push(setTimeout(() => {
+        if (apiErr) {
+          setError(apiErr)
+          setPhase(null)
+          setForgingId(null)
+          setShinyMode(false)
+          return
+        }
+        setPhase('done')
+        onForged?.(data)
+
+        timerRef.current.push(setTimeout(() => {
+          setForgingId(null)
+          setPhase(null)
+          setShinyMode(false)
+        }, 1400))
+      }, 1000))
+    }, 800))
   }
 
   useEffect(() => () => clearTimers(), [])
@@ -246,30 +374,36 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
   return (
     <PanelWrapper>
 
-      {/* Overlay animation de forge (plein écran centré) */}
+      {/* Overlay animation de forge / brillance */}
       {forgingId && phase && (() => {
         const card = forgeableCards.find(c => c.id === forgingId) || ownedCards.find(c => c.id === forgingId)
         if (!card) return null
         return (
           <div style={{
-            position: 'absolute', inset: 0, zIndex: 800,
+            position: 'fixed', inset: 0, zIndex: 1500,
             display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', gap: 24,
-            background: '#000c',
+            background: shinyMode ? '#00000099' : '#000c',
           }}>
-            <div style={{ fontSize: 13, color: '#a29bfe', fontWeight: 700,
-              textTransform: 'uppercase', letterSpacing: 2,
+            <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 2,
+              color: shinyMode ? '#f9ca24' : '#a29bfe',
               animation: phase === 'heating' ? 'pulseBadge 0.6s infinite' : 'none',
             }}>
-              {phase === 'heating' ? '🔥 Forge en cours…'
-               : phase === 'reveal' ? '✨ Révélation…'
-               : '🏆 Forgée !'}
+              {shinyMode
+                ? phase === 'heating' ? '✨ Transmutation en cours…'
+                  : phase === 'reveal' ? '🌟 Révélation…'
+                  : '💎 Carte brillante !'
+                : phase === 'heating' ? '🔥 Forge en cours…'
+                  : phase === 'reveal' ? '✨ Révélation…'
+                  : '🏆 Forgée !'}
             </div>
-            <ForgingCard card={card} phase={phase} />
+            {shinyMode
+              ? <ShinyCard card={card} phase={phase} />
+              : <ForgingCard card={card} phase={phase} />}
             {phase === 'done' && (
-              <div style={{ color: '#00b894', fontWeight: 900, fontSize: 15,
-                animation: 'forgeBurst .4s ease-out' }}>
-                Carte ajoutée à ta collection !
+              <div style={{ fontWeight: 900, fontSize: 15, animation: 'forgeBurst .4s ease-out',
+                color: shinyMode ? '#f9ca24' : '#00b894' }}>
+                {shinyMode ? '✨ Carte rendue brillante !' : 'Carte ajoutée à ta collection !'}
               </div>
             )}
           </div>
@@ -439,11 +573,11 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
             ) : ownedCards.map(card => {
               const alreadyShiny = (shinyCollection[card.id] || 0) > 0
               const cost = card.shiny_forge_cost ?? shinyForgeCostByRarity[card.rarity] ?? null
-              const canAfford = forgePoints >= cost
+              const canAfford = cost != null && forgePoints >= cost
               return (
                 <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny ? 0.5 : 1 }}>
                   <Card card={card} isShiny={alreadyShiny} />
-                  <div style={{ fontSize: 11, color: canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>✨ {cost} pts</div>
+                  <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>✨ {cost ?? '—'} pts</div>
                   {alreadyShiny ? (
                     <div style={{ fontSize: 11, color: '#00b894', fontWeight: 800 }}>{t('forge_shiny_already') || '✨ Déjà brillant'}</div>
                   ) : (
