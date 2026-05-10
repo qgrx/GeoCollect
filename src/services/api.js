@@ -113,6 +113,10 @@ export const apiAdminGetMarketHistory = (params = {}) => { const qs = new URLSea
 export const apiAdminGetCardQuizStats = () => apiFetch('/api/admin/cards/quiz-stats')
 export const apiAdminFlushCache         = () => apiFetch('/api/admin/cache/flush', { method: 'DELETE' })
 export const apiAdminRecalculateScores  = () => apiFetch('/api/admin/recalculate-scores', { method: 'POST' })
+
+// ─── Trésors ──────────────────────────────────────────────────────────────────
+export const apiGetDailyTreasure  = () => apiFetch('/api/treasures/daily')
+export const apiClaimDailyTreasure = () => apiFetch('/api/treasures/daily/claim', { method: 'POST' })
 export const apiAdminGetStats         = () => apiFetch('/api/admin/stats')
 export const apiAdminGetBots          = () => apiFetch('/api/admin/bots')
 export const apiAdminCreateBot        = (body) => apiFetch('/api/admin/bots', { method: 'POST', body })

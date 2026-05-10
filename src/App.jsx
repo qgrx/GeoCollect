@@ -14,7 +14,7 @@ import { collScore } from './utils/gameUtils.js';
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -38,7 +38,8 @@ import AdminPanel from './features/admin/AdminPanel.jsx';
 import ShopModal from './features/shop/ShopModal.jsx';
 import { AchievementToast, SaleNotif, TxHistoryModal } from './features/achievements/NotifComponents.jsx';
 import DailyQuests from './features/quests/DailyQuests.jsx';
-import ForgeModal  from './features/forge/ForgeModal.jsx';
+import ForgeModal  from './features/forge/ForgeModal.jsx'
+import TresorPage  from './features/treasures/TresorPage.jsx';
 
 function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
   const imgRef = useRef(null)
@@ -336,6 +337,7 @@ export default function App() {
   const [cardSearch,      setCardSearch]      = useState('');
   const [collPage,        setCollPage]        = useState(0);
   const [quizSessionActive, setQuizSessionActive] = useState(false);
+  const [dailyOffer, setDailyOffer] = useState(null);
   const COLL_PAGE_SIZE = 24;
   const [menuOpen,        setMenuOpen]        = useState(false);
   const [selectedCard,    setSelectedCard]    = useState(null);
@@ -397,6 +399,12 @@ export default function App() {
   })
   useEffect(() => { localStorage.setItem('geocoins_tab', activeTab) }, [activeTab])
   useEffect(() => { gs.marketOpenRef.current = activeTab === 'market' }, [activeTab])
+
+  // Fetch offre du jour quand le profil est chargé ou quand on ouvre l'onglet Trésors
+  useEffect(() => {
+    if (!auth.profile) return
+    apiGetDailyTreasure().then(({ data }) => { if (data) setDailyOffer(data) })
+  }, [auth.profile?.id, activeTab === 'tresors'])
 
   // ── Clic en dehors du menu avatar ──────────────────────────────────────────
   useEffect(() => {
@@ -469,6 +477,15 @@ export default function App() {
     gs.handleCancelAllListings();
     showToast("Toutes vos annonces ont été retirées !");
   }
+  // ── Réclamer la carte du jour ────────────────────────────────────────────────
+  async function handleClaimDaily() {
+    const { data, error } = await apiClaimDailyTreasure()
+    if (error) throw new Error(error)
+    setDailyOffer(d => d ? { ...d, claimed: true } : d)
+    gs.earnCard(data.card, false)
+    showToast(t('toast_daily_claimed').replace('{card}', data.card.name))
+  }
+
   // Wrapper — bloque la soumission pour les non-connectés et propose l'inscription
   const wrappedHandleQuizAnswer = async (_userAnswer, _turnstileToken) => {
     if (!auth.profile) {
@@ -709,6 +726,7 @@ export default function App() {
             <div style={{ flex: 1 }} />
             <nav style={{ display: 'flex' }}>
               {[
+                { id: 'tresors',    icon: '💎', label: t('nav_tresors') },
                 { id: 'collection', icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
                 { id: 'market',     icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market' },
                 ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge' }] : []),
@@ -916,7 +934,7 @@ export default function App() {
             <main style={{ flex: 1, padding: isWide ? '14px 20px' : '12px 14px', minWidth: 0 }}>
 
               {/* New geocoin available — above type filter */}
-              {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && (
+              {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
                 <div data-tour="countdown" style={{ marginBottom: 14 }}>
                   <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={!!pendingQuiz} onJoin={handleJoin} isShiny={quizIsShiny} />
                 </div>
@@ -1035,6 +1053,15 @@ export default function App() {
                 />
               )}
 
+              {/* Trésors */}
+              {auth.profile && activeTab === 'tresors' && (
+                <TresorPage
+                  dailyOffer={dailyOffer}
+                  onClaim={handleClaimDaily}
+                  onOpenShop={() => setShowShop(true)}
+                />
+              )}
+
               {/* Leaderboard inline */}
               {auth.profile && activeTab === 'top' && (
                 <LeaderboardModal inline
@@ -1054,6 +1081,7 @@ export default function App() {
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: theme.navBg, backdropFilter: 'blur(20px)', borderTop: `1px solid ${theme.border}`, display: 'flex' }}>
           {[
             { id: 'home',        icon: '🏠', label: t('nav_home') },
+            { id: 'tresors',     icon: '💎', label: t('nav_tresors') },
             { id: 'collection',  icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
             { id: 'market',      icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market' },
             ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge' }] : []),
