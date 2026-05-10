@@ -269,7 +269,8 @@ export default function App() {
       // Quiz — nouveau quiz disponible
       s.on('quiz:new', (data) => {
         const poolCard = cardPoolRef.current?.find(c => c.id === data.card?.id) || {}
-        const card = { ...data.card, ...poolCard, sellable: true, minPrice: null, desc: '' }
+        // poolCard (pool complet) override data.card (minimal) — image_url présent dans les deux maintenant
+        const card = { ...data.card, ...poolCard, sellable: true, minPrice: null, desc: poolCard.desc ?? poolCard.description ?? '' }
         const wc = data.answer_word_count || 1
         const fakeAnswer = Array(wc).fill('x').join(' ')
         const curLang = getLang()
