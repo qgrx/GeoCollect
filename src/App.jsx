@@ -74,8 +74,8 @@ function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
         <div style={{ background:`linear-gradient(90deg,${c1},${c2})`, padding:'10px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', position:'relative', overflow:'hidden' }}>
           <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,transparent 40%,#ffffff22 50%,transparent 60%)', backgroundSize:'400px 100%', animation:'shimmerOffer 2.5s linear infinite' }}/>
           <div style={{ position:'relative' }}>
-            <div style={{ fontSize:11, fontWeight:900, color:'#fff', textTransform:'uppercase', letterSpacing:1 }}>🎁 Geocoin offert !</div>
-            {remaining > 1 && <div style={{ fontSize:10, color:'#ffffffaa' }}>{remaining} geocoins à recevoir</div>}
+            <div style={{ fontSize:11, fontWeight:900, color:'#fff', textTransform:'uppercase', letterSpacing:1 }}>{t('onboarding_card_title')}</div>
+            {remaining > 1 && <div style={{ fontSize:10, color:'#ffffffaa' }}>{t('onboarding_card_remaining').replace('{n}', remaining)}</div>}
           </div>
           <div style={{ position:'relative', fontSize:10, fontWeight:800, color:'#ffffffcc', background:'#00000033', borderRadius:50, padding:'3px 10px' }}>{rarityLabel(card.rarity, t)}</div>
         </div>
@@ -111,7 +111,7 @@ function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
             <span style={{ fontSize:11, fontWeight:800, color:rc.color, background:rc.bg, borderRadius:50, padding:'2px 10px' }}>{rarityLabel(card.rarity, t)}</span>
           </div>
           <button onClick={onDismiss} style={{ width:'100%', background:`linear-gradient(135deg,${c1},${c2})`, border:'none', color:'#fff', padding:'14px', borderRadius:14, fontFamily:"'Nunito',sans-serif", fontWeight:900, fontSize:16, cursor:'pointer', boxShadow:`0 4px 20px ${c1}66`, letterSpacing:.3 }}>
-            {isLast ? 'Recevoir 🎉' : 'Recevoir →'}
+            {isLast ? t('onboarding_card_receive_last') : t('onboarding_card_receive')}
           </button>
         </div>
       </div>
@@ -128,7 +128,7 @@ function OnboardingPseudoScreen({ auth, t, onDone }) {
   async function handleSubmit() {
     const p = pseudo.trim()
     if (p.length < 3)  { setError(t('auth_pseudo_short') || 'Minimum 3 caractères'); return }
-    if (p.length > 20) { setError('Maximum 20 caractères'); return }
+    if (p.length > 20) { setError(t('onboarding_pseudo_max')); return }
     setBusy(true); setError('')
     const { error: e } = await auth.updatePseudo(p)
     setBusy(false)
@@ -142,15 +142,15 @@ function OnboardingPseudoScreen({ auth, t, onDone }) {
       <div style={{ width:'min(92vw,400px)', background:'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius:24, padding:'32px 28px', border:'1.5px solid #ffffff14', boxShadow:'0 24px 80px #000c', animation:'popIn .4s cubic-bezier(.34,1.56,.64,1)' }}>
         <div style={{ textAlign:'center', marginBottom:24 }}>
           <div style={{ fontSize:52, marginBottom:12 }}>🗺️</div>
-          <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:26, color:'#f9ca24', marginBottom:6 }}>Bienvenue sur Geocoins !</div>
-          <div style={{ fontSize:14, color:'#aaa', lineHeight:1.5 }}>Choisis ton pseudo — il sera visible par tous les joueurs.</div>
+          <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:26, color:'#f9ca24', marginBottom:6 }}>{t('onboarding_welcome')}</div>
+          <div style={{ fontSize:14, color:'#aaa', lineHeight:1.5 }}>{t('onboarding_pseudo_sub')}</div>
         </div>
         <input
           autoFocus
           value={pseudo}
           onChange={e => { setPseudo(e.target.value); setError('') }}
           onKeyDown={e => e.key === 'Enter' && !busy && handleSubmit()}
-          placeholder="Ton pseudo…"
+          placeholder={t('onboarding_pseudo_placeholder')}
           maxLength={20}
           style={{ width:'100%', boxSizing:'border-box', background:'#ffffff0f', border:`1.5px solid ${error ? '#e74c3c' : '#ffffff22'}`, borderRadius:12, color:'#fff', padding:'13px 16px', fontFamily:"'Nunito',sans-serif", fontWeight:700, fontSize:16, outline:'none', marginBottom:error ? 8 : 16, transition:'border-color .2s' }}
         />
@@ -160,9 +160,9 @@ function OnboardingPseudoScreen({ auth, t, onDone }) {
           disabled={busy || pseudo.trim().length < 3}
           style={{ width:'100%', background: busy || pseudo.trim().length < 3 ? '#ffffff18' : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border:'none', color: busy || pseudo.trim().length < 3 ? '#666' : '#fff', padding:'14px', borderRadius:12, fontFamily:"'Nunito',sans-serif", fontWeight:900, fontSize:16, cursor: busy || pseudo.trim().length < 3 ? 'default' : 'pointer', transition:'all .2s' }}
         >
-          {busy ? '…' : 'Choisir ce pseudo →'}
+          {busy ? '…' : t('onboarding_pseudo_btn')}
         </button>
-        <div style={{ textAlign:'center', fontSize:10, color:'#444', marginTop:10 }}>Modifiable plus tard dans les paramètres</div>
+        <div style={{ textAlign:'center', fontSize:10, color:'#444', marginTop:10 }}>{t('onboarding_pseudo_hint')}</div>
       </div>
     </div>
   )
@@ -755,7 +755,7 @@ export default function App() {
       <div style={{ minHeight:'100vh', background:'#0f0f1e', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20, fontFamily:"'Nunito',sans-serif" }}>
         <style>{`@keyframes floatGift{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}} @keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-8px);opacity:1}}`}</style>
         <div style={{ fontSize:72, animation:'floatGift 2s ease-in-out infinite' }}>🎁</div>
-        <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:22, color:'#f9ca24', textAlign:'center' }}>Préparation de ton premier Geocoin…</div>
+        <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:22, color:'#f9ca24', textAlign:'center' }}>{t('onboarding_gift')}</div>
         <div style={{ display:'flex', gap:10 }}>
           {[0, 0.25, 0.5].map(d => <div key={d} style={{ width:9, height:9, borderRadius:'50%', background:'#f9ca24', animation:`dotBounce 0.9s ${d}s ease-in-out infinite` }}/>)}
         </div>
