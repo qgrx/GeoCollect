@@ -347,7 +347,8 @@ export default function App() {
   const [showTour, setShowTour] = useState(false);
   const [avatarMenu, setAvatarMenu] = useState(false);
   const avatarMenuRef = useRef(null);
-  const [welcomeCards, setWelcomeCards] = useState([]);  // cartes offertes à afficher avant le tour
+  const [welcomeCards, setWelcomeCards] = useState([]);
+  const [welcomeLoading, setWelcomeLoading] = useState(false);  // cartes offertes à afficher avant le tour
   const [marketUnlockBanner, setMarketUnlockBanner] = useState(false);
   const [toast,           setToast]           = useState(null);
   const [socketOnline,    setSocketOnline]    = useState(true);
@@ -517,16 +518,18 @@ export default function App() {
   // Welcome card + tuto — basé sur welcome_given en base (pas localStorage)
   useEffect(() => {
     if (!auth.profile || !import.meta.env.VITE_API_URL) return
-    if (auth.profile.welcome_given) return // onboarding déjà complété
+    if (auth.profile.welcome_given) return
     const run = async () => {
+      setWelcomeLoading(true)
       const { apiWelcomeCard } = await import('./services/api.js')
       const { data } = await apiWelcomeCard()
       const newCards = data?.cards || []
       if (newCards.length > 0) {
         newCards.forEach(c => gs.setCollection(prev => ({ ...prev, [c.id]: (prev[c.id] || 0) + 1 })))
-        setTimeout(() => setWelcomeCards(newCards), 800)
-      } else if (!auth.profile.welcome_given) {
-        setTimeout(() => setShowTour(true), 1200)
+        setTimeout(() => { setWelcomeLoading(false); setWelcomeCards(newCards) }, 600)
+      } else {
+        setWelcomeLoading(false)
+        setTimeout(() => setShowTour(true), 400)
       }
     }
     run()
@@ -672,6 +675,21 @@ export default function App() {
     )
   }
 
+  if (welcomeLoading) return (
+    <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, fontFamily: "'Nunito',sans-serif" }}>
+      <style>{`@keyframes floatGift{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}} @keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-8px);opacity:1}}`}</style>
+      <div style={{ fontSize: 72, animation: 'floatGift 2s ease-in-out infinite' }}>🎁</div>
+      <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 22, color: '#f9ca24', textAlign: 'center' }}>
+        Préparation de ton premier Geocoin…
+      </div>
+      <div style={{ display: 'flex', gap: 10 }}>
+        {[0, 0.25, 0.5].map(d => (
+          <div key={d} style={{ width: 9, height: 9, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />
+        ))}
+      </div>
+    </div>
+  )
+
   if (auth.loading) return (
     <div style={{ minHeight: '100vh', background: '#0f0f1e', fontFamily: "'Nunito',sans-serif", color: '#fff' }}>
       <style>{`@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}} @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.9}}`}</style>
@@ -703,6 +721,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', fontFamily: "'Nunito', sans-serif", color: theme.textPrimary, background: theme.bgMain, display: 'flex', flexDirection: 'column', paddingBottom: (auth.profile && isMobile) ? 68 : 0 }}>
+      {gs.loadingData && <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 3, zIndex: 9999, background: 'linear-gradient(90deg,#74c7ec,#f9ca24,#e17055,#74c7ec)', backgroundSize: '300% 100%', animation: 'shimmer 1.2s linear infinite' }} />}
       <style>{`
         @keyframes pulseBadge { 0%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,.7)}70%{transform:scale(1.15);box-shadow:0 0 0 5px rgba(231,76,60,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,0)} }
         @keyframes slideIn   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -1162,9 +1181,17 @@ export default function App() {
       )}
       {showTour && auth.profile && <OnboardingTour setActiveTab={setActiveTab} isMobile={isMobile} onDone={async () => {
         setShowTour(false)
-        const { apiOnboardingDone } = await import('./services/api.js')
+        const { apiOnboardingDone, apiGetCollection } = await import('./services/api.js')
         await apiOnboardingDone()
         auth.setProfile(p => p ? { ...p, welcome_given: true } : p)
+        // Rafraîchir la collection + naviguer vers l'onglet collection
+        apiGetCollection().then(({ data }) => {
+          if (data?.collection) {
+            gs.setCollection(data.collection)
+            if (data.shiny_collection) gs.setShinyCollection(data.shiny_collection)
+          }
+        })
+        setActiveTab(isMobile ? 'collection' : 'collection')
       }} />}
 
       {/* ── Prompt inscription — bloque la réponse au quiz pour les invités ── */}

@@ -111,20 +111,29 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     async function loadAll() {
       setLoadingData(true)
       try {
-        // Cartes — retry automatique si réponse vide (cache stale possible)
-        let cardsResult = await apiGetCards()
+        // Lancer toutes les requêtes indépendantes en parallèle
+        const cardsPromise = apiGetCards()
+        const [colResult, mktResult, listResult, txResult, pubCfgResult] = await Promise.all([
+          apiGetCollection(),
+          apiGetMarket(),
+          apiGetMyListings(),
+          apiGetTransactions({ limit: 500 }),
+          apiGetPublicConfig(),
+        ])
+
+        // Cartes — retry si vide (cache stale possible), pendant que les autres arrivent déjà
+        let cardsResult = await cardsPromise
         if (!cardsResult.data?.cards?.length) {
           await new Promise(r => setTimeout(r, 1000))
           cardsResult = await apiGetCards()
         }
         if (cardsResult.data?.cards?.length && mounted.current) {
-          // Normaliser noms de colonnes DB → noms frontend (desc/image/minPrice)
           const normalized = cardsResult.data.cards.map(c => ({
             ...c,
-            desc:     c.desc     ?? c.description ?? '',
-            image:    c.image    ?? c.image_url   ?? null,
-          thumbnail: c.thumbnail ?? c.image_url_thumb ?? null,
-            minPrice: c.minPrice ?? c.min_price   ?? null,
+            desc:      c.desc      ?? c.description    ?? '',
+            image:     c.image     ?? c.image_url      ?? null,
+            thumbnail: c.thumbnail ?? c.image_url_thumb ?? null,
+            minPrice:  c.minPrice  ?? c.min_price      ?? null,
           }))
           normalized.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
           setCardPool(normalized)
@@ -133,11 +142,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         }
 
         // Collection
-        const { data: colData } = await apiGetCollection()
+        const { data: colData } = colResult
         if (colData?.collection && mounted.current) {
           setCollection(colData.collection)
           if (colData.shiny_collection) setShinyCollection(colData.shiny_collection)
-          // Pré-remplir depuis les cartes achievement déjà en collection
           const alreadyUnlocked = ACHIEVEMENT_DEF
             .filter(def => (colData.collection[def.cardId] || 0) > 0)
             .map(def => def.id)
@@ -146,9 +154,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         }
 
         // Marché
-        const { data: mktData } = await apiGetMarket()
+        const { data: mktData } = mktResult
         if (mktData?.market && mounted.current) {
-          // Convertir format API → format interne (tableau de listings plats)
           const flat = []
           mktData.market.forEach(({ card, tiers }) => {
             tiers.forEach(tier => {
@@ -161,7 +168,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         }
 
         // Mes annonces
-        const { data: listData } = await apiGetMyListings()
+        const { data: listData } = listResult
         if (listData?.listings && mounted.current) {
           setMyListings(listData.listings.map(l => ({
             id: l.id, card: l.cards, price: l.price,
@@ -169,7 +176,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         }
 
         // Transactions + compteurs persistés (achats/ventes)
-        const { data: txData } = await apiGetTransactions({ limit: 500 })
+        const { data: txData } = txResult
         if (txData?.transactions && mounted.current) {
           const lastRead = parseFloat(localStorage.getItem(`last_read_tx_${profile.id}`) || '0')
           let newSalesCount = 0
@@ -192,7 +199,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         }
 
         // Config publique — chargée pour tous les utilisateurs connectés
-        const { data: pubCfg } = await apiGetPublicConfig()
+        const { data: pubCfg } = pubCfgResult
         if (pubCfg?.config && mounted.current) {
           const cfg = pubCfg.config
           setLimits(prev => ({
