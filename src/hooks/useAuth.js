@@ -28,20 +28,22 @@ export function useAuth() {
       .eq('id', supaUser.id)
       .single()
 
+    const makeFallback = () => ({
+      id: supaUser.id,
+      pseudo: supaUser.user_metadata?.full_name?.split(' ')[0]
+        || supaUser.email?.split('@')[0]
+        || 'Joueur',
+      email: supaUser.email,
+      role: 'user', gold: 300, pseudo_history: [], pseudo_changed_at: null,
+    })
     if (error && (error.code === 'PGRST116' || error.code === '406')) {
       await new Promise(r => setTimeout(r, 800))
       const { data: created } = await supabase
         .from('profiles').select('*').eq('id', supaUser.id).single()
-      if (mounted.current) setProfile(created ?? null)
+      if (mounted.current) setProfile(created ?? makeFallback())
     } else if (error) {
       console.warn('[Auth] profile error, creating fallback:', error.message)
-      const pseudo = supaUser.user_metadata?.full_name?.split(' ')[0]
-        || supaUser.email?.split('@')[0]
-        || 'Joueur'
-      if (mounted.current) setProfile({
-        id: supaUser.id, pseudo, email: supaUser.email,
-        role: 'user', gold: 300, pseudo_history: [], pseudo_changed_at: null,
-      })
+      if (mounted.current) setProfile(makeFallback())
     } else {
       if (mounted.current) setProfile(data ?? null)
     }
