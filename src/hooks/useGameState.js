@@ -121,9 +121,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           apiGetPublicConfig(),
         ])
 
-        // Cartes — retry si vide (cache stale possible), pendant que les autres arrivent déjà
+        // Cartes — retry si vide (cache stale), mais pas sur 429 pour éviter la cascade
         let cardsResult = await cardsPromise
-        if (!cardsResult.data?.cards?.length) {
+        if (!cardsResult.data?.cards?.length && cardsResult.error !== 'HTTP 429') {
           await new Promise(r => setTimeout(r, 1000))
           cardsResult = await apiGetCards()
         }

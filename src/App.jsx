@@ -450,10 +450,6 @@ export default function App() {
   useEffect(() => { localStorage.setItem('geocoins_tab', activeTab) }, [activeTab])
   useEffect(() => { gs.marketOpenRef.current = activeTab === 'market' }, [activeTab])
 
-  // Ref pour éviter la capture stale de handleQuizExpire dans les handlers socket
-  const handleQuizExpireRef = useRef(handleQuizExpire)
-  useEffect(() => { handleQuizExpireRef.current = handleQuizExpire }, [handleQuizExpire])
-
   // Fetch offre du jour quand le profil est chargé ou quand on ouvre l'onglet Trésors
   useEffect(() => {
     if (!auth.profile) return
@@ -507,6 +503,10 @@ export default function App() {
     nextCard, setNextCard, history, setHistory, quizKey, setQuizKey,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
+
+  // Ref pour éviter la capture stale de handleQuizExpire dans les handlers socket
+  const handleQuizExpireRef = useRef(handleQuizExpire)
+  useEffect(() => { handleQuizExpireRef.current = handleQuizExpire }, [handleQuizExpire])
 
   // Titre fixe — le favicon (pin vert) est affiché dans l'onglet par index.html
   useEffect(() => { document.title = 'Geocoins' }, [])
