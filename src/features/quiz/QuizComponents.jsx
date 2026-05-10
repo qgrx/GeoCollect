@@ -227,11 +227,32 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
 }
 
 // ─── Countdown Widget ─────────────────────────────────────────────────────────
-export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,cycleTime=60,isShiny=false}){ const {t}=useT(); const {theme}=useTheme();
+export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false}){ const {t}=useT(); const {theme}=useTheme();
   const pct = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
-  const urgent = !hasPendingQuiz && secondsLeft <= 10 && secondsLeft > 0
+  const urgent = !hasPendingQuiz && !lostTo && secondsLeft <= 10 && secondsLeft > 0
   const hasCard = !!nextCard && hasPendingQuiz
   const rc = hasCard ? RC[nextCard.rarity] : null
+
+  // État "trop tard" : quelqu'un vient de gagner, compteur en cours de réinitialisation
+  if (lostTo) {
+    const {c1,c2} = nextCard ? cardCC(nextCard.rarity) : {c1:'#e74c3c',c2:'#c0392b'}
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:11,background:`#e74c3c0a`,border:`1.5px solid #e74c3c33`,borderRadius:13,padding:"9px 14px",transition:"all .5s"}}>
+        <div style={{width:40,height:40,flexShrink:0,borderRadius:6,overflow:'hidden',border:'2px solid #e74c3c44',background:'#1e3045',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          {nextCard?.image_url
+            ? <ThumbImage src={nextCard.image_url} alt={cardName(nextCard,getLang())} style={{width:'100%',height:'100%',objectFit:'contain',filter:'grayscale(0.6)'}}/>
+            : <div style={{fontSize:18,color:'#e74c3c'}}>😤</div>}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:11,color:'#e74c3c',fontWeight:900,marginBottom:2}}>😤 {t('quiz_too_late')||'Trop tard !'}</div>
+          <div style={{fontSize:10,color:'#aaa'}}><span style={{color:'#f9ca24',fontWeight:800}}>{lostTo}</span> {t('quiz_won_it')||'a remporté cette carte.'}</div>
+          <div style={{background:theme.overlayMd,borderRadius:50,height:3,overflow:'hidden',marginTop:5}}>
+            <div style={{width:'0%',height:'100%',background:'linear-gradient(90deg,#e74c3c,#c0392b)',borderRadius:50}}/>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const showColors = urgent || hasPendingQuiz
   const {c1, c2} = (nextCard && showColors) ? cardCC(nextCard.rarity) : { c1: '#6c7c93', c2: '#48576b' }

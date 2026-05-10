@@ -190,7 +190,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
             }
             return currentPending
           })
-        }, 5000)
+        }, 3000)
       } else {
         // Joueur ayant passé le geocoin ou naviguant : resync du timer en arrière-plan
         setNextQuizTime(nextTime)
