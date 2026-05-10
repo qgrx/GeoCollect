@@ -3,7 +3,7 @@ import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC, RARITY_CONFIG, ACHIEVEMENT_DEF } from '../../data/cards.js';
 import { PAGE_SIZE } from '../../data/constants.js';
-import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache,
+import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache, apiAdminRecalculateScores,
   apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminReactivate,
   apiAdminGetBots, apiAdminCreateBot, apiAdminUpdateBot, apiAdminDeleteBot,
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
@@ -1396,14 +1396,24 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {tab==="cache"&&<div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div style={{fontWeight:900,color:"#e74c3c",fontSize:14}}>⚡ Cache Redis</div>
-            <button onClick={async()=>{
-              setMsg("⏳ Vidage en cours…");
-              const{data,error}=await apiAdminFlushCache();
-              if(error) setMsg("❌ "+error+(error.includes('Redis')||error.includes('connect')?' — Redis non configuré ou indisponible':''));
-              else setMsg(`✅ ${data?.flushed??0} clé(s) supprimée(s)`);
-            }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"7px 16px",borderRadius:9,fontSize:12}}>
-              🗑️ Vider tout le cache
-            </button>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={async()=>{
+                setMsg("⏳ Recalcul des scores…");
+                const{data,error}=await apiAdminRecalculateScores();
+                if(error) setMsg("❌ "+error);
+                else setMsg(`✅ ${data?.updated??0} profil(s) mis à jour`);
+              }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"7px 16px",borderRadius:9,fontSize:12}}>
+                🔄 Recalculer les scores
+              </button>
+              <button onClick={async()=>{
+                setMsg("⏳ Vidage en cours…");
+                const{data,error}=await apiAdminFlushCache();
+                if(error) setMsg("❌ "+error+(error.includes('Redis')||error.includes('connect')?' — Redis non configuré ou indisponible':''));
+                else setMsg(`✅ ${data?.flushed??0} clé(s) supprimée(s)`);
+              }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"7px 16px",borderRadius:9,fontSize:12}}>
+                🗑️ Vider tout le cache
+              </button>
+            </div>
           </div>
           <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:14}}>
             <div style={{fontSize:11,color:"#888",marginBottom:12,lineHeight:1.6}}>
