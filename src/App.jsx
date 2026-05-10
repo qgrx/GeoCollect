@@ -287,24 +287,20 @@ export default function App() {
         setNextCard(card)
         setQuizIsShiny(data.is_shiny || false)
 
-        // Si le backend envoie le quiz en avance (désynchro de ~10s due au temps de réponse),
-        // on patiente pour que le compte à rebours tombe parfaitement à zéro !
-        const remMs = nextQuizTimeRef.current - Date.now()
-        const activate = () => {
-          setNextQuizTime(Date.now() + (data.next_quiz_in ?? 60) * 1000)
-          setActiveQuiz(null)
-          activeQuizRef.current = null
-          setQuizKey(k => k + 1)
-          setQuizSessionActive(true)
-          if (Date.now() >= snoozedUntilRef.current) {
-            setPendingQuiz(q)
-            soundQuizNew()
-          }
-          sendPushNotif(card)
+        // Activation immédiate — synchronisation serveur.
+        // server_time corrige le décalage d'horloge client/serveur.
+        const serverNow = data.server_time ? new Date(data.server_time).getTime() : Date.now()
+        const clockSkew  = Date.now() - serverNow
+        setNextQuizTime(Date.now() + (data.next_quiz_in ?? 60) * 1000 - clockSkew)
+        setActiveQuiz(null)
+        activeQuizRef.current = null
+        setQuizKey(k => k + 1)
+        setQuizSessionActive(true)
+        if (Date.now() >= snoozedUntilRef.current) {
+          setPendingQuiz(q)
+          soundQuizNew()
         }
-        
-        if (remMs > 500 && remMs < 20000) setTimeout(activate, remMs)
-        else activate()
+        sendPushNotif(card)
       })
 
       // Quiz — résolu par quelqu'un
@@ -313,7 +309,8 @@ export default function App() {
         if (data.price !== undefined || data.buyer !== undefined || data.type === 'vente' || data.type === 'achat') return
 
         setQuizSessionActive(false)
-        setNextCard(null)  // réinitialiser pour que la prochaine carte s'affiche proprement
+        // Ne pas effacer nextCard : la carte visible pendant "trop tard" est la bonne.
+        // Elle sera mise à jour naturellement par quiz:new.
 
         const iSelf = data.winner && data.winner === auth.profile?.pseudo
 
