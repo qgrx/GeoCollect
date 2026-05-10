@@ -24,9 +24,10 @@ if (!supabaseUrl || !supabaseKey) {
 export const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey, {
       auth: {
-        persistSession: true,          // stocke la session dans localStorage
-        autoRefreshToken: true,        // refresh automatique avant expiration
-        detectSessionInUrl: true,      // gère le callback OAuth (URL fragment)
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'implicit',  // GoTrue on-prem retourne #access_token= (flux implicite)
       },
     })
   : null  // mode dégradé sans Supabase (prototype local)
