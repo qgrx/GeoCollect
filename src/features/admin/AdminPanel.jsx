@@ -3,7 +3,7 @@ import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC, RARITY_CONFIG, ACHIEVEMENT_DEF } from '../../data/cards.js';
 import { PAGE_SIZE } from '../../data/constants.js';
-import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache, apiAdminRecalculateScores,
+import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache, apiAdminRecalculateScores, apiAdminResetOnboarding,
   apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminReactivate,
   apiAdminGetBots, apiAdminCreateBot, apiAdminUpdateBot, apiAdminDeleteBot,
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
@@ -760,6 +760,17 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           {maintenanceMode&&<div style={{marginTop:12,padding:"10px 14px",background:"#e74c3c22",border:"1px solid #e74c3c44",borderRadius:9,fontSize:13,color:"#e74c3c",fontWeight:700}}>{t("admin_maintenance_active")}</div>}
 
           {/* Test onboarding */}
+          <div style={{marginTop:20,background:"#6c5ce711",borderRadius:11,padding:14,border:"1px solid #6c5ce733"}}>
+            <div style={{fontWeight:800,color:"#a29bfe",marginBottom:8,fontSize:13}}>🧪 Test onboarding</div>
+            <div style={{fontSize:11,color:"#888",marginBottom:10}}>Réinitialise welcome_given pour retester le flux complet (pseudo → carte → tuto).</div>
+            <button onClick={async()=>{
+              const {error} = await apiAdminResetOnboarding('me');
+              if(error) setMsg("❌ "+error);
+              else { setMsg("✅ Rechargez la page pour tester l'onboarding"); }
+            }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"8px 18px",borderRadius:9,fontSize:12}}>
+              🔄 Réinitialiser mon onboarding
+            </button>
+          </div>
           {/* Annonce broadcast */}
           <div style={{marginTop:20,background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12"}}>
             <div style={{fontWeight:800,color:"#f9ca24",marginBottom:8,fontSize:13}}>📢 Message aux joueurs connectés</div>
