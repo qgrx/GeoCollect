@@ -1066,7 +1066,7 @@ export default function App() {
               {auth.profile && activeTab === 'top' && (
                 <LeaderboardModal inline
                   myCollection={gs.collection} myPseudo={auth.profile?.pseudo} myId={auth.profile?.id}
-                  myScore={userScore}
+                  myScore={userScore} myGold={gs.gold} myForgePoints={gs.forgePoints}
                   cardPool={gs.cardPool} ranks={gs.limits.playerRanks}
                   onClose={() => setActiveTab('collection')}
                 />

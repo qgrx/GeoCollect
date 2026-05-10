@@ -1,70 +1,97 @@
 import { useState, useEffect } from 'react';
 import { useT } from '../../i18n/translations.js';
 import { useTheme } from '../../ThemeContext.jsx';
-import { RC } from '../../data/cards.js';
-import { collScore } from '../../utils/gameUtils.js';
 import { apiGetLeaderboard, apiGetUserCollection } from '../../services/api.js';
-import Card from '../../components/Card.jsx';
 import PseudoDisplay from '../../components/PseudoDisplay.jsx';
+import { getRank, rankCC } from '../../utils/rankUtils.js';
+import { DEFAULT_RANKS } from '../../data/constants.js';
 
-const SCORES = { légendaire: 20, épique: 7, rare: 3, commun: 1 };
-
-function scoreFromCollection(col, cardPool) {
-  return Object.entries(col || {}).reduce((s, [id, n]) => {
-    if (!n) return s;
-    const card = cardPool.find(c => c.id === +id);
-    return s + (card ? (SCORES[card.rarity] || 1) : 1);
-  }, 0);
-}
-
-// ─── Vue collection d'un joueur ───────────────────────────────────────────────
-function ProfileView({ player, cardPool, myPseudo, onBack }) {
+// ─── Fiche joueur ─────────────────────────────────────────────────────────────
+function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, onBack }) {
   const { t } = useT();
   const { theme } = useTheme();
-  const [col, setCol] = useState(null);
+  const [uniqueCards, setUniqueCards] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (player.isMe) { setCol(player.col); setLoading(false); return; }
+    if (player.isMe) {
+      const count = Object.values(player.col || {}).filter(n => n > 0).length;
+      setUniqueCards(count);
+      setLoading(false);
+      return;
+    }
     apiGetUserCollection(player.id).then(({ data }) => {
-      setCol(data?.collection || {});
+      const col = data?.collection || [];
+      setUniqueCards(Array.isArray(col) ? col.filter(r => r.quantity > 0).length : Object.values(col).filter(n => n > 0).length);
       setLoading(false);
     });
   }, [player.id]);
 
-  const cards = col ? Object.entries(col).filter(([, v]) => v > 0)
-    .map(([id, cnt]) => {
-      const card = cardPool.find(c => c.id === +id) || { id: +id, name: `#${id}`, type: '?', rarity: 'commun', image: null }
-      return { card, cnt }
-    })
-    .sort((a, b) => (RC[b.card.rarity]?.order ?? 9) - (RC[a.card.rarity]?.order ?? 9))
-    : [];
+  const score       = player.isMe ? (myScore ?? player.score ?? 0) : (player.score ?? 0);
+  const gold        = player.isMe ? (myGold  ?? player.gold  ?? 0) : (player.gold  ?? 0);
+  const forgePoints = player.isMe ? (myForgePoints ?? 0) : (player.forge_points ?? 0);
 
-  const score = col ? scoreFromCollection(col, cardPool) : 0;
+  const sortedRanks = [...(ranks || DEFAULT_RANKS)].sort((a, b) => a.min - b.min);
+  const rank     = getRank(score, ranks);
+  const { c1, c2 } = rankCC(rank);
+  const nextRank = sortedRanks.find(r => r.min > score);
+  const prevMin  = [...sortedRanks].reverse().find(r => r.min <= score)?.min || 0;
+  const pct      = nextRank ? Math.round(((score - prevMin) / (nextRank.min - prevMin)) * 100) : 100;
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: 'min(96vw,860px)', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif" }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
-          <button onClick={onBack} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>←</button>
-          <div style={{ color: theme.gold, fontWeight: 900, fontSize: 18 }}>
-            Collection de {player.pseudo || player.name}{player.isMe && ' (toi)'}
-          </div>
-          {!loading && (
-            <div style={{ marginLeft: 'auto', background: theme.bgElevated, borderRadius: 50, padding: '2px 11px', fontSize: 12, fontWeight: 800, color: theme.textSecondary }}>
-              Score : <span style={{ color: theme.gold }}>{score}</span>
-            </div>
-          )}
-        </div>
+      <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: 'min(96vw,360px)', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif" }}>
+        <button onClick={onBack} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer', marginBottom: 16 }}>←</button>
+
         {loading ? (
-          <div style={{ textAlign: 'center', color: '#888', padding: '32px 0', fontSize: 13 }}>{t('lb_loading')}</div>
+          <div style={{ textAlign: 'center', color: '#888', padding: '24px 0', fontSize: 13 }}>{t('lb_loading')}</div>
         ) : (
-          <>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
-              {cards.map(({ card, cnt }) => <Card key={card.id} card={card} count={cnt} small />)}
+          <div style={{ background: theme.overlay, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none' }} />
+
+            {/* Avatar + pseudo + rang */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 14px ${c1}44`, border: `2px solid ${c1}44` }}>
+                {(player.pseudo || '?')[0].toUpperCase()}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <PseudoDisplay pseudo={player.pseudo + (player.isMe ? ` ${t('lb_you')}` : '')} score={score} ranks={ranks} style={{ color: theme.textPrimary }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 800, color: c1 }}>{rank?.label}</span>
+              </div>
             </div>
-            {cards.length === 0 && <div style={{ color: '#888', textAlign: 'center', padding: '18px 0' }}>{t('lb_empty')}</div>}
-          </>
+
+            {/* Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
+              {[
+                { icon: '💰', value: gold,        label: t('stat_gold') },
+                { icon: '🔨', value: forgePoints,  label: t('stat_forge') },
+                { icon: '🃏', value: uniqueCards ?? '—', label: t('stat_geocoins') },
+              ].map(({ icon, value, label }) => (
+                <div key={label} style={{ background: theme.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 12 }}>{icon}</div>
+                  <div style={{ fontWeight: 900, fontSize: 12, color: theme.textPrimary, lineHeight: 1.2 }}>{value}</div>
+                  <div style={{ fontSize: 7, color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .2 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Progression de rang */}
+            {nextRank ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: theme.textMuted }}>
+                  <span>{t('rank_next')} <span style={{ background: nextRank.color, color: '#fff', fontWeight: 800, padding: '1px 6px', borderRadius: 4, fontSize: 9, textShadow: '0 1px 2px #0004' }}>{nextRank.label}</span></span>
+                  <span style={{ fontWeight: 700 }}>{score}/{nextRank.min}</span>
+                </div>
+                <div style={{ background: theme.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }} />
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 11, fontWeight: 800, color: c1, textAlign: 'center' }}>{t('rank_max')}</div>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -72,7 +99,7 @@ function ProfileView({ player, cardPool, myPseudo, onBack }) {
 }
 
 // ─── Leaderboard Modal ────────────────────────────────────────────────────────
-export default function LeaderboardModal({ myCollection, myPseudo, myId, myScore, cardPool, ranks, onClose, inline = false }) {
+export default function LeaderboardModal({ myCollection, myPseudo, myId, myScore, myGold, myForgePoints, cardPool, ranks, onClose, inline = false }) {
   const { t } = useT();
   const { theme } = useTheme();
   const [players, setPlayers] = useState([]);
@@ -114,7 +141,7 @@ export default function LeaderboardModal({ myCollection, myPseudo, myId, myScore
   )
 
   if (viewing) {
-    return <ProfileView player={viewing} cardPool={cardPool} myPseudo={myPseudo} onBack={() => setViewing(null)} />;
+    return <ProfileView player={viewing} cardPool={cardPool} myScore={myScore} myGold={myGold} myForgePoints={myForgePoints} ranks={ranks} onBack={() => setViewing(null)} />;
   }
 
   return (
