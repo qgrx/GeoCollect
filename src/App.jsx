@@ -579,16 +579,16 @@ export default function App() {
       }
       return
     }
-    // Nouvel utilisateur : démarrer le flux
+    // Nouvel utilisateur : toujours commencer par le choix du pseudo
     if (onboardingStep !== null) return
-    const p = auth.profile.pseudo || ''
-    const needsPseudo = !p || p.includes(' ') || p.includes('@') || p.includes('.')
-    setOnboardingStep(needsPseudo ? 'pseudo' : 'gift')
+    setOnboardingStep('pseudo')
   }, [auth.profile?.id])
 
-  // Étape 'gift' : récupérer la carte de bienvenue
+  // Étape 'gift' : récupérer la carte de bienvenue + horodatage d'entrée
+  const giftEnteredAtRef = useRef(0)
   useEffect(() => {
     if (onboardingStep !== 'gift') return
+    giftEnteredAtRef.current = Date.now()
     let cancelled = false
     const run = async () => {
       const { apiWelcomeCard } = await import('./services/api.js')
@@ -605,11 +605,16 @@ export default function App() {
     return () => { cancelled = true }
   }, [onboardingStep])
 
-  // Avancer de 'gift' → 'card'|'tour' quand carte prête ET données chargées
+  // Avancer de 'gift' → 'card'|'tour' : attend carte + données + 2s minimum d'animation
   useEffect(() => {
     if (onboardingStep !== 'gift') return
     if (!onboardingCardReady || gs.loadingData || !gs.cardPool.length) return
-    setOnboardingStep(welcomeCards.length > 0 ? 'card' : 'tour')
+    const elapsed = Date.now() - giftEnteredAtRef.current
+    const wait = Math.max(0, 2000 - elapsed)
+    const timer = setTimeout(() => {
+      setOnboardingStep(welcomeCards.length > 0 ? 'card' : 'tour')
+    }, wait)
+    return () => clearTimeout(timer)
   }, [onboardingStep, onboardingCardReady, gs.loadingData, gs.cardPool.length, welcomeCards.length])
 
   // ── Raccourcis clavier globaux ────────────────────────────────────────────────
