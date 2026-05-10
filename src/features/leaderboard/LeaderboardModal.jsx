@@ -41,7 +41,7 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
       <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: 'min(96vw,360px)', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif" }}>
-        <button onClick={onBack} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer', marginBottom: 16 }}>←</button>
+        <button onClick={onBack} style={{ background: theme.overlay, border: `1px solid ${theme.border}`, color: theme.textPrimary, width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer', marginBottom: 16 }}>←</button>
 
         {loading ? (
           <div style={{ textAlign: 'center', color: '#888', padding: '24px 0', fontSize: 13 }}>{t('lb_loading')}</div>
@@ -65,9 +65,9 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
             {/* Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
               {[
+                { icon: '🃏', value: uniqueCards ?? '—', label: t('stat_geocoins') },
                 { icon: '💰', value: gold,        label: t('stat_gold') },
                 { icon: '🔨', value: forgePoints,  label: t('stat_forge') },
-                { icon: '🃏', value: uniqueCards ?? '—', label: t('stat_geocoins') },
               ].map(({ icon, value, label }) => (
                 <div key={label} style={{ background: theme.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
                   <div style={{ fontSize: 12 }}>{icon}</div>
@@ -174,9 +174,8 @@ export default function LeaderboardModal({ myCollection, myPseudo, myId, myScore
                     <div style={{ fontWeight: 900, fontSize: 13 }}>
                       <PseudoDisplay pseudo={(p.pseudo||p.name)+(p.isMe?` ${t('lb_you')}`:'')} score={p.score||0} ranks={ranks} style={{ color: p.isMe ? theme.gold : theme.textPrimary }}/>
                     </div>
-                    <div style={{ fontSize: 10, color: theme.textMuted }}>{p.gold ?? '—'} G · {p.streak ?? 0} 🔥</div>
+                    <div style={{ fontSize: 10, color: theme.textMuted }}>{p.score ?? '—'} pts · 🃏 {p.card_count ?? '—'} · 💰 {p.gold ?? '—'} G</div>
                   </div>
-                  <div style={{ fontWeight: 900, fontSize: 14, color: theme.gold }}>{p.score ?? '—'} pts</div>
                   <div style={{ color: '#888', fontSize: 12 }}>→</div>
                 </div>
               );

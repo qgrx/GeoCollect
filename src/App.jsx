@@ -861,9 +861,9 @@ export default function App() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
                       {[
+                        { icon: '🃏', value: uniqueCards,     label: t('stat_geocoins') },
                         { icon: '💰', value: gs.gold,        label: t('stat_gold') },
                         { icon: '🔨', value: gs.forgePoints,  label: t('stat_forge') },
-                        { icon: '🃏', value: uniqueCards,     label: t('stat_geocoins') },
                       ].map(({ icon, value, label }) => (
                         <div key={label} style={{ background: theme.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
                           <div style={{ fontSize: 12 }}>{icon}</div>
