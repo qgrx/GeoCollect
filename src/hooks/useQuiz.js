@@ -44,14 +44,16 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
               const poolCard = cbRef.current.cardPool?.find(c => c.id === data.quiz.card?.id) || {}
               const curLang = getLang()
               const trans = data.quiz.translations?.[curLang]
+              const card = { ...data.quiz.card, ...poolCard, sellable: true, minPrice: null, desc: '' }
               setPendingQuiz({
                 ...data.quiz,
                 id:   data.quiz.id,
                 q:    trans?.question || data.quiz.question,
                 a:    trans?.answer ? Array((trans.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
                 h:    data.quiz.hint,
-                card: { ...data.quiz.card, ...poolCard, sellable: true, minPrice: null, desc: '' },
+                card,
               })
+              setNextCard(card)
               isFetchingRef.current = false
             } else {
               setTimeout(() => { isFetchingRef.current = false }, 2000)
@@ -177,9 +179,8 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
       // Si le joueur n'a pas rejoint mais que la popup est ouverte
       const pending = pendingQuizRef.current
       if (pending) {
-        if (npc) setHistory(h => [{ card: pending.card, winner: npc, won: false, isBot }, ...h].slice(0, 10))
-        
         // Révéler le gagnant dans la notification avant de fermer
+        // (l'historique est géré côté quiz:solved pour éviter les doublons)
         setPendingQuiz(p => p ? { ...p, winner: npc } : null)
         setTimeout(() => {
           setPendingQuiz(currentPending => {
@@ -198,7 +199,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
     }
     // N'ajouter que si quelqu'un a vraiment gagné (npc = nom du gagnant)
     if (npc) {
-      setHistory(h => [{ card: activeQuizRef.current.card, winner: npc, won: false, isBot }, ...h].slice(0, 10))
+      // Histoire gérée par quiz:solved — ici on met juste à jour l'UI de la modale active
       setActiveQuiz(q => q ? { ...q, winner: npc } : null)
     }
     setTimeout(() => advanceQuiz(solvedAt), 5000)

@@ -309,28 +309,26 @@ export default function App() {
       // Quiz — résolu par quelqu'un
       s.on('quiz:solved', (data) => {
         // Sécurité : ignorer si l'événement WebSocket contient des attributs de transaction (bug backend)
-        if (data.price !== undefined || data.buyer !== undefined || data.type === 'vente' || data.type === 'achat') return;
-        
-        setQuizSessionActive(false)
-        const iSelf = data.winner && data.winner === auth.profile?.pseudo
-        const wasPlayingOrPending = !!(activeQuizRef.current || pendingQuizRef.current)
+        if (data.price !== undefined || data.buyer !== undefined || data.type === 'vente' || data.type === 'achat') return
 
-        // Si le joueur courant n'a pas lui-même gagné, on délègue au hook
-        // (il se chargera de fermer la fenêtre active ou la notification en attente)
+        setQuizSessionActive(false)
+        setNextCard(null)  // réinitialiser pour que la prochaine carte s'affiche proprement
+
+        const iSelf = data.winner && data.winner === auth.profile?.pseudo
+
         if (!iSelf) {
-          handleQuizExpire(data.winner, data.is_bot)
+          handleQuizExpireRef.current(data.winner, data.is_bot)  // version toujours à jour
         }
 
-        // N'ajouter à l'historique que si on n'avait pas la carte sous les yeux
-        // (si elle y était, handleQuizExpire l'a déjà ajoutée avec toutes ses caractéristiques)
-        if (data.winner && !iSelf && !wasPlayingOrPending) {
-          const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name) || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 };
-          setHistory(h => [{
-            card: fullCard,
-            winner: data.winner,
-            won: false,
-            isBot: data.is_bot || false,
-          }, ...h].slice(0, 10))
+        // Toujours mettre à jour l'historique (peu importe si le joueur regardait ou non)
+        if (data.winner) {
+          const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
+            || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
+          setHistory(h => {
+            // Éviter les doublons si handleQuizExpire a déjà ajouté la même entrée
+            if (h[0]?.winner === data.winner && h[0]?.card?.name === data.card_name) return h
+            return [{ card: fullCard, winner: data.winner, won: iSelf, isBot: data.is_bot || false }, ...h].slice(0, 10)
+          })
         }
       })
 
@@ -451,6 +449,10 @@ export default function App() {
   })
   useEffect(() => { localStorage.setItem('geocoins_tab', activeTab) }, [activeTab])
   useEffect(() => { gs.marketOpenRef.current = activeTab === 'market' }, [activeTab])
+
+  // Ref pour éviter la capture stale de handleQuizExpire dans les handlers socket
+  const handleQuizExpireRef = useRef(handleQuizExpire)
+  useEffect(() => { handleQuizExpireRef.current = handleQuizExpire }, [handleQuizExpire])
 
   // Fetch offre du jour quand le profil est chargé ou quand on ouvre l'onglet Trésors
   useEffect(() => {
