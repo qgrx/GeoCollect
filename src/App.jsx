@@ -131,18 +131,13 @@ export default function App() {
   const cardPoolRef = useRef(gs.cardPool);
   useEffect(() => { cardPoolRef.current = gs.cardPool }, [gs.cardPool]);
 
-  // ── Callback OAuth / confirmation email (lien Supabase → session auto) ───────
+  // ── Confirmation email uniquement — le SDK Supabase nettoie lui-même l'URL OAuth ──
   useEffect(() => {
-    const hash = new URLSearchParams(window.location.hash.replace('#', '?'))
     const params = new URLSearchParams(window.location.search)
-    const type = hash.get('type') || params.get('type')
-    const token = hash.get('access_token')
-    if (token) {
-      // Supabase a déjà géré la session via detectSessionInUrl + onAuthStateChange
+    const type = params.get('type')
+    if (type === 'signup') {
       window.history.replaceState({}, '', window.location.pathname)
-      if (type === 'signup') {
-        setTimeout(() => showToast('✅ Email confirmé ! Bienvenue 🎉'), 500)
-      }
+      setTimeout(() => showToast('✅ Email confirmé ! Bienvenue 🎉'), 500)
     }
   }, [])
 
