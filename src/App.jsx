@@ -119,6 +119,55 @@ function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
   )
 }
 
+// ─── Écran de choix de pseudo (onboarding étape 1) ───────────────────────────
+function OnboardingPseudoScreen({ auth, t, onDone }) {
+  const [pseudo, setPseudo] = useState('')
+  const [busy, setBusy]     = useState(false)
+  const [error, setError]   = useState('')
+
+  async function handleSubmit() {
+    const p = pseudo.trim()
+    if (p.length < 3)  { setError(t('auth_pseudo_short') || 'Minimum 3 caractères'); return }
+    if (p.length > 20) { setError('Maximum 20 caractères'); return }
+    setBusy(true); setError('')
+    const { error: e } = await auth.updatePseudo(p)
+    setBusy(false)
+    if (e) { setError(e.message === 'pseudo_taken' ? (t('auth_pseudo_taken') || 'Pseudo déjà pris') : e.message); return }
+    onDone()
+  }
+
+  return (
+    <div style={{ minHeight:'100vh', background:'#0f0f1e', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24, fontFamily:"'Nunito',sans-serif" }}>
+      <style>{`@keyframes popIn{from{opacity:0;transform:scale(.92) translateY(16px)}to{opacity:1;transform:none}}`}</style>
+      <div style={{ width:'min(92vw,400px)', background:'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius:24, padding:'32px 28px', border:'1.5px solid #ffffff14', boxShadow:'0 24px 80px #000c', animation:'popIn .4s cubic-bezier(.34,1.56,.64,1)' }}>
+        <div style={{ textAlign:'center', marginBottom:24 }}>
+          <div style={{ fontSize:52, marginBottom:12 }}>🗺️</div>
+          <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:26, color:'#f9ca24', marginBottom:6 }}>Bienvenue sur Geocoins !</div>
+          <div style={{ fontSize:14, color:'#aaa', lineHeight:1.5 }}>Choisis ton pseudo — il sera visible par tous les joueurs.</div>
+        </div>
+        <input
+          autoFocus
+          value={pseudo}
+          onChange={e => { setPseudo(e.target.value); setError('') }}
+          onKeyDown={e => e.key === 'Enter' && !busy && handleSubmit()}
+          placeholder="Ton pseudo…"
+          maxLength={20}
+          style={{ width:'100%', boxSizing:'border-box', background:'#ffffff0f', border:`1.5px solid ${error ? '#e74c3c' : '#ffffff22'}`, borderRadius:12, color:'#fff', padding:'13px 16px', fontFamily:"'Nunito',sans-serif", fontWeight:700, fontSize:16, outline:'none', marginBottom:error ? 8 : 16, transition:'border-color .2s' }}
+        />
+        {error && <div style={{ color:'#e74c3c', fontSize:12, fontWeight:700, marginBottom:12 }}>{error}</div>}
+        <button
+          onClick={handleSubmit}
+          disabled={busy || pseudo.trim().length < 3}
+          style={{ width:'100%', background: busy || pseudo.trim().length < 3 ? '#ffffff18' : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border:'none', color: busy || pseudo.trim().length < 3 ? '#666' : '#fff', padding:'14px', borderRadius:12, fontFamily:"'Nunito',sans-serif", fontWeight:900, fontSize:16, cursor: busy || pseudo.trim().length < 3 ? 'default' : 'pointer', transition:'all .2s' }}
+        >
+          {busy ? '…' : 'Choisir ce pseudo →'}
+        </button>
+        <div style={{ textAlign:'center', fontSize:10, color:'#444', marginTop:10 }}>Modifiable plus tard dans les paramètres</div>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const { t, lang } = useT();
   const { theme, mode, toggle } = useTheme();
@@ -348,7 +397,9 @@ export default function App() {
   const [avatarMenu, setAvatarMenu] = useState(false);
   const avatarMenuRef = useRef(null);
   const [welcomeCards, setWelcomeCards] = useState([]);
-  const [welcomeLoading, setWelcomeLoading] = useState(false);  // cartes offertes à afficher avant le tour
+  // Onboarding : null | 'pseudo' | 'gift' | 'card' | 'tour'
+  const [onboardingStep, setOnboardingStep] = useState(null);
+  const [onboardingCardReady, setOnboardingCardReady] = useState(false);
   const [marketUnlockBanner, setMarketUnlockBanner] = useState(false);
   const [toast,           setToast]           = useState(null);
   const [socketOnline,    setSocketOnline]    = useState(true);
@@ -515,37 +566,51 @@ export default function App() {
     showToast(t('toast_welcome').replace('{pseudo}', profile?.pseudo || ''))
   }
 
-  // Welcome card + tuto — basé sur welcome_given en base (pas localStorage)
+  // ── Onboarding (nouvel utilisateur) ─────────────────────────────────────────
   useEffect(() => {
     if (!auth.profile || !import.meta.env.VITE_API_URL) return
-    if (auth.profile.welcome_given) return
+    if (auth.profile.welcome_given) {
+      // Utilisateur existant : juste vérifier le pseudo OAuth si besoin
+      const providers = auth.user?.app_metadata?.providers || []
+      const isOAuth = providers.includes('google') || providers.includes('github')
+      if (isOAuth) {
+        const p = auth.profile.pseudo || ''
+        if (p.includes(' ') || p.includes('@') || p.includes('.')) setShowChoosePseudo(true)
+      }
+      return
+    }
+    // Nouvel utilisateur : démarrer le flux
+    if (onboardingStep !== null) return
+    const p = auth.profile.pseudo || ''
+    const needsPseudo = !p || p.includes(' ') || p.includes('@') || p.includes('.')
+    setOnboardingStep(needsPseudo ? 'pseudo' : 'gift')
+  }, [auth.profile?.id])
+
+  // Étape 'gift' : récupérer la carte de bienvenue
+  useEffect(() => {
+    if (onboardingStep !== 'gift') return
+    let cancelled = false
     const run = async () => {
-      setWelcomeLoading(true)
       const { apiWelcomeCard } = await import('./services/api.js')
       const { data } = await apiWelcomeCard()
+      if (cancelled) return
       const newCards = data?.cards || []
       if (newCards.length > 0) {
         newCards.forEach(c => gs.setCollection(prev => ({ ...prev, [c.id]: (prev[c.id] || 0) + 1 })))
-        setTimeout(() => { setWelcomeLoading(false); setWelcomeCards(newCards) }, 600)
-      } else {
-        setWelcomeLoading(false)
-        setTimeout(() => setShowTour(true), 400)
+        setWelcomeCards(newCards)
       }
+      setOnboardingCardReady(true)
     }
     run()
-  }, [auth.profile?.id])
+    return () => { cancelled = true }
+  }, [onboardingStep])
 
-  // Détecter un profil Google dont le pseudo vient du fournisseur (email-like ou nom complet)
+  // Avancer de 'gift' → 'card'|'tour' quand carte prête ET données chargées
   useEffect(() => {
-    if (!auth.profile || !auth.user) return
-    const providers = auth.user.app_metadata?.providers || []
-    const isOAuth = providers.includes('google') || providers.includes('github')
-    if (!isOAuth) return
-    const p = auth.profile.pseudo || ''
-    if (p.includes(' ') || p.includes('@') || p.includes('.')) {
-      setShowChoosePseudo(true)
-    }
-  }, [auth.profile?.id])
+    if (onboardingStep !== 'gift') return
+    if (!onboardingCardReady || gs.loadingData || !gs.cardPool.length) return
+    setOnboardingStep(welcomeCards.length > 0 ? 'card' : 'tour')
+  }, [onboardingStep, onboardingCardReady, gs.loadingData, gs.cardPool.length, welcomeCards.length])
 
   // ── Raccourcis clavier globaux ────────────────────────────────────────────────
   useEffect(() => {
@@ -675,20 +740,23 @@ export default function App() {
     )
   }
 
-  if (welcomeLoading) return (
-    <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, fontFamily: "'Nunito',sans-serif" }}>
-      <style>{`@keyframes floatGift{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}} @keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-8px);opacity:1}}`}</style>
-      <div style={{ fontSize: 72, animation: 'floatGift 2s ease-in-out infinite' }}>🎁</div>
-      <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 22, color: '#f9ca24', textAlign: 'center' }}>
-        Préparation de ton premier Geocoin…
+  // ── Écrans d'onboarding (bloquent l'accès au site) ──────────────────────────
+  if (auth.profile && onboardingStep === 'pseudo') {
+    return <OnboardingPseudoScreen auth={auth} t={t} onDone={() => { setOnboardingCardReady(false); setOnboardingStep('gift') }} />
+  }
+
+  if (auth.profile && onboardingStep === 'gift') {
+    return (
+      <div style={{ minHeight:'100vh', background:'#0f0f1e', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20, fontFamily:"'Nunito',sans-serif" }}>
+        <style>{`@keyframes floatGift{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}} @keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-8px);opacity:1}}`}</style>
+        <div style={{ fontSize:72, animation:'floatGift 2s ease-in-out infinite' }}>🎁</div>
+        <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:22, color:'#f9ca24', textAlign:'center' }}>Préparation de ton premier Geocoin…</div>
+        <div style={{ display:'flex', gap:10 }}>
+          {[0, 0.25, 0.5].map(d => <div key={d} style={{ width:9, height:9, borderRadius:'50%', background:'#f9ca24', animation:`dotBounce 0.9s ${d}s ease-in-out infinite` }}/>)}
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        {[0, 0.25, 0.5].map(d => (
-          <div key={d} style={{ width: 9, height: 9, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />
-        ))}
-      </div>
-    </div>
-  )
+    )
+  }
 
   if (auth.loading) return (
     <div style={{ minHeight: '100vh', background: '#0f0f1e', fontFamily: "'Nunito',sans-serif", color: '#fff' }}>
@@ -1173,26 +1241,28 @@ export default function App() {
           onDismiss={() => {
             const next = welcomeCards.slice(1)
             setWelcomeCards(next)
-            if (next.length === 0 && !auth.profile?.welcome_given) {
-              setTimeout(() => setShowTour(true), 300)
+            if (next.length === 0 && onboardingStep === 'card') {
+              setOnboardingStep('tour')
             }
           }}
         />
       )}
-      {showTour && auth.profile && <OnboardingTour setActiveTab={setActiveTab} isMobile={isMobile} onDone={async () => {
-        setShowTour(false)
-        const { apiOnboardingDone, apiGetCollection } = await import('./services/api.js')
-        await apiOnboardingDone()
-        auth.setProfile(p => p ? { ...p, welcome_given: true } : p)
-        // Rafraîchir la collection + naviguer vers l'onglet collection
-        apiGetCollection().then(({ data }) => {
-          if (data?.collection) {
-            gs.setCollection(data.collection)
-            if (data.shiny_collection) gs.setShinyCollection(data.shiny_collection)
-          }
-        })
-        setActiveTab(isMobile ? 'collection' : 'collection')
-      }} />}
+      {(showTour || onboardingStep === 'tour') && auth.profile && (
+        <OnboardingTour setActiveTab={setActiveTab} isMobile={isMobile} onDone={async () => {
+          setShowTour(false)
+          setOnboardingStep(null)
+          const { apiOnboardingDone, apiGetCollection } = await import('./services/api.js')
+          await apiOnboardingDone()
+          auth.setProfile(p => p ? { ...p, welcome_given: true } : p)
+          apiGetCollection().then(({ data }) => {
+            if (data?.collection) {
+              gs.setCollection(data.collection)
+              if (data.shiny_collection) gs.setShinyCollection(data.shiny_collection)
+            }
+          })
+          setActiveTab('collection')
+        }} />
+      )}
 
       {/* ── Prompt inscription — bloque la réponse au quiz pour les invités ── */}
       {showRegisterPrompt && !auth.profile && (
