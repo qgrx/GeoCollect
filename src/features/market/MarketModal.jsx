@@ -6,6 +6,18 @@ import Card from '../../components/Card.jsx'
 import { TxHistoryModal } from '../achievements/NotifComponents.jsx'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
 
+function PanelWrapper({ inline, onClose, theme, children }) {
+  if (inline) return <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
+      <div style={{ position: 'relative', background: theme.bgSurface, width: 'min(100vw, 620px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: `1px solid ${theme.border}`, fontFamily: "'Nunito',sans-serif", animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export default function MarketModal({
   myCollection, market, onClose, onBuy, onListCard,
   myListings, onCancelListing, onCancelAllListings, gold, cardPool, transactions = [],
@@ -66,16 +78,6 @@ export default function MarketModal({
 
   const visitedHistoryRef = useRef(false)
 
-  const PanelWrapper = ({ children }) => inline ? (
-    <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
-  ) : (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
-      <div style={{ position: 'relative', background: theme.bgSurface, width: 'min(100vw, 620px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: `1px solid ${theme.border}`, fontFamily: "'Nunito',sans-serif", animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
-        {children}
-      </div>
-    </div>
-  )
 
   useEffect(() => {
     if (tab === 'historique') {
@@ -91,7 +93,7 @@ export default function MarketModal({
   }, [onClearNewTransactions])
 
   return (
-    <PanelWrapper>
+    <PanelWrapper inline={inline} onClose={onClose} theme={theme}>
       <div style={{ padding: '18px 20px', flex: 1 }}>
 
         {/* Header */}
