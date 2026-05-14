@@ -235,8 +235,11 @@ const CW_STYLES = `
   @keyframes cgFade   { 0%{opacity:0;transform:translateX(-6px)} 100%{opacity:1;transform:translateX(0)} }
   @keyframes shinySparkle { 0%,100%{transform:scale(1) rotate(0deg)} 50%{transform:scale(1.4) rotate(20deg)} }
   @keyframes joinPulse    { 0%,100%{box-shadow:0 0 0 0 #f9ca2466,0 4px 14px #f9ca2433} 50%{box-shadow:0 0 0 6px #f9ca2400,0 4px 20px #f9ca2455} }
-  @keyframes flameRise1   { 0%{transform:translateY(0) scaleX(1);opacity:.9} 50%{transform:translateY(-7px) scaleX(.7);opacity:.55} 100%{transform:translateY(-16px) scaleX(.1);opacity:0} }
-  @keyframes flameRise2   { 0%{transform:translateY(0) scaleX(1.1);opacity:.75} 40%{transform:translateY(-5px) scaleX(.8);opacity:.6} 100%{transform:translateY(-20px) scaleX(.1);opacity:0} }
+  @keyframes fuseGlow   { 0%{transform:scale(1);box-shadow:0 0 5px 3px #f9ca24aa,0 0 10px 5px #e1705566} 100%{transform:scale(1.35);box-shadow:0 0 9px 5px #fff9,0 0 18px 8px #f9ca2488} }
+  @keyframes fuseSpark1 { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(7px,-9px) scale(0);opacity:0} }
+  @keyframes fuseSpark2 { 0%{transform:translate(0,0) scale(1);opacity:.9} 100%{transform:translate(-5px,-11px) scale(0);opacity:0} }
+  @keyframes fuseSpark3 { 0%{transform:translate(0,0) scale(.9);opacity:.85} 100%{transform:translate(4px,-7px) scale(0);opacity:0} }
+  @keyframes fuseSpark4 { 0%{transform:translate(0,0) scale(.8);opacity:.9} 100%{transform:translate(-7px,-8px) scale(0);opacity:0} }
 `;
 
 export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false}){
@@ -323,21 +326,22 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lost
 
           {/* Barre de progression */}
           <div style={{position:'relative',marginBottom:urgent?0:3,marginTop:urgent?30:0,transition:'margin .4s'}}>
-            <div style={{background:theme.overlayMd,borderRadius:50,height:urgent?4:5,overflow:'hidden',transition:'height .4s'}}>
+            <div style={{background:theme.overlayMd,borderRadius:50,height:urgent?8:5,overflow:'hidden',transition:'height .4s'}}>
               <div style={{width:hasPendingQuiz?'100%':`${pct}%`,height:'100%',background:isShiny&&hasPendingQuiz?'linear-gradient(90deg,#f9ca24,#e17055)':`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:'width 1s linear,background .5s',boxShadow:urgent?`0 0 8px ${c1}`:''}}/>
             </div>
-            {urgent&&(
-              <div style={{position:'absolute',bottom:2,left:0,width:`${pct}%`,height:0,overflow:'visible',pointerEvents:'none'}}>
+            {/* Mèche qui brûle : point lumineux + étincelles au bout de la barre */}
+            {urgent&&pct>2&&(
+              <div style={{position:'absolute',top:'50%',left:`${pct}%`,transform:'translate(-50%,-50%)',pointerEvents:'none'}}>
+                {/* Lueur centrale */}
+                <div style={{width:13,height:13,borderRadius:'50%',background:'radial-gradient(circle,#fff 0%,#f9ca24 45%,transparent 100%)',animation:'fuseGlow .22s ease-in-out infinite alternate'}}/>
+                {/* Étincelles */}
                 {[
-                  {l:'7%', h:14,w:7, d:'.52s',dl:'0s',   a:'flameRise1'},
-                  {l:'18%',h:19,w:9, d:'.66s',dl:'.09s',  a:'flameRise2'},
-                  {l:'32%',h:12,w:6, d:'.48s',dl:'.21s',  a:'flameRise1'},
-                  {l:'48%',h:21,w:10,d:'.71s',dl:'.04s',  a:'flameRise2'},
-                  {l:'63%',h:15,w:7, d:'.58s',dl:'.17s',  a:'flameRise1'},
-                  {l:'77%',h:11,w:6, d:'.46s',dl:'.29s',  a:'flameRise2'},
-                  {l:'90%',h:17,w:8, d:'.61s',dl:'.11s',  a:'flameRise1'},
-                ].map((f,i)=>(
-                  <div key={i} style={{position:'absolute',bottom:0,left:f.l,width:f.w,height:f.h,background:'linear-gradient(to top,#f39c12cc,#e74c3c77,transparent)',borderRadius:'50% 50% 30% 30%',filter:'blur(1.5px)',animation:`${f.a} ${f.d} ${f.dl} ease-out infinite`,transformOrigin:'bottom center'}}/>
+                  {a:'fuseSpark1',d:'.38s',dl:'0s'},
+                  {a:'fuseSpark2',d:'.46s',dl:'.12s'},
+                  {a:'fuseSpark3',d:'.34s',dl:'.24s'},
+                  {a:'fuseSpark4',d:'.42s',dl:'.06s'},
+                ].map((s,i)=>(
+                  <div key={i} style={{position:'absolute',top:'50%',left:'50%',width:3,height:3,borderRadius:'50%',background:i%2?'#fff':'#f9ca24',marginTop:-1.5,marginLeft:-1.5,animation:`${s.a} ${s.d} ${s.dl} ease-out infinite`}}/>
                 ))}
               </div>
             )}
