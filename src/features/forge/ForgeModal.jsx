@@ -577,7 +577,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
               return (
                 <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny ? 0.5 : 1 }}>
                   <Card card={card} isShiny={alreadyShiny} />
-                  <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>✨ {cost ?? '—'} pts</div>
+                  <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>🔨 {cost ?? '—'} pts</div>
                   {alreadyShiny ? (
                     <div style={{ fontSize: 11, color: '#00b894', fontWeight: 800 }}>{t('forge_shiny_already') || '✨ Déjà brillant'}</div>
                   ) : (
