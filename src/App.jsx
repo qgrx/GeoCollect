@@ -232,13 +232,14 @@ export default function App() {
       if (!data) return
       const cycleTime = gs.limits?.quizInterval ?? QUIZ_INTERVAL
 
-      // Calcul du countdown — compensé avec l'heure du serveur (immunisé au Clock Skew)
-      if (data.last_quiz_solved_at && !data.quiz) {
-        const solvedAt = new Date(data.last_quiz_solved_at).getTime()
+      // Calcul du countdown à partir de next_quiz_at (nouvelle API)
+      // On calcule la durée restante côté serveur et on l'ajoute au temps local
+      // pour éviter tout décalage d'horloge client/serveur.
+      if (data.next_quiz_at && !data.quiz) {
+        const nextAt    = new Date(data.next_quiz_at).getTime()
         const serverNow = data.server_time ? new Date(data.server_time).getTime() : Date.now()
-        const elapsed = (serverNow - solvedAt) / 1000
-        const rem = Math.max(1, cycleTime - elapsed)
-        setNextQuizTime(Date.now() + rem * 1000)
+        const msLeft    = Math.max(0, nextAt - serverNow)
+        setNextQuizTime(Date.now() + msLeft)
       }
 
       // Le quiz est actif indéfiniment jusqu'à ce que quelqu'un réponde
