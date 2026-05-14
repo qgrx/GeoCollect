@@ -399,9 +399,13 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
           <div style={{ textAlign: 'center', padding: '8px 0' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>✉️</div>
             <div style={{ fontWeight: 900, color: '#fff', fontSize: 16, marginBottom: 8 }}>Vérifie ton email</div>
-            <div style={{ fontSize: 13, color: '#888', lineHeight: 1.6, marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: '#888', lineHeight: 1.6, marginBottom: 12 }}>
               Un email de confirmation a été envoyé à <span style={{ color: '#f9ca24' }}>{email}</span>.<br/>
               Clique sur le lien pour activer ton compte.
+            </div>
+            <div style={{ fontSize: 11, color: '#666', background: '#ffffff08', border: '1px solid #ffffff14', borderRadius: 8, padding: '8px 12px', marginBottom: 20, lineHeight: 1.6 }}>
+              📬 L'email est envoyé depuis <span style={{ color: '#aaa' }}>hello@mail.geocoin.fr</span>.<br/>
+              Si tu ne le vois pas, pense à vérifier tes <span style={{ color: '#f9ca24' }}>spams</span>.
             </div>
             <button onClick={() => { setMode('login'); reset() }}
               style={{ background: '#ffffff18', border: 'none', color: '#fff', padding: '10px 20px',
