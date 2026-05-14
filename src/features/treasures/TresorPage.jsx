@@ -4,9 +4,62 @@ import { useTheme } from '../../ThemeContext.jsx'
 import { cardCC, rarityLabel, cardName, RC } from '../../data/cards.js'
 import { getLang } from '../../i18n/translations.js'
 import { ThumbImage } from '../quiz/QuizComponents.jsx'
-import { PACK_PRICE_LABEL } from '../../data/constants.js'
 
-export default function TresorPage({ dailyOffer, onClaim, onOpenShop }) {
+const PACK_DEFS = [
+  {
+    id:           'petit_soutien',
+    emoji:        '🎁',
+    gradient:     'linear-gradient(135deg,#0984e3,#74b9ff)',
+    glowColor:    '#0984e344',
+    borderColor:  '#74b9ff55',
+    defaultName:  'Petit soutien',
+    defaultPrice: '3,00 €',
+    highlight:    false,
+    contents: [
+      { icon: '⚪', label: '2 Communs' },
+      { icon: '🔵', label: '2 Rares' },
+      { icon: '🟣', label: '1 Rare ou supérieure', note: '50% Épique' },
+      { icon: '🪙', label: '50 Golds' },
+    ],
+  },
+  {
+    id:           'soutien',
+    emoji:        '💎',
+    gradient:     'linear-gradient(135deg,#6c5ce7,#a29bfe)',
+    glowColor:    '#6c5ce755',
+    borderColor:  '#a29bfe66',
+    defaultName:  'Soutien',
+    defaultPrice: '8,00 €',
+    highlight:    true,
+    badge:        '⭐ Populaire',
+    contents: [
+      { icon: '⚪', label: '6 Communs' },
+      { icon: '🔵', label: '2 Rares garantis' },
+      { icon: '🟣', label: '1 Rare ou supérieure', note: '50% Épique' },
+      { icon: '🟠', label: '1 Épique ou supérieure', note: '50% Légendaire' },
+      { icon: '🪙', label: '150 Golds' },
+    ],
+  },
+  {
+    id:           'gros_soutien',
+    emoji:        '👑',
+    gradient:     'linear-gradient(135deg,#e17055,#f9ca24)',
+    glowColor:    '#f9ca2444',
+    borderColor:  '#f9ca2466',
+    defaultName:  'Gros soutien',
+    defaultPrice: '15,00 €',
+    highlight:    false,
+    contents: [
+      { icon: '⚪', label: '6 Communs' },
+      { icon: '🔵', label: '2 Rares garantis' },
+      { icon: '🟣', label: '1 Épique garantie' },
+      { icon: '🟠', label: '1 Légendaire garantie' },
+      { icon: '🪙', label: '300 Golds' },
+    ],
+  },
+]
+
+export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksConfig = {} }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [claiming, setClaiming] = useState(false)
@@ -37,11 +90,13 @@ export default function TresorPage({ dailyOffer, onClaim, onOpenShop }) {
   const { c1, c2 } = card ? cardCC(card.rarity) : { c1: '#f9ca24', c2: '#e17055' }
   const rc = card ? RC[card.rarity] : null
 
+  const visiblePacks = PACK_DEFS.filter(p => shopPacksConfig[p.id]?.enabled !== false)
+
   return (
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
 
       {/* ── Offre du jour ── */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 28 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ fontSize: 20 }}>🎁</span>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>{t('tresor_daily_title')}</div>
@@ -77,53 +132,81 @@ export default function TresorPage({ dailyOffer, onClaim, onOpenShop }) {
         </div>
       </div>
 
-      {/* ── Pack shop ── */}
+      {/* ── Packs ── */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <span style={{ fontSize: 20 }}>💎</span>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>{t('tresor_shop_title')}</div>
         </div>
 
-        <div style={{ background: 'linear-gradient(145deg,#1e1e3a,#2d1b4e)', borderRadius: 16, padding: '18px', border: '1.5px solid #f9ca2433', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -20, right: -20, fontSize: 80, opacity: .05 }}>🎁</div>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ textAlign: 'center', flexShrink: 0 }}>
-              <div style={{ fontSize: 44, filter: 'drop-shadow(0 4px 12px #f9ca2466)' }}>🎁</div>
-              <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 24, color: '#f9ca24', marginTop: 2 }}>{PACK_PRICE_LABEL}</div>
-              <div style={{ fontSize: 10, color: '#888' }}>paiement unique</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 900, fontSize: 14, color: '#fff', marginBottom: 7 }}>{t('shop_pack_title')}</div>
-              {[
-                { icon: '⚪', label: '6 cartes Communes',          note: null },
-                { icon: '🔵', label: '2 cartes Rares garanties',   note: null },
-                { icon: '🟣', label: '1 carte Épique ou Rare',     note: '(50/50)' },
-                { icon: '🟠', label: '1 carte Légendaire ou Rare', note: '(20/80)' },
-              ].map(({ icon, label, note }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontSize: 11 }}>{icon}</span>
-                  <span style={{ fontSize: 11, color: '#ddd', fontWeight: 700 }}>{label}</span>
-                  {note && <span style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}>{note}</span>}
+        {/* Texte de soutien */}
+        <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.6, marginBottom: 16, padding: '10px 14px', background: '#00b89410', border: '1px solid #00b89430', borderRadius: 10 }}>
+          💚 Cet achat permet de soutenir <strong style={{ color: '#00b894' }}>geocoins.fr</strong> dans son développement et ses frais d'hébergement.<br />
+          <span style={{ color: theme.textMuted }}>Aucun abonnement, aucune obligation.</span>
+        </div>
+
+        {/* 3 cartes packs */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+          {visiblePacks.map(p => {
+            const cfg    = shopPacksConfig[p.id] || {}
+            const name   = cfg.name  || p.defaultName
+            const price  = cfg.price || p.defaultPrice
+
+            return (
+              <div key={p.id} onClick={onOpenShop} style={{
+                background: 'linear-gradient(145deg,#1a1a2e,#16213e)',
+                borderRadius: 16,
+                border: p.highlight ? `2px solid ${p.borderColor}` : `1px solid ${p.borderColor}`,
+                boxShadow: p.highlight ? `0 0 24px ${p.glowColor}, 0 4px 20px #0006` : `0 4px 14px #0004`,
+                cursor: 'pointer',
+                overflow: 'hidden',
+                position: 'relative',
+                transition: 'transform .15s, box-shadow .15s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 0 32px ${p.glowColor}, 0 8px 28px #0007` }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = p.highlight ? `0 0 24px ${p.glowColor}, 0 4px 20px #0006` : `0 4px 14px #0004` }}>
+
+                {/* Bandeau coloré haut */}
+                <div style={{ height: 5, background: p.gradient }} />
+
+                {p.badge && (
+                  <div style={{ position: 'absolute', top: 12, right: 12, background: p.gradient, color: '#fff', fontSize: 10, fontWeight: 900, padding: '3px 10px', borderRadius: 20, boxShadow: '0 2px 8px #0004' }}>
+                    {p.badge}
+                  </div>
+                )}
+
+                <div style={{ padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                  {/* Icône + prix */}
+                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 70 }}>
+                    <div style={{ fontSize: 38, filter: `drop-shadow(0 4px 10px ${p.glowColor})`, lineHeight: 1 }}>{p.emoji}</div>
+                    <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: '#f9ca24', marginTop: 6, lineHeight: 1 }}>{price}</div>
+                    <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>paiement unique</div>
+                  </div>
+
+                  {/* Nom + contenu */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', marginBottom: 8 }}>{name}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {p.contents.map(({ icon, label, note }) => (
+                        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <span style={{ fontSize: 13 }}>{icon}</span>
+                          <span style={{ fontSize: 12, color: '#ccc', fontWeight: 700 }}>{label}</span>
+                          {note && <span style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}>({note})</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Flèche */}
+                  <div style={{ alignSelf: 'center', color: '#555', fontSize: 22, flexShrink: 0 }}>›</div>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            )
+          })}
+        </div>
 
-          <div style={{ background: '#00b89412', border: '1px solid #00b89433', borderRadius: 10, padding: '8px 12px', marginBottom: 14, fontSize: 11, color: '#aaa', lineHeight: 1.5 }}>
-            💚 {t('shop_donation_note')}
-          </div>
-
-          <button
-            onClick={onOpenShop}
-            style={{ width: '100%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', padding: '13px', borderRadius: 11, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 20px #f9ca2433', transition: 'opacity .15s' }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '.9'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-          >
-            💎 {t('tresor_shop_open')} — {PACK_PRICE_LABEL}
-          </button>
-          <div style={{ marginTop: 10, fontSize: 9, color: '#444', textAlign: 'center' }}>
-            Paiement sécurisé via Stripe · Aucun abonnement · Aucune donnée bancaire stockée
-          </div>
+        <div style={{ fontSize: 9, color: '#444', textAlign: 'center' }}>
+          🔒 Paiement sécurisé via Stripe · Aucune donnée bancaire stockée
         </div>
       </div>
     </div>
