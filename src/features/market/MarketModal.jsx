@@ -257,8 +257,8 @@ export default function MarketModal({
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, display: 'block', marginBottom: 6 }}>{t('market_price_label')}</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                      <input type="number" min={sellCard.minPrice || 1} max={9999} value={sellPrice || ''} placeholder="0"
-                        onChange={e => setSellPrice(+e.target.value)}
+                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={sellPrice || ''} placeholder="0"
+                        onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setSellPrice(v ? Math.min(9999, +v) : 0); }}
                         style={{ flex: 1, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRight: 'none', color: theme.textPrimary, padding: '9px 12px', borderRadius: '8px 0 0 8px', fontFamily: "'Nunito',sans-serif", fontSize: 16, fontWeight: 900, outline: 'none' }} />
                       <span style={{ background: theme.bgElevated, border: `1px solid ${theme.border}`, color: theme.textMuted, padding: '9px 12px', borderRadius: '0 8px 8px 0', fontWeight: 800, fontSize: 14 }}>G</span>
                     </div>
