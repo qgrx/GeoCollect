@@ -558,9 +558,10 @@ export default function App() {
     return handleQuizAnswer(_userAnswer, _turnstileToken)
   }
 
-  async function handlePurchase(cards) {
+  async function handlePurchase(cards, gold = 0) {
     // Mise à jour locale optimiste
     cards.forEach(card => gs.earnCard(card))
+    if (gold > 0) earnGoldWithFx(gold)
     showToast(t('toast_pack_added'))
     // Persistance en DB si connecté
     if (auth.profile && import.meta.env.VITE_API_URL) {
@@ -1421,7 +1422,7 @@ export default function App() {
       })()}
 
       {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
-      {showShop && <ShopModal onClose={() => setShowShop(false)} cardPool={gs.cardPool} onPurchase={handlePurchase} />}
+      {showShop && <ShopModal onClose={() => setShowShop(false)} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} />}
       {showAdmin && (
         <AdminPanel
           cardPool={gs.cardPool} cardTypes={gs.cardTypes} questions={questions} limits={gs.limits}

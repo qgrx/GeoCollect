@@ -91,6 +91,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           scoreRules:       cfg.score_rules       ?? prev.scoreRules,
           shinyMultiplier:         cfg.shiny_multiplier           !== undefined ? +cfg.shiny_multiplier           : prev.shinyMultiplier,
           shinyForgeCostByRarity:  cfg.shiny_forge_cost_by_rarity ?? prev.shinyForgeCostByRarity,
+          shopPacks:               cfg.shop_packs                 ?? prev.shopPacks,
         }))
       }
     })

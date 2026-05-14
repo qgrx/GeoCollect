@@ -12,6 +12,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdmi
   apiAdminAddCard,
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
   apiGetDailySchedule, apiRegenerateDailySchedule,
+  apiGetAdminShopPacks, apiUpdateAdminShopPacks,
 } from '../../services/api.js';
 
 const DEFAULT_TYPE = 'Normal';
@@ -247,6 +248,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           <Tb id="ranks"        lbl="🎖️ Rangs"                         tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="domains"      lbl="🔒 Domaines"                      tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="seasons"      lbl="🌸 Saisons"                       tab={tab} setTab={setTab} setMsg={setMsg}/>
+          <Tb id="shop"         lbl="🛍️ Boutique"                      tab={tab} setTab={setTab} setMsg={setMsg}/>
         </div>
 
         {msg&&<div style={{background:msg.startsWith("❌")?"#e74c3c22":"#00b89422",border:`1px solid ${msg.startsWith("❌")?"#e74c3c44":"#00b89444"}`,color:msg.startsWith("❌")?"#e74c3c":"#00b894",fontWeight:800,fontSize:12,padding:"7px 12px",borderRadius:8,marginBottom:12}}>{msg}</div>}
@@ -1805,6 +1807,72 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         })()}
 
         {tab==="seasons"&&<AdminSeasons setMsg={setMsg}/>}
+
+        {tab==="shop"&&(()=>{
+          const PACK_LABELS = {
+            petit_soutien: { title:'Petit soutien', desc:'2 communs, 2 rares, 1 épique/rare (50/50)' },
+            soutien:       { title:'Soutien',        desc:'6 communs, 2 rares, 1 épique/rare (50/50), 1 légen./épique (50/50), 120 Golds' },
+            gros_soutien:  { title:'Gros soutien',   desc:'6 communs, 2 rares, 1 épique garantie, 1 légendaire garantie, 200 Golds' },
+          }
+          const [shopPacks, setShopPacks] = useState(null)
+          const [shopEdit,  setShopEdit]  = useState({})
+
+          useEffect(()=>{
+            if(shopPacks!==null) return
+            apiGetAdminShopPacks().then(({data})=>{
+              const p = data?.packs || {}
+              setShopPacks(p)
+              setShopEdit(JSON.parse(JSON.stringify(p)))
+            })
+          },[tab])
+
+          async function saveShop(){
+            const {error} = await apiUpdateAdminShopPacks(shopEdit)
+            if(error){setMsg('❌ '+error);return;}
+            setShopPacks(JSON.parse(JSON.stringify(shopEdit)))
+            setMsg('✅ Packs sauvegardés.')
+          }
+
+          if(!shopPacks) return <div style={{color:'#888',fontSize:13}}>Chargement…</div>
+
+          return (
+            <div>
+              <div style={{fontWeight:900,fontSize:15,color:'#fff',marginBottom:16}}>🛍️ Packs Boutique</div>
+              {Object.entries(PACK_LABELS).map(([id,{title,desc}])=>{
+                const pk = shopEdit[id] || {}
+                return (
+                  <div key={id} style={{background:'#1a2744',border:'1px solid #ffffff22',borderRadius:10,padding:'14px',marginBottom:12}}>
+                    <div style={{fontWeight:800,color:'#f9ca24',fontSize:13,marginBottom:6}}>{title}</div>
+                    <div style={{fontSize:10,color:'#888',marginBottom:10}}>{desc}</div>
+                    <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:8}}>
+                      <div>
+                        <div style={{fontSize:10,color:'#aaa',fontWeight:700,marginBottom:3,textTransform:'uppercase'}}>Nom affiché</div>
+                        <input value={pk.name||''} onChange={e=>setShopEdit(s=>({...s,[id]:{...s[id],name:e.target.value}}))}
+                          placeholder={title} style={{...INP,width:160}}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,color:'#aaa',fontWeight:700,marginBottom:3,textTransform:'uppercase'}}>Prix affiché</div>
+                        <input value={pk.price||''} onChange={e=>setShopEdit(s=>({...s,[id]:{...s[id],price:e.target.value}}))}
+                          placeholder="ex: 3,00 €" style={{...INP,width:100}}/>
+                      </div>
+                      <div style={{display:'flex',alignItems:'flex-end',marginBottom:3}}>
+                        <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}>
+                          <input type="checkbox" checked={pk.enabled!==false}
+                            onChange={e=>setShopEdit(s=>({...s,[id]:{...s[id],enabled:e.target.checked}}))}
+                            style={{width:16,height:16}}/>
+                          <span style={{color:'#fff',fontSize:12,fontWeight:700}}>Activé</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              <button onClick={saveShop} style={{...BTN('linear-gradient(135deg,#e74c3c,#c0392b)'),padding:'11px 24px',borderRadius:10,fontSize:13,fontWeight:900}}>
+                💾 Sauvegarder
+              </button>
+            </div>
+          )
+        })()}
 
       </div>
     </div>

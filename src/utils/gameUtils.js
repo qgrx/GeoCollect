@@ -19,18 +19,52 @@ export function collScore(col, pool, shinyCol = {}, rules = { commun: 1, rare: 3
   return normal + shiny
 }
 
-export function drawPackCards(cardPool) {
-  const byRarity = (r) => cardPool.filter(c => c.rarity === r && c.type !== 'Achievement');
-  const pick     = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  const cards    = [];
-  const comm = byRarity('commun');
-  const rare = byRarity('rare');
-  for (let i = 0; i < 6; i++) cards.push(pick(comm) || pick(cardPool));
-  for (let i = 0; i < 2; i++) cards.push(pick(rare) || pick(cardPool));
-  cards.push(Math.random() < 0.5 ? (pick(byRarity('épique')) || pick(rare)) : pick(rare));
-  cards.push(Math.random() < 0.2 ? (pick(byRarity('légendaire')) || pick(rare)) : pick(rare));
-  return cards;
+// Fonctions utilitaires partagées entre les packs
+function _byRarity(cardPool, r) { return cardPool.filter(c => c.rarity === r && c.type !== 'Achievement') }
+function _pick(arr, fallback) { return arr.length ? arr[Math.floor(Math.random() * arr.length)] : fallback }
+
+// ─── Petit soutien : 2 communs, 2 rares, 1 épique ou rare (50/50) ─────────────
+export function drawPackSmall(cardPool) {
+  const comm = _byRarity(cardPool, 'commun')
+  const rare = _byRarity(cardPool, 'rare')
+  const epic = _byRarity(cardPool, 'épique')
+  const cards = []
+  for (let i = 0; i < 2; i++) cards.push(_pick(comm, _pick(cardPool)))
+  for (let i = 0; i < 2; i++) cards.push(_pick(rare, _pick(cardPool)))
+  cards.push(Math.random() < 0.5 ? _pick(epic, _pick(rare)) : _pick(rare, _pick(cardPool)))
+  return cards
 }
+
+// ─── Soutien : 6 communs, 2 rares, 1 épique ou rare (50/50), 1 légen. ou épi. (50/50) ──
+export function drawPackMedium(cardPool) {
+  const comm = _byRarity(cardPool, 'commun')
+  const rare = _byRarity(cardPool, 'rare')
+  const epic = _byRarity(cardPool, 'épique')
+  const leg  = _byRarity(cardPool, 'légendaire')
+  const cards = []
+  for (let i = 0; i < 6; i++) cards.push(_pick(comm, _pick(cardPool)))
+  for (let i = 0; i < 2; i++) cards.push(_pick(rare, _pick(cardPool)))
+  cards.push(Math.random() < 0.5 ? _pick(epic, _pick(rare)) : _pick(rare, _pick(cardPool)))
+  cards.push(Math.random() < 0.5 ? _pick(leg, _pick(epic)) : _pick(epic, _pick(rare)))
+  return cards
+}
+
+// ─── Gros soutien : 6 communs, 2 rares, 1 épique garantie, 1 légendaire garantie ──
+export function drawPackLarge(cardPool) {
+  const comm = _byRarity(cardPool, 'commun')
+  const rare = _byRarity(cardPool, 'rare')
+  const epic = _byRarity(cardPool, 'épique')
+  const leg  = _byRarity(cardPool, 'légendaire')
+  const cards = []
+  for (let i = 0; i < 6; i++) cards.push(_pick(comm, _pick(cardPool)))
+  for (let i = 0; i < 2; i++) cards.push(_pick(rare, _pick(cardPool)))
+  cards.push(_pick(epic, _pick(rare)))
+  cards.push(_pick(leg, _pick(epic)))
+  return cards
+}
+
+// Rétrocompatibilité
+export function drawPackCards(cardPool) { return drawPackMedium(cardPool) }
 
 // Génère une miniature parfaite (100x140) centrée sur le haut de l'image (cover 25%)
 export function createCardThumbnail(file, targetWidth = 100, targetHeight = 140) {
