@@ -24,7 +24,7 @@ export default function MarketModal({
   const { theme } = useTheme()
   const [tab, setTab] = useState(initialTab)
   const [sellCard, setSellCard] = useState(initialSellCard)
-  const [sellPrice, setSellPrice] = useState(0)
+  const [sellPrice, setSellPrice] = useState('')
   const [msg, setMsg] = useState('')
   const [exp, setExp] = useState(null)
   const [listPage, setListPage]           = useState(0)
@@ -242,7 +242,7 @@ export default function MarketModal({
                 <div style={{ display: 'flex',flexWrap: 'wrap',columnGap: 7,rowGap: 12,padding: '4px' }}>
                   {myCards.map(({ card, cnt }) => (
                     <Card key={card.id} card={card} count={cnt} small selected={sellCard?.id === card.id}
-                      onClick={() => { setSellCard(sellCard?.id === card.id ? null : card); setSellPrice(0); setMsg('') }} />
+                      onClick={() => { setSellCard(sellCard?.id === card.id ? null : card); setSellPrice(''); setMsg('') }} />
                   ))}
                 </div>
               )}
@@ -257,8 +257,8 @@ export default function MarketModal({
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, display: 'block', marginBottom: 6 }}>{t('market_price_label')}</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={sellPrice || ''} placeholder="0"
-                        onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setSellPrice(v ? Math.min(9999, +v) : 0); }}
+                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={sellPrice} placeholder="0"
+                        onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setSellPrice(+v > 9999 ? '9999' : v); }}
                         style={{ flex: 1, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRight: 'none', color: theme.textPrimary, padding: '9px 12px', borderRadius: '8px 0 0 8px', fontFamily: "'Nunito',sans-serif", fontSize: 16, fontWeight: 900, outline: 'none' }} />
                       <span style={{ background: theme.bgElevated, border: `1px solid ${theme.border}`, color: theme.textMuted, padding: '9px 12px', borderRadius: '0 8px 8px 0', fontWeight: 800, fontSize: 14 }}>G</span>
                     </div>
@@ -267,7 +267,7 @@ export default function MarketModal({
                       if (!lowestPrice) return null;
                       const targetPrice = Math.max(sellCard.minPrice || 1, lowestPrice);
                       return (
-                        <button onClick={() => { setSellPrice(targetPrice); setMsg(''); }}
+                        <button onClick={() => { setSellPrice(String(targetPrice)); setMsg(''); }}
                           style={{ marginTop: 6, background: 'none', border: 'none', color: '#00b894', padding: 0, fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11, cursor: 'pointer', textDecoration: 'underline', display: 'block' }}>
                           {t('market_lowest_price')} {targetPrice}G
                         </button>
@@ -283,9 +283,9 @@ export default function MarketModal({
                   {msg && <div style={{ color: '#00b894', fontWeight: 800, fontSize: 11 }}>{msg}</div>}
 
                   <button
-                    disabled={sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)}
-                    onClick={() => { onListCard(sellCard, sellPrice); setMsg(''); setSellCard(null); setSellPrice(0); setTab('meslistes'); }}
-                    style={{ width: '100%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', padding: '11px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: (sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)) ? 'not-allowed' : 'pointer', opacity: (sellPrice <= 0 || (sellCard.minPrice && sellPrice < sellCard.minPrice)) ? 0.5 : 1 }}>
+                    disabled={!(+sellPrice > 0) || (sellCard.minPrice && +sellPrice < sellCard.minPrice)}
+                    onClick={() => { onListCard(sellCard, +sellPrice); setMsg(''); setSellCard(null); setSellPrice(''); setTab('meslistes'); }}
+                    style={{ width: '100%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', padding: '11px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: (!(+sellPrice > 0) || (sellCard.minPrice && +sellPrice < sellCard.minPrice)) ? 'not-allowed' : 'pointer', opacity: (!(+sellPrice > 0) || (sellCard.minPrice && +sellPrice < sellCard.minPrice)) ? 0.5 : 1 }}>
                     {t('market_list_btn')}
                   </button>
                 </div>
