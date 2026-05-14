@@ -296,11 +296,11 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lost
         </div>
 
         {/* Contenu central */}
-        <div style={{flex:1,minWidth:0,position:'relative'}}>
+        <div style={{flex:1,minWidth:0,position:'relative',minHeight:44}}>
 
           {/* ── Décompte géant (≤10 s) ── */}
           {urgent && (
-            <div key={secondsLeft} style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',zIndex:3,pointerEvents:'none'}}>
+            <div key={secondsLeft} style={{position:'absolute',top:0,right:0,bottom:0,left:0,display:'flex',alignItems:'center',justifyContent:'center',zIndex:3,pointerEvents:'none'}}>
               <span style={{
                 fontSize: veryUrgent ? 40 : 34,
                 fontWeight: 900,
