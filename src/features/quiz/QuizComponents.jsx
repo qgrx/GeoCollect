@@ -227,77 +227,135 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
 }
 
 // ─── Countdown Widget ─────────────────────────────────────────────────────────
-export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false}){ const {t}=useT(); const {theme}=useTheme();
-  const pct = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
-  const urgent = !hasPendingQuiz && !lostTo && secondsLeft <= 10 && secondsLeft > 0
-  const hasCard = !!nextCard && hasPendingQuiz
-  const rc = hasCard ? RC[nextCard.rarity] : null
+const CW_STYLES = `
+  @keyframes cdPop    { 0%{transform:scale(2.2);opacity:0} 55%{transform:scale(.88)} 100%{transform:scale(1);opacity:1} }
+  @keyframes cdShake  { 0%,100%{transform:scale(1)} 20%{transform:scale(1.25) rotate(-4deg)} 60%{transform:scale(1.15) rotate(3deg)} }
+  @keyframes cgSlide  { 0%{opacity:0;transform:translateY(12px) scale(.95)} 100%{opacity:1;transform:translateY(0) scale(1)} }
+  @keyframes cgTrophy { 0%{transform:scale(0) rotate(-25deg)} 65%{transform:scale(1.25) rotate(8deg)} 100%{transform:scale(1) rotate(0)} }
+  @keyframes cgFade   { 0%{opacity:0;transform:translateX(-6px)} 100%{opacity:1;transform:translateX(0)} }
+  @keyframes shinySparkle { 0%,100%{transform:scale(1) rotate(0deg)} 50%{transform:scale(1.4) rotate(20deg)} }
+  @keyframes joinPulse    { 0%,100%{box-shadow:0 0 0 0 #f9ca2466,0 4px 14px #f9ca2433} 50%{box-shadow:0 0 0 6px #f9ca2400,0 4px 20px #f9ca2455} }
+`;
 
-  // État "trop tard" : quelqu'un vient de gagner, compteur en cours de réinitialisation
+export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false}){
+  const {t}=useT(); const {theme}=useTheme();
+  const pct       = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
+  const urgent    = !hasPendingQuiz && !lostTo && secondsLeft <= 10 && secondsLeft > 0
+  const veryUrgent = urgent && secondsLeft <= 5
+  const hasCard   = !!nextCard && hasPendingQuiz
+  const rc        = hasCard ? RC[nextCard.rarity] : null
+  const showColors= urgent || hasPendingQuiz
+  const {c1,c2}   = (nextCard && showColors) ? cardCC(nextCard.rarity) : {c1:'#6c7c93',c2:'#48576b'}
+
+  // ── État "Félicitations" — quelqu'un vient de gagner ──────────────────────
   if (lostTo) {
-    const {c1,c2} = nextCard ? cardCC(nextCard.rarity) : {c1:'#e74c3c',c2:'#c0392b'}
+    const {c1:wc1} = nextCard ? cardCC(nextCard.rarity) : {c1:'#f9ca24'}
     return (
-      <div style={{display:"flex",alignItems:"center",gap:11,background:`#e74c3c0a`,border:`1.5px solid #e74c3c33`,borderRadius:13,padding:"9px 14px",transition:"all .5s"}}>
-        <div style={{width:40,height:40,flexShrink:0,borderRadius:6,overflow:'hidden',border:'2px solid #e74c3c44',background:'#1e3045',display:'flex',alignItems:'center',justifyContent:'center'}}>
-          {nextCard?.image_url
-            ? <ThumbImage src={nextCard.image_url} alt={cardName(nextCard,getLang())} style={{width:'100%',height:'100%',objectFit:'contain',filter:'grayscale(0.6)'}}/>
-            : <div style={{fontSize:18,color:'#e74c3c'}}>😤</div>}
-        </div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:11,color:'#e74c3c',fontWeight:900,marginBottom:2}}>😤 {t('quiz_too_late')||'Trop tard !'}</div>
-          <div style={{fontSize:10,color:'#aaa'}}><span style={{color:'#f9ca24',fontWeight:800}}>{lostTo}</span> {t('quiz_won_it')||'a remporté cette carte.'}</div>
-          <div style={{background:theme.overlayMd,borderRadius:50,height:3,overflow:'hidden',marginTop:5}}>
-            <div style={{width:'0%',height:'100%',background:'linear-gradient(90deg,#e74c3c,#c0392b)',borderRadius:50}}/>
+      <>
+        <style>{CW_STYLES}</style>
+        <div style={{display:'flex',alignItems:'center',gap:11,background:'linear-gradient(135deg,#f9ca2412,#e1705508)',border:'1.5px solid #f9ca2455',borderRadius:13,padding:'10px 14px',boxShadow:'0 0 28px #f9ca2428',animation:'cgSlide .45s cubic-bezier(.34,1.56,.64,1) both'}}>
+          <div style={{width:40,height:40,flexShrink:0,borderRadius:6,border:'2px solid #f9ca2466',background:'#1e3045',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,animation:'cgTrophy .5s .1s cubic-bezier(.34,1.56,.64,1) both',transform:'scale(0)'}}>
+            🏆
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:14,fontWeight:900,color:'#f9ca24',marginBottom:2,animation:'cgFade .35s .2s ease both',opacity:0}}>
+              🎉 Félicitations à <span style={{color:'#fff'}}>{lostTo}</span> !
+            </div>
+            {nextCard && (
+              <div style={{fontSize:10,color:'#aaa',animation:'cgFade .35s .35s ease both',opacity:0}}>
+                a remporté <span style={{color:wc1,fontWeight:800}}>{cardName(nextCard,getLang())}</span>
+              </div>
+            )}
+            <div style={{background:theme.overlayMd,borderRadius:50,height:3,overflow:'hidden',marginTop:6}}>
+              <div style={{width:'0%',height:'100%',background:'linear-gradient(90deg,#f9ca24,#e17055)',borderRadius:50}}/>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     )
   }
 
-  const showColors = urgent || hasPendingQuiz
-  const {c1, c2} = (nextCard && showColors) ? cardCC(nextCard.rarity) : { c1: '#6c7c93', c2: '#48576b' }
   return (
-    <div style={{display:"flex",alignItems:"center",gap:11,background:urgent?`${c1}12`:theme.overlay,border:`1.5px solid ${isShiny&&hasPendingQuiz?'#f9ca2488':urgent?`${c1}44`:theme.border}`,borderRadius:13,padding:"9px 14px",transition:"all .5s",boxShadow:isShiny&&hasPendingQuiz?`0 0 15px #f9ca2433`:urgent?`0 0 15px ${c1}22`:"none"}}>
-      <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
-        <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', position: 'relative', border: `2px solid ${c1}`, background: '#1e3045', boxSizing: 'border-box', boxShadow: (hasCard && nextCard.rarity === 'légendaire') ? `0 0 12px ${c1}aa` : (urgent ? `0 0 10px ${c1}66` : 'none') }}>
-          {hasCard ? (
-            nextCard.image_url ? (
-              <ThumbImage src={nextCard.image_url} alt={cardName(nextCard, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
-            ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{cardName(nextCard, getLang())[0]}</div>
-            )
-          ) : (
-            <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:900,color:urgent?c1:'#888'}}>?</div>
+    <>
+      <style>{CW_STYLES}</style>
+      <div style={{display:'flex',alignItems:'center',gap:11,background:urgent?`${c1}15`:theme.overlay,border:`1.5px solid ${isShiny&&hasPendingQuiz?'#f9ca2488':urgent?`${c1}55`:theme.border}`,borderRadius:13,padding:'9px 14px',transition:'background .5s,border-color .5s,box-shadow .5s',boxShadow:isShiny&&hasPendingQuiz?`0 0 15px #f9ca2433`:urgent?`0 0 22px ${c1}44`:'none'}}>
+
+        {/* Thumbnail */}
+        <div style={{position:'relative',width:40,height:40,flexShrink:0}}>
+          <div style={{width:'100%',height:'100%',borderRadius:6,overflow:'hidden',border:`2px solid ${c1}`,background:'#1e3045',boxSizing:'border-box',transition:'border-color .5s,box-shadow .5s',boxShadow:(hasCard&&nextCard.rarity==='légendaire')?`0 0 12px ${c1}aa`:urgent?`0 0 10px ${c1}88`:'none'}}>
+            {hasCard
+              ? nextCard.image_url
+                ? <ThumbImage src={nextCard.image_url} alt={cardName(nextCard,getLang())} style={{width:'100%',height:'100%',objectFit:'contain',imageRendering:'-webkit-optimize-contrast'}}/>
+                : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:900,color:'#fff',background:`linear-gradient(135deg,${c1},${c2})`}}>{cardName(nextCard,getLang())[0]}</div>
+              : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:900,color:urgent?c1:'#888',transition:'color .5s'}}>?</div>
+            }
+          </div>
+          {isShiny&&hasPendingQuiz&&(
+            <div style={{position:'absolute',top:-4,right:-4,zIndex:15,fontSize:12,animation:'shinySparkle 2s ease-in-out infinite',filter:'drop-shadow(0 0 3px gold)'}}>✨</div>
           )}
         </div>
-        {isShiny && hasPendingQuiz && (
-          <div style={{
-            position: 'absolute', top: -4, right: -4, zIndex: 15,
-            fontSize: 12, animation: 'shinySparkle 2s ease-in-out infinite',
-            filter: 'drop-shadow(0 0 3px gold)',
-          }}>✨</div>
+
+        {/* Contenu central */}
+        <div style={{flex:1,minWidth:0,position:'relative'}}>
+
+          {/* ── Décompte géant (≤10 s) ── */}
+          {urgent && (
+            <div key={secondsLeft} style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',zIndex:3,pointerEvents:'none'}}>
+              <span style={{
+                fontSize: veryUrgent ? 40 : 34,
+                fontWeight: 900,
+                fontFamily: "'Nunito',sans-serif",
+                color: c1,
+                lineHeight: 1,
+                textShadow: `0 0 18px ${c1}cc, 0 0 40px ${c1}55`,
+                animation: veryUrgent ? 'cdShake .45s ease-out' : 'cdPop .55s cubic-bezier(.34,1.56,.64,1)',
+              }}>{secondsLeft}</span>
+            </div>
+          )}
+
+          {/* Titre + secondes (masqué en mode urgent) */}
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:3,opacity:urgent?0:1,transition:'opacity .3s'}}>
+            <span style={{fontSize:11,color:hasPendingQuiz?theme.gold:'#aaa',fontWeight:700}}>{hasPendingQuiz?t('quiz_new_card'):t('next_card')}</span>
+            {!hasPendingQuiz&&<span style={{fontSize:13,fontWeight:900,color:theme.gold}}>{secondsLeft>0?`${secondsLeft}s`:'...'}</span>}
+          </div>
+
+          {/* Barre de progression */}
+          <div style={{background:theme.overlayMd,borderRadius:50,height:urgent?3:5,overflow:'hidden',marginBottom:urgent?0:3,marginTop:urgent?30:0,transition:'height .4s,margin .4s'}}>
+            <div style={{width:hasPendingQuiz?'100%':`${pct}%`,height:'100%',background:isShiny&&hasPendingQuiz?'linear-gradient(90deg,#f9ca24,#e17055)':`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:'width 1s linear,background .5s',boxShadow:urgent?`0 0 8px ${c1}`:''}}/>
+          </div>
+
+          {/* Infos carte (masquées en mode urgent) */}
+          {!urgent&&(
+            <div style={{fontSize:10,color:'#666'}}>
+              {hasCard
+                ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}</>
+                : <span style={{color:theme.textMuted,fontStyle:'italic'}}>Geocoin mystère…</span>}
+            </div>
+          )}
+        </div>
+
+        {/* Bouton participation */}
+        {onJoin&&(
+          <button onClick={hasPendingQuiz?onJoin:undefined}
+            style={{
+              background: hasPendingQuiz?'linear-gradient(135deg,#f9ca24,#e17055)':'#ffffff18',
+              border: 'none',
+              color: hasPendingQuiz?'#1e3045':'#666',
+              padding: hasPendingQuiz?'10px 18px':'7px 13px',
+              borderRadius: 10,
+              fontFamily: "'Nunito',sans-serif",
+              fontWeight: 900,
+              fontSize: hasPendingQuiz?13:11,
+              cursor: hasPendingQuiz?'pointer':'default',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              transition: 'all .4s cubic-bezier(.34,1.56,.64,1)',
+              animation: hasPendingQuiz?'joinPulse 1.8s ease-in-out infinite':'none',
+            }}>
+            {t('quiz_participate')}
+          </button>
         )}
       </div>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-          <span style={{fontSize:11,color:hasPendingQuiz?theme.gold:"#aaa",fontWeight:700}}>{hasPendingQuiz ? t("quiz_new_card") : t("next_card")}</span>
-          {!hasPendingQuiz && <span style={{fontSize:13,fontWeight:900,color:urgent?c1:theme.gold,transition:"color .5s",textShadow:urgent?`0 0 8px ${c1}88`:"none"}}>{secondsLeft > 0 ? `${secondsLeft}s` : '...'}</span>}
-        </div>
-        <div style={{background:theme.overlayMd,borderRadius:50,height:5,overflow:"hidden",marginBottom:3}}>
-          <div style={{width:hasPendingQuiz?"100%":`${pct}%`,height:"100%",background:isShiny&&hasPendingQuiz?'linear-gradient(90deg,#f9ca24,#e17055)':`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:"width 1s linear,background .5s",boxShadow:urgent?`0 0 10px ${c1}`:""}}/>
-        </div>
-        <div style={{fontSize:10,color:"#666"}}>
-          {hasCard
-            ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity, t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard, getLang())}</span>{isShiny && <span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}</>
-            : <span style={{color:urgent?c1:theme.textMuted,fontStyle:"italic",transition:"color .5s"}}>Geocoin mystère…</span>}
-        </div>
-      </div>
-      {onJoin&&(
-        <button onClick={hasPendingQuiz ? onJoin : undefined}
-          style={{background:hasPendingQuiz?"linear-gradient(135deg,#f9ca24,#e17055)":"#ffffff18",border:"none",color:hasPendingQuiz?"#1e3045":"#666",padding:"7px 13px",borderRadius:10,fontFamily:"'Nunito',sans-serif",fontWeight:900,fontSize:11,cursor:hasPendingQuiz?"pointer":"default",flexShrink:0,whiteSpace:"nowrap",transition:"all .3s"}}>
-          {t("quiz_participate")}
-        </button>
-      )}
-    </div>
+    </>
   )
 }
