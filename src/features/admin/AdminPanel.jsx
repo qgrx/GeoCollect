@@ -37,6 +37,7 @@ function parseCSV(text) {
 import Card from '../../components/Card.jsx';
 import AdminCards from './AdminCards.jsx';
 import AdminPlayers from './AdminPlayers.jsx';
+import AdminSeasons from './AdminSeasons.jsx';
 
 // ─── Composants utilitaires (hors du composant pour éviter remounts) ─────────
 function Fld({lbl,children}){
@@ -245,6 +246,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           <Tb id="market_admin" lbl="🏪 Marché admin"                  tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="ranks"        lbl="🎖️ Rangs"                         tab={tab} setTab={setTab} setMsg={setMsg}/>
           <Tb id="domains"      lbl="🔒 Domaines"                      tab={tab} setTab={setTab} setMsg={setMsg}/>
+          <Tb id="seasons"      lbl="🌸 Saisons"                       tab={tab} setTab={setTab} setMsg={setMsg}/>
         </div>
 
         {msg&&<div style={{background:msg.startsWith("❌")?"#e74c3c22":"#00b89422",border:`1px solid ${msg.startsWith("❌")?"#e74c3c44":"#00b89444"}`,color:msg.startsWith("❌")?"#e74c3c":"#00b894",fontWeight:800,fontSize:12,padding:"7px 12px",borderRadius:8,marginBottom:12}}>{msg}</div>}
@@ -1801,6 +1803,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
             </div>
           );
         })()}
+
+        {tab==="seasons"&&<AdminSeasons setMsg={setMsg}/>}
 
       </div>
     </div>

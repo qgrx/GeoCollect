@@ -14,7 +14,7 @@ import { collScore } from './utils/gameUtils.js';
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -40,6 +40,7 @@ import { AchievementToast, SaleNotif, TxHistoryModal } from './features/achievem
 import DailyQuests from './features/quests/DailyQuests.jsx';
 import ForgeModal  from './features/forge/ForgeModal.jsx'
 import TresorPage  from './features/treasures/TresorPage.jsx';
+import SeasonPopup  from './components/SeasonPopup.jsx';
 
 function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
   const imgRef = useRef(null)
@@ -383,6 +384,7 @@ export default function App() {
   const [collPage,        setCollPage]        = useState(0);
   const [quizSessionActive, setQuizSessionActive] = useState(false);
   const [dailyOffer, setDailyOffer] = useState(null);
+  const [seasonPopup, setSeasonPopup] = useState(null); // { season, cards }
   const COLL_PAGE_SIZE = 24;
   const [menuOpen,        setMenuOpen]        = useState(false);
   const [selectedCard,    setSelectedCard]    = useState(null);
@@ -453,6 +455,14 @@ export default function App() {
     if (!auth.profile) return
     apiGetDailyTreasure().then(({ data }) => { if (data) setDailyOffer(data) })
   }, [auth.profile?.id, activeTab === 'tresors'])
+
+  // Vérifier la saison en cours à la connexion — afficher la popup si nouvelle saison
+  useEffect(() => {
+    if (!auth.profile) return
+    apiGetCurrentSeason().then(({ data }) => {
+      if (data?.season && data.is_new) setSeasonPopup({ season: data.season, cards: data.cards || [] })
+    }).catch(() => {})
+  }, [auth.profile?.id])
 
   // ── Clic en dehors du menu avatar ──────────────────────────────────────────
   useEffect(() => {
@@ -1236,6 +1246,17 @@ export default function App() {
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
       {activeQuiz  && <QuizModal quiz={activeQuiz} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
+
+      {seasonPopup && (
+        <SeasonPopup
+          season={seasonPopup.season}
+          cards={seasonPopup.cards}
+          onClose={() => {
+            setSeasonPopup(null)
+            apiMarkSeasonSeen().catch(() => {})
+          }}
+        />
+      )}
 
       {welcomeCards.length > 0 && (
         <OfferedCardModal

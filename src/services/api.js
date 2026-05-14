@@ -158,3 +158,11 @@ export const apiGetAdminTransactions  = (params = {}) => {
 
 export const apiSetConfig = (key, value) =>
   apiFetch(`/api/admin/config/${key}`, { method: 'PATCH', body: { value } })
+
+// ─── Saisons ──────────────────────────────────────────────────────────────────
+export const apiGetCurrentSeason      = ()         => apiFetch('/api/seasons/current')
+export const apiMarkSeasonSeen        = ()         => apiFetch('/api/seasons/current/seen', { method: 'POST' })
+export const apiGetAdminSeasons       = ()         => apiFetch('/api/admin/seasons')
+export const apiCreateAdminSeason     = (body)     => apiFetch('/api/admin/seasons', { method: 'POST', body })
+export const apiUpdateAdminSeason     = (id, body) => apiFetch(`/api/admin/seasons/${id}`, { method: 'PATCH', body })
+export const apiDeleteAdminSeason     = (id)       => apiFetch(`/api/admin/seasons/${id}`, { method: 'DELETE' })
