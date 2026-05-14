@@ -259,10 +259,10 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lost
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:14,fontWeight:900,color:'#f9ca24',marginBottom:2,animation:'cgFade .35s .2s ease both',opacity:0}}>
-              🎉 Félicitations à <span style={{color:'#fff'}}>{lostTo}</span> !
+              🎉 Félicitations à <span style={{color:theme.textPrimary,fontWeight:900}}>{lostTo}</span> !
             </div>
             {nextCard && (
-              <div style={{fontSize:10,color:'#aaa',animation:'cgFade .35s .35s ease both',opacity:0}}>
+              <div style={{fontSize:10,color:theme.textSecondary,animation:'cgFade .35s .35s ease both',opacity:0}}>
                 a remporté <span style={{color:wc1,fontWeight:800}}>{cardName(nextCard,getLang())}</span>
               </div>
             )}
