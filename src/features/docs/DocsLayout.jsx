@@ -12,9 +12,10 @@ const NAV = [
 
 const PAGES = { faq: FaqPage, 'release-notes': ReleaseNotesPage, support: SupportContent }
 
-export default function DocsLayout({ initialPage = 'faq', onClose }) {
+export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = false }) {
   const { theme, toggle, mode } = useTheme()
-  const [page, setPage] = useState(initialPage)
+  const [page,     setPage]     = useState(initialPage)
+  const [editMode, setEditMode] = useState(false)
 
   const PageComponent = PAGES[page] || FaqPage
 
@@ -39,6 +40,12 @@ export default function DocsLayout({ initialPage = 'faq', onClose }) {
           <span style={{ color: mutedColor, fontSize: 13 }}>— Aide</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isAdmin && (
+            <button onClick={() => setEditMode(e => !e)}
+              style={{ background: editMode ? '#f9ca2422' : theme.overlayMd, border: `1px solid ${editMode ? '#f9ca2466' : theme.border}`, borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 12, color: editMode ? '#f9ca24' : mutedColor, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>
+              {editMode ? '✏️ Édition active' : '✏️ Éditer'}
+            </button>
+          )}
           <button onClick={toggle} style={{ background: theme.overlayMd, border: `1px solid ${theme.border}`, borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 12, color: textColor, fontFamily: "'Nunito',sans-serif", fontWeight: 700 }}>
             {mode === 'dark' ? '☀️ Mode clair' : '🌙 Mode sombre'}
           </button>
@@ -82,7 +89,7 @@ export default function DocsLayout({ initialPage = 'faq', onClose }) {
 
         {/* Contenu */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          <PageComponent theme={theme} mode={mode} textColor={textColor} mutedColor={mutedColor} />
+          <PageComponent theme={theme} mode={mode} textColor={textColor} mutedColor={mutedColor} isAdmin={isAdmin} editMode={editMode} />
         </div>
       </div>
     </div>

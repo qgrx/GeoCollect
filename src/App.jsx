@@ -1271,7 +1271,7 @@ export default function App() {
       {/* QuizNotif popup disabled */}
       {activeQuiz  && <QuizModal quiz={activeQuiz} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
 
-      {showDocs && <DocsLayout initialPage={docsPage} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
+      {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
 
       {seasonPopup && (
         <SeasonPopup
