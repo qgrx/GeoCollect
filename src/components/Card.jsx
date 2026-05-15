@@ -79,7 +79,6 @@ export default function Card({ card, count, onClick, selected, small, dimmed, is
       transition:'transform .15s',
       background: hasImage ? 'transparent' : `linear-gradient(145deg,${c1}44,${c2}66)`,
     }}
-      data-card-hover={onClick && !dimmed ? 'true' : undefined}
       onMouseEnter={e => { if (onClick && !dimmed) e.currentTarget.style.transform = selected ? 'translateY(-6px) scale(1.03)' : 'translateY(-3px) scale(1.02)' }}
       onMouseLeave={e => { if (onClick && !dimmed) e.currentTarget.style.transform = selected ? 'translateY(-6px) scale(1.03)' : 'none' }}
     >

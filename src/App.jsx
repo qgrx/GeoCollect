@@ -548,66 +548,6 @@ export default function App() {
   useEffect(() => { document.title = 'Geocoins' }, [])
 
 
-  // ── Animation geocoins au toucher + suivi du doigt ────────────────────────
-  useEffect(() => {
-    let active    = null
-    let isCard    = false
-    let startEl   = null
-    let startX    = 0
-    let startY    = 0
-
-    const reset = () => {
-      if (active) { active.style.transform = ''; active = null }
-      isCard = false; startEl = null
-    }
-
-    const onStart = (e) => {
-      const card = e.target?.closest('[data-card-hover="true"]')
-      if (!card) return
-      isCard  = true
-      startEl = e.target
-      startX  = e.touches[0].clientX
-      startY  = e.touches[0].clientY
-      e.preventDefault()                           // bloque le scroll
-      card.style.transform = 'translateY(-3px) scale(1.02)'
-      active = card
-    }
-
-    const onMove = (e) => {
-      if (!isCard) return
-      const t = e.touches[0]
-      const el = document.elementFromPoint(t.clientX, t.clientY)
-      const card = el?.closest('[data-card-hover="true"]')
-      if (card !== active) {
-        if (active) active.style.transform = ''
-        if (card) { card.style.transform = 'translateY(-3px) scale(1.02)'; active = card }
-        else active = null
-      }
-    }
-
-    const onEnd = (e) => {
-      if (isCard && startEl) {
-        const t   = e.changedTouches[0]
-        const dx  = t.clientX - startX
-        const dy  = t.clientY - startY
-        const tap = Math.sqrt(dx*dx + dy*dy) < 10
-        if (tap) startEl.click()          // simule le tap (preventDefault l'avait annulé)
-      }
-      reset()
-    }
-
-    document.addEventListener('touchstart',  onStart, { passive: false })
-    document.addEventListener('touchmove',   onMove,  { passive: true })
-    document.addEventListener('touchend',    onEnd)
-    document.addEventListener('touchcancel', reset)
-    return () => {
-      document.removeEventListener('touchstart',  onStart)
-      document.removeEventListener('touchmove',   onMove)
-      document.removeEventListener('touchend',    onEnd)
-      document.removeEventListener('touchcancel', reset)
-    }
-  }, [])
-
   // ── Bloquer le scroll du fond quand un modal est ouvert (mobile) ────────────
   useEffect(() => {
     const anyOpen = showAuth || showSettings || showAdmin || showMarket || showForge ||
@@ -1110,7 +1050,6 @@ export default function App() {
                       return (
                         <div key={i} title={h.card?.name} onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
-                            data-card-hover="true"
                             onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.zIndex = 10; }}
                             onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
                             <div style={{ width: '100%', height: '100%', borderRadius: 8, overflow: 'hidden', border: `2px solid ${c1}`, background: theme.bgSurface, boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
