@@ -79,8 +79,11 @@ export default function Card({ card, count, onClick, selected, small, dimmed, is
       transition:'transform .15s',
       background: hasImage ? 'transparent' : `linear-gradient(145deg,${c1}44,${c2}66)`,
     }}
-      onPointerEnter={e => { if (onClick && !dimmed) e.currentTarget.style.transform = selected ? 'translateY(-6px) scale(1.03)' : 'translateY(-3px) scale(1.02)' }}
-      onPointerLeave={e => { if (onClick && !dimmed) e.currentTarget.style.transform = selected ? 'translateY(-6px) scale(1.03)' : 'none' }}
+      onMouseEnter={e => { if (onClick && !dimmed) e.currentTarget.style.transform = selected ? 'translateY(-6px) scale(1.03)' : 'translateY(-3px) scale(1.02)' }}
+      onMouseLeave={e => { if (onClick && !dimmed) e.currentTarget.style.transform = selected ? 'translateY(-6px) scale(1.03)' : 'none' }}
+      onTouchStart={e => { if (onClick && !dimmed) { e.currentTarget.style.transform = selected ? 'translateY(-6px) scale(1.03)' : 'translateY(-3px) scale(1.02)' } }}
+      onTouchEnd={e => { if (onClick && !dimmed) { const el = e.currentTarget; setTimeout(() => { el.style.transform = selected ? 'translateY(-6px) scale(1.03)' : 'none' }, 200) } }}
+      onTouchCancel={e => { if (onClick && !dimmed) e.currentTarget.style.transform = selected ? 'translateY(-6px) scale(1.03)' : 'none' }}
     >
       {isLeg && !dimmed && !isShiny && (
         <div style={{position:'absolute',inset:0,borderRadius:16,zIndex:2,background:'linear-gradient(135deg,transparent 40%,#ffffff1a 50%,transparent 60%)',backgroundSize:'400px 100%',animation:'shimmer 2.5s linear infinite',pointerEvents:'none'}}/>

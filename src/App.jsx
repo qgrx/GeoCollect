@@ -548,6 +548,17 @@ export default function App() {
   useEffect(() => { document.title = 'Geocoins' }, [])
 
 
+  // ── Bloquer le scroll du fond quand un modal est ouvert (mobile) ────────────
+  useEffect(() => {
+    const anyOpen = showAuth || showSettings || showAdmin || showMarket || showForge ||
+      showLeaderboard || showShop || showTxHistory || showDocs || !!selectedCard ||
+      showScoreDetail || !!seasonPopup || !!activeQuiz
+    document.body.style.overflow = anyOpen ? 'hidden' : ''
+    document.body.style.touchAction = anyOpen ? 'none' : ''
+    return () => { document.body.style.overflow = ''; document.body.style.touchAction = '' }
+  }, [showAuth, showSettings, showAdmin, showMarket, showForge, showLeaderboard,
+      showShop, showTxHistory, showDocs, selectedCard, showScoreDetail, seasonPopup, activeQuiz])
+
   // ── Market actions with toasts ─────────────────────────────────────────────
   function handleBuy(listing, index) {
     const res = gs.handleBuy(listing, index);
@@ -1039,8 +1050,10 @@ export default function App() {
                       return (
                         <div key={i} title={h.card?.name} onClick={() => h.card && setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
-                            onPointerEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.zIndex = 10; }}
-                            onPointerLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.zIndex = 10; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}
+                            onTouchStart={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.zIndex = 10; }}
+                            onTouchEnd={e => { const el = e.currentTarget; setTimeout(() => { el.style.transform = 'scale(1)'; el.style.zIndex = 1; }, 200) }}>
                             <div style={{ width: '100%', height: '100%', borderRadius: 8, overflow: 'hidden', border: `2px solid ${c1}`, background: theme.bgSurface, boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
                               {h.card ? ((h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url)
                                 ? <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
