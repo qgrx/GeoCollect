@@ -41,7 +41,7 @@ import DailyQuests from './features/quests/DailyQuests.jsx';
 import ForgeModal  from './features/forge/ForgeModal.jsx'
 import TresorPage  from './features/treasures/TresorPage.jsx';
 import SeasonPopup  from './components/SeasonPopup.jsx';
-import SupportPage  from './features/support/SupportPage.jsx';
+import DocsLayout   from './features/docs/DocsLayout.jsx';
 
 function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
   const imgRef = useRef(null)
@@ -375,7 +375,14 @@ export default function App() {
   const [marketSellCard,  setMarketSellCard]  = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdmin,       setShowAdmin]       = useState(false);
-  const [showSupport,     setShowSupport]     = useState(() => window.location.pathname === '/support');
+  const docsPath = ['/support', '/faq', '/release-notes']
+  const [showDocs, setShowDocs] = useState(() => docsPath.includes(window.location.pathname))
+  const [docsPage, setDocsPage] = useState(() => {
+    const p = window.location.pathname
+    if (p === '/faq') return 'faq'
+    if (p === '/release-notes') return 'release-notes'
+    return 'support'
+  })
   const [showAuth,        setShowAuth]        = useState(false);
   const [showChoosePseudo, setShowChoosePseudo] = useState(false);
   const [showSettings,    setShowSettings]    = useState(false);
@@ -753,7 +760,7 @@ export default function App() {
   );
 
   // SPA : chemins valides
-  const validPaths = ['/', '/support']
+  const validPaths = ['/', '/support', '/faq', '/release-notes']
   if (!validPaths.includes(window.location.pathname) && !window.location.hash.includes('access_token')) {
     return (
       <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Nunito',sans-serif", color: '#fff', flexDirection: 'column', gap: 16 }}>
@@ -906,6 +913,7 @@ export default function App() {
                 </div>
                 {[
                   { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
+                  { icon: '💬', label: 'Support', fn: () => { setDocsPage('support'); setShowDocs(true); setAvatarMenu(false); window.history.pushState({}, '', '/support') } },
                   ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false) } }] : []),
                   null,
                   { icon: '↩', label: t('btn_logout'), color: '#f85149', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
@@ -1263,7 +1271,7 @@ export default function App() {
       {/* QuizNotif popup disabled */}
       {activeQuiz  && <QuizModal quiz={activeQuiz} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
 
-      {showSupport && <SupportPage onClose={() => { setShowSupport(false); window.history.pushState({}, '', '/') }} />}
+      {showDocs && <DocsLayout initialPage={docsPage} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
 
       {seasonPopup && (
         <SeasonPopup
