@@ -752,8 +752,9 @@ export default function App() {
     />
   );
 
-  // SPA : seul "/" est valide, tout autre chemin affiche 404
-  if (window.location.pathname !== '/' && !window.location.hash.includes('access_token')) {
+  // SPA : chemins valides
+  const validPaths = ['/', '/support']
+  if (!validPaths.includes(window.location.pathname) && !window.location.hash.includes('access_token')) {
     return (
       <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Nunito',sans-serif", color: '#fff', flexDirection: 'column', gap: 16 }}>
         <div style={{ fontSize: 72 }}>🗺️</div>
