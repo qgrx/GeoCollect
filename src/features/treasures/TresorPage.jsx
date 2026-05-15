@@ -33,6 +33,7 @@ const PACK_DEFS = [
 ]
 
 export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksConfig = {} }) {
+  // onOpenShop peut être appelé avec un packId pour pré-sélectionner le pack
   const { t } = useT()
   const { theme } = useTheme()
   const [claiming, setClaiming] = useState(false)
@@ -135,62 +136,57 @@ export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksC
 
         {/* 3 cartes packs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
-          {visiblePacks.map(p => {
-            return (
-              <div key={p.id} onClick={onOpenShop} style={{
-                background: 'linear-gradient(145deg,#1a1a2e,#16213e)',
-                borderRadius: 16,
-                border: p.highlight ? `2px solid ${p.borderColor}` : `1px solid ${p.borderColor}`,
-                boxShadow: p.highlight ? `0 0 24px ${p.glowColor}, 0 4px 20px #0006` : `0 4px 14px #0004`,
-                cursor: 'pointer',
-                overflow: 'hidden',
-                position: 'relative',
-                transition: 'transform .15s, box-shadow .15s',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 0 32px ${p.glowColor}, 0 8px 28px #0007` }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = p.highlight ? `0 0 24px ${p.glowColor}, 0 4px 20px #0006` : `0 4px 14px #0004` }}>
+          {visiblePacks.map(p => (
+            <div key={p.id} style={{
+              background: 'linear-gradient(145deg,#1a1a2e,#16213e)',
+              borderRadius: 16,
+              border: p.highlight ? `2px solid ${p.borderColor}` : `1px solid ${p.borderColor}`,
+              boxShadow: p.highlight ? `0 0 24px ${p.glowColor}, 0 4px 20px #0006` : `0 4px 14px #0004`,
+              overflow: 'hidden',
+              position: 'relative',
+            }}>
+              {/* Bandeau coloré haut */}
+              <div style={{ height: 5, background: p.gradient }} />
 
-                {/* Bandeau coloré haut */}
-                <div style={{ height: 5, background: p.gradient }} />
+              {p.badge && (
+                <div style={{ position: 'absolute', top: 12, right: 12, background: p.gradient, color: '#fff', fontSize: 10, fontWeight: 900, padding: '3px 10px', borderRadius: 20, boxShadow: '0 2px 8px #0004' }}>
+                  {p.badge}
+                </div>
+              )}
 
-                {p.badge && (
-                  <div style={{ position: 'absolute', top: 12, right: 12, background: p.gradient, color: '#fff', fontSize: 10, fontWeight: 900, padding: '3px 10px', borderRadius: 20, boxShadow: '0 2px 8px #0004' }}>
-                    {p.badge}
+              <div style={{ padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                {/* Icône + prix */}
+                <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 64 }}>
+                  <div style={{ fontSize: 34, filter: `drop-shadow(0 4px 10px ${p.glowColor})`, lineHeight: 1 }}>{p.emoji}</div>
+                  <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: '#f9ca24', marginTop: 5, lineHeight: 1 }}>{p.price}</div>
+                  <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>unique</div>
+                </div>
+
+                {/* Nom + contenu */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 900, fontSize: 14, color: '#fff', marginBottom: 6 }}>{p.name}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
+                    {p.contents.map(({ icon, label, note }) => (
+                      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11 }}>{icon}</span>
+                        <span style={{ fontSize: 11, color: '#bbb', fontWeight: 700 }}>{label}</span>
+                        {note && <span style={{ fontSize: 9, color: '#666', fontStyle: 'italic' }}>({note})</span>}
+                      </div>
+                    ))}
                   </div>
-                )}
-
-                <div style={{ padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                  {/* Icône + prix */}
-                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 70 }}>
-                    <div style={{ fontSize: 38, filter: `drop-shadow(0 4px 10px ${p.glowColor})`, lineHeight: 1 }}>{p.emoji}</div>
-                    <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: '#f9ca24', marginTop: 6, lineHeight: 1 }}>{p.price}</div>
-                    <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>paiement unique</div>
-                  </div>
-
-                  {/* Nom + contenu */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', marginBottom: 8 }}>{p.name}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {p.contents.map(({ icon, label, note }) => (
-                        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                          <span style={{ fontSize: 13 }}>{icon}</span>
-                          <span style={{ fontSize: 12, color: '#ccc', fontWeight: 700 }}>{label}</span>
-                          {note && <span style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}>({note})</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Flèche */}
-                  <div style={{ alignSelf: 'center', color: '#555', fontSize: 22, flexShrink: 0 }}>›</div>
+                  {/* Bouton SumUp */}
+                  <button onClick={() => onOpenShop(p.id)}
+                    style={{ background: p.gradient, border: 'none', color: '#fff', padding: '8px 14px', borderRadius: 9, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: 'pointer', boxShadow: `0 3px 12px ${p.glowColor}`, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>💳</span> Payer avec SumUp
+                  </button>
                 </div>
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
 
         <div style={{ fontSize: 9, color: '#444', textAlign: 'center' }}>
-          🔒 Paiement sécurisé via Stripe · Aucune donnée bancaire stockée
+          🔒 Paiement sécurisé via SumUp · CB, Apple Pay, Google Pay · Aucune donnée bancaire stockée
         </div>
       </div>
     </div>

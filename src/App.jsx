@@ -378,6 +378,7 @@ export default function App() {
   const [showChoosePseudo, setShowChoosePseudo] = useState(false);
   const [showSettings,    setShowSettings]    = useState(false);
   const [showShop,        setShowShop]        = useState(false);
+  const [shopPackId,      setShopPackId]       = useState(null);
   const [showTxHistory,   setShowTxHistory]   = useState(false);
   const [filter,          setFilter]          = useState('Tous');
   const [showMissing,     setShowMissing]     = useState(false);
@@ -1162,7 +1163,7 @@ export default function App() {
                 <TresorPage
                   dailyOffer={dailyOffer}
                   onClaim={handleClaimDaily}
-                  onOpenShop={() => setShowShop(true)}
+                  onOpenShop={(packId) => { setShopPackId(packId || null); setShowShop(true) }}
                   shopPacksConfig={gs.limits?.shopPacks || {}}
                 />
               )}
@@ -1423,7 +1424,7 @@ export default function App() {
       })()}
 
       {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
-      {showShop && <ShopModal onClose={() => setShowShop(false)} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} />}
+      {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null) }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} />}
       {showAdmin && (
         <AdminPanel
           cardPool={gs.cardPool} cardTypes={gs.cardTypes} questions={questions} limits={gs.limits}

@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC, rarityLabel } from '../../data/cards.js';
-import { useEffect, useRef } from 'react';
 import { drawPackFromConfig, slotsToContents } from '../../utils/gameUtils.js';
 import { apiCreateCheckout, apiGetPurchase } from '../../services/api.js';
 
@@ -32,7 +31,7 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#f9ca24,#e17055)', defaultName: 'Gros soutien',   defaultPrice: '15,00 €', defaultGold: 300 },
 ]
 
-export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConfig = {} }) {
+export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConfig = {}, initialPackId = null }) {
   const { t } = useT()
   const [step,        setStep]        = useState('shop')    // shop | confirm | processing | awaiting_payment | reveal | done | error
   const [selected,    setSelected]    = useState(null)
@@ -61,6 +60,14 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
       enabled:  cfg.enabled !== false,
     }
   }).filter(p => p.enabled)
+
+  // Pré-sélection si pack demandé depuis TresorPage
+  useEffect(() => {
+    if (initialPackId) {
+      const pack = packs.find(p => p.id === initialPackId)
+      if (pack) { setSelected(pack); setStep('confirm') }
+    }
+  }, [])
 
   // Nettoyage du polling au démontage
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
