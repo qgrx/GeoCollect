@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { apiGetPublicConfig, apiSetConfig } from '../../services/api.js'
+import { apiGetDocsPage, apiSaveDocsPage } from '../../services/api.js'
 
 const DEFAULTS = {
   faq: [
@@ -39,27 +39,22 @@ const DEFAULTS = {
 }
 
 export function useDocsContent(page) {
-  const key = `docs_${page.replace('-', '_')}`
   const [content, setContent] = useState(DEFAULTS[page] || [])
-  const [loading, setLoading]   = useState(true)
-  const [saving,  setSaving]    = useState(false)
-  const [dirty,   setDirty]     = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving,  setSaving]  = useState(false)
+  const [dirty,   setDirty]   = useState(false)
 
   useEffect(() => {
-    apiGetPublicConfig().then(({ data }) => {
-      const stored = data?.config?.[key]
-      if (stored) setContent(stored)
+    apiGetDocsPage(page).then(({ data }) => {
+      if (data?.content) setContent(data.content)
     }).catch(() => {}).finally(() => setLoading(false))
-  }, [key])
+  }, [page])
 
-  function update(newContent) {
-    setContent(newContent)
-    setDirty(true)
-  }
+  function update(newContent) { setContent(newContent); setDirty(true) }
 
   async function save() {
     setSaving(true)
-    await apiSetConfig(key, content).catch(() => {})
+    await apiSaveDocsPage(page, content).catch(() => {})
     setSaving(false)
     setDirty(false)
   }

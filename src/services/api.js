@@ -165,6 +165,10 @@ export const apiUpdateAdminShopPacks = (packs)      => apiFetch('/api/admin/shop
 export const apiCreateCheckout       = (pack_id)    => apiFetch('/api/shop/checkout', { method: 'POST', body: { pack_id } })
 export const apiGetPurchase          = (checkoutId) => apiFetch(`/api/shop/purchase/${checkoutId}`)
 
+// ─── Docs (FAQ / Release Notes / Support) ────────────────────────────────────
+export const apiGetDocsPage   = (page)          => apiFetch(`/api/docs/${page}`)
+export const apiSaveDocsPage  = (page, content) => apiFetch(`/api/docs/${page}`, { method: 'PATCH', body: { content } })
+
 // ─── Saisons ──────────────────────────────────────────────────────────────────
 export const apiGetCurrentSeason      = ()         => apiFetch('/api/seasons/current')
 export const apiMarkSeasonSeen        = ()         => apiFetch('/api/seasons/current/seen', { method: 'POST' })
