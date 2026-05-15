@@ -1163,6 +1163,7 @@ export default function App() {
                   dailyOffer={dailyOffer}
                   onClaim={handleClaimDaily}
                   onOpenShop={() => setShowShop(true)}
+                  shopPacksConfig={gs.limits?.shopPacks || {}}
                 />
               )}
 
@@ -1503,6 +1504,7 @@ export default function App() {
           onUpdateCardInPool={card => gs.setCardPool(prev => prev.map(c => c.id === card.id ? {...c, ...card, desc: card.desc??card.description??''} : c))}
           onStartTour={() => { setShowAdmin(false); setShowTour(true) }}
           onTestAchievement={card => setWelcomeCards(prev => [...prev, card])}
+          onShopPacksSaved={packs => gs.setLimits(prev => ({ ...prev, shopPacks: packs }))}
         />
       )}
 

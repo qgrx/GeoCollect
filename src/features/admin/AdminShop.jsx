@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { INP, SEL, BTN } from '../../utils/styles.js';
-import { apiGetAdminShopPacks, apiUpdateAdminShopPacks } from '../../services/api.js';
+import { apiGetAdminShopPacks, apiUpdateAdminShopPacks, apiGetPublicConfig } from '../../services/api.js';
 
 const RARITIES = ['commun', 'rare', 'épique', 'légendaire']
 const R_LABEL  = { commun: 'Commun', rare: 'Rare', épique: 'Épique', légendaire: 'Légendaire' }
@@ -76,7 +76,7 @@ function SlotRow({ slot, onChange, onRemove }) {
   )
 }
 
-export default function AdminShop({ setMsg }) {
+export default function AdminShop({ setMsg, onSaved }) {
   const [packs, setPacks] = useState(null)
   const [edit,  setEdit]  = useState({})
 
@@ -125,6 +125,11 @@ export default function AdminShop({ setMsg }) {
     if (error) { setMsg('❌ ' + error); return }
     setPacks(JSON.parse(JSON.stringify(edit)))
     setMsg('✅ Packs sauvegardés.')
+    // Notifier le parent pour qu'il mette à jour gs.limits.shopPacks en live
+    if (onSaved) {
+      const { data } = await apiGetPublicConfig()
+      if (data?.config?.shop_packs) onSaved(data.config.shop_packs)
+    }
   }
 
   if (!packs) return <div style={{ color: '#888', fontSize: 13 }}>Chargement…</div>

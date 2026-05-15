@@ -49,7 +49,7 @@ function Tb({id,lbl,tab,setTab,setMsg}){
 }
 
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
-export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool,onTestAchievement}){
+export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool,onTestAchievement,onShopPacksSaved}){
   const {t}=useT();
   const [tab,setTab]=useState("cards");
   const [editQ,setEditQ]=useState(null);
@@ -1808,7 +1808,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
         {tab==="seasons"&&<AdminSeasons setMsg={setMsg}/>}
 
-        {tab==="shop"&&<AdminShop setMsg={setMsg}/>}
+        {tab==="shop"&&<AdminShop setMsg={setMsg} onSaved={onShopPacksSaved}/>}
 
       </div>
     </div>
