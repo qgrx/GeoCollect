@@ -77,9 +77,12 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
     }
 
     setCheckoutPack(null)
-    console.log('[Shop] pay_url:', data.pay_url, 'debug:', data._debug)
 
-    window.open(data.pay_url, '_blank', 'noopener')
+    if (data.pay_url) {
+      // Production : ouvrir la page SumUp
+      window.open(data.pay_url, '_blank', 'noopener')
+    }
+    // Test (bypass) ou production : poll jusqu'à confirmation
     pollForPaid(data.checkout_id, pack)
   }
 
