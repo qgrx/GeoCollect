@@ -47,6 +47,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 4,
       width: '100%',
+      animation: 'fadeUp .4s ease-out both',
     }}>
       <div style={{
         fontSize: 9, color: theme.textMuted, fontWeight: 700,

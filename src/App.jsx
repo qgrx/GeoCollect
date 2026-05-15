@@ -1033,7 +1033,7 @@ export default function App() {
               })()}
 
               {/* Daily quests */}
-              <div data-tour="quests" style={{ animation: 'fadeUp .4s .12s ease-out both' }}>
+              <div data-tour="quests">
                 <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
               </div>
 
