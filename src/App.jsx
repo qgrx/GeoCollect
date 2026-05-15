@@ -956,8 +956,27 @@ export default function App() {
                 </div>
               )}
 
-              {/* User profile mini card */}
-              {(() => {
+              {/* User profile mini card — skeleton pendant le chargement */}
+              {gs.loadingData ? (
+                <div style={{ background: theme.overlay, borderRadius: 14, padding: '14px 16px', border: `1px solid ${theme.border}` }}>
+                  {/* Avatar + pseudo */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(90deg,#ffffff08,#ffffff14,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite', flexShrink: 0 }} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ height: 14, width: '60%', borderRadius: 6, background: 'linear-gradient(90deg,#ffffff08,#ffffff14,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite' }} />
+                      <div style={{ height: 10, width: '35%', borderRadius: 6, background: 'linear-gradient(90deg,#ffffff05,#ffffff0f,#ffffff05)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s .1s infinite' }} />
+                    </div>
+                  </div>
+                  {/* Stats grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
+                    {[0, 0.08, 0.16].map(d => (
+                      <div key={d} style={{ height: 52, borderRadius: 8, background: 'linear-gradient(90deg,#ffffff05,#ffffff0f,#ffffff05)', backgroundSize: '400px 100%', animation: `shimmer 1.4s ${d}s infinite` }} />
+                    ))}
+                  </div>
+                  {/* Progress bar */}
+                  <div style={{ height: 10, borderRadius: 6, background: 'linear-gradient(90deg,#ffffff05,#ffffff0f,#ffffff05)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s .2s infinite' }} />
+                </div>
+              ) : (() => {
                 const rank = getRank(userScore, gs.limits.playerRanks)
                 const { c1, c2 } = rankCC(rank)
                 const sortedRanks = [...(gs.limits.playerRanks || DEFAULT_RANKS)].sort((a, b) => a.min - b.min)
