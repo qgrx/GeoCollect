@@ -1074,7 +1074,7 @@ export default function App() {
 
           {/* ── RIGHT PANEL : collection / market / forge / top ── */}
           {(isWide || !auth.profile || activeTab !== 'home') && (
-            <main key={activeTab} style={{ flex: 1, padding: isWide ? '14px 20px' : '12px 14px', minWidth: 0, animation: 'fadeUp .3s ease-out both' }}>
+            <main style={{ flex: 1, padding: isWide ? '14px 20px' : '12px 14px', minWidth: 0 }}>
 
               {/* New geocoin available — above type filter */}
               {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
