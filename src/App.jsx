@@ -367,6 +367,21 @@ export default function App() {
     }
   }, [auth.profile?.id])
 
+  // ── Écran de chargement initial : minimum 3s + fondu sortant ───────────────
+  const [loaderVisible, setLoaderVisible] = useState(true)
+  const [loaderFading,  setLoaderFading]  = useState(false)
+  const [minTimeDone,   setMinTimeDone]   = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setMinTimeDone(true), 3000)
+    return () => clearTimeout(t)
+  }, [])
+  useEffect(() => {
+    if (!auth.loading && minTimeDone && loaderVisible && !loaderFading) {
+      setLoaderFading(true)
+      setTimeout(() => setLoaderVisible(false), 500)
+    }
+  }, [auth.loading, minTimeDone, loaderVisible, loaderFading])
+
   // ── Local UI state ─────────────────────────────────────────────────────────
   const [quizIsShiny,     setQuizIsShiny]     = useState(false);
   const [showMarket,      setShowMarket]      = useState(false);
@@ -792,8 +807,8 @@ export default function App() {
     )
   }
 
-  if (auth.loading) return (
-    <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24, fontFamily: "'Nunito',sans-serif" }}>
+  if (loaderVisible) return (
+    <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24, fontFamily: "'Nunito',sans-serif", transition: 'opacity .5s ease', opacity: loaderFading ? 0 : 1, pointerEvents: loaderFading ? 'none' : 'auto' }}>
       <style>{`@keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-9px);opacity:1}}`}</style>
       <Logo iconSize={34} textSize={22} />
       <div style={{ display: 'flex', gap: 10 }}>
