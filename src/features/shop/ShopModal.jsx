@@ -3,6 +3,7 @@ import { useT } from '../../i18n/translations.js';
 import { RC, cardCC, rarityLabel } from '../../data/cards.js';
 import { drawPackFromConfig, slotsToContents } from '../../utils/gameUtils.js';
 import { apiCreateCheckout, apiGetPurchase } from '../../services/api.js';
+import Card from '../../components/Card.jsx';
 
 // Définitions statiques des packs — prix/noms surchargés par la config admin
 const DEFAULT_SLOTS = {
@@ -59,9 +60,11 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
   const pollRef     = useRef(null)
   const checkoutRef = useRef(null)
 
-  // Lancer les animations si on démarre directement en mode reveal
+  // Sauvegarder immédiatement dans la collection + animer le reveal
   useEffect(() => {
     if (initialCards?.length) {
+      // Auto-save : plus besoin de cliquer "Ajouter à ma collection"
+      onPurchase?.(initialCards, initialGold)
       initialCards.forEach((_, i) => setTimeout(() => setRevealedIdx(i), i * 320 + 400))
       setTimeout(() => setStep('done'), initialCards.length * 320 + 800)
     }
@@ -265,65 +268,41 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
 
         {/* ── RÉVÉLATION ── */}
         {(step === 'reveal' || step === 'done') && (
-          <div style={{ padding: '22px' }}>
+          <div style={{ padding: '20px 18px' }}>
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 22, color: '#f9ca24' }}>
-                {step === 'done' ? t('shop_done_title') : t('shop_reveal_title')}
+              <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: '#f9ca24' }}>
+                {step === 'done' ? '🎉 Geocoins ajoutés à votre collection !' : t('shop_reveal_title')}
               </div>
-              {step === 'done' && <div style={{ fontSize: 12, color: '#aaa', marginTop: 3 }}>{t('shop_thanks')}</div>}
+              {step === 'done' && selected?.gold > 0 && (
+                <div style={{ fontSize: 12, color: '#f9ca24', marginTop: 4, fontWeight: 800 }}>+ {selected.gold} Golds crédités</div>
+              )}
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 18 }}>
               {drawnCards.map((card, i) => {
                 const revealed = i <= revealedIdx
-                const rc = RC[card.rarity] || RC.commun
-                const { c1, c2 } = cardCC(card.rarity)
+                const { c1 } = cardCC(card.rarity)
                 return (
-                  <div key={i} style={{ width: 90, borderRadius: 14, overflow: 'hidden', background: revealed ? `linear-gradient(145deg,${c1}33,${c2}55)` : 'linear-gradient(145deg,#2a1a4e,#1a0f3a)', border: revealed ? `2px solid ${c1}` : '2px solid #6c5ce744', transition: 'all .3s', transform: revealed ? 'scale(1) translateY(0)' : 'scale(0.85) translateY(8px)', opacity: revealed ? 1 : 0.3, boxShadow: revealed && card.rarity === 'légendaire' ? `0 4px 20px ${c1}99` : 'none' }}>
-                    {revealed ? (
-                      <>
-                        <div style={{ background: `linear-gradient(90deg,${c1},${c2})`, padding: '4px 7px', fontSize: 9, fontWeight: 900, color: '#fff' }}>{card.type.toUpperCase()}</div>
-                        <div style={{ height: 50, background: `linear-gradient(135deg,${c1}22,${c2}44)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 800 }}>{card.name[0]}</div>
-                        <div style={{ textAlign: 'center', fontWeight: 900, fontSize: 10, color: '#1e3045', padding: '2px 4px', background: '#ffffff88' }}>{card.name}</div>
-                        <div style={{ background: rc.bg, color: rc.color, fontSize: 7, fontWeight: 800, textAlign: 'center', padding: '2px 0', letterSpacing: .5 }}>{rarityLabel(card.rarity, t).toUpperCase()}</div>
-                      </>
-                    ) : (
-                      <div style={{ height: 98, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>❓</div>
-                    )}
+                  <div key={i} style={{
+                    transition: 'all .35s cubic-bezier(.34,1.56,.64,1)',
+                    transform: revealed ? 'scale(1) translateY(0)' : 'scale(0.8) translateY(12px)',
+                    opacity: revealed ? 1 : 0,
+                    boxShadow: revealed && card.rarity === 'légendaire' ? `0 0 20px ${c1}99` : 'none',
+                  }}>
+                    {revealed
+                      ? <Card card={card} small />
+                      : <div style={{ width: 65, height: 91, borderRadius: 10, background: 'linear-gradient(145deg,#2a1a4e,#1a0f3a)', border: '2px solid #6c5ce744', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>❓</div>
+                    }
                   </div>
                 )
               })}
             </div>
 
             {step === 'done' && (
-              <div>
-                <div style={{ background: '#ffffff08', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, color: '#888', marginBottom: 8, fontWeight: 700 }}>{t('shop_summary')}</div>
-                  {['légendaire', 'épique', 'rare', 'commun'].map(r => {
-                    const cnt = drawnCards.filter(c => c.rarity === r).length
-                    if (!cnt) return null
-                    const rc = RC[r]; const { c1 } = cardCC(r)
-                    return (
-                      <div key={r} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: c1, flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: rc.color, fontWeight: 800 }}>{rarityLabel(r, t)}</span>
-                        <span style={{ fontSize: 12, color: '#aaa' }}>× {cnt}</span>
-                      </div>
-                    )
-                  })}
-                  {selected?.gold > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: '#f9ca24', fontWeight: 800 }}>Gold</span>
-                      <span style={{ fontSize: 12, color: '#aaa' }}>+ {selected.gold}</span>
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => { onPurchase(drawnCards, selected?.gold || 0); onClose() }}
-                  style={{ width: '100%', background: 'linear-gradient(135deg,#00b894,#00cec9)', border: 'none', color: '#fff', padding: '13px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 16px #00b89444' }}>
-                  Ajouter à ma collection !
-                </button>
-              </div>
+              <button onClick={onClose}
+                style={{ width: '100%', background: 'linear-gradient(135deg,#00b894,#00cec9)', border: 'none', color: '#fff', padding: '13px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 16px #00b89444' }}>
+                Fermer
+              </button>
             )}
           </div>
         )}
