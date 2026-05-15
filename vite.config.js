@@ -1,8 +1,23 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Plugin pour SPA fallback en dev (toutes les routes → index.html)
+function spaFallback() {
+  return {
+    name: 'spa-fallback',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (!req.url.includes('.') && req.url !== '/') {
+          req.url = '/'
+        }
+        next()
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), spaFallback()],
   server: { port: 5173, open: true },
   resolve: {
     dedupe: ['react', 'react-dom'],
