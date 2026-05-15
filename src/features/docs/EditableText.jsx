@@ -22,7 +22,7 @@ export default function EditableText({ value, onChange, editing, tag: Tag = 'spa
       sel?.removeAllRanges()
       sel?.addRange(range)
     }
-  }, [editing]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [editing])
 
   if (!editing) return <Tag style={style}>{value}</Tag>
 
