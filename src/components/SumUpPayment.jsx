@@ -24,8 +24,9 @@ export default function SumUpPayment({ checkoutId, onSuccess, onError, onClose }
       ...mountConfig,
       onResponse: (type, body) => {
         console.log('[SumUp] response:', type, body)
+        const isDemo = window.location.hash.includes('google-pay-demo-mode')
         if (type === 'success') {
-          onSuccess?.()
+          onSuccess?.({ demo: isDemo })
         } else if (type === 'fail' || type === 'error') {
           onError?.(body?.message || 'Paiement non abouti.')
         }

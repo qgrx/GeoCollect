@@ -278,9 +278,17 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
       {sumupCheckout && (
         <SumUpPayment
           checkoutId={sumupCheckout.checkoutId}
-          onSuccess={() => {
+          onSuccess={({ demo } = {}) => {
+            const pack = sumupCheckout.pack
+            const cid  = sumupCheckout.checkoutId
             setSumupCheckout(null)
-            pollForPaid(sumupCheckout.checkoutId, sumupCheckout.pack)
+            if (demo) {
+              // Mode démo Google Pay — cartes fictives sans sauvegarde
+              const cards = drawPackFromConfig(cardPool, pack.slots)
+              onReveal(cards, pack.gold)
+            } else {
+              pollForPaid(cid, pack)
+            }
           }}
           onError={msg => { setSumupCheckout(null); setCheckoutError(msg || 'Paiement non abouti.') }}
           onClose={() => setSumupCheckout(null)}
