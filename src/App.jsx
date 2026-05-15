@@ -808,7 +808,7 @@ export default function App() {
   }
 
   if (loaderVisible) return (
-    <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24, fontFamily: "'Nunito',sans-serif", transition: 'opacity .5s ease', opacity: loaderFading ? 0 : 1, pointerEvents: loaderFading ? 'none' : 'auto' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24, fontFamily: "'Nunito',sans-serif", transition: 'opacity .5s ease', opacity: loaderFading ? 0 : 1, pointerEvents: loaderFading ? 'none' : 'auto' }}>
       <style>{`@keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-9px);opacity:1}}`}</style>
       <Logo iconSize={34} textSize={22} />
       <div style={{ display: 'flex', gap: 10 }}>
