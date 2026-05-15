@@ -33,41 +33,31 @@ const PACK_DEFS = [
 
 export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConfig = {}, initialPackId = null }) {
   const { t } = useT()
-  const [step,        setStep]        = useState('shop')    // shop | confirm | processing | awaiting_payment | reveal | done | error
-  const [selected,    setSelected]    = useState(null)
+
+  // Calcul des packs AVANT les hooks pour pouvoir initialiser l'état directement
+  const packs = PACK_DEFS.map(p => {
+    const cfg   = shopPacksConfig[p.id] || {}
+    const slots = cfg.slots || DEFAULT_SLOTS[p.id]
+    const gold  = cfg.gold  ?? p.defaultGold
+    return {
+      ...p,
+      name:     cfg.name  || p.defaultName,
+      price:    cfg.price || p.defaultPrice,
+      gold, slots,
+      contents: [...slotsToContents(slots), ...(gold > 0 ? [{ icon: '🪙', label: `${gold} Golds` }] : [])],
+      enabled:  cfg.enabled !== false,
+    }
+  }).filter(p => p.enabled)
+
+  const initPack = initialPackId ? (packs.find(p => p.id === initialPackId) || null) : null
+
+  const [step,        setStep]        = useState(initPack ? 'confirm' : 'shop')
+  const [selected,    setSelected]    = useState(initPack)
   const [drawnCards,  setDrawnCards]  = useState([])
   const [revealedIdx, setRevealedIdx] = useState(-1)
   const [errorMsg,    setErrorMsg]    = useState('')
   const pollRef     = useRef(null)
   const checkoutRef = useRef(null)
-
-  // Fusionner config admin avec les définitions statiques
-  const packs = PACK_DEFS.map(p => {
-    const cfg   = shopPacksConfig[p.id] || {}
-    const slots = cfg.slots || DEFAULT_SLOTS[p.id]
-    const gold  = cfg.gold  ?? p.defaultGold
-    const contents = [
-      ...slotsToContents(slots),
-      ...(gold > 0 ? [{ icon: '🪙', label: `${gold} Golds` }] : []),
-    ]
-    return {
-      ...p,
-      name:     cfg.name  || p.defaultName,
-      price:    cfg.price || p.defaultPrice,
-      gold,
-      slots,
-      contents,
-      enabled:  cfg.enabled !== false,
-    }
-  }).filter(p => p.enabled)
-
-  // Pré-sélection si pack demandé depuis TresorPage
-  useEffect(() => {
-    if (initialPackId) {
-      const pack = packs.find(p => p.id === initialPackId)
-      if (pack) { setSelected(pack); setStep('confirm') }
-    }
-  }, [])
 
   // Nettoyage du polling au démontage
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
