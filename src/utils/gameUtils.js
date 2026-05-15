@@ -66,6 +66,48 @@ export function drawPackLarge(cardPool) {
 // Rétrocompatibilité
 export function drawPackCards(cardPool) { return drawPackMedium(cardPool) }
 
+// ─── Tirage depuis une config de slots ───────────────────────────────────────
+// slot: { rarity, qty?, alt?, chance? }
+//   rarity  : rareté principale (garantie si pas de alt)
+//   qty     : nombre de cartes de ce type (défaut 1)
+//   alt     : rareté de repli (si défini → chance % d'obtenir rarity, sinon alt)
+//   chance  : probabilité en % d'obtenir rarity (défaut 50)
+export function drawPackFromConfig(cardPool, slots) {
+  const by  = r  => cardPool.filter(c => c.rarity === r && c.type !== 'Achievement')
+  const pick = arr => arr.length ? arr[Math.floor(Math.random() * arr.length)] : cardPool[Math.floor(Math.random() * cardPool.length)]
+  const cards = []
+  for (const s of (slots || [])) {
+    for (let i = 0; i < (s.qty || 1); i++) {
+      const rarity = s.alt
+        ? (Math.random() * 100 < (s.chance ?? 50) ? s.rarity : s.alt)
+        : s.rarity
+      cards.push(pick(by(rarity)))
+    }
+  }
+  return cards
+}
+
+const R_ICON  = { légendaire: '🟠', épique: '🟣', rare: '🔵', commun: '⚪' }
+const R_LABEL = { légendaire: 'Légendaire', épique: 'Épique', rare: 'Rare', commun: 'Commun' }
+
+// Convertit une liste de slots en libellés affichables
+export function slotsToContents(slots) {
+  return (slots || []).map(s => {
+    const qty = s.qty || 1
+    if (s.alt) {
+      return {
+        icon:  R_ICON[s.alt]  || '⚪',
+        label: `${qty} ${R_LABEL[s.alt] || s.alt} ou supérieure`,
+        note:  `${s.chance ?? 50}% ${R_LABEL[s.rarity] || s.rarity}`,
+      }
+    }
+    return {
+      icon:  R_ICON[s.rarity] || '⚪',
+      label: `${qty} ${R_LABEL[s.rarity] || s.rarity}${qty > 1 ? 's' : ''} garanti${qty > 1 ? 's' : 'e'}`,
+    }
+  })
+}
+
 // Génère une miniature parfaite (100x140) centrée sur le haut de l'image (cover 25%)
 export function createCardThumbnail(file, targetWidth = 100, targetHeight = 140) {
   return new Promise((resolve, reject) => {

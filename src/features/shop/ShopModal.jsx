@@ -1,57 +1,33 @@
 import { useState } from 'react';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC, rarityLabel } from '../../data/cards.js';
-import { drawPackSmall, drawPackMedium, drawPackLarge } from '../../utils/gameUtils.js';
+import { drawPackFromConfig, slotsToContents } from '../../utils/gameUtils.js';
 
 // Définitions statiques des packs — prix/noms surchargés par la config admin
+const DEFAULT_SLOTS = {
+  petit_soutien: [
+    { rarity: 'commun', qty: 2 },
+    { rarity: 'rare',   qty: 2 },
+    { rarity: 'épique', alt: 'rare', chance: 50 },
+  ],
+  soutien: [
+    { rarity: 'commun', qty: 6 },
+    { rarity: 'rare',   qty: 2 },
+    { rarity: 'épique',     alt: 'rare',   chance: 50 },
+    { rarity: 'légendaire', alt: 'épique', chance: 50 },
+  ],
+  gros_soutien: [
+    { rarity: 'commun', qty: 6 },
+    { rarity: 'rare',   qty: 2 },
+    { rarity: 'épique' },
+    { rarity: 'légendaire' },
+  ],
+}
+
 const PACK_DEFS = [
-  {
-    id:       'petit_soutien',
-    emoji:    '🎁',
-    gradient: 'linear-gradient(135deg,#74b9ff,#0984e3)',
-    draw:     drawPackSmall,
-    gold:     50,
-    defaultName:  'Petit soutien',
-    defaultPrice: '3,00 €',
-    contents: [
-      { icon: '⚪', label: '2 Communs',             color: '#78909c' },
-      { icon: '🔵', label: '2 Rares',               color: '#1565c0' },
-      { icon: '🟣', label: '1 Rare ou supérieure',       color: '#6a1b9a', note: '50% de chance d\'Épique' },
-      { icon: '🪙', label: '50 Golds',                 color: '#f9ca24' },
-    ],
-  },
-  {
-    id:       'soutien',
-    emoji:    '💎',
-    gradient: 'linear-gradient(135deg,#a29bfe,#6c5ce7)',
-    draw:     drawPackMedium,
-    gold:     150,
-    defaultName:  'Soutien',
-    defaultPrice: '8,00 €',
-    contents: [
-      { icon: '⚪', label: '6 Communs',                  color: '#78909c' },
-      { icon: '🔵', label: '2 Rares garantis',           color: '#1565c0' },
-      { icon: '🟣', label: '1 Rare ou supérieure',            color: '#6a1b9a', note: '50% de chance d\'Épique' },
-      { icon: '🟠', label: '1 Épique ou supérieure',     color: '#e65100', note: '50% de chance de Légendaire' },
-      { icon: '🪙', label: '150 Golds',                  color: '#f9ca24' },
-    ],
-  },
-  {
-    id:       'gros_soutien',
-    emoji:    '👑',
-    gradient: 'linear-gradient(135deg,#f9ca24,#e17055)',
-    draw:     drawPackLarge,
-    gold:     300,
-    defaultName:  'Gros soutien',
-    defaultPrice: '15,00 €',
-    contents: [
-      { icon: '⚪', label: '6 Communs',            color: '#78909c' },
-      { icon: '🔵', label: '2 Rares garantis',     color: '#1565c0' },
-      { icon: '🟣', label: '1 Épique garantie',    color: '#6a1b9a' },
-      { icon: '🟠', label: '1 Légendaire garantie',color: '#e65100' },
-      { icon: '🪙', label: '300 Golds',            color: '#f9ca24' },
-    ],
-  },
+  { id: 'petit_soutien', emoji: '🎁', gradient: 'linear-gradient(135deg,#74b9ff,#0984e3)', defaultName: 'Petit soutien',  defaultPrice: '3,00 €',  defaultGold: 50  },
+  { id: 'soutien',       emoji: '💎', gradient: 'linear-gradient(135deg,#a29bfe,#6c5ce7)', defaultName: 'Soutien',        defaultPrice: '8,00 €',  defaultGold: 150 },
+  { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#f9ca24,#e17055)', defaultName: 'Gros soutien',   defaultPrice: '15,00 €', defaultGold: 300 },
 ]
 
 export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConfig = {} }) {
@@ -62,13 +38,25 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
   const [revealedIdx, setRevealedIdx] = useState(-1)
   const [payMethod,   setPayMethod]   = useState(null)
 
-  // Fusionner config admin (prix, noms) avec les définitions statiques
-  const packs = PACK_DEFS.map(p => ({
-    ...p,
-    name:  shopPacksConfig[p.id]?.name  || p.defaultName,
-    price: shopPacksConfig[p.id]?.price || p.defaultPrice,
-    enabled: shopPacksConfig[p.id]?.enabled !== false,
-  })).filter(p => p.enabled)
+  // Fusionner config admin avec les définitions statiques
+  const packs = PACK_DEFS.map(p => {
+    const cfg   = shopPacksConfig[p.id] || {}
+    const slots = cfg.slots || DEFAULT_SLOTS[p.id]
+    const gold  = cfg.gold  ?? p.defaultGold
+    const contents = [
+      ...slotsToContents(slots),
+      ...(gold > 0 ? [{ icon: '🪙', label: `${gold} Golds` }] : []),
+    ]
+    return {
+      ...p,
+      name:     cfg.name  || p.defaultName,
+      price:    cfg.price || p.defaultPrice,
+      gold,
+      slots,
+      contents,
+      enabled:  cfg.enabled !== false,
+    }
+  }).filter(p => p.enabled)
 
   function selectPack(pack) { setSelected(pack); setStep('confirm') }
 
@@ -76,7 +64,7 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
 
   function doProcess(method) {
     setTimeout(() => {
-      const cards = selected.draw(cardPool)
+      const cards = drawPackFromConfig(cardPool, selected.slots)
       setDrawnCards(cards)
       setStep('reveal')
       cards.forEach((_, i) => setTimeout(() => setRevealedIdx(i), i * 320 + 400))

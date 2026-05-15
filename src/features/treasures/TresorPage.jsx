@@ -4,59 +4,32 @@ import { useTheme } from '../../ThemeContext.jsx'
 import { cardCC, rarityLabel, cardName, RC } from '../../data/cards.js'
 import { getLang } from '../../i18n/translations.js'
 import { ThumbImage } from '../quiz/QuizComponents.jsx'
+import { slotsToContents } from '../../utils/gameUtils.js'
+
+const DEFAULT_SLOTS = {
+  petit_soutien: [
+    { rarity: 'commun', qty: 2 },
+    { rarity: 'rare',   qty: 2 },
+    { rarity: 'épique', alt: 'rare', chance: 50 },
+  ],
+  soutien: [
+    { rarity: 'commun', qty: 6 },
+    { rarity: 'rare',   qty: 2 },
+    { rarity: 'épique',     alt: 'rare',   chance: 50 },
+    { rarity: 'légendaire', alt: 'épique', chance: 50 },
+  ],
+  gros_soutien: [
+    { rarity: 'commun', qty: 6 },
+    { rarity: 'rare',   qty: 2 },
+    { rarity: 'épique' },
+    { rarity: 'légendaire' },
+  ],
+}
 
 const PACK_DEFS = [
-  {
-    id:           'petit_soutien',
-    emoji:        '🎁',
-    gradient:     'linear-gradient(135deg,#0984e3,#74b9ff)',
-    glowColor:    '#0984e344',
-    borderColor:  '#74b9ff55',
-    defaultName:  'Petit soutien',
-    defaultPrice: '3,00 €',
-    highlight:    false,
-    contents: [
-      { icon: '⚪', label: '2 Communs' },
-      { icon: '🔵', label: '2 Rares' },
-      { icon: '🟣', label: '1 Rare ou supérieure', note: '50% Épique' },
-      { icon: '🪙', label: '50 Golds' },
-    ],
-  },
-  {
-    id:           'soutien',
-    emoji:        '💎',
-    gradient:     'linear-gradient(135deg,#6c5ce7,#a29bfe)',
-    glowColor:    '#6c5ce755',
-    borderColor:  '#a29bfe66',
-    defaultName:  'Soutien',
-    defaultPrice: '8,00 €',
-    highlight:    true,
-    badge:        '⭐ Populaire',
-    contents: [
-      { icon: '⚪', label: '6 Communs' },
-      { icon: '🔵', label: '2 Rares garantis' },
-      { icon: '🟣', label: '1 Rare ou supérieure', note: '50% Épique' },
-      { icon: '🟠', label: '1 Épique ou supérieure', note: '50% Légendaire' },
-      { icon: '🪙', label: '150 Golds' },
-    ],
-  },
-  {
-    id:           'gros_soutien',
-    emoji:        '👑',
-    gradient:     'linear-gradient(135deg,#e17055,#f9ca24)',
-    glowColor:    '#f9ca2444',
-    borderColor:  '#f9ca2466',
-    defaultName:  'Gros soutien',
-    defaultPrice: '15,00 €',
-    highlight:    false,
-    contents: [
-      { icon: '⚪', label: '6 Communs' },
-      { icon: '🔵', label: '2 Rares garantis' },
-      { icon: '🟣', label: '1 Épique garantie' },
-      { icon: '🟠', label: '1 Légendaire garantie' },
-      { icon: '🪙', label: '300 Golds' },
-    ],
-  },
+  { id: 'petit_soutien', emoji: '🎁', gradient: 'linear-gradient(135deg,#0984e3,#74b9ff)', glowColor: '#0984e344', borderColor: '#74b9ff55', defaultName: 'Petit soutien',  defaultPrice: '3,00 €',  defaultGold: 50,  highlight: false },
+  { id: 'soutien',       emoji: '💎', gradient: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', glowColor: '#6c5ce755', borderColor: '#a29bfe66', defaultName: 'Soutien',        defaultPrice: '8,00 €',  defaultGold: 150, highlight: true,  badge: '⭐ Populaire' },
+  { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Gros soutien',   defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
 export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksConfig = {} }) {
@@ -90,7 +63,22 @@ export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksC
   const { c1, c2 } = card ? cardCC(card.rarity) : { c1: '#f9ca24', c2: '#e17055' }
   const rc = card ? RC[card.rarity] : null
 
-  const visiblePacks = PACK_DEFS.filter(p => shopPacksConfig[p.id]?.enabled !== false)
+  const visiblePacks = PACK_DEFS
+    .filter(p => shopPacksConfig[p.id]?.enabled !== false)
+    .map(p => {
+      const cfg   = shopPacksConfig[p.id] || {}
+      const slots = cfg.slots || DEFAULT_SLOTS[p.id]
+      const gold  = cfg.gold  ?? p.defaultGold
+      return {
+        ...p,
+        name:     cfg.name  || p.defaultName,
+        price:    cfg.price || p.defaultPrice,
+        contents: [
+          ...slotsToContents(slots),
+          ...(gold > 0 ? [{ icon: '🪙', label: `${gold} Golds` }] : []),
+        ],
+      }
+    })
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
@@ -148,10 +136,6 @@ export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksC
         {/* 3 cartes packs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
           {visiblePacks.map(p => {
-            const cfg    = shopPacksConfig[p.id] || {}
-            const name   = cfg.name  || p.defaultName
-            const price  = cfg.price || p.defaultPrice
-
             return (
               <div key={p.id} onClick={onOpenShop} style={{
                 background: 'linear-gradient(145deg,#1a1a2e,#16213e)',
@@ -179,13 +163,13 @@ export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksC
                   {/* Icône + prix */}
                   <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 70 }}>
                     <div style={{ fontSize: 38, filter: `drop-shadow(0 4px 10px ${p.glowColor})`, lineHeight: 1 }}>{p.emoji}</div>
-                    <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: '#f9ca24', marginTop: 6, lineHeight: 1 }}>{price}</div>
+                    <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: '#f9ca24', marginTop: 6, lineHeight: 1 }}>{p.price}</div>
                     <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>paiement unique</div>
                   </div>
 
                   {/* Nom + contenu */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', marginBottom: 8 }}>{name}</div>
+                    <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', marginBottom: 8 }}>{p.name}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {p.contents.map(({ icon, label, note }) => (
                         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
