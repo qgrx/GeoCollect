@@ -217,6 +217,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             typeTranslations: cfg.type_translations ?? prev.typeTranslations,
             shinyRate:        cfg.shiny_rate !== undefined ? +cfg.shiny_rate : prev.shinyRate,
             shinyForgeOpen:   cfg.shiny_forge_open !== undefined ? (cfg.shiny_forge_open === 'true' || cfg.shiny_forge_open === true) : prev.shinyForgeOpen,
+            shopPacks:        cfg.shop_packs ?? prev.shopPacks,
           }))
         }
 
