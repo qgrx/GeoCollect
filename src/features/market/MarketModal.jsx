@@ -4,6 +4,7 @@ import { useTheme } from '../../ThemeContext.jsx'
 import { RC, cardCC, rarityLabel } from '../../data/cards.js'
 import Card from '../../components/Card.jsx'
 import { TxHistoryModal } from '../achievements/NotifComponents.jsx'
+import { ThumbImage } from '../quiz/QuizComponents.jsx'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
 
 function PanelWrapper({ inline, onClose, theme, children }) {
@@ -146,7 +147,12 @@ export default function MarketModal({
                   return (
                     <div key={card.id} style={{ background: theme.overlay,border: isO ? `1.5px solid #f9ca2455` : `1.5px solid ${theme.border}`,borderRadius: 13,overflow: 'hidden' }}>
                       <div onClick={() => setExp(isO ? null : card.id)} style={{ display: 'flex',alignItems: 'center',gap: 11,padding: '9px 13px',cursor: 'pointer' }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 9, background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0 }}>{card.name[0]}</div>
+                        <div style={{ width: 34, height: 34, borderRadius: 9, overflow: 'hidden', background: `linear-gradient(135deg,${c1},${c2})`, flexShrink: 0, border: `1.5px solid ${c1}66` }}>
+                          {(card.image_url_thumb || card.image_url)
+                            ? <ThumbImage src={card.image_url_thumb || card.image_url} alt={card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: '#fff' }}>{card.name[0]}</div>
+                          }
+                        </div>
                         <div style={{ flex: 1,minWidth: 0 }}>
                           <div style={{ display: 'flex',alignItems: 'center',gap: 7,flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 900,fontSize: 14,color: theme.textPrimary }}>{card.name}</span>
@@ -358,9 +364,12 @@ export default function MarketModal({
                       const isTemp = String(l.id).startsWith('temp_')
                       return (
                         <div key={l.id || realIdx} style={{ display: 'flex',alignItems: 'center',gap: 11,background: isConfirming ? '#e74c3c12' : (isTemp ? '#00b89415' : theme.overlay),border: `1px solid ${isConfirming ? '#e74c3c44' : (isTemp ? '#00b89466' : theme.border)}`,borderRadius: 12,padding: '10px 14px',transition: 'all .3s ease', animation: isTemp ? 'highlightNewListing .4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both' : 'none' }}>
-                          {/* Indicateur rareté */}
-                          <div style={{ width: 38,height: 38,borderRadius: 10,background: `linear-gradient(135deg,${c1},${c2})`,display: 'flex',alignItems: 'center',justifyContent: 'center',fontSize: 12,fontWeight: 900,color: '#fff',flexShrink: 0 }}>
-                            {l.card.name[0]}
+                          {/* Vignette geocoin */}
+                          <div style={{ width: 38, height: 38, borderRadius: 10, overflow: 'hidden', background: `linear-gradient(135deg,${c1},${c2})`, flexShrink: 0, border: `1.5px solid ${c1}66` }}>
+                            {(l.card.image_url_thumb || l.card.image_url)
+                              ? <ThumbImage src={l.card.image_url_thumb || l.card.image_url} alt={l.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff' }}>{l.card.name[0]}</div>
+                            }
                           </div>
                           {/* Infos */}
                           <div style={{ flex: 1,minWidth: 0 }}>
