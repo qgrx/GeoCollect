@@ -6,6 +6,7 @@ import { getLang } from '../../i18n/translations.js'
 import { ThumbImage } from '../quiz/QuizComponents.jsx'
 import { slotsToContents, drawPackFromConfig } from '../../utils/gameUtils.js'
 import { apiCreateCheckout, apiGetPurchase } from '../../services/api.js'
+import SumUpPayment from '../../components/SumUpPayment.jsx'
 
 const DEFAULT_SLOTS = {
   petit_soutien: [
@@ -39,8 +40,9 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
   const [claiming, setClaiming]       = useState(false)
   const [localClaimed, setLocalClaimed] = useState(false)
   const [countdown, setCountdown]     = useState('--:--:--')
-  const [checkoutPack, setCheckoutPack] = useState(null)   // packId en cours de paiement
-  const [checkoutError, setCheckoutError] = useState('')
+  const [checkoutPack,   setCheckoutPack]   = useState(null)
+  const [checkoutError,  setCheckoutError]  = useState('')
+  const [sumupCheckout,  setSumupCheckout]  = useState(null) // { checkoutId, pack }
   const pollRef = useRef(null)
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
@@ -78,12 +80,13 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
 
     setCheckoutPack(null)
 
-    if (data.pay_url) {
-      // Production : ouvrir la page SumUp
-      window.open(data.pay_url, '_blank', 'noopener')
+    if (data.test_mode) {
+      // Bypass test : poll direct, pas de widget
+      pollForPaid(data.checkout_id, pack)
+    } else {
+      // Production : widget SumUp embarqué
+      setSumupCheckout({ checkoutId: data.checkout_id, pack })
     }
-    // Test (bypass) ou production : poll jusqu'à confirmation
-    pollForPaid(data.checkout_id, pack)
   }
 
   function pollForPaid(checkoutId, pack) {
@@ -248,6 +251,19 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           🔒 Paiement sécurisé via SumUp · CB, Apple Pay, Google Pay · Aucune donnée bancaire stockée
         </div>
       </div>
+
+      {/* Widget SumUp embarqué (production) */}
+      {sumupCheckout && (
+        <SumUpPayment
+          checkoutId={sumupCheckout.checkoutId}
+          onSuccess={() => {
+            setSumupCheckout(null)
+            pollForPaid(sumupCheckout.checkoutId, sumupCheckout.pack)
+          }}
+          onError={msg => { setSumupCheckout(null); setCheckoutError(msg || 'Paiement non abouti.') }}
+          onClose={() => setSumupCheckout(null)}
+        />
+      )}
     </div>
   )
 }
