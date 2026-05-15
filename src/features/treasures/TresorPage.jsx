@@ -76,12 +76,6 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
       return
     }
 
-    // Mode test sans URL → confirmer directement
-    if (data.test_mode && !data.pay_url) {
-      pollForPaid(data.checkout_id, pack)
-      return
-    }
-
     window.open(data.pay_url, '_blank', 'noopener')
     pollForPaid(data.checkout_id, pack)
   }
