@@ -45,7 +45,7 @@ export default function SumUpPayment({ checkoutId, onSuccess, onError, onClose }
     })
 
     return () => {
-      try { widgetRef.current?.unmount?.() } catch {}
+      try { widgetRef.current?.unmount?.() } catch (_) { /* widget déjà démonté */ }
       widgetRef.current = null
     }
   }, [checkoutId])
