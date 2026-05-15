@@ -79,13 +79,15 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
       ))}
 
       {editMode && (
-        <button onClick={() => { if (window.confirm('Restaurer le contenu par défaut ?')) reset() }} style={{ background: '#ffffff10', border: '1px solid #ffffff22', color: mutedColor, padding: '10px 14px', borderRadius: 9, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, marginTop: 8, marginRight: 8 }}>
-        ↺ Restaurer défauts
-      </button>
-      <button onClick={save} disabled={!dirty || saving}
-          style={{ background: dirty ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18', border: 'none', color: dirty ? '#1e3045' : '#666', padding: '10px 22px', borderRadius: 9, cursor: dirty ? 'pointer' : 'default', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, marginTop: 8 }}>
-          {saving ? 'Enregistrement…' : dirty ? '💾 Enregistrer les Release Notes' : '✓ Enregistré'}
-        </button>
+        <>
+          <button onClick={() => { if (window.confirm('Restaurer le contenu par défaut ?')) reset() }} style={{ background: '#ffffff10', border: '1px solid #ffffff22', color: mutedColor, padding: '10px 14px', borderRadius: 9, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, marginTop: 8, marginRight: 8 }}>
+            ↺ Restaurer défauts
+          </button>
+          <button onClick={save} disabled={!dirty || saving}
+            style={{ background: dirty ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18', border: 'none', color: dirty ? '#1e3045' : '#666', padding: '10px 22px', borderRadius: 9, cursor: dirty ? 'pointer' : 'default', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, marginTop: 8 }}>
+            {saving ? 'Enregistrement…' : dirty ? '💾 Enregistrer les Release Notes' : '✓ Enregistré'}
+          </button>
+        </>
       )}
     </div>
   )
