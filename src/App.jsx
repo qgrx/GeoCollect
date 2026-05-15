@@ -41,6 +41,7 @@ import DailyQuests from './features/quests/DailyQuests.jsx';
 import ForgeModal  from './features/forge/ForgeModal.jsx'
 import TresorPage  from './features/treasures/TresorPage.jsx';
 import SeasonPopup  from './components/SeasonPopup.jsx';
+import SupportPage  from './features/support/SupportPage.jsx';
 
 function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
   const imgRef = useRef(null)
@@ -374,6 +375,7 @@ export default function App() {
   const [marketSellCard,  setMarketSellCard]  = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdmin,       setShowAdmin]       = useState(false);
+  const [showSupport,     setShowSupport]     = useState(() => window.location.pathname === '/support');
   const [showAuth,        setShowAuth]        = useState(false);
   const [showChoosePseudo, setShowChoosePseudo] = useState(false);
   const [showSettings,    setShowSettings]    = useState(false);
@@ -1259,6 +1261,8 @@ export default function App() {
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
       {activeQuiz  && <QuizModal quiz={activeQuiz} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
+
+      {showSupport && <SupportPage onClose={() => { setShowSupport(false); window.history.pushState({}, '', '/') }} />}
 
       {seasonPopup && (
         <SeasonPopup
