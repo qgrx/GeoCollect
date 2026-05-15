@@ -562,7 +562,6 @@ export default function App() {
       const card = e.target?.closest('[data-card-hover="true"]')
       if (!card) return
       isCardTouch = true
-      e.preventDefault()                          // empêche le scroll uniquement sur les cartes
       card.style.transform = 'translateY(-3px) scale(1.02)'
       active = card
     }
@@ -579,7 +578,7 @@ export default function App() {
       }
     }
 
-    document.addEventListener('touchstart',  onStart, { passive: false })
+    document.addEventListener('touchstart',  onStart, { passive: true })
     document.addEventListener('touchmove',   onMove,  { passive: true })
     document.addEventListener('touchend',    reset)
     document.addEventListener('touchcancel', reset)
