@@ -21,7 +21,7 @@ function EmailImage({ email, color }) {
 }
 
 export default function SupportContent({ theme, mode, textColor, mutedColor, editMode }) {
-  const { content: sections, update, save, saving, dirty } = useDocsContent('support')
+  const { content: sections, update, save, reset, saving, dirty } = useDocsContent('support')
   const cardBg    = mode === 'light' ? '#ffffff' : '#1a2744'
   const borderCol = mode === 'light' ? '#e0e8f0' : '#ffffff18'
 
@@ -75,6 +75,7 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
           <button onClick={addSection} style={{ background: '#ffffff15', border: '1px dashed #ffffff44', color: mutedColor, padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12 }}>
             + Ajouter une section
           </button>
+          <button onClick={() => { if (window.confirm('Restaurer le contenu par défaut ?')) reset() }} style={{ background: '#ffffff10', border: '1px solid #ffffff22', color: mutedColor, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11 }}>↺ Défauts</button>
           <button onClick={save} disabled={!dirty || saving}
             style={{ background: dirty ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18', border: 'none', color: dirty ? '#1e3045' : '#666', padding: '8px 18px', borderRadius: 8, cursor: dirty ? 'pointer' : 'default', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12 }}>
             {saving ? 'Enregistrement…' : dirty ? '💾 Enregistrer' : '✓ Enregistré'}

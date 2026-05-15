@@ -51,6 +51,8 @@ export function useDocsContent(page) {
 
   function update(newContent) { setContent(newContent); setDirty(true) }
 
+  function reset() { setContent(DEFAULTS[page] || []); setDirty(true) }
+
   async function save() {
     setSaving(true)
     await apiSaveDocsPage(page, content).catch(() => {})
@@ -58,5 +60,5 @@ export function useDocsContent(page) {
     setDirty(false)
   }
 
-  return { content, update, save, loading, saving, dirty }
+  return { content, update, save, reset, loading, saving, dirty }
 }
