@@ -76,25 +76,11 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
       return
     }
 
-    if (!window.SumUpCard) {
-      setCheckoutError('SDK SumUp non disponible — rechargez la page.')
-      setCheckoutPack(null)
-      return
-    }
-
     setCheckoutPack(null)
+    console.log('[Shop] pay_url:', data.pay_url, 'debug:', data._debug)
 
-    // Monter le widget SumUp (popup intégré, pas de redirect)
-    window.SumUpCard.mount({
-      checkoutId: data.checkout_id,
-      onResponse: (type, body) => {
-        if (type === 'sent' && body?.status === 'PAID') {
-          pollForPaid(data.checkout_id, pack)
-        } else if (type === 'error' || (type === 'sent' && body?.status !== 'PAID')) {
-          setCheckoutError('Paiement non abouti.')
-        }
-      },
-    })
+    window.open(data.pay_url, '_blank', 'noopener')
+    pollForPaid(data.checkout_id, pack)
   }
 
   function pollForPaid(checkoutId, pack) {
