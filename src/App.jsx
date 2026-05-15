@@ -1167,6 +1167,8 @@ export default function App() {
                   onReveal={(cards, gold) => { setRevealCards(cards); setRevealGold(gold || 0); setShowShop(true) }}
                   cardPool={gs.cardPool}
                   shopPacksConfig={gs.limits?.shopPacks || {}}
+                  shopTestMode={!!gs.limits?.shopTestMode}
+                  isAdmin={auth.profile?.role === 'admin'}
                   packsLoading={gs.loadingData}
                 />
               )}
@@ -1509,6 +1511,7 @@ export default function App() {
           onStartTour={() => { setShowAdmin(false); setShowTour(true) }}
           onTestAchievement={card => setWelcomeCards(prev => [...prev, card])}
           onShopPacksSaved={packs => gs.setLimits(prev => ({ ...prev, shopPacks: packs }))}
+          onShopTestModeChange={val => gs.setLimits(prev => ({ ...prev, shopTestMode: val }))}
         />
       )}
 

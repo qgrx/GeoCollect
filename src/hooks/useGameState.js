@@ -92,6 +92,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           shinyMultiplier:         cfg.shiny_multiplier           !== undefined ? +cfg.shiny_multiplier           : prev.shinyMultiplier,
           shinyForgeCostByRarity:  cfg.shiny_forge_cost_by_rarity ?? prev.shinyForgeCostByRarity,
           shopPacks:               cfg.shop_packs                 ?? prev.shopPacks,
+          shopTestMode:            cfg.shop_test_mode !== undefined ? (cfg.shop_test_mode === true || cfg.shop_test_mode === 'true') : prev.shopTestMode,
         }))
       }
     })
@@ -218,6 +219,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             shinyRate:        cfg.shiny_rate !== undefined ? +cfg.shiny_rate : prev.shinyRate,
             shinyForgeOpen:   cfg.shiny_forge_open !== undefined ? (cfg.shiny_forge_open === 'true' || cfg.shiny_forge_open === true) : prev.shinyForgeOpen,
             shopPacks:        cfg.shop_packs ?? prev.shopPacks,
+            shopTestMode:     cfg.shop_test_mode !== undefined ? (cfg.shop_test_mode === true || cfg.shop_test_mode === 'true') : prev.shopTestMode,
           }))
         }
 

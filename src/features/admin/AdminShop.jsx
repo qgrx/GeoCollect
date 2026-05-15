@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { INP, SEL, BTN } from '../../utils/styles.js';
-import { apiGetAdminShopPacks, apiUpdateAdminShopPacks, apiGetPublicConfig } from '../../services/api.js';
+import { apiGetAdminShopPacks, apiUpdateAdminShopPacks, apiGetPublicConfig, apiSetConfig } from '../../services/api.js';
 
 const RARITIES = ['commun', 'rare', 'épique', 'légendaire']
 const R_LABEL  = { commun: 'Commun', rare: 'Rare', épique: 'Épique', légendaire: 'Légendaire' }
@@ -76,21 +76,25 @@ function SlotRow({ slot, onChange, onRemove }) {
   )
 }
 
-export default function AdminShop({ setMsg, onSaved }) {
-  const [packs, setPacks] = useState(null)
-  const [edit,  setEdit]  = useState({})
+export default function AdminShop({ setMsg, onSaved, onShopTestModeChange }) {
+  const [packs,        setPacks]        = useState(null)
+  const [edit,         setEdit]         = useState({})
+  const [shopTestMode, setShopTestMode] = useState(false)
 
   useEffect(() => {
     apiGetAdminShopPacks().then(({ data, error }) => {
       if (error) { setMsg('❌ ' + error); return }
       const p = data?.packs || {}
-      // Injecter les slots par défaut si absents
       const merged = {}
       for (const id of Object.keys(PACK_META)) {
         merged[id] = { ...p[id], slots: p[id]?.slots || DEFAULT_SLOTS[id] }
       }
       setPacks(merged)
       setEdit(JSON.parse(JSON.stringify(merged)))
+    })
+    apiGetPublicConfig().then(({ data }) => {
+      const v = data?.config?.shop_test_mode
+      setShopTestMode(v === true || v === 'true')
     })
   }, [])
 
@@ -120,6 +124,15 @@ export default function AdminShop({ setMsg, onSaved }) {
     })
   }
 
+  async function toggleTestMode() {
+    const next = !shopTestMode
+    const { error } = await apiSetConfig('shop_test_mode', next)
+    if (error) { setMsg('❌ ' + error); return }
+    setShopTestMode(next)
+    onShopTestModeChange?.(next)
+    setMsg(next ? '🧪 Mode test activé — seuls les admins peuvent acheter.' : '✅ Boutique ouverte à tous.')
+  }
+
   async function save() {
     const { error } = await apiUpdateAdminShopPacks(edit)
     if (error) { setMsg('❌ ' + error); return }
@@ -137,6 +150,23 @@ export default function AdminShop({ setMsg, onSaved }) {
   return (
     <div>
       <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', marginBottom: 16 }}>🛍️ Packs Boutique</div>
+
+      {/* Mode test boutique */}
+      <div style={{ background: shopTestMode ? '#f9ca2415' : '#1a2744', border: `1px solid ${shopTestMode ? '#f9ca2455' : '#ffffff22'}`, borderRadius: 10, padding: '12px 14px', marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <div style={{ fontWeight: 800, color: shopTestMode ? '#f9ca24' : '#fff', fontSize: 13 }}>
+            {shopTestMode ? '🧪 Mode test activé' : '🛒 Boutique ouverte'}
+          </div>
+          <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+            {shopTestMode
+              ? 'Seuls les admins peuvent acheter (bypass). Les autres voient "Rupture de stock".'
+              : 'Tous les joueurs peuvent acheter via SumUp.'}
+          </div>
+        </div>
+        <button onClick={toggleTestMode} style={{ ...BTN(shopTestMode ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18'), padding: '8px 16px', borderRadius: 9, fontSize: 12, fontWeight: 900, flexShrink: 0, color: shopTestMode ? '#1e3045' : '#fff' }}>
+          {shopTestMode ? 'Désactiver le test' : 'Activer le test'}
+        </button>
+      </div>
 
       {/* Info SumUp */}
       <div style={{ background: '#1a2744', border: '1px solid #4a9eff44', borderRadius: 10, padding: '12px 14px', marginBottom: 18 }}>

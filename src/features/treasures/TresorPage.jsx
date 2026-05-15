@@ -34,7 +34,7 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Gros soutien',   defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
-export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = {}, packsLoading = false }) {
+export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = {}, packsLoading = false, shopTestMode = false, isAdmin = false }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [claiming, setClaiming]       = useState(false)
@@ -232,14 +232,20 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
                       </div>
                     ))}
                   </div>
-                  {/* Bouton SumUp */}
+                  {/* Bouton SumUp ou Rupture de stock */}
                   {checkoutError && checkoutPack === null && (
                     <div style={{ fontSize: 10, color: '#e74c3c', marginBottom: 4 }}>{checkoutError}</div>
                   )}
-                  <button onClick={() => handleCheckout(p)} disabled={!!checkoutPack}
-                    style={{ background: checkoutPack === p.id ? '#ffffff22' : p.gradient, border: 'none', color: checkoutPack === p.id ? '#aaa' : '#fff', padding: '8px 14px', borderRadius: 9, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: checkoutPack ? 'not-allowed' : 'pointer', boxShadow: checkoutPack === p.id ? 'none' : `0 3px 12px ${p.glowColor}`, display: 'flex', alignItems: 'center', gap: 6, transition: 'all .3s' }}>
-                    {checkoutPack === p.id ? <><span>⏳</span> Connexion à SumUp…</> : <><span>💳</span> Payer avec SumUp</>}
-                  </button>
+                  {shopTestMode && !isAdmin ? (
+                    <div style={{ background: '#ffffff10', border: '1px solid #ffffff18', color: '#888', padding: '8px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700 }}>
+                      🚫 Rupture de stock
+                    </div>
+                  ) : (
+                    <button onClick={() => handleCheckout(p)} disabled={!!checkoutPack}
+                      style={{ background: checkoutPack === p.id ? '#ffffff22' : p.gradient, border: 'none', color: checkoutPack === p.id ? '#aaa' : '#fff', padding: '8px 14px', borderRadius: 9, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: checkoutPack ? 'not-allowed' : 'pointer', boxShadow: checkoutPack === p.id ? 'none' : `0 3px 12px ${p.glowColor}`, display: 'flex', alignItems: 'center', gap: 6, transition: 'all .3s' }}>
+                      {checkoutPack === p.id ? <><span>⏳</span> Connexion à SumUp…</> : <><span>💳</span> Payer avec SumUp</>}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
