@@ -431,7 +431,6 @@ export default function App() {
   const [toast,           setToast]           = useState(null);
   const [socketOnline,    setSocketOnline]    = useState(true);
   const [goldFlash,       setGoldFlash]       = useState(null);
-  const [showScrollTop,   setShowScrollTop]   = useState(false);
 
   const [questions, setQuestions] = useState([]);
 
@@ -682,14 +681,6 @@ export default function App() {
   }, [selectedCard, activeTab, showSettings, showAuth,
       showTxHistory, showAdmin, showShop, menuOpen, pendingQuiz, activeQuiz])
 
-  // ── Scroll to Top ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 400)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   // Bannière déblocage marché — seulement pour les non-connectés au premier doublon
   const hasDuplicate = useMemo(
@@ -1559,18 +1550,6 @@ export default function App() {
         />
       )}
 
-      {/* ── Scroll to Top Button ── */}
-      {showScrollTop && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          style={{ position: 'fixed', bottom: 28, left: 28, zIndex: 2500, background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, border: '1.5px solid #6c5ce788', color: '#a29bfe', width: 44, height: 44, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 8px 32px #0008', transition: 'all .2s ease', fontFamily: "'Nunito',sans-serif" }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 40px #000c'; e.currentTarget.style.borderColor = '#a29bfe'; e.currentTarget.style.color = '#fff' }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 8px 32px #0008'; e.currentTarget.style.borderColor = '#6c5ce788'; e.currentTarget.style.color = '#a29bfe' }}
-          title="Remonter en haut"
-        >
-          ↑
-        </button>
-      )}
     </div>
   );
 }
