@@ -793,30 +793,13 @@ export default function App() {
   }
 
   if (auth.loading) return (
-    <div style={{ minHeight: '100vh', background: '#0f0f1e', fontFamily: "'Nunito',sans-serif", color: '#fff' }}>
-      <style>{`@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}} @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.9}}`}</style>
-      {/* Rainbow bar */}
-      <div style={{ background: 'linear-gradient(90deg,#74c7ec,#1565c0,#6a1b9a,#e65100,#ffd54f)', height: 4 }}/>
-      {/* Header skeleton */}
-      <div style={{ padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #ffffff0a' }}>
-        <div style={{ width: 120, height: 28, borderRadius: 8, background: 'linear-gradient(90deg,#ffffff0a,#ffffff18,#ffffff0a)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite' }}/>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {[80, 70, 60, 50].map(w => <div key={w} style={{ width: w, height: 30, borderRadius: 50, background: 'linear-gradient(90deg,#ffffff0a,#ffffff18,#ffffff0a)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite' }}/>)}
-        </div>
-      </div>
-      {/* Countdown skeleton */}
-      <div style={{ padding: '12px 18px' }}>
-        <div style={{ height: 58, borderRadius: 13, background: 'linear-gradient(90deg,#ffffff05,#ffffff0f,#ffffff05)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite' }}/>
-      </div>
-      {/* Cards skeleton */}
-      <div style={{ padding: '12px 18px', display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        {Array.from({ length: 12 }, (_, i) => (
-          <div key={i} style={{ width: 100, height: 140, borderRadius: 16, background: 'linear-gradient(90deg,#ffffff05,#ffffff0f,#ffffff05)', backgroundSize: '400px 100%', animation: `shimmer 1.4s ${i * 0.08}s infinite` }}/>
+    <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24, fontFamily: "'Nunito',sans-serif" }}>
+      <style>{`@keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-9px);opacity:1}}`}</style>
+      <Logo iconSize={34} textSize={22} />
+      <div style={{ display: 'flex', gap: 10 }}>
+        {[0, 0.2, 0.4].map(d => (
+          <div key={d} style={{ width: 9, height: 9, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />
         ))}
-      </div>
-      {/* Logo centré */}
-      <div style={{ position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)', animation: 'pulse 1.8s infinite' }}>
-        <Logo iconSize={28} textSize={17} dim />
       </div>
     </div>
   );
