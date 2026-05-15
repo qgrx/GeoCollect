@@ -832,7 +832,9 @@ export default function App() {
         @keyframes shimmer   { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
         @keyframes dotBounce { 0%,100%{transform:translateY(0);opacity:.4} 50%{transform:translateY(-8px);opacity:1} }
         @keyframes slideFromRight { from{transform:translateX(100%)} to{transform:translateX(0)} }
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
+        @keyframes fadeUp   { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeLeft { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
       `}</style>
 
       {/* ACCENT BAR */}
@@ -947,7 +949,7 @@ export default function App() {
           {/* LEFT SIDEBAR (desktop) / HOME TAB (mobile) */}
           {/* ── LEFT SIDEBAR content ── */}
           {(isWide || activeTab === 'home') && auth.profile && (
-            <aside style={{ width: isWide ? 288 : '100%', flexShrink: 0, padding: '14px 16px', borderRight: isWide ? `1px solid ${theme.border}` : 'none', display: 'flex', flexDirection: 'column', gap: 14, ...(isWide ? { position: 'sticky', top: 53, maxHeight: 'calc(100vh - 53px)', overflowY: 'auto' } : {}) }}>
+            <aside style={{ width: isWide ? 288 : '100%', flexShrink: 0, padding: '14px 16px', borderRight: isWide ? `1px solid ${theme.border}` : 'none', display: 'flex', flexDirection: 'column', gap: 14, animation: 'fadeLeft .35s ease-out both', ...(isWide ? { position: 'sticky', top: 53, maxHeight: 'calc(100vh - 53px)', overflowY: 'auto' } : {}) }}>
 
               {/* Countdown hero (mobile only — en haut) */}
               {!isWide && !activeQuiz && auth.profile?.status !== 'banni' && (
@@ -985,7 +987,7 @@ export default function App() {
                 const pct = nextRank ? Math.round(((userScore - prevMin) / (nextRank.min - prevMin)) * 100) : 100
                 const uniqueCards = Object.values(gs.collection).filter(n => n > 0).length
                 return (
-                  <div data-tour="profile" style={{ background: theme.overlay, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden' }}>
+                  <div data-tour="profile" style={{ background: theme.overlay, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden', animation: 'fadeUp .4s .05s ease-out both' }}>
                     <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                       <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 14px ${c1}44`, border: `2px solid ${c1}44` }}>
@@ -1031,13 +1033,13 @@ export default function App() {
               })()}
 
               {/* Daily quests */}
-              <div data-tour="quests">
+              <div data-tour="quests" style={{ animation: 'fadeUp .4s .12s ease-out both' }}>
                 <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
               </div>
 
               {/* Last 8 geocoins — 4×2 */}
               {history.filter(h => !h.skipped).length > 0 && (
-                <div>
+                <div style={{ animation: 'fadeUp .4s .2s ease-out both' }}>
                   <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: theme.textMuted, marginBottom: 4 }}>{t('last_cards')}</div>
                   <div style={{ background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '8px' }}>
                   <div style={isWide
@@ -1072,11 +1074,11 @@ export default function App() {
 
           {/* ── RIGHT PANEL : collection / market / forge / top ── */}
           {(isWide || !auth.profile || activeTab !== 'home') && (
-            <main style={{ flex: 1, padding: isWide ? '14px 20px' : '12px 14px', minWidth: 0 }}>
+            <main key={activeTab} style={{ flex: 1, padding: isWide ? '14px 20px' : '12px 14px', minWidth: 0, animation: 'fadeUp .3s ease-out both' }}>
 
               {/* New geocoin available — above type filter */}
               {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
-                <div data-tour="countdown" style={{ marginBottom: 14 }}>
+                <div data-tour="countdown" style={{ marginBottom: 14, animation: 'fadeUp .35s ease-out both' }}>
                   <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={!!pendingQuiz && !pendingQuiz?.winner} lostTo={pendingQuiz?.winner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
                 </div>
               )}
