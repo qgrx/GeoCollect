@@ -271,8 +271,13 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
           <div style={{ padding: '20px 18px' }}>
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
               {step === 'done' && initialPaymentLabel ? (
-                <div style={{ fontSize: 13, color: '#00b894', fontWeight: 800, marginBottom: 6 }}>
-                  ✅ Votre paiement {initialPaymentLabel} a été effectué avec succès.
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, color: '#00b894', fontWeight: 800, marginBottom: 3 }}>
+                    ✅ Votre paiement {initialPaymentLabel} a été effectué avec succès.
+                  </div>
+                  <div style={{ fontSize: 11, color: '#888' }}>
+                    📧 Votre reçu a été envoyé par mail.
+                  </div>
                 </div>
               ) : null}
               <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: '#f9ca24' }}>
