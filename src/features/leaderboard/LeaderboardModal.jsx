@@ -56,11 +56,14 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
+      <style>{`@keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-8px);opacity:1}}`}</style>
       <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: showCol ? 'min(96vw,860px)' : 'min(96vw,360px)', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif", transition: 'width .3s' }}>
         <button onClick={onBack} style={{ background: theme.overlay, border: `1px solid ${theme.border}`, color: theme.textPrimary, width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer', marginBottom: 16 }}>←</button>
 
         {loading ? (
-          <div style={{ textAlign: 'center', color: '#888', padding: '24px 0', fontSize: 13 }}>{t('lb_loading')}</div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '32px 0', gap: 10 }}>
+            {[0, 0.18, 0.36].map(d => <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />)}
+          </div>
         ) : (
           <>
             <div style={{ background: theme.overlay, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden', marginBottom: 12 }}>
