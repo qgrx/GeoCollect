@@ -76,26 +76,52 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
       return
     }
 
-    window.open(data.pay_url, '_blank', 'noopener')
-    pollForPaid(data.checkout_id, pack)
+    // Charger le SDK SumUp si absent
+    if (!window.SumUpCard) {
+      try {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script')
+          s.src = 'https://gateway.sumup.com/gateway/ecom/v1/sdk.js'
+          s.onload = resolve
+          s.onerror = reject
+          document.head.appendChild(s)
+        })
+      } catch {
+        setCheckoutError('Impossible de charger le SDK SumUp')
+        setCheckoutPack(null)
+        return
+      }
+    }
+
+    setCheckoutPack(null)
+
+    // Monter le widget SumUp (popup intégré, pas de redirect)
+    window.SumUpCard.mount({
+      checkoutId: data.checkout_id,
+      onResponse: (type, body) => {
+        if (type === 'sent' && body?.status === 'PAID') {
+          pollForPaid(data.checkout_id, pack)
+        } else if (type === 'error' || (type === 'sent' && body?.status !== 'PAID')) {
+          setCheckoutError('Paiement non abouti.')
+        }
+      },
+    })
   }
 
   function pollForPaid(checkoutId, pack) {
+    let attempts = 0
     pollRef.current = setInterval(async () => {
+      attempts++
       const { data } = await apiGetPurchase(checkoutId)
-      if (!data) return
-      if (data.status === 'paid') {
+      if (data?.status === 'paid') {
         clearInterval(pollRef.current)
-        setCheckoutPack(null)
-        // Tirer les cartes et ouvrir la révélation
         const cards = drawPackFromConfig(cardPool, pack.slots)
         onReveal(cards, pack.gold)
-      } else if (data.status === 'failed' || data.status === 'expired') {
+      } else if (data?.status === 'failed' || data?.status === 'expired' || attempts > 10) {
         clearInterval(pollRef.current)
         setCheckoutError('Paiement échoué ou expiré.')
-        setCheckoutPack(null)
       }
-    }, 3000)
+    }, 2000)
   }
 
   const card = dailyOffer?.card
