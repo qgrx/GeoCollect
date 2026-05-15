@@ -562,18 +562,21 @@ export default function App() {
   }
 
   async function handlePurchase(cards, gold = 0) {
-    // Mise à jour locale optimiste
+    // Les cartes sont déjà sauvegardées en DB par le backend (completePurchase).
+    // On met à jour l'état local et on rafraîchit la collection depuis l'API.
     cards.forEach(card => gs.earnCard(card))
     if (gold > 0) earnGoldWithFx(gold)
     showToast(t('toast_pack_added'))
-    // Persistance en DB si connecté
+    // Resynchroniser collection + profil depuis la DB
     if (auth.profile && import.meta.env.VITE_API_URL) {
-      const { apiGiveCard } = await import('./services/api.js').catch(() => ({}))
-      if (apiGiveCard) {
-        for (const card of cards) {
-          apiGiveCard(auth.profile.id, card.id).catch(() => {})
-        }
-      }
+      const { apiGetCollection, apiGetProfile } = await import('./services/api.js').catch(() => ({}))
+      apiGetCollection?.().then(({ data }) => {
+        if (data?.collection) gs.setCollection(data.collection)
+        if (data?.shiny_collection) gs.setShinyCollection(data.shiny_collection)
+      }).catch(() => {})
+      apiGetProfile?.().then(({ data }) => {
+        if (data?.profile) auth.setProfile(data.profile)
+      }).catch(() => {})
     }
   }
   // Called by AuthModal after successful login

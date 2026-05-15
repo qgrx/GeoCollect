@@ -96,8 +96,12 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
       const { data } = await apiGetPurchase(checkoutId)
       if (data?.status === 'paid') {
         clearInterval(pollRef.current)
-        const cards = drawPackFromConfig(cardPool, pack.slots)
-        onReveal(cards, pack.gold)
+        // Utiliser les cartes tirées par le serveur (garantit cohérence DB/affichage)
+        const cards = (data.card_ids || [])
+          .map(id => cardPool.find(c => c.id === id))
+          .filter(Boolean)
+        const gold = data.gold ?? pack.gold ?? 0
+        onReveal(cards.length ? cards : drawPackFromConfig(cardPool, pack.slots), gold)
       } else if (data?.status === 'failed' || data?.status === 'expired' || attempts > 10) {
         clearInterval(pollRef.current)
         setCheckoutError('Paiement échoué ou expiré.')
