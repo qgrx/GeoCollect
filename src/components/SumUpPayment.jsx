@@ -3,30 +3,32 @@ import { useEffect, useRef } from 'react'
 /**
  * Widget de paiement SumUp embarqué.
  * Nécessite https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js dans index.html.
+ * https://developer.sumup.com/online-payments/checkouts/card-widget
  */
 export default function SumUpPayment({ checkoutId, onSuccess, onError, onClose }) {
-  const mounted = useRef(false)
+  const widgetRef = useRef(null)
 
   useEffect(() => {
-    if (mounted.current || !checkoutId || !window.SumUpCard) return
-    mounted.current = true
+    if (!checkoutId || !window.SumUpCard) return
 
-    window.SumUpCard.mount({
+    // mount() retourne une instance avec unmount()
+    widgetRef.current = window.SumUpCard.mount({
       id:         'sumup-card',
       checkoutId,
       onResponse: (type, body) => {
         console.log('[SumUp] response:', type, body)
-        if (type === 'sent' && body?.status === 'PAID') {
+        if (type === 'success') {
           onSuccess?.()
-        } else if (type === 'error' || (type === 'sent' && body?.status !== 'PAID')) {
+        } else if (type === 'fail' || type === 'error') {
           onError?.(body?.message || 'Paiement non abouti.')
         }
+        // 'sent', 'invalid', 'auth-screen' → états intermédiaires, on attend
       },
     })
 
     return () => {
-      // Nettoyer le widget si l'API le permet
-      try { window.SumUpCard?.unmount?.() } catch {}
+      try { widgetRef.current?.unmount?.() } catch {}
+      widgetRef.current = null
     }
   }, [checkoutId])
 
