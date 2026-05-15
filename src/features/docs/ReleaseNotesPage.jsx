@@ -40,9 +40,11 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
           <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: theme.gold, flexShrink: 0 }} />
             <EditableText value={rel.version} editing={editMode} onChange={v => updateRelease(ri, { ...rel, version: v })} style={{ fontWeight: 900, fontSize: 16 }} />
-            {editMode && (
+            {editMode && (<>
+              {ri > 0 && <button onClick={() => { const a=[...releases];[a[ri-1],a[ri]]=[a[ri],a[ri-1]];update(a) }} style={{ background:'#ffffff15',border:'none',color:mutedColor,borderRadius:4,width:22,height:22,cursor:'pointer',fontSize:11 }}>↑</button>}
+              {ri < releases.length-1 && <button onClick={() => { const a=[...releases];[a[ri],a[ri+1]]=[a[ri+1],a[ri]];update(a) }} style={{ background:'#ffffff15',border:'none',color:mutedColor,borderRadius:4,width:22,height:22,cursor:'pointer',fontSize:11 }}>↓</button>}
               <button onClick={() => removeRelease(ri)} style={{ background: '#e74c3c22', border: '1px solid #e74c3c44', color: '#e74c3c', borderRadius: 6, width: 22, height: 22, cursor: 'pointer', fontSize: 12, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}>×</button>
-            )}
+            </>)}
           </div>
           <div style={{ background: cardBg, border: `1px solid ${editMode ? '#f9ca2433' : borderCol}`, borderRadius: 12, padding: '14px 18px' }}>
             {rel.items.map((item, ii) => (
@@ -56,9 +58,11 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
                   <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{item.type}</span>
                 )}
                 <EditableText value={item.text} editing={editMode} onChange={t => updateItem(ri, ii, { ...item, text: t })} tag="span" style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6, flex: 1 }} />
-                {editMode && (
+                {editMode && (<>
+                  {ii > 0 && <button onClick={() => { const it=[...rel.items];[it[ii-1],it[ii]]=[it[ii],it[ii-1]];updateRelease(ri,{...rel,items:it}) }} style={{ background:'none',border:'none',color:mutedColor,cursor:'pointer',fontSize:11,padding:'0 2px' }}>↑</button>}
+                  {ii < rel.items.length-1 && <button onClick={() => { const it=[...rel.items];[it[ii],it[ii+1]]=[it[ii+1],it[ii]];updateRelease(ri,{...rel,items:it}) }} style={{ background:'none',border:'none',color:mutedColor,cursor:'pointer',fontSize:11,padding:'0 2px' }}>↓</button>}
                   <button onClick={() => removeItem(ri, ii)} style={{ background: 'none', border: 'none', color: '#e74c3c88', cursor: 'pointer', fontSize: 14, flexShrink: 0, padding: '0 4px' }}>×</button>
-                )}
+                </>)}
               </div>
             ))}
             {editMode && (

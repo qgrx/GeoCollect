@@ -2,7 +2,8 @@ import { useState } from 'react'
 import EditableText from './EditableText.jsx'
 import { useDocsContent } from './useDocsContent.js'
 
-function FaqItem({ item, idx, editing, onChange, onRemove, colors }) {
+function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMoveDown, colors }) {
+  const canUp = idx > 0, canDown = idx < total - 1
   const [open, setOpen] = useState(false)
   const { cardBg, borderCol, textColor, mutedColor } = colors
 
@@ -18,6 +19,12 @@ function FaqItem({ item, idx, editing, onChange, onRemove, colors }) {
           />
           {!editing && <span style={{ flexShrink: 0, fontSize: 18, color: mutedColor, transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }}>⌄</span>}
         </button>
+        {editing && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+            <button onClick={onMoveUp}   disabled={!canUp}   style={{ background: canUp   ? '#ffffff15' : 'transparent', border: 'none', color: canUp   ? colors.mutedColor : '#ffffff22', borderRadius: 4, width: 22, height: 22, cursor: canUp   ? 'pointer' : 'default', fontSize: 11 }}>↑</button>
+            <button onClick={onMoveDown} disabled={!canDown} style={{ background: canDown ? '#ffffff15' : 'transparent', border: 'none', color: canDown ? colors.mutedColor : '#ffffff22', borderRadius: 4, width: 22, height: 22, cursor: canDown ? 'pointer' : 'default', fontSize: 11 }}>↓</button>
+          </div>
+        )}
         {editing && (
           <button onClick={onRemove} style={{ background: '#e74c3c22', border: '1px solid #e74c3c44', color: '#e74c3c', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 14, fontWeight: 900, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         )}
@@ -57,7 +64,12 @@ export default function FaqPage({ theme, mode, textColor, mutedColor, isAdmin, e
       <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>Questions fréquemment posées</div>
 
       {items.map((item, i) => (
-        <FaqItem key={i} item={item} idx={i} editing={editMode} onChange={u => changeItem(i, u)} onRemove={() => removeItem(i)} colors={colors} />
+        <FaqItem key={i} item={item} idx={i} total={items.length} editing={editMode}
+          onChange={u => changeItem(i, u)}
+          onRemove={() => removeItem(i)}
+          onMoveUp={() => { const a = [...items]; [a[i-1],a[i]]=[a[i],a[i-1]]; update(a) }}
+          onMoveDown={() => { const a = [...items]; [a[i],a[i+1]]=[a[i+1],a[i]]; update(a) }}
+          colors={colors} />
       ))}
 
       {editMode && (

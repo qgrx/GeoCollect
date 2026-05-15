@@ -65,7 +65,11 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
             <EditableText value={s.desc} editing={editMode} onChange={v => changeSection(i, { ...s, desc: v })} tag="div" multiline style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6 }} />
           </div>
           {editMode && (
-            <button onClick={() => removeSection(i)} style={{ background: '#e74c3c22', border: '1px solid #e74c3c44', color: '#e74c3c', borderRadius: 6, width: 24, height: 24, cursor: 'pointer', fontSize: 13, fontWeight: 900, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+              {i > 0 && <button onClick={() => { const a=[...sections];[a[i-1],a[i]]=[a[i],a[i-1]];update(a) }} style={{ background:'#ffffff15',border:'none',color:mutedColor,borderRadius:4,width:22,height:22,cursor:'pointer',fontSize:11 }}>↑</button>}
+              {i < sections.length-1 && <button onClick={() => { const a=[...sections];[a[i],a[i+1]]=[a[i+1],a[i]];update(a) }} style={{ background:'#ffffff15',border:'none',color:mutedColor,borderRadius:4,width:22,height:22,cursor:'pointer',fontSize:11 }}>↓</button>}
+              <button onClick={() => removeSection(i)} style={{ background: '#e74c3c22', border: '1px solid #e74c3c44', color: '#e74c3c', borderRadius: 6, width: 22, height: 22, cursor: 'pointer', fontSize: 13, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
           )}
         </div>
       ))}
