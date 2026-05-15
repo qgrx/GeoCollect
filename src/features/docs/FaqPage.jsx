@@ -2,6 +2,7 @@ import { useState } from 'react'
 import EditableText from './EditableText.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
 import { useDocsContent } from './useDocsContent.js'
+import { sanitizeHtml } from '../../utils/sanitize.js'
 
 function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMoveDown, colors, mode }) {
   const canUp = idx > 0, canDown = idx < total - 1
@@ -35,7 +36,7 @@ function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMo
         <div style={{ padding: '4px 18px 16px', borderTop: `1px solid ${borderCol}` }}>
           {editing
             ? <RichTextEditor value={item.a} onChange={a => onChange({ ...item, a })} mode={colors.mode} />
-            : <div style={{ fontSize: 14, color: mutedColor, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: item.a }} />
+            : <div style={{ fontSize: 14, color: mutedColor, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.a) }} />
           }
         </div>
       )}
