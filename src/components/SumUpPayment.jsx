@@ -12,9 +12,13 @@ export default function SumUpPayment({ checkoutId, onSuccess, onError, onClose }
     if (!checkoutId || !window.SumUpCard) return
 
     // mount() retourne une instance avec unmount()
+    const googleMerchantId   = import.meta.env.VITE_GOOGLE_MERCHANT_ID
+    const googleMerchantName = import.meta.env.VITE_GOOGLE_MERCHANT_NAME || 'Geocoins'
+
     widgetRef.current = window.SumUpCard.mount({
       id:         'sumup-card',
       checkoutId,
+      ...(googleMerchantId ? { googlePay: { merchantId: googleMerchantId, merchantName: googleMerchantName } } : {}),
       onResponse: (type, body) => {
         console.log('[SumUp] response:', type, body)
         if (type === 'success') {
