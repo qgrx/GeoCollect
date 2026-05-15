@@ -34,6 +34,12 @@ export default function MarketModal({
 }) {
   const { t } = useT()
   const { theme } = useTheme()
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 620)
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 620)
+    window.addEventListener('resize', h)
+    return () => window.removeEventListener('resize', h)
+  }, [])
   const [tab, setTab] = useState(initialTab)
   const [sellCard, setSellCard] = useState(initialSellCard)
   const [sellPrice, setSellPrice] = useState('')
@@ -249,7 +255,7 @@ export default function MarketModal({
                 </div>
               )}
             </div>
-            <div style={{ flex: 1,minWidth: 180 }}>
+            <div style={{ flex: 1, minWidth: 180, order: isMobile ? -1 : 0 }}>
               {sellCard ? (
                 <div style={{ background: theme.overlay, border: `1.5px solid ${theme.border}`, borderRadius: 15, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {/* Carte sélectionnée */}
