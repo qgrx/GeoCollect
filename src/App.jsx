@@ -1078,7 +1078,7 @@ export default function App() {
 
               {/* New geocoin available — above type filter */}
               {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
-                <div data-tour="countdown" style={{ marginBottom: 14, animation: 'fadeUp .35s ease-out both' }}>
+                <div data-tour="countdown" style={{ marginBottom: 14 }}>
                   <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={!!pendingQuiz && !pendingQuiz?.winner} lostTo={pendingQuiz?.winner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
                 </div>
               )}
