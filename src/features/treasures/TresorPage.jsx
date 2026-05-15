@@ -76,21 +76,10 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
       return
     }
 
-    // Charger le SDK SumUp si absent
     if (!window.SumUpCard) {
-      try {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script')
-          s.src = 'https://gateway.sumup.com/gateway/ecom/v1/sdk.js'
-          s.onload = resolve
-          s.onerror = reject
-          document.head.appendChild(s)
-        })
-      } catch {
-        setCheckoutError('Impossible de charger le SDK SumUp')
-        setCheckoutPack(null)
-        return
-      }
+      setCheckoutError('SDK SumUp non disponible — rechargez la page.')
+      setCheckoutPack(null)
+      return
     }
 
     setCheckoutPack(null)
