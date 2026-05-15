@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
 import FaqPage from './FaqPage.jsx'
@@ -18,6 +18,12 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
   const { t } = useT()
   const [page,     setPage]     = useState(initialPage)
   const [editMode, setEditMode] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener('resize', h)
+    return () => window.removeEventListener('resize', h)
+  }, [])
 
   const PageComponent = PAGES[page] || FaqPage
 
@@ -57,37 +63,57 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
         </div>
       </div>
 
-      {/* ── Body ── */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-
-        {/* Sidebar */}
-        <div style={{ width: 200, flexShrink: 0, background: sidebarBg, borderRight: `1px solid ${theme.border}`, padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div style={{ fontSize: 10, color: mutedColor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, paddingLeft: 10, marginBottom: 8 }}>{t('docs_sidebar_title')}</div>
+      {/* ── Onglets mobile (sous le header) ── */}
+      {isMobile && (
+        <div style={{ display: 'flex', background: topBg, borderBottom: `1px solid ${theme.border}`, padding: '6px 12px', gap: 6, flexShrink: 0 }}>
           {NAV.map(n => (
             <button key={n.id} onClick={() => navigate(n.id)} style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-              background: page === n.id ? `${theme.gold}20` : 'none',
-              border: 'none',
-              borderLeft: `3px solid ${page === n.id ? theme.gold : 'transparent'}`,
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+              background: page === n.id ? `${theme.gold}22` : theme.overlayMd,
+              border: `1px solid ${page === n.id ? theme.gold : theme.border}`,
               color: page === n.id ? (mode === 'light' ? '#c0880a' : theme.gold) : textColor,
-              padding: '10px 12px', borderRadius: '0 8px 8px 0', cursor: 'pointer',
+              padding: '7px 4px', borderRadius: 8, cursor: 'pointer',
               fontFamily: "'Nunito',sans-serif", fontWeight: page === n.id ? 900 : 600,
-              fontSize: 14, textAlign: 'left', transition: 'all .15s',
+              fontSize: 12,
             }}>
-              <span style={{ fontSize: 16 }}>{n.icon}</span>
+              <span>{n.icon}</span>
               <span>{n.label}</span>
             </button>
           ))}
-
-          {/* Retour à l'appli */}
-          <div style={{ marginTop: 'auto', paddingTop: 20 }}>
-            {onClose && (
-              <button onClick={onClose} style={{ width: '100%', background: 'none', border: `1px solid ${theme.border}`, color: mutedColor, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                {t('docs_back')}
-              </button>
-            )}
-          </div>
         </div>
+      )}
+
+      {/* ── Body ── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+        {/* Sidebar desktop uniquement */}
+        {!isMobile && (
+          <div style={{ width: 200, flexShrink: 0, background: sidebarBg, borderRight: `1px solid ${theme.border}`, padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ fontSize: 10, color: mutedColor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, paddingLeft: 10, marginBottom: 8 }}>{t('docs_sidebar_title')}</div>
+            {NAV.map(n => (
+              <button key={n.id} onClick={() => navigate(n.id)} style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                background: page === n.id ? `${theme.gold}20` : 'none',
+                border: 'none',
+                borderLeft: `3px solid ${page === n.id ? theme.gold : 'transparent'}`,
+                color: page === n.id ? (mode === 'light' ? '#c0880a' : theme.gold) : textColor,
+                padding: '10px 12px', borderRadius: '0 8px 8px 0', cursor: 'pointer',
+                fontFamily: "'Nunito',sans-serif", fontWeight: page === n.id ? 900 : 600,
+                fontSize: 14, textAlign: 'left', transition: 'all .15s',
+              }}>
+                <span style={{ fontSize: 16 }}>{n.icon}</span>
+                <span>{n.label}</span>
+              </button>
+            ))}
+            <div style={{ marginTop: 'auto', paddingTop: 20 }}>
+              {onClose && (
+                <button onClick={onClose} style={{ width: '100%', background: 'none', border: `1px solid ${theme.border}`, color: mutedColor, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {t('docs_back')}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Contenu */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
