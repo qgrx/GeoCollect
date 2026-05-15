@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { cardCC, rarityLabel, cardName, RC } from '../../data/cards.js'
 import { getLang } from '../../i18n/translations.js'
 import { ThumbImage } from '../quiz/QuizComponents.jsx'
-import { slotsToContents } from '../../utils/gameUtils.js'
+import { slotsToContents, drawPackFromConfig } from '../../utils/gameUtils.js'
+import { apiCreateCheckout, apiGetPurchase } from '../../services/api.js'
 
 const DEFAULT_SLOTS = {
   petit_soutien: [
@@ -32,12 +33,17 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Gros soutien',   defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
-export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksConfig = {}, packsLoading = false }) {
+export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = {}, packsLoading = false }) {
   const { t } = useT()
   const { theme } = useTheme()
-  const [claiming, setClaiming] = useState(false)
+  const [claiming, setClaiming]       = useState(false)
   const [localClaimed, setLocalClaimed] = useState(false)
-  const [countdown, setCountdown] = useState('--:--:--')
+  const [countdown, setCountdown]     = useState('--:--:--')
+  const [checkoutPack, setCheckoutPack] = useState(null)   // packId en cours de paiement
+  const [checkoutError, setCheckoutError] = useState('')
+  const pollRef = useRef(null)
+
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
 
   useEffect(() => {
     const tick = () => {
@@ -56,6 +62,46 @@ export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksC
   const handleClaim = async () => {
     setClaiming(true)
     try { await onClaim(); setLocalClaimed(true) } finally { setClaiming(false) }
+  }
+
+  async function handleCheckout(pack) {
+    if (checkoutPack) return
+    setCheckoutPack(pack.id)
+    setCheckoutError('')
+
+    const { data, error } = await apiCreateCheckout(pack.id)
+    if (error || !data) {
+      setCheckoutError(error || 'Erreur de paiement')
+      setCheckoutPack(null)
+      return
+    }
+
+    // Mode test sans URL → confirmer directement
+    if (data.test_mode && !data.pay_url) {
+      pollForPaid(data.checkout_id, pack)
+      return
+    }
+
+    window.open(data.pay_url, '_blank', 'noopener')
+    pollForPaid(data.checkout_id, pack)
+  }
+
+  function pollForPaid(checkoutId, pack) {
+    pollRef.current = setInterval(async () => {
+      const { data } = await apiGetPurchase(checkoutId)
+      if (!data) return
+      if (data.status === 'paid') {
+        clearInterval(pollRef.current)
+        setCheckoutPack(null)
+        // Tirer les cartes et ouvrir la révélation
+        const cards = drawPackFromConfig(cardPool, pack.slots)
+        onReveal(cards, pack.gold)
+      } else if (data.status === 'failed' || data.status === 'expired') {
+        clearInterval(pollRef.current)
+        setCheckoutError('Paiement échoué ou expiré.')
+        setCheckoutPack(null)
+      }
+    }, 3000)
   }
 
   const card = dailyOffer?.card
@@ -186,9 +232,12 @@ export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksC
                     ))}
                   </div>
                   {/* Bouton SumUp */}
-                  <button onClick={() => onOpenShop(p.id)}
-                    style={{ background: p.gradient, border: 'none', color: '#fff', padding: '8px 14px', borderRadius: 9, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: 'pointer', boxShadow: `0 3px 12px ${p.glowColor}`, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span>💳</span> Payer avec SumUp
+                  {checkoutError && checkoutPack === null && (
+                    <div style={{ fontSize: 10, color: '#e74c3c', marginBottom: 4 }}>{checkoutError}</div>
+                  )}
+                  <button onClick={() => handleCheckout(p)} disabled={!!checkoutPack}
+                    style={{ background: checkoutPack === p.id ? '#ffffff22' : p.gradient, border: 'none', color: checkoutPack === p.id ? '#aaa' : '#fff', padding: '8px 14px', borderRadius: 9, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: checkoutPack ? 'not-allowed' : 'pointer', boxShadow: checkoutPack === p.id ? 'none' : `0 3px 12px ${p.glowColor}`, display: 'flex', alignItems: 'center', gap: 6, transition: 'all .3s' }}>
+                    {checkoutPack === p.id ? <><span>⏳</span> Connexion à SumUp…</> : <><span>💳</span> Payer avec SumUp</>}
                   </button>
                 </div>
               </div>

@@ -31,7 +31,7 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#f9ca24,#e17055)', defaultName: 'Gros soutien',   defaultPrice: '15,00 €', defaultGold: 300 },
 ]
 
-export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConfig = {}, initialPackId = null }) {
+export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConfig = {}, initialPackId = null, initialCards = null, initialGold = 0 }) {
   const { t } = useT()
 
   // Calcul des packs AVANT les hooks pour pouvoir initialiser l'état directement
@@ -51,13 +51,21 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
 
   const initPack = initialPackId ? (packs.find(p => p.id === initialPackId) || null) : null
 
-  const [step,        setStep]        = useState(initPack ? 'confirm' : 'shop')
-  const [selected,    setSelected]    = useState(initPack)
-  const [drawnCards,  setDrawnCards]  = useState([])
+  const [step,        setStep]        = useState(initialCards ? 'reveal' : initPack ? 'confirm' : 'shop')
+  const [selected,    setSelected]    = useState(initPack || { gold: initialGold })
+  const [drawnCards,  setDrawnCards]  = useState(initialCards || [])
   const [revealedIdx, setRevealedIdx] = useState(-1)
   const [errorMsg,    setErrorMsg]    = useState('')
   const pollRef     = useRef(null)
   const checkoutRef = useRef(null)
+
+  // Lancer les animations si on démarre directement en mode reveal
+  useEffect(() => {
+    if (initialCards?.length) {
+      initialCards.forEach((_, i) => setTimeout(() => setRevealedIdx(i), i * 320 + 400))
+      setTimeout(() => setStep('done'), initialCards.length * 320 + 800)
+    }
+  }, [])
 
   // Nettoyage du polling au démontage
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])

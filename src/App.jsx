@@ -379,6 +379,8 @@ export default function App() {
   const [showSettings,    setShowSettings]    = useState(false);
   const [showShop,        setShowShop]        = useState(false);
   const [shopPackId,      setShopPackId]       = useState(null);
+  const [revealCards,     setRevealCards]      = useState(null);  // cartes à révéler après paiement
+  const [revealGold,      setRevealGold]       = useState(0);
   const [showTxHistory,   setShowTxHistory]   = useState(false);
   const [filter,          setFilter]          = useState('Tous');
   const [showMissing,     setShowMissing]     = useState(false);
@@ -1162,7 +1164,8 @@ export default function App() {
                 <TresorPage
                   dailyOffer={dailyOffer}
                   onClaim={handleClaimDaily}
-                  onOpenShop={(packId) => { setShopPackId(packId || null); setShowShop(true) }}
+                  onReveal={(cards, gold) => { setRevealCards(cards); setRevealGold(gold || 0); setShowShop(true) }}
+                  cardPool={gs.cardPool}
                   shopPacksConfig={gs.limits?.shopPacks || {}}
                   packsLoading={gs.loadingData}
                 />
@@ -1424,7 +1427,7 @@ export default function App() {
       })()}
 
       {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
-      {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null) }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} />}
+      {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0) }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} />}
       {showAdmin && (
         <AdminPanel
           cardPool={gs.cardPool} cardTypes={gs.cardTypes} questions={questions} limits={gs.limits}
