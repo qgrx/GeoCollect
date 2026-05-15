@@ -14,20 +14,19 @@ const DEFAULTS = {
   ],
   'release-notes': [
     {
-      version: 'v2.5 — Mai 2026',
+      version: '🎉 v1.0 — Bienvenue dans la jungle des geocoins !',
       items: [
-        { type: '✨', text: 'Packs Geocoins — achetez des geocoins via Google Pay, Apple Pay ou CB' },
-        { type: '✨', text: 'Geocoins de saison — des geocoins disponibles uniquement pendant une période définie' },
-        { type: '✨', text: 'Nouveau décompte avant chaque quiz avec effet de mèche lumineux' },
-        { type: '🔧', text: 'Correction de l\'horloge au rechargement de page pendant un décompte' },
-      ],
-    },
-    {
-      version: 'v2.4 — Avril 2026',
-      items: [
-        { type: '✨', text: 'Page Trésors — offre quotidienne gratuite + boutique packs' },
-        { type: '✨', text: 'Système de forge brillante — transformez vos geocoins en version shiny' },
-        { type: '🔧', text: 'Amélioration des performances du marché' },
+        { type: '🧠', text: 'Quiz en temps réel — Toutes les 60 secondes, un geocoin tombe du ciel. Une question apparaît. Le premier à répondre correctement l\'emporte. Le reste pleure. C\'est brutal, c\'est beau.' },
+        { type: '🃏', text: 'Collection personnelle — Communs, rares, épiques, légendaires. Ils ont tous leurs couleurs, leurs images, et une valeur en points qui fait ou défait ton classement.' },
+        { type: '✨', text: 'Geocoins Brillants (Shiny) — Posséder un geocoin c\'est bien. Le même avec un effet arc-en-ciel qui scintille, c\'est mieux. Forge tes shiny avec des points de forge.' },
+        { type: '🔨', text: 'Forge & Quêtes quotidiennes — Complète des quêtes chaque jour pour gagner des points de forge. Rater une journée ? Le streak tombe. Dramatique.' },
+        { type: '🏪', text: 'Marché entre joueurs — Tu as trois fois le même geocoin ? Vends-le. Achète celui qui te manque. L\'économie Geocoins ne repose que sur vous.' },
+        { type: '🎁', text: 'Offre du jour — Un geocoin gratuit chaque jour. Juste comme ça. Parce qu\'on est sympas.' },
+        { type: '💎', text: 'Packs Geocoins — Trois packs (3€ / 8€ / 15€), paiement CB ou Google Pay. Les geocoins arrivent instantanément. Sans abonnement, sans prise de tête.' },
+        { type: '🌸', text: 'Saisons — Certains geocoins n\'existent que pendant une période définie. Rater une saison, c\'est rater ces geocoins pour toujours. Ou presque.' },
+        { type: '🏆', text: 'Classement & Achievements — Un classement mondial, des achievements permanents et journaliers, des streaks de connexion. La fierté n\'a pas de prix, le score si.' },
+        { type: '🌍', text: 'Multilingue — Français, English, Deutsch, Español. La géographie se parle dans toutes les langues.' },
+        { type: '🌙', text: 'Mode sombre & clair — Tes yeux méritent le respect. Choisissez votre ambiance.' },
       ],
     },
   ],
