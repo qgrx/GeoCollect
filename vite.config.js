@@ -7,7 +7,12 @@ function spaFallback() {
     name: 'spa-fallback',
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (!req.url.includes('.') && req.url !== '/') {
+        const url = req.url.split('?')[0]
+        const isAsset  = url.includes('.')          // fichiers avec extension
+        const isVite   = url.startsWith('/@')       // modules Vite internes
+        const isNode   = url.startsWith('/node_modules')
+        const isRoot   = url === '/'
+        if (!isAsset && !isVite && !isNode && !isRoot) {
           req.url = '/'
         }
         next()
