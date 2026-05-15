@@ -35,12 +35,13 @@ function ToolBtn({ label, title, active, onClick, style = {} }) {
 
 export default function RichTextEditor({ value, onChange, placeholder = '', mode = 'dark' }) {
   const ref = useRef()
-  const selRef = useRef(null)
+  const selRef      = useRef(null)
+  const initialVal  = useRef(value)   // capture de la valeur initiale pour éviter une dépendance stale
 
   // Initialise le DOM uniquement au montage
   useEffect(() => {
-    if (ref.current) ref.current.innerHTML = value || ''
-  }, []) // eslint-disable-line
+    if (ref.current) ref.current.innerHTML = initialVal.current || ''
+  }, [])
 
   // Sauvegarde la sélection avant que le toolbar ne vole le focus
   function saveSelection() {
