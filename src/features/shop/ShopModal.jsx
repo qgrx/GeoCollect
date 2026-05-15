@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC, rarityLabel } from '../../data/cards.js';
+import { useEffect, useRef } from 'react';
 import { drawPackFromConfig, slotsToContents } from '../../utils/gameUtils.js';
+import { apiCreateCheckout, apiGetPurchase } from '../../services/api.js';
 
 // Définitions statiques des packs — prix/noms surchargés par la config admin
 const DEFAULT_SLOTS = {
@@ -32,11 +34,13 @@ const PACK_DEFS = [
 
 export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConfig = {} }) {
   const { t } = useT()
-  const [step,        setStep]        = useState('shop')    // shop | confirm | processing | reveal | done
-  const [selected,    setSelected]    = useState(null)      // PACK_DEFS entry
+  const [step,        setStep]        = useState('shop')    // shop | confirm | processing | awaiting_payment | reveal | done | error
+  const [selected,    setSelected]    = useState(null)
   const [drawnCards,  setDrawnCards]  = useState([])
   const [revealedIdx, setRevealedIdx] = useState(-1)
-  const [payMethod,   setPayMethod]   = useState(null)
+  const [errorMsg,    setErrorMsg]    = useState('')
+  const pollRef     = useRef(null)
+  const checkoutRef = useRef(null)
 
   // Fusionner config admin avec les définitions statiques
   const packs = PACK_DEFS.map(p => {
@@ -58,16 +62,54 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
     }
   }).filter(p => p.enabled)
 
+  // Nettoyage du polling au démontage
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
+
   function selectPack(pack) { setSelected(pack); setStep('confirm') }
 
-  function handleBuy(method) { setPayMethod(method); setStep('processing'); doProcess(method) }
+  async function handlePay() {
+    setStep('processing')
+    const { data, error } = await apiCreateCheckout(selected.id)
+    if (error || !data) {
+      setErrorMsg(error || 'Erreur lors de la création du paiement.')
+      setStep('error')
+      return
+    }
 
-  function doProcess(method) {
-    setTimeout(() => {
-      const cards = drawPackFromConfig(cardPool, selected.slots)
-      setDrawnCards(cards)
-      setStep('reveal')
-      cards.forEach((_, i) => setTimeout(() => setRevealedIdx(i), i * 320 + 400))
+    checkoutRef.current = data.checkout_id
+
+    // Mode test sans API key → simuler paiement directement
+    if (data.test_mode && !data.pay_url) {
+      return pollPayment(data.checkout_id)
+    }
+
+    // Ouvrir SumUp dans un nouvel onglet
+    window.open(data.pay_url, '_blank', 'noopener')
+    setStep('awaiting_payment')
+    pollPayment(data.checkout_id)
+  }
+
+  function pollPayment(checkoutId) {
+    setStep('awaiting_payment')
+    pollRef.current = setInterval(async () => {
+      const { data } = await apiGetPurchase(checkoutId)
+      if (!data) return
+      if (data.status === 'paid') {
+        clearInterval(pollRef.current)
+        revealCards()
+      } else if (data.status === 'failed' || data.status === 'expired') {
+        clearInterval(pollRef.current)
+        setErrorMsg('Paiement échoué ou expiré.')
+        setStep('error')
+      }
+    }, 3000)
+  }
+
+  function revealCards() {
+    const cards = drawPackFromConfig(cardPool, selected.slots)
+    setDrawnCards(cards)
+    setStep('reveal')
+    cards.forEach((_, i) => setTimeout(() => setRevealedIdx(i), i * 320 + 400))
       setTimeout(() => setStep('done'), cards.length * 320 + 800)
     }, 1800)
   }
@@ -158,27 +200,17 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
               </div>
             </div>
 
-            {/* Boutons paiement */}
-            <div style={{ fontSize: 12, color: '#888', marginBottom: 10, textAlign: 'center' }}>{t('shop_payment_label')}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 14 }}>
-              <button onClick={() => handleBuy('card')}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: 'none', padding: '13px 18px', borderRadius: 12, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 14, color: '#1e3045' }}>
-                <span style={{ fontSize: 22 }}>💳</span>
-                <span style={{ flex: 1, textAlign: 'left' }}>{t('shop_card')}</span>
-                <span style={{ color: '#888', fontSize: 12 }}>Visa / Mastercard</span>
-              </button>
-              <button onClick={() => handleBuy('paypal')}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#003087', border: 'none', padding: '13px 18px', borderRadius: 12, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 14, color: '#fff' }}>
-                <span style={{ fontSize: 22 }}>🅿️</span>
-                <span style={{ flex: 1, textAlign: 'left' }}>{t('shop_paypal')}</span>
-                <span style={{ color: '#ffffff66', fontSize: 12 }}>paypal.com</span>
-              </button>
-            </div>
+            {/* Bouton SumUp */}
+            <button onClick={handlePay}
+              style={{ width: '100%', background: 'linear-gradient(135deg,#00b4d8,#0077b6)', border: 'none', color: '#fff', padding: '14px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 20px #0077b644', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 }}>
+              <span style={{ fontSize: 22 }}>💳</span>
+              Payer {selected.price} avec SumUp
+            </button>
             <button onClick={() => setStep('shop')} style={{ width: '100%', background: '#ffffff10', border: '1px solid #ffffff18', color: '#aaa', padding: '10px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
               ← Choisir un autre pack
             </button>
             <div style={{ marginTop: 10, fontSize: 10, color: '#444', textAlign: 'center' }}>
-              {t('shop_redirect').replace('{method}', 'Stripe / PayPal')}
+              🔒 Paiement sécurisé via SumUp · CB, Apple Pay, Google Pay · Aucune donnée bancaire stockée
             </div>
           </div>
         )}
@@ -187,11 +219,43 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
         {step === 'processing' && (
           <div style={{ padding: '60px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: 52, animation: 'float 1s ease-in-out infinite', display: 'inline-block' }}>⏳</div>
-            <div style={{ fontWeight: 900, fontSize: 18, color: '#fff', marginTop: 16, marginBottom: 8 }}>{t('shop_processing_title')}</div>
-            <div style={{ color: '#888', fontSize: 13 }}>{t('shop_processing_desc')} {payMethod === 'paypal' ? t('shop_paypal') : 'Stripe'}</div>
+            <div style={{ fontWeight: 900, fontSize: 18, color: '#fff', marginTop: 16, marginBottom: 8 }}>Création du paiement…</div>
+            <div style={{ color: '#888', fontSize: 13 }}>Connexion à SumUp en cours</div>
             <div style={{ marginTop: 20, background: '#ffffff18', borderRadius: 50, height: 6, overflow: 'hidden', width: 200, margin: '20px auto 0' }}>
-              <div style={{ height: '100%', background: 'linear-gradient(90deg,#f9ca24,#e17055)', borderRadius: 50, animation: 'shimmer 1.5s linear infinite', backgroundSize: '200% 100%' }} />
+              <div style={{ height: '100%', background: 'linear-gradient(90deg,#00b4d8,#0077b6)', borderRadius: 50, animation: 'shimmer 1.5s linear infinite', backgroundSize: '200% 100%' }} />
             </div>
+          </div>
+        )}
+
+        {/* ── ATTENTE PAIEMENT ── */}
+        {step === 'awaiting_payment' && (
+          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 52, marginBottom: 16 }}>💳</div>
+            <div style={{ fontWeight: 900, fontSize: 18, color: '#fff', marginBottom: 8 }}>En attente du paiement</div>
+            <div style={{ color: '#888', fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+              La page SumUp s'est ouverte dans un nouvel onglet.<br />
+              Cette fenêtre se mettra à jour automatiquement après paiement.
+            </div>
+            <div style={{ background: '#ffffff18', borderRadius: 50, height: 6, overflow: 'hidden', width: 200, margin: '0 auto 20px' }}>
+              <div style={{ height: '100%', background: 'linear-gradient(90deg,#00b4d8,#0077b6)', borderRadius: 50, animation: 'shimmer 2s linear infinite', backgroundSize: '200% 100%' }} />
+            </div>
+            <button onClick={() => { if (checkoutRef.current) pollPayment(checkoutRef.current) }}
+              style={{ background: '#ffffff18', border: '1px solid #ffffff22', color: '#aaa', padding: '8px 18px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+              Vérifier manuellement
+            </button>
+          </div>
+        )}
+
+        {/* ── ERREUR ── */}
+        {step === 'error' && (
+          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>❌</div>
+            <div style={{ fontWeight: 900, fontSize: 16, color: '#e74c3c', marginBottom: 8 }}>Paiement non abouti</div>
+            <div style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>{errorMsg}</div>
+            <button onClick={() => setStep('confirm')}
+              style={{ background: 'linear-gradient(135deg,#e74c3c,#c0392b)', border: 'none', color: '#fff', padding: '11px 22px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>
+              Réessayer
+            </button>
           </div>
         )}
 

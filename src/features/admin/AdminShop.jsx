@@ -137,6 +137,18 @@ export default function AdminShop({ setMsg, onSaved }) {
   return (
     <div>
       <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', marginBottom: 16 }}>🛍️ Packs Boutique</div>
+
+      {/* Info SumUp */}
+      <div style={{ background: '#1a2744', border: '1px solid #4a9eff44', borderRadius: 10, padding: '12px 14px', marginBottom: 18 }}>
+        <div style={{ fontWeight: 800, color: '#4a9eff', fontSize: 12, marginBottom: 6 }}>💳 SumUp</div>
+        <div style={{ fontSize: 11, color: '#888', lineHeight: 1.6 }}>
+          Les clés API SumUp (<code style={{ color: '#aaa' }}>SUMUP_TEST_API_KEY</code>, <code style={{ color: '#aaa' }}>SUMUP_LIVE_API_KEY</code>, <code style={{ color: '#aaa' }}>SUMUP_MERCHANT_CODE</code>) sont définies dans les variables d'environnement du serveur.<br />
+          Pour basculer test↔prod, modifier <code style={{ color: '#aaa' }}>SUMUP_TEST_MODE</code> dans l'environnement Fly.io / Vercel.
+        </div>
+        <div style={{ marginTop: 8, fontSize: 11 }}>
+          Mode actuel : {typeof window !== 'undefined' && <span style={{ color: '#f9ca24', fontWeight: 800 }}>voir logs serveur</span>}
+        </div>
+      </div>
       {Object.entries(PACK_META).map(([id, { title }]) => {
         const pk = edit[id] || {}
         const slots = pk.slots || DEFAULT_SLOTS[id]

@@ -160,8 +160,10 @@ export const apiSetConfig = (key, value) =>
   apiFetch(`/api/admin/config/${key}`, { method: 'PATCH', body: { value } })
 
 // ─── Boutique ─────────────────────────────────────────────────────────────────
-export const apiGetAdminShopPacks   = ()      => apiFetch('/api/admin/shop-packs')
-export const apiUpdateAdminShopPacks = (packs) => apiFetch('/api/admin/shop-packs', { method: 'PATCH', body: { packs } })
+export const apiGetAdminShopPacks    = ()           => apiFetch('/api/admin/shop-packs')
+export const apiUpdateAdminShopPacks = (packs)      => apiFetch('/api/admin/shop-packs', { method: 'PATCH', body: { packs } })
+export const apiCreateCheckout       = (pack_id)    => apiFetch('/api/shop/checkout', { method: 'POST', body: { pack_id } })
+export const apiGetPurchase          = (checkoutId) => apiFetch(`/api/shop/purchase/${checkoutId}`)
 
 // ─── Saisons ──────────────────────────────────────────────────────────────────
 export const apiGetCurrentSeason      = ()         => apiFetch('/api/seasons/current')
