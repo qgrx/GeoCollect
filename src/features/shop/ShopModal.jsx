@@ -126,10 +126,31 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
       <div style={{ background: 'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius: 24, width: 'min(96vw,640px)', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 32px 80px #000c', border: '2px solid #f9ca2444', fontFamily: "'Nunito',sans-serif" }}>
 
         {/* Header */}
-        <div style={{ background: 'linear-gradient(90deg,#e84393,#f9ca24,#e17055)', backgroundSize: '200% 100%', animation: 'shimmer 3s linear infinite', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{
+          background: (step === 'reveal' || step === 'done') && initialPaymentLabel
+            ? 'linear-gradient(90deg,#00b894,#00cec9)'
+            : 'linear-gradient(90deg,#e84393,#f9ca24,#e17055)',
+          backgroundSize: '200% 100%',
+          animation: 'shimmer 3s linear infinite',
+          padding: '14px 20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
           <div>
-            <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 22, color: '#fff', textShadow: '0 2px 8px #0005' }}>{t('shop_title')}</div>
-            <div style={{ fontSize: 11, color: '#ffffff99', marginTop: 2 }}>{t('shop_subtitle')}</div>
+            {(step === 'reveal' || step === 'done') && initialPaymentLabel ? (
+              <>
+                <div style={{ fontWeight: 900, fontSize: 14, color: '#fff', textShadow: '0 1px 4px #0005' }}>
+                  ✅ Votre paiement {initialPaymentLabel} a été effectué avec succès.
+                </div>
+                <div style={{ fontSize: 11, color: '#ffffffcc', marginTop: 3 }}>
+                  📧 Votre reçu a été envoyé par mail.
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 22, color: '#fff', textShadow: '0 2px 8px #0005' }}>{t('shop_title')}</div>
+                <div style={{ fontSize: 11, color: '#ffffff99', marginTop: 2 }}>{t('shop_subtitle')}</div>
+              </>
+            )}
           </div>
           {step !== 'processing' && <button onClick={onClose} style={{ background: '#00000033', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 16, cursor: 'pointer', fontWeight: 900 }}>✕</button>}
         </div>
@@ -270,16 +291,6 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
         {(step === 'reveal' || step === 'done') && (
           <div style={{ padding: '20px 18px' }}>
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              {step === 'done' && initialPaymentLabel ? (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, color: '#00b894', fontWeight: 800, marginBottom: 3 }}>
-                    ✅ Votre paiement {initialPaymentLabel} a été effectué avec succès.
-                  </div>
-                  <div style={{ fontSize: 11, color: '#888' }}>
-                    📧 Votre reçu a été envoyé par mail.
-                  </div>
-                </div>
-              ) : null}
               <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: '#f9ca24' }}>
                 {step === 'done' ? '🎉 Geocoins ajoutés à votre collection !' : t('shop_reveal_title')}
               </div>
