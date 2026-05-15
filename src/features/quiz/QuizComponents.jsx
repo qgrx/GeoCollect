@@ -172,27 +172,24 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
   return (
     <div style={{position:"fixed",inset:0,zIndex:800,background:"#000000bb",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <style>{`@keyframes shakeIt{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}} @keyframes winGlow{0%,100%{box-shadow:0 0 0 0 #00b89400}50%{box-shadow:0 0 32px 8px #00b89466}} @keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.5)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}`}</style>
-      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:26,padding:"26px 30px",width:"min(96vw,580px)",border:"2px solid #f9ca2444",boxShadow:"0 32px 80px #000c",fontFamily:"'Nunito',sans-serif"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-          <div>
-            <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:21,color:"#f9ca24"}}>{t("quiz_title")}</div>
-            <div style={{color:"#888",fontSize:11,marginTop:2}}>{t("quiz_subtitle")}</div>
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            {status==="open" && <div style={{display:"flex",alignItems:"center",gap:5,color:"#00b894",fontSize:11,fontWeight:800}}>
-              <span style={{display:"inline-block",width:7,height:7,background:"#00b894",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/>
+      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(96vw,520px)",border:"2px solid #f9ca2444",boxShadow:"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:17,color:"#f9ca24"}}>{t("quiz_title")}</div>
+            {status==="open" && <div style={{display:"flex",alignItems:"center",gap:4,color:"#00b894",fontSize:10,fontWeight:800}}>
+              <span style={{display:"inline-block",width:6,height:6,background:"#00b894",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/>
               Live
             </div>}
-            {status==="open"&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:28,height:28,borderRadius:"50%",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
           </div>
+          {status==="open"&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:26,height:26,borderRadius:"50%",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
         </div>
-        <div style={{display:"flex",gap:18,alignItems:"flex-start",marginBottom:18,flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
           <div style={{flexShrink:0,pointerEvents:"none"}}>
-            <Card card={quiz.card} />
+            <Card card={quiz.card} small />
           </div>
-          <div style={{flex:1,minWidth:180}}>
-            <div style={{fontSize:15,fontWeight:800,color:"#fff",lineHeight:1.55,marginBottom:7}}>{quiz.q}</div>
-            {maskedHint&&<div style={{fontSize:11,color:"#f39c12",fontFamily:"monospace",letterSpacing:3,marginTop:4,animation:"pulse 1s infinite"}}>🔤 {maskedHint}</div>}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1.5,marginBottom:5}}>{quiz.q}</div>
+            {maskedHint&&<div style={{fontSize:10,color:"#f39c12",fontFamily:"monospace",letterSpacing:2,animation:"pulse 1s infinite"}}>🔤 {maskedHint}</div>}
           </div>
         </div>
         {status==="open"&&<>
@@ -211,8 +208,8 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
           <div style={{display:"flex",gap:9}}>
             {submitError&&<div style={{fontSize:12,color:"#f39c12",fontWeight:700,padding:"7px 10px",background:"#f39c1218",borderRadius:9,marginBottom:6,border:"1px solid #f39c1233"}}>{submitError}</div>}
             <input ref={ref} value={inp} disabled={isSubmitting} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc)}
-              style={{flex:1,background:isSubmitting?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":isSubmitting?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"12px 15px",borderRadius:13,fontFamily:"'Nunito',sans-serif",fontSize:15,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:isSubmitting?0.6:1}}/>
-          <button onClick={submit} disabled={isSubmitting||!inp.trim()} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"12px 20px",borderRadius:13,opacity:(isSubmitting||!inp.trim())?0.5:1,cursor:(isSubmitting||!inp.trim())?"not-allowed":"pointer",minWidth:110,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              style={{flex:1,background:isSubmitting?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":isSubmitting?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:isSubmitting?0.6:1}}/>
+          <button onClick={submit} disabled={isSubmitting||!inp.trim()} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 16px",borderRadius:11,opacity:(isSubmitting||!inp.trim())?0.5:1,cursor:(isSubmitting||!inp.trim())?"not-allowed":"pointer",minWidth:90,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {isSubmitting ? (<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #1e3045",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.6s linear infinite"}}/>{t("quiz_validating") || "Validation…"}</>) : t("quiz_submit")}
             </button>
           </div>
