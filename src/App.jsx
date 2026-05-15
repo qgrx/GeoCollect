@@ -1110,7 +1110,7 @@ export default function App() {
                     const slice = displayCards.slice(page * COLL_PAGE_SIZE, (page + 1) * COLL_PAGE_SIZE)
                     return (
                       <>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14, marginBottom: 16 }}>
                           {slice.map(({ card, count, cnt, missing, isShiny }, idx) => {
                             const c = count || cnt || 0;
                             return (
