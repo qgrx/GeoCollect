@@ -550,24 +550,31 @@ export default function App() {
 
   // ── Animation geocoins au toucher + suivi du doigt ────────────────────────
   useEffect(() => {
-    let active = null
-    let isCardTouch = false
+    let active    = null
+    let isCard    = false
+    let startEl   = null
+    let startX    = 0
+    let startY    = 0
 
     const reset = () => {
       if (active) { active.style.transform = ''; active = null }
-      isCardTouch = false
+      isCard = false; startEl = null
     }
 
     const onStart = (e) => {
       const card = e.target?.closest('[data-card-hover="true"]')
       if (!card) return
-      isCardTouch = true
+      isCard  = true
+      startEl = e.target
+      startX  = e.touches[0].clientX
+      startY  = e.touches[0].clientY
+      e.preventDefault()                           // bloque le scroll
       card.style.transform = 'translateY(-3px) scale(1.02)'
       active = card
     }
 
     const onMove = (e) => {
-      if (!isCardTouch) return
+      if (!isCard) return
       const t = e.touches[0]
       const el = document.elementFromPoint(t.clientX, t.clientY)
       const card = el?.closest('[data-card-hover="true"]')
@@ -578,14 +585,25 @@ export default function App() {
       }
     }
 
-    document.addEventListener('touchstart',  onStart, { passive: true })
+    const onEnd = (e) => {
+      if (isCard && startEl) {
+        const t   = e.changedTouches[0]
+        const dx  = t.clientX - startX
+        const dy  = t.clientY - startY
+        const tap = Math.sqrt(dx*dx + dy*dy) < 10
+        if (tap) startEl.click()          // simule le tap (preventDefault l'avait annulé)
+      }
+      reset()
+    }
+
+    document.addEventListener('touchstart',  onStart, { passive: false })
     document.addEventListener('touchmove',   onMove,  { passive: true })
-    document.addEventListener('touchend',    reset)
+    document.addEventListener('touchend',    onEnd)
     document.addEventListener('touchcancel', reset)
     return () => {
       document.removeEventListener('touchstart',  onStart)
       document.removeEventListener('touchmove',   onMove)
-      document.removeEventListener('touchend',    reset)
+      document.removeEventListener('touchend',    onEnd)
       document.removeEventListener('touchcancel', reset)
     }
   }, [])
