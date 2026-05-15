@@ -73,8 +73,9 @@ export function drawPackCards(cardPool) { return drawPackMedium(cardPool) }
 //   alt     : rareté de repli (si défini → chance % d'obtenir rarity, sinon alt)
 //   chance  : probabilité en % d'obtenir rarity (défaut 50)
 export function drawPackFromConfig(cardPool, slots) {
-  const by  = r  => cardPool.filter(c => c.rarity === r && c.type !== 'Achievement')
-  const pick = arr => arr.length ? arr[Math.floor(Math.random() * arr.length)] : cardPool[Math.floor(Math.random() * cardPool.length)]
+  const eligible = cardPool.filter(c => !c.forgeable && !c.type?.toLowerCase().startsWith('achievement'))
+  const by   = r   => eligible.filter(c => c.rarity === r)
+  const pick = arr => arr.length ? arr[Math.floor(Math.random() * arr.length)] : eligible[Math.floor(Math.random() * eligible.length)]
   const cards = []
   for (const s of (slots || [])) {
     for (let i = 0; i < (s.qty || 1); i++) {
