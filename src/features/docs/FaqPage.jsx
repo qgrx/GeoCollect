@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import EditableText from './EditableText.jsx'
+import RichTextEditor from './RichTextEditor.jsx'
 import { useDocsContent } from './useDocsContent.js'
 
-function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMoveDown, colors }) {
+function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMoveDown, colors, mode }) {
   const canUp = idx > 0, canDown = idx < total - 1
+  colors = { ...colors, mode }
   const [open, setOpen] = useState(false)
   const { cardBg, borderCol, textColor, mutedColor } = colors
 
@@ -31,14 +33,10 @@ function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMo
       </div>
       {(open || editing) && (
         <div style={{ padding: '4px 18px 16px', borderTop: `1px solid ${borderCol}` }}>
-          <EditableText
-            value={item.a}
-            editing={editing}
-            onChange={a => onChange({ ...item, a })}
-            tag="div"
-            multiline
-            style={{ fontSize: 14, color: mutedColor, lineHeight: 1.7 }}
-          />
+          {editing
+            ? <RichTextEditor value={item.a} onChange={a => onChange({ ...item, a })} mode={colors.mode} />
+            : <div style={{ fontSize: 14, color: mutedColor, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: item.a }} />
+          }
         </div>
       )}
     </div>
@@ -64,7 +62,7 @@ export default function FaqPage({ theme, mode, textColor, mutedColor, isAdmin, e
       <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>Questions fréquemment posées</div>
 
       {items.map((item, i) => (
-        <FaqItem key={i} item={item} idx={i} total={items.length} editing={editMode}
+        <FaqItem key={i} item={item} idx={i} total={items.length} editing={editMode} mode={mode}
           onChange={u => changeItem(i, u)}
           onRemove={() => removeItem(i)}
           onMoveUp={() => { const a = [...items]; [a[i-1],a[i]]=[a[i],a[i-1]]; update(a) }}

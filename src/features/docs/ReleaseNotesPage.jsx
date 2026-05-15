@@ -1,4 +1,5 @@
 import EditableText from './EditableText.jsx'
+import RichTextEditor from './RichTextEditor.jsx'
 import { useDocsContent } from './useDocsContent.js'
 
 const TYPE_OPTIONS = ['✨', '🔧', '🐛', '📋']
@@ -57,7 +58,10 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
                 ) : (
                   <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{item.type}</span>
                 )}
-                <EditableText value={item.text} editing={editMode} onChange={t => updateItem(ri, ii, { ...item, text: t })} tag="span" style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6, flex: 1 }} />
+                {editMode
+                  ? <div style={{ flex: 1 }}><RichTextEditor value={item.text} onChange={t => updateItem(ri, ii, { ...item, text: t })} mode={mode} /></div>
+                  : <span style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6, flex: 1 }} dangerouslySetInnerHTML={{ __html: item.text }} />
+                }
                 {editMode && (<>
                   {ii > 0 && <button onClick={() => { const it=[...rel.items];[it[ii-1],it[ii]]=[it[ii],it[ii-1]];updateRelease(ri,{...rel,items:it}) }} style={{ background:'none',border:'none',color:mutedColor,cursor:'pointer',fontSize:11,padding:'0 2px' }}>↑</button>}
                   {ii < rel.items.length-1 && <button onClick={() => { const it=[...rel.items];[it[ii],it[ii+1]]=[it[ii+1],it[ii]];updateRelease(ri,{...rel,items:it}) }} style={{ background:'none',border:'none',color:mutedColor,cursor:'pointer',fontSize:11,padding:'0 2px' }}>↓</button>}

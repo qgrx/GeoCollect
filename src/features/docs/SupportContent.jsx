@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import EditableText from './EditableText.jsx'
+import RichTextEditor from './RichTextEditor.jsx'
 import { useDocsContent } from './useDocsContent.js'
 
 function EmailImage({ email, color }) {
@@ -62,7 +63,10 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
           )}
           <div style={{ flex: 1 }}>
             <EditableText value={s.title} editing={editMode} onChange={v => changeSection(i, { ...s, title: v })} tag="div" style={{ fontWeight: 800, fontSize: 14, marginBottom: 4, color: textColor }} />
-            <EditableText value={s.desc} editing={editMode} onChange={v => changeSection(i, { ...s, desc: v })} tag="div" multiline style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6 }} />
+            {editMode
+              ? <RichTextEditor value={s.desc} onChange={v => changeSection(i, { ...s, desc: v })} mode={mode} />
+              : <div style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: s.desc }} />
+            }
           </div>
           {editMode && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
