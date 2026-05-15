@@ -107,8 +107,7 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
     setDrawnCards(cards)
     setStep('reveal')
     cards.forEach((_, i) => setTimeout(() => setRevealedIdx(i), i * 320 + 400))
-      setTimeout(() => setStep('done'), cards.length * 320 + 800)
-    }, 1800)
+    setTimeout(() => setStep('done'), cards.length * 320 + 800)
   }
 
   return (
