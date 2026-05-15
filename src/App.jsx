@@ -830,6 +830,7 @@ export default function App() {
         @keyframes goldPop   { 0%{opacity:1;transform:translate(-50%,-50%) scale(.8)} 60%{opacity:1;transform:translate(-50%,-80%) scale(1.1)} 100%{opacity:0;transform:translate(-50%,-120%) scale(1)} }
         @keyframes toastIn   { from{opacity:0;transform:translateY(12px) scale(.97)} to{opacity:1;transform:none} }
         @keyframes shimmer   { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+        @keyframes dotBounce { 0%,100%{transform:translateY(0);opacity:.4} 50%{transform:translateY(-8px);opacity:1} }
         @keyframes slideFromRight { from{transform:translateX(100%)} to{transform:translateX(0)} }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
       `}</style>
@@ -1100,10 +1101,17 @@ export default function App() {
 
                   {/* Card grid */}
                   {displayCards.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: theme.textSecondary, padding: '60px 0' }}>
-                      <div style={{ fontSize: 52, marginBottom: 12 }}>📭</div>
-                      <div style={{ fontSize: 15 }}>{t('no_cards')}</div>
-                    </div>
+                    gs.loadingData ? (
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '60px 0', gap: 10 }}>
+                        {[0, 0.18, 0.36].map(d => (
+                          <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: theme.gold, animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', color: theme.textSecondary, padding: '60px 0', fontSize: 14 }}>
+                        {t('no_cards')}
+                      </div>
+                    )
                   ) : (() => {
                     const totalPages = Math.ceil(displayCards.length / COLL_PAGE_SIZE)
                     const page = Math.min(collPage, totalPages - 1)
