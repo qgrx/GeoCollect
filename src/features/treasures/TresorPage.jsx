@@ -32,8 +32,7 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Gros soutien',   defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
-export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksConfig = {} }) {
-  // onOpenShop peut être appelé avec un packId pour pré-sélectionner le pack
+export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksConfig = {}, packsLoading = false }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [claiming, setClaiming] = useState(false)
@@ -133,9 +132,22 @@ export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksC
           <span style={{ color: theme.textMuted }}>Aucun abonnement, aucune obligation.</span>
         </div>
 
-        {/* 3 cartes packs */}
+        {/* 3 cartes packs — skeleton tant que les prix ne sont pas chargés */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
-          {visiblePacks.map(p => (
+          {packsLoading ? (
+            [1,2,3].map(i => (
+              <div key={i} style={{ background: '#1a1a2e', borderRadius: 16, overflow: 'hidden', border: '1px solid #ffffff12' }}>
+                <div style={{ height: 5, background: 'linear-gradient(90deg,#ffffff0a,#ffffff18,#ffffff0a)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite' }} />
+                <div style={{ padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'center' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(90deg,#ffffff08,#ffffff14,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ height: 14, width: '40%', borderRadius: 6, background: 'linear-gradient(90deg,#ffffff08,#ffffff14,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite', marginBottom: 8 }} />
+                    <div style={{ height: 10, width: '70%', borderRadius: 6, background: 'linear-gradient(90deg,#ffffff05,#ffffff0f,#ffffff05)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite' }} />
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : visiblePacks.map(p => (
             <div key={p.id} style={{
               background: 'linear-gradient(145deg,#1a1a2e,#16213e)',
               borderRadius: 16,
@@ -181,7 +193,8 @@ export default function TresorPage({ dailyOffer, onClaim, onOpenShop, shopPacksC
                 </div>
               </div>
             </div>
-          ))}
+          ))
+          }
         </div>
 
         <div style={{ fontSize: 9, color: '#444', textAlign: 'center' }}>

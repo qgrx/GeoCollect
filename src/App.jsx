@@ -897,7 +897,6 @@ export default function App() {
                 </div>
                 {[
                   { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
-                  ...(gs.limits.supportVisible !== false ? [{ icon: '💝', label: t('menu_support') || 'Soutenir', fn: () => { setShowShop(true); setAvatarMenu(false) } }] : []),
                   ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false) } }] : []),
                   null,
                   { icon: '↩', label: t('btn_logout'), color: '#f85149', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
@@ -1165,6 +1164,7 @@ export default function App() {
                   onClaim={handleClaimDaily}
                   onOpenShop={(packId) => { setShopPackId(packId || null); setShowShop(true) }}
                   shopPacksConfig={gs.limits?.shopPacks || {}}
+                  packsLoading={gs.loadingData}
                 />
               )}
 
