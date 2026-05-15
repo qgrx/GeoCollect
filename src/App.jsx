@@ -379,8 +379,9 @@ export default function App() {
   const [showSettings,    setShowSettings]    = useState(false);
   const [showShop,        setShowShop]        = useState(false);
   const [shopPackId,      setShopPackId]       = useState(null);
-  const [revealCards,     setRevealCards]      = useState(null);  // cartes à révéler après paiement
+  const [revealCards,     setRevealCards]      = useState(null);
   const [revealGold,      setRevealGold]       = useState(0);
+  const [revealPayment,   setRevealPayment]    = useState('');
   const [showTxHistory,   setShowTxHistory]   = useState(false);
   const [filter,          setFilter]          = useState('Tous');
   const [showMissing,     setShowMissing]     = useState(false);
@@ -1167,7 +1168,7 @@ export default function App() {
                 <TresorPage
                   dailyOffer={dailyOffer}
                   onClaim={handleClaimDaily}
-                  onReveal={(cards, gold) => { setRevealCards(cards); setRevealGold(gold || 0); setShowShop(true) }}
+                  onReveal={(cards, gold, paymentLabel) => { setRevealCards(cards); setRevealGold(gold || 0); setRevealPayment(paymentLabel || ''); setShowShop(true) }}
                   cardPool={gs.cardPool}
                   shopPacksConfig={gs.limits?.shopPacks || {}}
                   shopTestMode={!!gs.limits?.shopTestMode}
@@ -1432,7 +1433,7 @@ export default function App() {
       })()}
 
       {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
-      {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0) }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} />}
+      {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0); setRevealPayment('') }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} initialPaymentLabel={revealPayment} />}
       {showAdmin && (
         <AdminPanel
           cardPool={gs.cardPool} cardTypes={gs.cardTypes} questions={questions} limits={gs.limits}

@@ -32,7 +32,7 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#f9ca24,#e17055)', defaultName: 'Gros soutien',   defaultPrice: '15,00 €', defaultGold: 300 },
 ]
 
-export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConfig = {}, initialPackId = null, initialCards = null, initialGold = 0 }) {
+export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConfig = {}, initialPackId = null, initialCards = null, initialGold = 0, initialPaymentLabel = '' }) {
   const { t } = useT()
 
   // Calcul des packs AVANT les hooks pour pouvoir initialiser l'état directement
@@ -270,6 +270,11 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
         {(step === 'reveal' || step === 'done') && (
           <div style={{ padding: '20px 18px' }}>
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              {step === 'done' && initialPaymentLabel ? (
+                <div style={{ fontSize: 13, color: '#00b894', fontWeight: 800, marginBottom: 6 }}>
+                  ✅ Votre paiement {initialPaymentLabel} a été effectué avec succès.
+                </div>
+              ) : null}
               <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: '#f9ca24' }}>
                 {step === 'done' ? '🎉 Geocoins ajoutés à votre collection !' : t('shop_reveal_title')}
               </div>

@@ -89,19 +89,18 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
     }
   }
 
-  function pollForPaid(checkoutId, pack) {
+  function pollForPaid(checkoutId, pack, paymentLabel) {
     let attempts = 0
     pollRef.current = setInterval(async () => {
       attempts++
       const { data } = await apiGetPurchase(checkoutId)
       if (data?.status === 'paid') {
         clearInterval(pollRef.current)
-        // Utiliser les cartes tirées par le serveur (garantit cohérence DB/affichage)
         const cards = (data.card_ids || [])
           .map(id => cardPool.find(c => c.id === id))
           .filter(Boolean)
         const gold = data.gold ?? pack.gold ?? 0
-        onReveal(cards.length ? cards : drawPackFromConfig(cardPool, pack.slots), gold)
+        onReveal(cards.length ? cards : drawPackFromConfig(cardPool, pack.slots), gold, paymentLabel)
       } else if (data?.status === 'failed' || data?.status === 'expired' || attempts > 10) {
         clearInterval(pollRef.current)
         setCheckoutError('Paiement échoué ou expiré.')
@@ -278,16 +277,15 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
       {sumupCheckout && (
         <SumUpPayment
           checkoutId={sumupCheckout.checkoutId}
-          onSuccess={({ demo } = {}) => {
+          onSuccess={({ demo, paymentLabel } = {}) => {
             const pack = sumupCheckout.pack
             const cid  = sumupCheckout.checkoutId
             setSumupCheckout(null)
             if (demo) {
-              // Mode démo Google Pay — cartes fictives sans sauvegarde
               const cards = drawPackFromConfig(cardPool, pack.slots)
-              onReveal(cards, pack.gold)
+              onReveal(cards, pack.gold, paymentLabel)
             } else {
-              pollForPaid(cid, pack)
+              pollForPaid(cid, pack, paymentLabel)
             }
           }}
           onError={msg => { setSumupCheckout(null); setCheckoutError(msg || 'Paiement non abouti.') }}

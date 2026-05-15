@@ -26,7 +26,17 @@ export default function SumUpPayment({ checkoutId, onSuccess, onError, onClose }
         console.log('[SumUp] response:', type, body)
         const isDemo = window.location.hash.includes('google-pay-demo-mode')
         if (type === 'success') {
-          onSuccess?.({ demo: isDemo })
+          // Extraire les infos de paiement pour l'affichage
+          const card   = body?.card || body?.transaction?.card || {}
+          const last4  = card.last_4_digits || card.last4 || card.last4digits || ''
+          const brand  = card.type || card.brand || card.scheme || ''
+          const method = body?.payment_type === 'google_pay' || isDemo ? 'Google Pay' : 'Carte'
+          const paymentLabel = [
+            method,
+            brand ? `${brand.charAt(0).toUpperCase()}${brand.slice(1).toLowerCase()}` : '',
+            last4 ? `**** ${last4}` : '',
+          ].filter(Boolean).join(' ')
+          onSuccess?.({ demo: isDemo, paymentLabel })
         } else if (type === 'fail' || type === 'error') {
           onError?.(body?.message || 'Paiement non abouti.')
         }
