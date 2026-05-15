@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTheme } from '../../ThemeContext.jsx'
+import { useT } from '../../i18n/translations.js'
 import FaqPage from './FaqPage.jsx'
 import ReleaseNotesPage from './ReleaseNotesPage.jsx'
 import SupportContent from './SupportContent.jsx'
@@ -14,6 +15,7 @@ const PAGES = { faq: FaqPage, 'release-notes': ReleaseNotesPage, support: Suppor
 
 export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = false }) {
   const { theme, toggle, mode } = useTheme()
+  const { t } = useT()
   const [page,     setPage]     = useState(initialPage)
   const [editMode, setEditMode] = useState(false)
 
@@ -37,17 +39,17 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
       <div style={{ height: 54, flexShrink: 0, background: topBg, borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>🗺️ Geocoins</span>
-          <span style={{ color: mutedColor, fontSize: 13 }}>— Aide</span>
+          <span style={{ color: mutedColor, fontSize: 13 }}>{t('docs_help')}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {isAdmin && (
             <button onClick={() => setEditMode(e => !e)}
               style={{ background: editMode ? '#f9ca2422' : theme.overlayMd, border: `1px solid ${editMode ? '#f9ca2466' : theme.border}`, borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 12, color: editMode ? '#f9ca24' : mutedColor, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>
-              {editMode ? '✏️ Édition active' : '✏️ Éditer'}
+              {editMode ? t('docs_edit_active') : t('docs_edit')}
             </button>
           )}
           <button onClick={toggle} style={{ background: theme.overlayMd, border: `1px solid ${theme.border}`, borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 12, color: textColor, fontFamily: "'Nunito',sans-serif", fontWeight: 700 }}>
-            {mode === 'dark' ? '☀️ Mode clair' : '🌙 Mode sombre'}
+            {mode === 'dark' ? t('docs_light_mode') : t('docs_dark_mode')}
           </button>
           {onClose && (
             <button onClick={onClose} style={{ background: theme.overlayMd, border: `1px solid ${theme.border}`, color: mutedColor, width: 32, height: 32, borderRadius: '50%', fontSize: 16, cursor: 'pointer', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
@@ -60,7 +62,7 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
 
         {/* Sidebar */}
         <div style={{ width: 200, flexShrink: 0, background: sidebarBg, borderRight: `1px solid ${theme.border}`, padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div style={{ fontSize: 10, color: mutedColor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, paddingLeft: 10, marginBottom: 8 }}>Documentation</div>
+          <div style={{ fontSize: 10, color: mutedColor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, paddingLeft: 10, marginBottom: 8 }}>{t('docs_sidebar_title')}</div>
           {NAV.map(n => (
             <button key={n.id} onClick={() => navigate(n.id)} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 10,
@@ -81,7 +83,7 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
           <div style={{ marginTop: 'auto', paddingTop: 20 }}>
             {onClose && (
               <button onClick={onClose} style={{ width: '100%', background: 'none', border: `1px solid ${theme.border}`, color: mutedColor, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                ← Retour à Geocoins
+                {t('docs_back')}
               </button>
             )}
           </div>

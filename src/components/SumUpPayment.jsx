@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useT } from '../i18n/translations.js'
 
 /**
  * Widget de paiement SumUp embarqué.
@@ -6,6 +7,7 @@ import { useEffect, useRef } from 'react'
  * https://developer.sumup.com/online-payments/checkouts/card-widget
  */
 export default function SumUpPayment({ checkoutId, onSuccess, onError, onClose }) {
+  const { t } = useT()
   const widgetRef = useRef(null)
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function SumUpPayment({ checkoutId, onSuccess, onError, onClose }
       <div id="sumup-card" style={{ width: 'min(96vw,420px)', background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 24px 80px #000c' }} />
       <button onClick={onClose}
         style={{ background: '#ffffff18', border: '1px solid #ffffff22', color: '#aaa', padding: '8px 20px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
-        Annuler
+        {t('sumup_cancel')}
       </button>
     </div>
   )

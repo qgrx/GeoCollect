@@ -139,10 +139,10 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
             {(step === 'reveal' || step === 'done') && initialPaymentLabel ? (
               <>
                 <div style={{ fontWeight: 900, fontSize: 14, color: '#fff', textShadow: '0 1px 4px #0005' }}>
-                  ✅ Votre paiement {initialPaymentLabel} a été effectué avec succès.
+                  {t('shop_payment_success').replace('{label}', initialPaymentLabel)}
                 </div>
                 <div style={{ fontSize: 11, color: '#ffffffcc', marginTop: 3 }}>
-                  📧 Votre reçu a été envoyé par mail.
+                  {t('shop_receipt_sent')}
                 </div>
               </>
             ) : (
@@ -232,13 +232,13 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
             <button onClick={handlePay}
               style={{ width: '100%', background: 'linear-gradient(135deg,#00b4d8,#0077b6)', border: 'none', color: '#fff', padding: '14px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 20px #0077b644', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 }}>
               <span style={{ fontSize: 22 }}>💳</span>
-              Payer {selected.price} avec SumUp
+              {t('shop_pay_with').replace('{price}', selected.price)}
             </button>
             <button onClick={() => setStep('shop')} style={{ width: '100%', background: '#ffffff10', border: '1px solid #ffffff18', color: '#aaa', padding: '10px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-              ← Choisir un autre pack
+              {t('shop_choose_other')}
             </button>
             <div style={{ marginTop: 10, fontSize: 10, color: '#444', textAlign: 'center' }}>
-              🔒 Paiement sécurisé via SumUp · CB, Apple Pay, Google Pay · Aucune donnée bancaire stockée
+              {t('shop_secure_footer')}
             </div>
           </div>
         )}
@@ -247,8 +247,8 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
         {step === 'processing' && (
           <div style={{ padding: '60px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: 52, animation: 'float 1s ease-in-out infinite', display: 'inline-block' }}>⏳</div>
-            <div style={{ fontWeight: 900, fontSize: 18, color: '#fff', marginTop: 16, marginBottom: 8 }}>Création du paiement…</div>
-            <div style={{ color: '#888', fontSize: 13 }}>Connexion à SumUp en cours</div>
+            <div style={{ fontWeight: 900, fontSize: 18, color: '#fff', marginTop: 16, marginBottom: 8 }}>{t('shop_creating')}</div>
+            <div style={{ color: '#888', fontSize: 13 }}>{t('shop_connecting_sumup')}</div>
             <div style={{ marginTop: 20, background: '#ffffff18', borderRadius: 50, height: 6, overflow: 'hidden', width: 200, margin: '20px auto 0' }}>
               <div style={{ height: '100%', background: 'linear-gradient(90deg,#00b4d8,#0077b6)', borderRadius: 50, animation: 'shimmer 1.5s linear infinite', backgroundSize: '200% 100%' }} />
             </div>
@@ -259,17 +259,17 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
         {step === 'awaiting_payment' && (
           <div style={{ padding: '40px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: 52, marginBottom: 16 }}>💳</div>
-            <div style={{ fontWeight: 900, fontSize: 18, color: '#fff', marginBottom: 8 }}>En attente du paiement</div>
+            <div style={{ fontWeight: 900, fontSize: 18, color: '#fff', marginBottom: 8 }}>{t('shop_awaiting')}</div>
             <div style={{ color: '#888', fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
-              La page SumUp s'est ouverte dans un nouvel onglet.<br />
-              Cette fenêtre se mettra à jour automatiquement après paiement.
+              {t('shop_awaiting_desc1')}<br />
+              {t('shop_awaiting_desc2')}
             </div>
             <div style={{ background: '#ffffff18', borderRadius: 50, height: 6, overflow: 'hidden', width: 200, margin: '0 auto 20px' }}>
               <div style={{ height: '100%', background: 'linear-gradient(90deg,#00b4d8,#0077b6)', borderRadius: 50, animation: 'shimmer 2s linear infinite', backgroundSize: '200% 100%' }} />
             </div>
             <button onClick={() => { if (checkoutRef.current) pollPayment(checkoutRef.current) }}
               style={{ background: '#ffffff18', border: '1px solid #ffffff22', color: '#aaa', padding: '8px 18px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
-              Vérifier manuellement
+              {t('shop_check_manually')}
             </button>
           </div>
         )}
@@ -278,11 +278,11 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
         {step === 'error' && (
           <div style={{ padding: '40px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>❌</div>
-            <div style={{ fontWeight: 900, fontSize: 16, color: '#e74c3c', marginBottom: 8 }}>Paiement non abouti</div>
+            <div style={{ fontWeight: 900, fontSize: 16, color: '#e74c3c', marginBottom: 8 }}>{t('shop_payment_failed_title')}</div>
             <div style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>{errorMsg}</div>
             <button onClick={() => setStep('confirm')}
               style={{ background: 'linear-gradient(135deg,#e74c3c,#c0392b)', border: 'none', color: '#fff', padding: '11px 22px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>
-              Réessayer
+              {t('shop_retry')}
             </button>
           </div>
         )}
@@ -292,7 +292,7 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
           <div style={{ padding: '20px 18px' }}>
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
               <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: '#f9ca24' }}>
-                {step === 'done' ? '🎉 Geocoins ajoutés à votre collection !' : t('shop_reveal_title')}
+                {step === 'done' ? t('shop_done_title_v2') : t('shop_reveal_title')}
               </div>
               {step === 'done' && selected?.gold > 0 && (
                 <div style={{ fontSize: 12, color: '#f9ca24', marginTop: 4, fontWeight: 800 }}>+ {selected.gold} Golds crédités</div>
@@ -322,7 +322,7 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
             {step === 'done' && (
               <button onClick={onClose}
                 style={{ width: '100%', background: 'linear-gradient(135deg,#00b894,#00cec9)', border: 'none', color: '#fff', padding: '13px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 16px #00b89444' }}>
-                Fermer
+                {t('shop_close')}
               </button>
             )}
           </div>

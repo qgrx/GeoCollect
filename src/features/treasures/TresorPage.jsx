@@ -73,7 +73,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
 
     const { data, error } = await apiCreateCheckout(pack.id)
     if (error || !data) {
-      setCheckoutError(error || 'Erreur de paiement')
+      setCheckoutError(error || t('tresor_payment_error'))
       setCheckoutPack(null)
       return
     }
@@ -103,7 +103,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         onReveal(cards.length ? cards : drawPackFromConfig(cardPool, pack.slots), gold, paymentLabel)
       } else if (data?.status === 'failed' || data?.status === 'expired' || attempts > 10) {
         clearInterval(pollRef.current)
-        setCheckoutError('Paiement échoué ou expiré.')
+        setCheckoutError(t('tresor_payment_failed_msg'))
       }
     }, 2000)
   }
@@ -180,8 +180,8 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
 
         {/* Texte de soutien */}
         <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.6, marginBottom: 16, padding: '10px 14px', background: '#00b89410', border: '1px solid #00b89430', borderRadius: 10 }}>
-          💚 Cet achat permet de soutenir <strong style={{ color: '#00b894' }}>geocoins.fr</strong> dans son développement et ses frais d'hébergement.<br />
-          <span style={{ color: theme.textMuted }}>Aucun abonnement, aucune obligation.</span>
+          💚 {t('tresor_support_text')}<br />
+          <span style={{ color: theme.textMuted }}>{t('tresor_no_subscription')}</span>
         </div>
 
         {/* 3 cartes packs — skeleton tant que les prix ne sont pas chargés */}
@@ -230,12 +230,12 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
                 )}
                 {isBlocked && (
                   <div style={{ position: 'absolute', top: 12, right: 12, background: '#ffffff18', color: '#888', fontSize: 10, fontWeight: 900, padding: '3px 10px', borderRadius: 20 }}>
-                    🚫 Rupture de stock
+                    {t('tresor_out_of_stock')}
                   </div>
                 )}
                 {isLoading && (
                   <div style={{ position: 'absolute', top: 12, right: 12, color: '#f9ca24', fontSize: 11, fontWeight: 900 }}>
-                    ⏳ Connexion…
+                    {t('tresor_connecting')}
                   </div>
                 )}
 
@@ -243,7 +243,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
                   <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 64 }}>
                     <div style={{ fontSize: 34, filter: `drop-shadow(0 4px 10px ${p.glowColor})`, lineHeight: 1 }}>{p.emoji}</div>
                     <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: '#f9ca24', marginTop: 5, lineHeight: 1 }}>{p.price}</div>
-                    <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>unique</div>
+                    <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>{t('tresor_one_time')}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 900, fontSize: 14, color: '#fff', marginBottom: 6 }}>{p.name}</div>
@@ -269,7 +269,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         </div>
 
         <div style={{ fontSize: 9, color: '#444', textAlign: 'center' }}>
-          🔒 Paiement sécurisé via SumUp · CB, Apple Pay, Google Pay · Aucune donnée bancaire stockée
+          {t('tresor_secure_payment')}
         </div>
       </div>
 

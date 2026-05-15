@@ -1,4 +1,5 @@
 import { cardCC } from '../data/cards.js';
+import { useT } from '../i18n/translations.js'
 
 function formatDate(iso) {
   if (!iso) return '';
@@ -8,6 +9,7 @@ function formatDate(iso) {
 }
 
 export default function SeasonPopup({ season, cards, onClose }) {
+  const { t } = useT()
   if (!season) return null;
 
   return (
@@ -55,7 +57,7 @@ export default function SeasonPopup({ season, cards, onClose }) {
         }}>
           <div style={{ fontSize: 28, marginBottom: 6 }}>🌸</div>
           <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', marginBottom: 4 }}>
-            Nouvelle saison !
+            {t('season_new')}
           </div>
           <div style={{ fontSize: 17, fontWeight: 800, color: '#4a9eff', marginBottom: 8 }}>
             {season.name}
@@ -82,7 +84,7 @@ export default function SeasonPopup({ season, cards, onClose }) {
                 fontSize: 11, fontWeight: 700, color: '#8899bb',
                 textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12,
               }}>
-                {cards.length} geocoin{cards.length > 1 ? 's' : ''} de saison
+                {cards.length > 1 ? t('season_geocoins_many').replace('{n}', cards.length) : t('season_geocoins_one').replace('{n}', cards.length)}
               </div>
               <div style={{
                 display: 'grid',
@@ -124,7 +126,7 @@ export default function SeasonPopup({ season, cards, onClose }) {
             </>
           ) : (
             <div style={{ color: '#8899bb', fontSize: 13, textAlign: 'center' }}>
-              Les geocoins de cette saison seront bientôt dévoilés.
+              {t('season_coming_soon')}
             </div>
           )}
 
@@ -139,7 +141,7 @@ export default function SeasonPopup({ season, cards, onClose }) {
               padding: '11px', borderRadius: 11, cursor: 'pointer',
             }}
           >
-            C'est parti !
+            {t('season_start')}
           </button>
         </div>
       </div>
