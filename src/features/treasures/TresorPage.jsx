@@ -194,62 +194,72 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
                 </div>
               </div>
             ))
-          ) : visiblePacks.map(p => (
-            <div key={p.id} style={{
-              background: 'linear-gradient(145deg,#1a1a2e,#16213e)',
-              borderRadius: 16,
-              border: p.highlight ? `2px solid ${p.borderColor}` : `1px solid ${p.borderColor}`,
-              boxShadow: p.highlight ? `0 0 24px ${p.glowColor}, 0 4px 20px #0006` : `0 4px 14px #0004`,
-              overflow: 'hidden',
-              position: 'relative',
-            }}>
-              {/* Bandeau coloré haut */}
-              <div style={{ height: 5, background: p.gradient }} />
+          ) : visiblePacks.map(p => {
+            const isLoading = checkoutPack === p.id
+            const isBlocked = shopTestMode && !isAdmin
+            const clickable = !checkoutPack && !isBlocked
+            return (
+              <div key={p.id}
+                onClick={clickable ? () => handleCheckout(p) : undefined}
+                style={{
+                  background: 'linear-gradient(145deg,#1a1a2e,#16213e)',
+                  borderRadius: 16,
+                  border: p.highlight ? `2px solid ${p.borderColor}` : `1px solid ${p.borderColor}`,
+                  boxShadow: p.highlight ? `0 0 24px ${p.glowColor}, 0 4px 20px #0006` : `0 4px 14px #0004`,
+                  overflow: 'hidden',
+                  position: 'relative',
+                  cursor: isBlocked ? 'default' : clickable ? 'pointer' : 'not-allowed',
+                  opacity: isBlocked ? 0.7 : 1,
+                  transition: 'transform .15s, box-shadow .15s',
+                }}
+                onMouseEnter={e => { if (clickable) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 0 32px ${p.glowColor}, 0 8px 28px #0007` } }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = p.highlight ? `0 0 24px ${p.glowColor}, 0 4px 20px #0006` : `0 4px 14px #0004` }}>
 
-              {p.badge && (
-                <div style={{ position: 'absolute', top: 12, right: 12, background: p.gradient, color: '#fff', fontSize: 10, fontWeight: 900, padding: '3px 10px', borderRadius: 20, boxShadow: '0 2px 8px #0004' }}>
-                  {p.badge}
-                </div>
-              )}
+                {/* Bandeau coloré haut */}
+                <div style={{ height: 5, background: isLoading ? '#ffffff44' : p.gradient, transition: 'background .3s' }} />
 
-              <div style={{ padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                {/* Icône + prix */}
-                <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 64 }}>
-                  <div style={{ fontSize: 34, filter: `drop-shadow(0 4px 10px ${p.glowColor})`, lineHeight: 1 }}>{p.emoji}</div>
-                  <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: '#f9ca24', marginTop: 5, lineHeight: 1 }}>{p.price}</div>
-                  <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>unique</div>
-                </div>
-
-                {/* Nom + contenu */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 900, fontSize: 14, color: '#fff', marginBottom: 6 }}>{p.name}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
-                    {p.contents.map(({ icon, label, note }) => (
-                      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 11 }}>{icon}</span>
-                        <span style={{ fontSize: 11, color: '#bbb', fontWeight: 700 }}>{label}</span>
-                        {note && <span style={{ fontSize: 9, color: '#666', fontStyle: 'italic' }}>({note})</span>}
-                      </div>
-                    ))}
+                {p.badge && !isBlocked && (
+                  <div style={{ position: 'absolute', top: 12, right: 12, background: p.gradient, color: '#fff', fontSize: 10, fontWeight: 900, padding: '3px 10px', borderRadius: 20, boxShadow: '0 2px 8px #0004' }}>
+                    {p.badge}
                   </div>
-                  {/* Bouton SumUp ou Rupture de stock */}
-                  {checkoutError && checkoutPack === null && (
-                    <div style={{ fontSize: 10, color: '#e74c3c', marginBottom: 4 }}>{checkoutError}</div>
-                  )}
-                  {shopTestMode && !isAdmin ? (
-                    <div style={{ background: '#ffffff10', border: '1px solid #ffffff18', color: '#888', padding: '8px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700 }}>
-                      🚫 Rupture de stock
+                )}
+                {isBlocked && (
+                  <div style={{ position: 'absolute', top: 12, right: 12, background: '#ffffff18', color: '#888', fontSize: 10, fontWeight: 900, padding: '3px 10px', borderRadius: 20 }}>
+                    🚫 Rupture de stock
+                  </div>
+                )}
+                {isLoading && (
+                  <div style={{ position: 'absolute', top: 12, right: 12, color: '#f9ca24', fontSize: 11, fontWeight: 900 }}>
+                    ⏳ Connexion…
+                  </div>
+                )}
+
+                <div style={{ padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'center' }}>
+                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 64 }}>
+                    <div style={{ fontSize: 34, filter: `drop-shadow(0 4px 10px ${p.glowColor})`, lineHeight: 1 }}>{p.emoji}</div>
+                    <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: '#f9ca24', marginTop: 5, lineHeight: 1 }}>{p.price}</div>
+                    <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>unique</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 900, fontSize: 14, color: '#fff', marginBottom: 6 }}>{p.name}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {p.contents.map(({ icon, label, note }) => (
+                        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 11 }}>{icon}</span>
+                          <span style={{ fontSize: 11, color: '#bbb', fontWeight: 700 }}>{label}</span>
+                          {note && <span style={{ fontSize: 9, color: '#666', fontStyle: 'italic' }}>({note})</span>}
+                        </div>
+                      ))}
                     </div>
-                  ) : (
-                    <button onClick={() => handleCheckout(p)} disabled={!!checkoutPack}
-                      style={{ background: checkoutPack === p.id ? '#ffffff22' : p.gradient, border: 'none', color: checkoutPack === p.id ? '#aaa' : '#fff', padding: '8px 14px', borderRadius: 9, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: checkoutPack ? 'not-allowed' : 'pointer', boxShadow: checkoutPack === p.id ? 'none' : `0 3px 12px ${p.glowColor}`, display: 'flex', alignItems: 'center', gap: 6, transition: 'all .3s' }}>
-                      {checkoutPack === p.id ? <><span>⏳</span> Connexion à SumUp…</> : <><span>💳</span> Payer avec SumUp</>}
-                    </button>
-                  )}
+                    {checkoutError && checkoutPack === null && (
+                      <div style={{ fontSize: 10, color: '#e74c3c', marginTop: 6 }}>{checkoutError}</div>
+                    )}
+                  </div>
+                  {!isBlocked && <div style={{ color: '#555', fontSize: 20, flexShrink: 0 }}>›</div>}
                 </div>
               </div>
-            </div>
-          ))
+            )
+          })
           }
         </div>
 
