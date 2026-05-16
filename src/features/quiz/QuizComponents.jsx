@@ -250,8 +250,8 @@ const BAR_SPARKLES = [
 export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false}){
   const {t}=useT(); const {theme}=useTheme();
   const pct       = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
-  const urgent    = !hasPendingQuiz && !lostTo && secondsLeft <= 10 && secondsLeft > 0
-  const veryUrgent = urgent && secondsLeft <= 5
+  const urgent    = !hasPendingQuiz && !lostTo && secondsLeft <= 10
+  const veryUrgent = urgent && secondsLeft <= 5 && secondsLeft > 0
   const hasCard   = !!nextCard && hasPendingQuiz
   const rc        = hasCard ? RC[nextCard.rarity] : null
   const showColors= urgent || hasPendingQuiz
@@ -315,18 +315,28 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lost
         {/* Contenu central */}
         <div style={{flex:1,minWidth:0,position:'relative',minHeight:44}}>
 
-          {/* ── Décompte géant (≤10 s) ── */}
+          {/* ── Décompte géant (≤10 s) + état "lancement" (0 s) ── */}
           {urgent && (
             <div key={secondsLeft} style={{position:'absolute',top:0,right:0,bottom:0,left:0,display:'flex',alignItems:'center',justifyContent:'center',zIndex:3,pointerEvents:'none'}}>
-              <span style={{
-                fontSize: veryUrgent ? 40 : 34,
-                fontWeight: 900,
-                fontFamily: "'Nunito',sans-serif",
-                color: c1,
-                lineHeight: 1,
-                textShadow: `0 0 18px ${c1}cc, 0 0 40px ${c1}55`,
-                animation: veryUrgent ? 'cdShake .45s ease-out' : 'cdPop .55s cubic-bezier(.34,1.56,.64,1)',
-              }}>{secondsLeft}</span>
+              {secondsLeft > 0
+                ? <span style={{
+                    fontSize: veryUrgent ? 40 : 34,
+                    fontWeight: 900,
+                    fontFamily: "'Nunito',sans-serif",
+                    color: c1,
+                    lineHeight: 1,
+                    textShadow: `0 0 18px ${c1}cc, 0 0 40px ${c1}55`,
+                    animation: veryUrgent ? 'cdShake .45s ease-out' : 'cdPop .55s cubic-bezier(.34,1.56,.64,1)',
+                  }}>{secondsLeft}</span>
+                : <span style={{
+                    fontSize: 22,
+                    fontWeight: 900,
+                    color: c1,
+                    letterSpacing: 5,
+                    textShadow: `0 0 12px ${c1}cc`,
+                    animation: 'pulse .7s ease-in-out infinite',
+                  }}>···</span>
+              }
             </div>
           )}
 
