@@ -424,7 +424,7 @@ export default function MarketModal({
 
         {/* ── HISTORIQUE — 50 dernières ventes/achats ── */}
         {tab === 'historique' && (
-          <TxHistoryModal transactions={transactions.slice(0, 50)} onClose={onClose} embedded />
+          <TxHistoryModal transactions={transactions.slice(0, 50)} onClose={onClose} embedded cardPool={cardPool} />
         )}
 
       </div>

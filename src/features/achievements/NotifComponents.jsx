@@ -3,6 +3,7 @@ import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { RC, cardCC } from '../../data/cards.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
+import { ThumbImage } from '../quiz/QuizComponents.jsx'
 
 // ─── Achievement Toast ────────────────────────────────────────────────────────
 export function AchievementToast({ achievement, cardPool, onClose }) {
@@ -112,7 +113,7 @@ export function SaleNotif({ notif, onClose, ranks, buyerScore }) {
 }
 
 // ─── Transaction History Modal ────────────────────────────────────────────────
-export function TxHistoryModal({ transactions = [], onClose, embedded = false, onRead }) {
+export function TxHistoryModal({ transactions = [], onClose, embedded = false, onRead, cardPool = [] }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [page, setPage] = useState(0)
@@ -160,7 +161,9 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
                   border: `1px solid ${tx.isNew ? '#00b89444' : theme.border}`,
                   borderRadius: 11,padding: '10px 14px',flexWrap: 'wrap',
                   cursor: tx.isNew ? 'pointer' : 'default' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0 }}>{tx.cardName[0]}</div>
+                <div style={{ width: 36, height: 36, borderRadius: 10, overflow: 'hidden', background: `linear-gradient(135deg,${c1},${c2})`, flexShrink: 0, border: `1.5px solid ${c1}66` }}>
+                  {(() => { const c = cardPool.find(x => x.id === tx.card_id); const src = c?.image_url_thumb || c?.image_url; return src ? <ThumbImage src={src} alt={tx.cardName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: '#fff' }}>{tx.cardName?.[0]}</div> })()}
+                </div>
                 <div style={{ flex: 1,minWidth: 120 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontWeight: 800,color: theme.textPrimary,fontSize: 13 }}>{tx.cardName}</span>
