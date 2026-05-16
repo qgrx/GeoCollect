@@ -162,7 +162,14 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
                   borderRadius: 11,padding: '10px 14px',flexWrap: 'wrap',
                   cursor: tx.isNew ? 'pointer' : 'default' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, overflow: 'hidden', background: `linear-gradient(135deg,${c1},${c2})`, flexShrink: 0, border: `1.5px solid ${c1}66` }}>
-                  {(() => { const c = cardPool.find(x => x.id === tx.card_id); const src = c?.image_url_thumb || c?.image_url; return src ? <ThumbImage src={src} alt={tx.cardName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: '#fff' }}>{tx.cardName?.[0]}</div> })()}
+                  {(() => {
+                    const src = tx.cards?.image_url_thumb || tx.cards?.image_url
+                      || cardPool.find(x => x.id == tx.card_id)?.image_url_thumb
+                      || cardPool.find(x => x.id == tx.card_id)?.image_url
+                    return src
+                      ? <ThumbImage src={src} alt={tx.cardName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: '#fff' }}>{tx.cardName?.[0]}</div>
+                  })()}
                 </div>
                 <div style={{ flex: 1,minWidth: 120 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
