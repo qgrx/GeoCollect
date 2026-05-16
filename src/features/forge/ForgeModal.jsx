@@ -293,7 +293,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
   const [activeTab, setActiveTab]   = useState('normal')
   const timerRef = useRef([])
 
-  const forgeableCards = (cardPool || []).filter(c => c.forgeable && !(collection[c.id] > 0))
+  const forgeableCards = (cardPool || []).filter(c => c.forgeable)
   const ownedCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 0 && c.type !== 'Achievement')
 
   function clearTimers() { timerRef.current.forEach(clearTimeout); timerRef.current = [] }
@@ -539,7 +539,11 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                     <span style={{ fontSize: 10, color: theme.textMuted }}>pts</span>
                   </div>
 
-                  {!owned && (
+                  {owned ? (
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#00b894', textAlign: 'center' }}>
+                      ✓ {t('forge_already_forged')}
+                    </div>
+                  ) : (
                     <button
                       onClick={() => handleForge(card)}
                       disabled={!canAfford || !card.forge_cost}
