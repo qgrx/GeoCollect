@@ -416,7 +416,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
 
       {/* Panneau principal */}
       <div style={{
-        padding: 22,
+        padding: '18px 14px',
         flex: 1,
         opacity: forgingId ? 0.15 : 1,
         transition: 'opacity .3s',
