@@ -288,7 +288,7 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lost
   return (
     <>
       <style>{CW_STYLES}</style>
-      <div style={{position:'relative',overflow:'hidden',display:'flex',alignItems:'center',gap:11,background:isShiny&&hasPendingQuiz?'linear-gradient(135deg,#b8860b22,#f9ca2415,#b8860b22)':urgent?`${c1}15`:theme.overlay,border:`1.5px solid ${isShiny&&hasPendingQuiz?'#f9ca2488':urgent?`${c1}55`:theme.border}`,borderRadius:13,padding:'9px 14px',transition:'background .5s,border-color .5s',animation:isShiny&&hasPendingQuiz?'shinyGlow 2s ease-in-out infinite':'none',boxShadow:urgent&&!isShiny?`0 0 22px ${c1}44`:undefined}}>
+      <div style={{position:'relative',overflow:isShiny&&hasPendingQuiz?'hidden':'visible',display:'flex',alignItems:'center',gap:11,background:isShiny&&hasPendingQuiz?'linear-gradient(135deg,#b8860b22,#f9ca2415,#b8860b22)':urgent?`${c1}15`:theme.overlay,border:`1.5px solid ${isShiny&&hasPendingQuiz?'#f9ca2488':urgent?`${c1}55`:theme.border}`,borderRadius:13,padding:'9px 14px',transition:'background .5s,border-color .5s',animation:isShiny&&hasPendingQuiz?'shinyGlow 2s ease-in-out infinite':'none',boxShadow:urgent?`0 0 22px ${c1}44`:undefined}}>
         {isShiny&&hasPendingQuiz&&(
           <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:5,borderRadius:13}}>
             {BAR_SPARKLES.map((sp,i)=>(
