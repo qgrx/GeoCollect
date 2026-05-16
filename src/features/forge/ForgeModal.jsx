@@ -291,7 +291,10 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
   const [error, setError]           = useState(null)
   const [recentlyForged, setRecentlyForged] = useState(new Set())
   const [activeTab, setActiveTab]   = useState('normal')
+  const [shinyPage, setShinyPage]   = useState(0)
   const timerRef = useRef([])
+
+  const SHINY_PAGE_SIZE = 12
 
   const forgeableCards = (cardPool || []).filter(c => c.forgeable)
   const ownedCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 0 && c.type !== 'Achievement')
@@ -575,46 +578,67 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
         ))}
 
         {/* Tab Brillance */}
-        {activeTab === 'brillance' && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
-            {ownedCards.length === 0 ? (
-              loading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', gap: 10, width: '100%' }}>
-                  {[0, 0.18, 0.36].map(d => <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />)}
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0', width: '100%' }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>✨</div>
-                  <div>Tu ne possèdes aucune carte à rendre brillante.</div>
-                </div>
-              )
-            ) : ownedCards.map(card => {
-              const alreadyShiny = (shinyCollection[card.id] || 0) > 0
-              const cost = card.shiny_forge_cost ?? shinyForgeCostByRarity[card.rarity] ?? null
-              const canAfford = cost != null && forgePoints >= cost
-              return (
-                <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny ? 0.5 : 1 }}>
-                  <Card card={card} isShiny={alreadyShiny} />
-                  <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>🔨 {cost ?? '—'} pts</div>
-                  {alreadyShiny ? (
-                    <div style={{ fontSize: 11, color: '#00b894', fontWeight: 800 }}>{t('forge_shiny_already') || '✨ Déjà brillant'}</div>
+        {activeTab === 'brillance' && (() => {
+          const totalPages = Math.ceil(ownedCards.length / SHINY_PAGE_SIZE)
+          const page = Math.min(shinyPage, Math.max(0, totalPages - 1))
+          const pageCards = ownedCards.slice(page * SHINY_PAGE_SIZE, (page + 1) * SHINY_PAGE_SIZE)
+          return (
+            <>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
+                {ownedCards.length === 0 ? (
+                  loading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', gap: 10, width: '100%' }}>
+                      {[0, 0.18, 0.36].map(d => <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />)}
+                    </div>
                   ) : (
-                    <button onClick={() => handleForgeShiny(card)} disabled={!canAfford}
-                      style={{ width: '100%', padding: '8px 0', borderRadius: 10, border: 'none',
-                        background: canAfford ? 'linear-gradient(135deg,#f9ca24,#e17055)' : theme.overlay,
-                        color: canAfford ? '#1e3045' : theme.textMuted,
-                        fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12,
-                        cursor: canAfford ? 'pointer' : 'not-allowed' }}>
-                      {canAfford
-                        ? (t('forge_shiny_btn') || '✨ Rendre brillant')
-                        : t('forge_missing_pts').replace('{n}', cost - forgePoints)}
-                    </button>
-                  )}
+                    <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0', width: '100%' }}>
+                      <div style={{ fontSize: 40, marginBottom: 12 }}>✨</div>
+                      <div>Tu ne possèdes aucune carte à rendre brillante.</div>
+                    </div>
+                  )
+                ) : pageCards.map(card => {
+                  const alreadyShiny = (shinyCollection[card.id] || 0) > 0
+                  const cost = card.shiny_forge_cost ?? shinyForgeCostByRarity[card.rarity] ?? null
+                  const canAfford = cost != null && forgePoints >= cost
+                  return (
+                    <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny ? 0.5 : 1 }}>
+                      <Card card={card} isShiny={alreadyShiny} />
+                      <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>🔨 {cost ?? '—'} pts</div>
+                      {alreadyShiny ? (
+                        <div style={{ fontSize: 11, color: '#00b894', fontWeight: 800 }}>{t('forge_shiny_already') || '✨ Déjà brillant'}</div>
+                      ) : (
+                        <button onClick={() => handleForgeShiny(card)} disabled={!canAfford}
+                          style={{ width: '100%', padding: '8px 0', borderRadius: 10, border: 'none',
+                            background: canAfford ? 'linear-gradient(135deg,#f9ca24,#e17055)' : theme.overlay,
+                            color: canAfford ? '#1e3045' : theme.textMuted,
+                            fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12,
+                            cursor: canAfford ? 'pointer' : 'not-allowed' }}>
+                          {canAfford
+                            ? (t('forge_shiny_btn') || '✨ Rendre brillant')
+                            : t('forge_missing_pts').replace('{n}', cost - forgePoints)}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 18 }}>
+                  <button onClick={() => setShinyPage(p => Math.max(0, p - 1))} disabled={page === 0}
+                    style={{ background: page === 0 ? theme.overlay : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: page === 0 ? theme.textMuted : '#fff', padding: '6px 16px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: page === 0 ? 'default' : 'pointer' }}>
+                    ←
+                  </button>
+                  <span style={{ fontSize: 12, color: theme.textMuted, fontWeight: 700 }}>{page + 1} / {totalPages}</span>
+                  <button onClick={() => setShinyPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
+                    style={{ background: page === totalPages - 1 ? theme.overlay : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: page === totalPages - 1 ? theme.textMuted : '#fff', padding: '6px 16px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: page === totalPages - 1 ? 'default' : 'pointer' }}>
+                    →
+                  </button>
                 </div>
-              )
-            })}
-          </div>
-        )}
+              )}
+            </>
+          )
+        })()}
       </div>
     </PanelWrapper>
   )
