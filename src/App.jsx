@@ -331,14 +331,14 @@ export default function App() {
           handleQuizExpireRef.current(data.winner, data.is_bot)
         }
 
-        // Toujours mettre à jour l'historique (peu importe si le joueur regardait ou non)
-        if (data.winner) {
+        // Mettre à jour l'historique uniquement si ce n'est pas le joueur lui-même
+        // (handleQuizAnswer ajoute déjà l'entrée { winner: 'Moi' } côté gagnant)
+        if (data.winner && !iSelf) {
           const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
           setHistory(h => {
-            // Éviter les doublons si handleQuizExpire a déjà ajouté la même entrée
             if (h[0]?.winner === data.winner && h[0]?.card?.name === data.card_name) return h
-            return [{ card: fullCard, winner: data.winner, won: iSelf, isBot: data.is_bot || false, isShiny: data.is_shiny || false }, ...h].slice(0, 10)
+            return [{ card: fullCard, winner: data.winner, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false }, ...h].slice(0, 10)
           })
         }
       })
