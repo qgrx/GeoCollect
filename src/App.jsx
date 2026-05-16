@@ -434,6 +434,7 @@ export default function App() {
   const [showScoreDetail, setShowScoreDetail] = useState(false);
   const [selectedCardIsShiny,      setSelectedCardIsShiny]      = useState(false);
   const [selectedCardFromHistory,  setSelectedCardFromHistory]  = useState(false);
+  const [hasReleaseNotif,          setHasReleaseNotif]          = useState(false);
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [avatarMenu, setAvatarMenu] = useState(false);
@@ -559,6 +560,19 @@ export default function App() {
   // Ref pour éviter la capture stale de handleQuizExpire dans les handlers socket
   const handleQuizExpireRef = useRef(handleQuizExpire)
   useEffect(() => { handleQuizExpireRef.current = handleQuizExpire }, [handleQuizExpire])
+
+  // Notification release notes
+  useEffect(() => {
+    const publishedAt = gs.limits.releaseNotesPublishedAt?.at
+    if (!publishedAt) return
+    const seenAt = localStorage.getItem('geocoins_rn_seen')
+    setHasReleaseNotif(!seenAt || new Date(publishedAt) > new Date(seenAt))
+  }, [gs.limits.releaseNotesPublishedAt])
+
+  function clearReleaseNotif() {
+    localStorage.setItem('geocoins_rn_seen', new Date().toISOString())
+    setHasReleaseNotif(false)
+  }
 
   // Titre fixe — le favicon (pin vert) est affiché dans l'onglet par index.html
   useEffect(() => { document.title = 'Geocoins' }, [])
@@ -941,6 +955,7 @@ export default function App() {
             <button onClick={() => setAvatarMenu(v => !v)} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: '2px solid #f9ca2444', cursor: 'pointer', fontSize: 13, fontWeight: 900, color: '#1a2538', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {auth.profile.pseudo[0].toUpperCase()}
               {gs.unreadSales > 0 && isMobile && <span style={{ position: 'absolute', top: -3, right: -3, background: '#e74c3c', borderRadius: '50%', width: 14, height: 14, fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${theme.badgeBorder}`, color: '#fff' }}>{gs.unreadSales > 9 ? '9+' : gs.unreadSales}</span>}
+              {hasReleaseNotif && <span style={{ position: 'absolute', top: -2, left: -2, background: '#6c5ce7', borderRadius: '50%', width: 10, height: 10, border: `1.5px solid ${theme.badgeBorder}`, boxShadow: '0 0 6px #6c5ce7' }} />}
             </button>
             {avatarMenu && (
               <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 12, boxShadow: '0 16px 48px #000d', zIndex: 99999, minWidth: 200, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
@@ -954,7 +969,7 @@ export default function App() {
                 </div>
                 {[
                   { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
-                  { icon: '💬', label: 'Support', fn: () => { setDocsPage('support'); setShowDocs(true); setAvatarMenu(false); window.history.pushState({}, '', '/support') } },
+                  { icon: '💬', label: 'Support', notif: hasReleaseNotif, fn: () => { clearReleaseNotif(); setDocsPage('release-notes'); setShowDocs(true); setAvatarMenu(false); window.history.pushState({}, '', '/release-notes') } },
                   ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false) } }] : []),
                   null,
                   { icon: '↩', label: t('btn_logout'), color: '#f85149', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
@@ -965,6 +980,7 @@ export default function App() {
                     onMouseEnter={e => e.currentTarget.style.background = theme.bgElevated}
                     onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                     <span style={{ fontSize: 15 }}>{item.icon}</span>{item.label}
+                    {item.notif && <span style={{ marginLeft: 'auto', width: 8, height: 8, borderRadius: '50%', background: '#6c5ce7', flexShrink: 0, boxShadow: '0 0 6px #6c5ce788' }} />}
                   </button>
                 ))}
               </div>

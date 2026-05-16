@@ -93,6 +93,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           shinyForgeCostByRarity:  cfg.shiny_forge_cost_by_rarity ?? prev.shinyForgeCostByRarity,
           shopPacks:               cfg.shop_packs                 ?? prev.shopPacks,
           shopTestMode:            cfg.shop_test_mode !== undefined ? (cfg.shop_test_mode === true || cfg.shop_test_mode === 'true') : prev.shopTestMode,
+          releaseNotesPublishedAt: cfg.release_notes_published_at ?? prev.releaseNotesPublishedAt,
         }))
       }
     })
@@ -220,8 +221,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             typeTranslations: cfg.type_translations ?? prev.typeTranslations,
             shinyRate:        cfg.shiny_rate !== undefined ? +cfg.shiny_rate : prev.shinyRate,
             shinyForgeOpen:   cfg.shiny_forge_open !== undefined ? (cfg.shiny_forge_open === 'true' || cfg.shiny_forge_open === true) : prev.shinyForgeOpen,
-            shopPacks:        cfg.shop_packs ?? prev.shopPacks,
-            shopTestMode:     cfg.shop_test_mode !== undefined ? (cfg.shop_test_mode === true || cfg.shop_test_mode === 'true') : prev.shopTestMode,
+            shopPacks:               cfg.shop_packs ?? prev.shopPacks,
+            shopTestMode:            cfg.shop_test_mode !== undefined ? (cfg.shop_test_mode === true || cfg.shop_test_mode === 'true') : prev.shopTestMode,
+            releaseNotesPublishedAt: cfg.release_notes_published_at ?? prev.releaseNotesPublishedAt,
           }))
         }
 

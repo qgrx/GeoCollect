@@ -6,8 +6,8 @@ import ReleaseNotesPage from './ReleaseNotesPage.jsx'
 import SupportContent from './SupportContent.jsx'
 
 const NAV = [
-  { id: 'faq',           label: 'FAQ',           icon: '❓' },
   { id: 'release-notes', label: 'Release Notes', icon: '📋' },
+  { id: 'faq',           label: 'FAQ',           icon: '❓' },
   { id: 'support',       label: 'Support',       icon: '💬' },
 ]
 

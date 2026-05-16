@@ -33,4 +33,5 @@ export const INIT_LIMITS = {
   scoreRules: DEFAULT_SCORE_RULES,
   shinyMultiplier: 2,
   shinyForgeCostByRarity: { commun: null, rare: null, épique: null, légendaire: null },
+  releaseNotesPublishedAt: null,
 };
