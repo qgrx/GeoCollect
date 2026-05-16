@@ -190,6 +190,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
               type: tx.type, cardName: tx.card_name, rarity: tx.rarity,
               counterpart: tx.counterpart, price: tx.price,
               date: new Date(tx.created_at).toLocaleDateString('fr-FR'),
+              card_id: tx.card_id,
+              cards: tx.cards,
               isNew
             }
           }))
