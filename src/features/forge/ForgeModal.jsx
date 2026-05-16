@@ -470,7 +470,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
             {forgeableCards.map(card => {
               const { c1, c2 } = cardCC(card.rarity)
               const owned     = (collection[card.id] || 0) > 0
@@ -564,7 +564,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
 
         {/* Tab Brillance */}
         {activeTab === 'brillance' && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
             {ownedCards.length === 0 ? (
               <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0', width: '100%' }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>✨</div>
