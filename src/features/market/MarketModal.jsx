@@ -344,7 +344,7 @@ export default function MarketModal({
                   <div style={{ display: 'flex',justifyContent: 'space-between',alignItems: 'center',marginBottom: 12,flexWrap: 'wrap',gap: 8 }}>
                     <div style={{ display: 'flex',alignItems: 'center',gap: 12 }}>
                       <div style={{ fontSize: 12,color: '#888',fontWeight: 700 }}>
-                        {myListings.length} annonce{myListings.length > 1 ? 's' : ''} en cours
+                        {(myListings.length > 1 ? t('market_listings_count_plural') : t('market_listings_count')).replace('{n}', myListings.length)}
                       </div>
                       <button onClick={() => setTab('vendre')} style={{ background: 'none', border: 'none', color: '#00b894', padding: '4px 0', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }}>{t('market_sell_geocoin')}</button>
                       {myListings.length > 1 && (
@@ -400,7 +400,7 @@ export default function MarketModal({
                           ) : (
                             <button onClick={() => setCancelConfirm(realIdx)}
                               style={{ background: '#e74c3c22',border: '1px solid #e74c3c44',color: '#e74c3c',padding: '5px 12px',borderRadius: 8,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 11,cursor: 'pointer',flexShrink: 0 }}>
-                              Retirer
+                              {t('market_remove')}
                             </button>
                           )}
                         </div>
