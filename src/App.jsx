@@ -409,6 +409,10 @@ export default function App() {
   const [showTxHistory,   setShowTxHistory]   = useState(false);
   const [filter,          setFilter]          = useState('Tous');
   const [showMissing,     setShowMissing]     = useState(false);
+  const [showShiny,       setShowShiny]       = useState(false);
+  const [sortBy,          setSortBy]          = useState('rarity'); // 'rarity'|'name-asc'|'name-desc'
+  const [sortMenuOpen,    setSortMenuOpen]    = useState(false);
+  const [gridAnimKey,     setGridAnimKey]     = useState(0);
   const [cardSearch,      setCardSearch]      = useState('');
   const [collPage,        setCollPage]        = useState(0);
   const [quizSessionActive, setQuizSessionActive] = useState(false);
@@ -721,24 +725,46 @@ export default function App() {
     const af = filter === 'Tous';
     const q = cardSearch.trim().toLowerCase();
     const matchSearch = card => !q || card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q);
+
+    // Fonction de tri appliquée en fin
+    const sortFn = sortBy === 'name-asc'
+      ? (a, b) => (a.card?.name || '').localeCompare(b.card?.name || '')
+      : sortBy === 'name-desc'
+      ? (a, b) => (b.card?.name || '').localeCompare(a.card?.name || '')
+      : (a, b) => (RARITY_CONFIG[a.card?.rarity]?.order ?? 99) - (RARITY_CONFIG[b.card?.rarity]?.order ?? 99)
+
+    // ── Mode Shiny uniquement ─────────────────────────────────────────────────
+    if (showShiny) {
+      const shinyList = Object.entries(gs.shinyCollection || {})
+        .filter(([, n]) => n > 0)
+        .map(([id, n]) => ({ card: gs.cardPool.find(c => c.id === +id), count: n, isShiny: true, missing: false }))
+        .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
+      // Si showMissing actif en mode shiny : montrer aussi les cartes possédées sans shiny
+      if (showMissing) {
+        const shinyIds = new Set(shinyList.map(x => x.card.id))
+        const nonShiny = Object.entries(gs.collection)
+          .filter(([id, v]) => v > 0 && !shinyIds.has(+id))
+          .map(([id]) => ({ card: gs.cardPool.find(c => c.id === +id), count: 0, isShiny: false, missing: true }))
+          .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
+        return [...shinyList, ...nonShiny].sort(sortFn)
+      }
+      return shinyList.sort(sortFn)
+    }
+
+    // ── Mode normal (existant) ───────────────────────────────────────────────
     let normalList;
     if (showMissing) {
       normalList = gs.cardPool
         .filter(c => (af || c.type === filter) && matchSearch(c))
         .map(c => ({ card: c, count: gs.collection[c.id] || 0, missing: !(gs.collection[c.id] > 0) }))
-        .sort((a, b) => RARITY_CONFIG[a.card.rarity].order - RARITY_CONFIG[b.card.rarity].order);
     } else {
       normalList = Object.entries(gs.collection)
         .filter(([, v]) => v > 0)
         .map(([id, cnt]) => ({ card: gs.cardPool.find(c => c.id === +id), cnt, missing: false }))
         .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
-        .sort((a, b) => RARITY_CONFIG[a.card.rarity].order - RARITY_CONFIG[b.card.rarity].order);
     }
-    // Interleaver les cartes shiny juste après leur version normale
     const shinyMap = {}
-    Object.entries(gs.shinyCollection || {}).forEach(([id, n]) => {
-      if (n > 0) shinyMap[+id] = n
-    })
+    Object.entries(gs.shinyCollection || {}).forEach(([id, n]) => { if (n > 0) shinyMap[+id] = n })
     const result = []
     const shinyInserted = new Set()
     for (const entry of normalList) {
@@ -752,15 +778,14 @@ export default function App() {
         }
       }
     }
-    // Cartes shiny sans version normale dans la liste courante
     Object.entries(shinyMap).forEach(([id, n]) => {
       if (shinyInserted.has(+id)) return
       const card = gs.cardPool.find(c => c.id === +id)
       if (!card || !(af || card.type === filter) || !matchSearch(card)) return
       result.push({ card, count: n, isShiny: true, missing: false })
     })
-    return result
-  }, [showMissing, filter, cardSearch, gs.collection, gs.cardPool, gs.shinyCollection]);
+    return result.sort(sortFn)
+  }, [showMissing, showShiny, sortBy, filter, cardSearch, gs.collection, gs.cardPool, gs.shinyCollection]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0
   const pseudoChanged   = pseudoChangedAt > 0 && (Date.now() - pseudoChangedAt) < PSEUDO_NOTIF_DAYS * 864e5
@@ -834,6 +859,7 @@ export default function App() {
         @keyframes slideFromRight { from{transform:translateX(100%)} to{transform:translateX(0)} }
         @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
         @keyframes fadeUp   { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes cardSort { 0%{opacity:0;transform:scale(.88) translateY(6px)} 60%{transform:scale(1.03) translateY(-2px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
         @keyframes fadeLeft { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
       `}</style>
 
@@ -1089,7 +1115,10 @@ export default function App() {
                   {types.map(tp => {
                     const pool  = tp === 'Tous' ? gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement') : gs.cardPool.filter(c => c.type === tp)
                     const total = pool.length
-                    const owned = pool.filter(c => (gs.collection[c.id] || 0) > 0).length
+                    // En mode shiny : owned = cartes avec une version shiny
+                    const owned = showShiny
+                      ? pool.filter(c => (gs.shinyCollection?.[c.id] || 0) > 0).length
+                      : pool.filter(c => (gs.collection[c.id] || 0) > 0).length
                     const pct   = total > 0 ? Math.round(owned / total * 100) : 0
                     const full  = owned === total && total > 0
                     const active = filter === tp
@@ -1112,10 +1141,41 @@ export default function App() {
               {(!auth.profile || activeTab === 'collection') && (
                 <>
                   {/* Search + missing toggle */}
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                  {/* Barre de contrôles : search + filtres + tri */}
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
                     <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }} placeholder={t('collection_search')}
-                      style={{ flex: 1, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, padding: '8px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
-                    <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }} style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : theme.bgInput, border: `1px solid ${showMissing ? '#6c5ce7' : theme.border}`, color: showMissing ? '#fff' : theme.textSecondary, padding: '8px 12px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      style={{ flex: 1, minWidth: 100, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, padding: '7px 11px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
+
+                    {/* ✨ Shiny */}
+                    <button onClick={() => { setShowShiny(v => !v); setCollPage(0); setGridAnimKey(k => k+1); }}
+                      style={{ flexShrink: 0, background: showShiny ? '#f9ca2422' : theme.bgInput, border: `1px solid ${showShiny ? '#f9ca24' : theme.border}`, color: showShiny ? '#f9ca24' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      {t('filter_shiny')}
+                    </button>
+
+                    {/* Tri */}
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <button onClick={() => setSortMenuOpen(v => !v)}
+                        style={{ background: sortBy !== 'rarity' ? '#74b9ff22' : theme.bgInput, border: `1px solid ${sortBy !== 'rarity' ? '#74b9ff' : theme.border}`, color: sortBy !== 'rarity' ? '#74b9ff' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {sortBy === 'rarity' ? t('sort_rarity') : sortBy === 'name-asc' ? t('sort_name_asc') : t('sort_name_desc')} ⌄
+                      </button>
+                      {sortMenuOpen && (
+                        <>
+                          <div onClick={() => setSortMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
+                          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 100, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: '0 8px 24px #0008', overflow: 'hidden', minWidth: 130 }}>
+                            {[['rarity', t('sort_rarity')], ['name-asc', t('sort_name_asc')], ['name-desc', t('sort_name_desc')]].map(([val, lbl]) => (
+                              <button key={val} onClick={() => { setSortBy(val); setGridAnimKey(k => k+1); setCollPage(0); setSortMenuOpen(false); }}
+                                style={{ display: 'block', width: '100%', background: sortBy === val ? '#f9ca2418' : 'none', border: 'none', borderBottom: `1px solid ${theme.border}`, color: sortBy === val ? theme.gold : theme.textPrimary, padding: '9px 14px', fontFamily: "'Nunito',sans-serif", fontWeight: sortBy === val ? 900 : 600, fontSize: 12, cursor: 'pointer', textAlign: 'left' }}>
+                                {sortBy === val ? '✓ ' : ''}{lbl}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Manquants */}
+                    <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
+                      style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : theme.bgInput, border: `1px solid ${showMissing ? '#6c5ce7' : theme.border}`, color: showMissing ? '#fff' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       {showMissing ? t('filter_owned') : t('filter_missing')}
                     </button>
                   </div>
@@ -1139,11 +1199,14 @@ export default function App() {
                     const slice = displayCards.slice(page * COLL_PAGE_SIZE, (page + 1) * COLL_PAGE_SIZE)
                     return (
                       <>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14, marginBottom: 16 }}>
+                        <div key={gridAnimKey} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14, marginBottom: 16 }}>
                           {slice.map(({ card, count, cnt, missing, isShiny }, idx) => {
                             const c = count || cnt || 0;
+                            const anim = gridAnimKey > 0
+                              ? `cardSort .4s ${Math.min(idx * 0.03, 0.5)}s cubic-bezier(.34,1.56,.64,1) both`
+                              : 'slideIn .35s ease both'
                             return (
-                              <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ animation: 'slideIn .35s ease both' }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
+                              <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
                                 <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={missing ? undefined : () => { setSelectedCard(card); setSelectedCardIsShiny(!!isShiny) }} />
                               </div>
                             );
