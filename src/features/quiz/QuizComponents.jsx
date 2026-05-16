@@ -99,7 +99,7 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
 }
 
 // ─── Quiz Modal ───────────────────────────────────────────────────────────────
-export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
   const [elapsed,setElapsed]=useState(()=>{
@@ -172,7 +172,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
   return (
     <div style={{position:"fixed",inset:0,zIndex:800,background:"#000000bb",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <style>{`@keyframes shakeIt{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}} @keyframes winGlow{0%,100%{box-shadow:0 0 0 0 #00b89400}50%{box-shadow:0 0 32px 8px #00b89466}} @keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.5)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}`}</style>
-      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(96vw,520px)",border:"2px solid #f9ca2444",boxShadow:"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
+      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(96vw,520px)",border:isShiny?"2px solid #f9ca24aa":"2px solid #f9ca2444",boxShadow:isShiny?"0 24px 60px #000c,0 0 40px #f9ca2433":"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:17,color:"#f9ca24"}}>{t("quiz_title")}</div>
@@ -185,7 +185,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose}){ const {t}=useT();
         </div>
         <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
           <div style={{flexShrink:0,pointerEvents:"none"}}>
-            <Card card={quiz.card} small />
+            <Card card={quiz.card} small isShiny={isShiny} />
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1.5,marginBottom:5}}>{quiz.q}</div>
@@ -230,7 +230,6 @@ const CW_STYLES = `
   @keyframes cgSlide  { 0%{opacity:0;transform:translateY(12px) scale(.95)} 100%{opacity:1;transform:translateY(0) scale(1)} }
   @keyframes cgTrophy { 0%{transform:scale(0) rotate(-25deg)} 65%{transform:scale(1.25) rotate(8deg)} 100%{transform:scale(1) rotate(0)} }
   @keyframes cgFade   { 0%{opacity:0;transform:translateX(-6px)} 100%{opacity:1;transform:translateX(0)} }
-  @keyframes shinySparkle { 0%,100%{transform:scale(1) rotate(0deg)} 50%{transform:scale(1.4) rotate(20deg)} }
   @keyframes joinPulse    { 0%,100%{box-shadow:0 0 0 0 #f9ca2466,0 4px 14px #f9ca2433} 50%{box-shadow:0 0 0 6px #f9ca2400,0 4px 20px #f9ca2455} }
   @keyframes barSp    { 0%,100%{opacity:0;transform:scale(0) rotate(0deg)} 50%{opacity:1;transform:scale(1) rotate(180deg)} }
   @keyframes shinyGlow { 0%,100%{box-shadow:0 0 15px #f9ca2433} 50%{box-shadow:0 0 36px #f9ca2477, 0 0 70px #f9ca2422} }

@@ -7,6 +7,7 @@ const SHINY_CSS = `
   100% { background-position: 300% 300%; }
 }
 @keyframes sp { 0%,100%{opacity:0;transform:scale(0) rotate(0deg)} 50%{opacity:1;transform:scale(1) rotate(180deg)} }
+@keyframes shinySparkle { 0%,100%{transform:scale(1) rotate(0deg)} 50%{transform:scale(1.4) rotate(20deg)} }
 @keyframes textShine {
   0%     { background-position: -200% center; }
   62.5%  { background-position: 200% center; }

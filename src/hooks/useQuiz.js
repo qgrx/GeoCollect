@@ -13,6 +13,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
   const [activeQuiz,    setActiveQuiz]   = useState(null)
   const [nextCard,      setNextCard]     = useState(null)
   const [history,       setHistory]      = useState([])
+  const [lostToWinner,  setLostToWinner] = useState(null)
   const [quizKey,       setQuizKey]      = useState(0)
   const activeQuizRef   = useRef(null)
   const snoozedUntilRef = useRef(0)
@@ -122,7 +123,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
 
   const handleSkip = useCallback((snoozeMs = 0) => {
     if (!pendingQuiz) return
-    setHistory(h => [{ card: pendingQuiz.card, winner: '—', won: false, skipped: true }, ...h].slice(0, 10))
+    setHistory(h => [{ card: pendingQuiz.card, winner: '—', won: false, skipped: true, isShiny: false }, ...h].slice(0, 10))
     // Relancer le compteur en arrière-plan
     setNextQuizTime(Date.now() + (limits?.quizInterval ?? QUIZ_INTERVAL) * 1000)
     setPendingQuiz(null)
@@ -150,7 +151,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
       cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
       if (data.gold_earned) earnGoldWithFx(data.gold_earned)
       if (data.streak != null) cbRef.current.onStreakUpdate?.(data.streak)
-      setHistory(h => [{ card, winner: 'Moi', won: true }, ...h].slice(0, 10))
+      setHistory(h => [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false }, ...h].slice(0, 10))
       if (data.card_earned) {
         showToast(t('toast_quiz_won').replace('{card}', card.name))
       } else {
@@ -176,13 +177,11 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
     const nextTime = solvedAt + (limits?.quizInterval ?? QUIZ_INTERVAL) * 1000
 
     if (!activeQuizRef.current) {
-      // Si le joueur n'a pas rejoint mais que la popup est ouverte
       const pending = pendingQuizRef.current
       if (pending) {
-        // Révéler le gagnant dans la notification avant de fermer
-        // (l'historique est géré côté quiz:solved pour éviter les doublons)
-        setPendingQuiz(p => p ? { ...p, winner: npc } : null)
+        setLostToWinner(npc)
         setTimeout(() => {
+          setLostToWinner(null)
           setPendingQuiz(currentPending => {
             if (currentPending && currentPending.id === pending.id) {
               setNextQuizTime(nextTime)
@@ -192,7 +191,6 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
           })
         }, 8000)
       } else {
-        // Joueur ayant passé le geocoin ou naviguant : resync du timer en arrière-plan
         setNextQuizTime(nextTime)
       }
       return
@@ -212,6 +210,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
     nextCard, setNextCard,
     history, setHistory,
     quizKey, setQuizKey,
+    lostToWinner, setLostToWinner,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz,
     handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz,

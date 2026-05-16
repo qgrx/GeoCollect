@@ -291,6 +291,7 @@ export default function App() {
         }
         setNextCard(card)
         setQuizIsShiny(data.is_shiny || false)
+        setLostToWinner(null)
 
         // Activation immédiate — synchronisation serveur.
         // server_time corrige le décalage d'horloge client/serveur.
@@ -314,13 +315,20 @@ export default function App() {
         if (data.price !== undefined || data.buyer !== undefined || data.type === 'vente' || data.type === 'achat') return
 
         setQuizSessionActive(false)
-        // Ne pas effacer nextCard : la carte visible pendant "trop tard" est la bonne.
-        // Elle sera mise à jour naturellement par quiz:new.
+
+        // Mettre à jour le prochain quiz dès quiz:solved (sans attendre quiz:new)
+        if (data.next_quiz_at && data.server_time) {
+          const nextAt    = new Date(data.next_quiz_at).getTime()
+          const serverNow = new Date(data.server_time).getTime()
+          const msLeft    = Math.max(0, nextAt - serverNow)
+          setNextQuizTime(Date.now() + msLeft)
+        }
+        setQuizIsShiny(data.next_is_shiny || false)
 
         const iSelf = data.winner && data.winner === auth.profile?.pseudo
 
         if (!iSelf) {
-          handleQuizExpireRef.current(data.winner, data.is_bot)  // version toujours à jour
+          handleQuizExpireRef.current(data.winner, data.is_bot)
         }
 
         // Toujours mettre à jour l'historique (peu importe si le joueur regardait ou non)
@@ -330,7 +338,7 @@ export default function App() {
           setHistory(h => {
             // Éviter les doublons si handleQuizExpire a déjà ajouté la même entrée
             if (h[0]?.winner === data.winner && h[0]?.card?.name === data.card_name) return h
-            return [{ card: fullCard, winner: data.winner, won: iSelf, isBot: data.is_bot || false }, ...h].slice(0, 10)
+            return [{ card: fullCard, winner: data.winner, won: iSelf, isBot: data.is_bot || false, isShiny: data.is_shiny || false }, ...h].slice(0, 10)
           })
         }
       })
@@ -543,6 +551,7 @@ export default function App() {
   })
   const { countdown, setNextQuizTime, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
     nextCard, setNextCard, history, setHistory, quizKey, setQuizKey,
+    lostToWinner, setLostToWinner,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
 
@@ -982,7 +991,7 @@ export default function App() {
               {/* Countdown hero (mobile only — en haut) */}
               {!isWide && !activeQuiz && auth.profile?.status !== 'banni' && (
                 <div data-tour="countdown">
-                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={!!pendingQuiz && !pendingQuiz?.winner} lostTo={pendingQuiz?.winner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
+                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
                 </div>
               )}
 
@@ -1080,12 +1089,13 @@ export default function App() {
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
                             onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.zIndex = 10; }}
                             onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
-                            <div style={{ width: '100%', height: '100%', borderRadius: 8, overflow: 'hidden', border: `2px solid ${c1}`, background: theme.bgSurface, boxSizing: 'border-box', boxShadow: h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
+                            <div style={{ width: '100%', height: '100%', borderRadius: 8, overflow: 'hidden', border: h.isShiny ? '2px solid #f9ca24' : `2px solid ${c1}`, background: theme.bgSurface, boxSizing: 'border-box', boxShadow: h.isShiny ? '0 0 10px #f9ca2466' : h.card?.rarity === 'légendaire' ? `0 0 10px ${c1}99` : 'none' }}>
                               {h.card ? ((h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url)
                                 ? <ThumbImage src={h.card.thumbnail || h.card.image_url_thumb || h.card.image || h.card.image_url} alt={h.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                 : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{h.card.name[0]}</div>
                               ) : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 12 }}>?</div>}
                             </div>
+                            {h.isShiny && <div style={{ position: 'absolute', top: -4, right: -4, fontSize: 10, lineHeight: 1, animation: 'shinySparkle 2s ease-in-out infinite', filter: 'drop-shadow(0 0 3px gold)', zIndex: 5 }}>✨</div>}
                           </div>
                           <div style={{ fontSize: 8, fontWeight: 700, color: h.won ? '#3fb950' : theme.textSecondary, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {h.won ? '✓' : h.winner}
@@ -1107,7 +1117,7 @@ export default function App() {
               {/* New geocoin available — above type filter */}
               {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
                 <div data-tour="countdown" style={{ marginBottom: 14 }}>
-                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={!!pendingQuiz && !pendingQuiz?.winner} lostTo={pendingQuiz?.winner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
+                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
                 </div>
               )}
 
@@ -1363,7 +1373,7 @@ export default function App() {
 
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
-      {activeQuiz  && <QuizModal quiz={activeQuiz} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
+      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={quizIsShiny} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
 
       {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
 
