@@ -140,7 +140,7 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
             {/* Bouton voir collection */}
             <button onClick={() => setShowCol(v => !v)}
               style={{ width: '100%', background: showCol ? theme.overlay : 'linear-gradient(135deg,#f9ca24,#e17055)', border: `1px solid ${theme.border}`, color: showCol ? theme.textPrimary : '#1e3045', padding: '9px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: 'pointer', transition: 'all .2s' }}>
-              {showCol ? '▲ Masquer la collection' : `🃏 Voir sa collection (${uniqueCards ?? 0})`}
+              {showCol ? t('lb_hide_collection') : t('lb_show_collection').replace('{n}', uniqueCards ?? 0)}
             </button>
 
             {/* Grille de cartes */}
