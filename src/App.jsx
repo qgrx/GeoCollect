@@ -432,7 +432,8 @@ export default function App() {
   const [menuOpen,        setMenuOpen]        = useState(false);
   const [selectedCard,    setSelectedCard]    = useState(null);
   const [showScoreDetail, setShowScoreDetail] = useState(false);
-  const [selectedCardIsShiny, setSelectedCardIsShiny] = useState(false);
+  const [selectedCardIsShiny,      setSelectedCardIsShiny]      = useState(false);
+  const [selectedCardFromHistory,  setSelectedCardFromHistory]  = useState(false);
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [avatarMenu, setAvatarMenu] = useState(false);
@@ -1085,7 +1086,7 @@ export default function App() {
                     {history.filter(h => !h.skipped).slice(0, 8).map((h, i) => {
                       const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
                       return (
-                        <div key={i} title={h.card?.name} onClick={() => { if (!h.card) return; setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, maxWidth: isWide ? undefined : 44 }}>
+                        <div key={i} title={h.card?.name} onClick={() => { if (!h.card) return; setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); setSelectedCardFromHistory(true); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
                             onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.zIndex = 10; }}
                             onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
@@ -1219,7 +1220,7 @@ export default function App() {
                               : 'slideIn .35s ease both'
                             return (
                               <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
-                                <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={missing ? undefined : () => { setSelectedCard(card); setSelectedCardIsShiny(!!isShiny) }} />
+                                <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={missing ? undefined : () => { setSelectedCard(card); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
                               </div>
                             );
                           })}
@@ -1473,10 +1474,10 @@ export default function App() {
       {selectedCard && (
         <CardDetailModal
           card={selectedCard}
-          count={selectedCardIsShiny ? (gs.shinyCollection?.[selectedCard.id] || 0) : (gs.collection[selectedCard.id] || 0)}
+          count={selectedCardFromHistory ? 0 : selectedCardIsShiny ? (gs.shinyCollection?.[selectedCard.id] || 0) : (gs.collection[selectedCard.id] || 0)}
           isShiny={selectedCardIsShiny}
-          onClose={() => { setSelectedCard(null); setSelectedCardIsShiny(false) }}
-          onSell={() => { setMarketSellCard(selectedCard); setSelectedCard(null); setSelectedCardIsShiny(false); setMarketTab('vendre'); setActiveTab('market'); }}
+          onClose={() => { setSelectedCard(null); setSelectedCardIsShiny(false); setSelectedCardFromHistory(false); }}
+          onSell={() => { setMarketSellCard(selectedCard); setSelectedCard(null); setSelectedCardIsShiny(false); setSelectedCardFromHistory(false); setMarketTab('vendre'); setActiveTab('market'); }}
         />
       )}
       {showAuth        && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
