@@ -100,6 +100,7 @@ export const apiGetLeaderboard = (page = 0, q) => apiFetch(`/api/leaderboard?pag
 // ─── Admin config ────────────────────────────────────────────────────────────
 export const apiAdminAnnounce         = (message, type = 'info') => apiFetch('/api/admin/announce', { method: 'POST', body: { message, type } })
 export const apiTriggerQuiz           = () => apiFetch('/api/admin/quiz/trigger', { method: 'POST' })
+export const apiTriggerShinyQuiz      = () => apiFetch('/api/admin/quiz/trigger-shiny', { method: 'POST' })
 export const apiAdminGetQuestions       = ()                         => apiFetch('/api/admin/questions')
 export const apiAdminAddQuestion        = (q, a, translations)       => apiFetch('/api/admin/questions', { method: 'POST', body: { question: q, answer: a, hint: '', translations: translations || {} } })
 export const apiAdminBatchAddQuestions  = (questions)                => apiFetch('/api/admin/questions/batch', { method: 'POST', body: { questions } })

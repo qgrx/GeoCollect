@@ -3,7 +3,7 @@ import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC, RARITY_CONFIG, ACHIEVEMENT_DEF } from '../../data/cards.js';
 import { PAGE_SIZE } from '../../data/constants.js';
-import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache, apiAdminRecalculateScores, apiAdminResetOnboarding,
+import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTriggerShinyQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache, apiAdminRecalculateScores, apiAdminResetOnboarding,
   apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminReactivate,
   apiAdminGetBots, apiAdminCreateBot, apiAdminUpdateBot, apiAdminDeleteBot,
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
@@ -697,6 +697,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               const {error}=await apiTriggerQuiz();
               setMsg(error ? "❌ "+error : "✅ Quiz déclenché !");
             }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"10px 22px",borderRadius:9}}>⚡ Déclencher un quiz</button>
+            <button onClick={async ()=>{
+              setMsg("⏳ Déclenchement shiny en cours…");
+              const {error}=await apiTriggerShinyQuiz();
+              setMsg(error ? "❌ "+error : "✅ Quiz shiny déclenché !");
+            }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 22px",borderRadius:9}}>✨ Déclencher un quiz shiny</button>
           </div>
         </div>}
 
