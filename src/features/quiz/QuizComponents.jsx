@@ -154,21 +154,11 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
 
   // Indice progressif : structure puis premières lettres réelles
   const maskedHint=useMemo(()=>{
-    if(revealedLetters===0) return null;
     if(revealedLetters>=2 && quiz.answer_first_letters) {
-      // Révéler les premières lettres de chaque mot
-      return quiz.answer_first_letters.split(' ')
-        .map(l=>`${l}…`)
-        .join('  ');
-    }
-    // Révéler juste la structure (longueur de chaque mot)
-    if(quiz.a) {
-      return quiz.a.trim().split(/\s+/)
-        .map(w=>'_'.repeat(w.length))
-        .join('  ');
+      return quiz.answer_first_letters.split(' ').map(l=>`${l}…`).join('  ');
     }
     return null;
-  },[quiz.answer_first_letters,quiz.a,revealedLetters]);
+  },[quiz.answer_first_letters,revealedLetters]);
   return (
     <div style={{position:"fixed",inset:0,zIndex:800,background:"#000000bb",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <style>{`@keyframes shakeIt{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}} @keyframes winGlow{0%,100%{box-shadow:0 0 0 0 #00b89400}50%{box-shadow:0 0 32px 8px #00b89466}} @keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.5)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}`}</style>
