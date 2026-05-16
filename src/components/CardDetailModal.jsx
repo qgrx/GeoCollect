@@ -141,7 +141,7 @@ export default function CardDetailModal({ card, count, onClose, onSell, isShiny 
               style={{ width: '100%', background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)',
                 border: 'none', color: '#fff', padding: '12px', borderRadius: 12,
                 fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>
-              🏷️ Vendre un doublon
+              {t('sell_duplicate')}
             </button>
           </div>
         )}
