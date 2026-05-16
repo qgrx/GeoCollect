@@ -1182,7 +1182,7 @@ export default function App() {
 
               {/* Forge inline */}
               {auth.profile && activeTab === 'forge' && (gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false) && (
-                <ForgeModal inline
+                <ForgeModal inline loading={gs.loadingData}
                   cardPool={gs.cardPool}
                   collection={gs.collection}
                   shinyCollection={gs.shinyCollection || {}}

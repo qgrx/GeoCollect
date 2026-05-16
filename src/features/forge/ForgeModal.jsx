@@ -54,6 +54,10 @@ const STYLE = `
   50%  { opacity: 1; }
   100% { opacity: 0; transform: scale(1.5); }
 }
+@keyframes dotBounce {
+  0%,100% { transform: translateY(0); opacity: .4; }
+  50%     { transform: translateY(-8px); opacity: 1; }
+}
 `
 
 function injectStyle() {
@@ -276,7 +280,7 @@ function ShinyCard({ card, phase }) {
 }
 
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
-export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, inline = false, shinyForgeCostByRarity = {} }) {
+export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, inline = false, shinyForgeCostByRarity = {}, loading = false }) {
   useEffect(() => { injectStyle() }, [])
   const { theme } = useTheme()
   const { t } = useT()
@@ -462,13 +466,16 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
 
         {/* Tab Normal */}
         {activeTab === 'normal' && (forgeableCards.length === 0 ? (
-          <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>⚒️</div>
-            <div>Aucune carte forgeable disponible.</div>
-            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 6 }}>
-              L'admin peut en créer depuis le panneau Cartes.
+          loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', gap: 10 }}>
+              {[0, 0.18, 0.36].map(d => <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />)}
             </div>
-          </div>
+          ) : (
+            <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⚒️</div>
+              <div>Aucune carte forgeable disponible.</div>
+            </div>
+          )
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
             {forgeableCards.map(card => {
@@ -566,10 +573,16 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
         {activeTab === 'brillance' && (
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
             {ownedCards.length === 0 ? (
-              <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0', width: '100%' }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>✨</div>
-                <div>Tu ne possèdes aucune carte à rendre brillante.</div>
-              </div>
+              loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', gap: 10, width: '100%' }}>
+                  {[0, 0.18, 0.36].map(d => <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />)}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0', width: '100%' }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>✨</div>
+                  <div>Tu ne possèdes aucune carte à rendre brillante.</div>
+                </div>
+              )
             ) : ownedCards.map(card => {
               const alreadyShiny = (shinyCollection[card.id] || 0) > 0
               const cost = card.shiny_forge_cost ?? shinyForgeCostByRarity[card.rarity] ?? null
