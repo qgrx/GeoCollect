@@ -232,7 +232,21 @@ const CW_STYLES = `
   @keyframes cgFade   { 0%{opacity:0;transform:translateX(-6px)} 100%{opacity:1;transform:translateX(0)} }
   @keyframes shinySparkle { 0%,100%{transform:scale(1) rotate(0deg)} 50%{transform:scale(1.4) rotate(20deg)} }
   @keyframes joinPulse    { 0%,100%{box-shadow:0 0 0 0 #f9ca2466,0 4px 14px #f9ca2433} 50%{box-shadow:0 0 0 6px #f9ca2400,0 4px 20px #f9ca2455} }
+  @keyframes barSp    { 0%,100%{opacity:0;transform:scale(0) rotate(0deg)} 50%{opacity:1;transform:scale(1) rotate(180deg)} }
+  @keyframes shinyGlow { 0%,100%{box-shadow:0 0 15px #f9ca2433} 50%{box-shadow:0 0 36px #f9ca2477, 0 0 70px #f9ca2422} }
 `;
+
+const BAR_SPARKLES = [
+  { top:'20%', left:'3%',  size:11, delay:0,    color:'#fff' },
+  { top:'65%', left:'13%', size:8,  delay:0.3,  color:'#f9ca24' },
+  { top:'15%', left:'28%', size:9,  delay:0.6,  color:'#ff69b4' },
+  { top:'70%', left:'40%', size:7,  delay:0.15, color:'#fff' },
+  { top:'25%', left:'53%', size:10, delay:0.8,  color:'#4fc3f7' },
+  { top:'68%', left:'65%', size:8,  delay:0.45, color:'#f9ca24' },
+  { top:'12%', left:'77%', size:11, delay:0.7,  color:'#ce93d8' },
+  { top:'72%', left:'88%', size:9,  delay:0.25, color:'#fff' },
+  { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
+];
 
 export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false}){
   const {t}=useT(); const {theme}=useTheme();
@@ -275,7 +289,14 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lost
   return (
     <>
       <style>{CW_STYLES}</style>
-      <div style={{display:'flex',alignItems:'center',gap:11,background:urgent?`${c1}15`:theme.overlay,border:`1.5px solid ${isShiny&&hasPendingQuiz?'#f9ca2488':urgent?`${c1}55`:theme.border}`,borderRadius:13,padding:'9px 14px',transition:'background .5s,border-color .5s,box-shadow .5s',boxShadow:isShiny&&hasPendingQuiz?`0 0 15px #f9ca2433`:urgent?`0 0 22px ${c1}44`:'none'}}>
+      <div style={{position:'relative',overflow:'hidden',display:'flex',alignItems:'center',gap:11,background:isShiny&&hasPendingQuiz?'linear-gradient(135deg,#b8860b22,#f9ca2415,#b8860b22)':urgent?`${c1}15`:theme.overlay,border:`1.5px solid ${isShiny&&hasPendingQuiz?'#f9ca2488':urgent?`${c1}55`:theme.border}`,borderRadius:13,padding:'9px 14px',transition:'background .5s,border-color .5s',animation:isShiny&&hasPendingQuiz?'shinyGlow 2s ease-in-out infinite':'none',boxShadow:urgent&&!isShiny?`0 0 22px ${c1}44`:undefined}}>
+        {isShiny&&hasPendingQuiz&&(
+          <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:5,borderRadius:13}}>
+            {BAR_SPARKLES.map((sp,i)=>(
+              <div key={i} style={{position:'absolute',top:sp.top,left:sp.left,fontSize:sp.size,lineHeight:1,color:sp.color,animation:'barSp 1.8s ease-in-out infinite',animationDelay:`${sp.delay}s`,filter:`drop-shadow(0 0 ${Math.round(sp.size*.4)}px #fff) drop-shadow(0 0 ${Math.round(sp.size*.6)}px ${sp.color})`,userSelect:'none'}}>✦</div>
+            ))}
+          </div>
+        )}
 
         {/* Thumbnail */}
         <div style={{position:'relative',width:40,height:40,flexShrink:0}}>

@@ -241,6 +241,7 @@ export default function App() {
         const serverNow = data.server_time ? new Date(data.server_time).getTime() : Date.now()
         const msLeft    = Math.max(0, nextAt - serverNow)
         setNextQuizTime(Date.now() + msLeft)
+        setQuizIsShiny(data.next_is_shiny || false)
       }
 
       // Le quiz est actif indéfiniment jusqu'à ce que quelqu'un réponde
@@ -261,6 +262,7 @@ export default function App() {
         })
         setQuizKey(k => k + 1)
         setNextCard(card)
+        setQuizIsShiny(data.quiz.is_shiny || false)
         setQuizSessionActive(true)
       }
     }).catch(() => {})
