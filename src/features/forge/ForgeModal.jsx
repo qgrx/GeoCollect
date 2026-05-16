@@ -604,7 +604,9 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                         color: canAfford ? '#1e3045' : theme.textMuted,
                         fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12,
                         cursor: canAfford ? 'pointer' : 'not-allowed' }}>
-                      {t('forge_shiny_btn') || '✨ Rendre brillant'}
+                      {canAfford
+                        ? (t('forge_shiny_btn') || '✨ Rendre brillant')
+                        : t('forge_missing_pts').replace('{n}', cost - forgePoints)}
                     </button>
                   )}
                 </div>
