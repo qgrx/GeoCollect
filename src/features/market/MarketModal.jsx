@@ -20,7 +20,7 @@ function PanelWrapper({ inline, onClose, theme, children }) {
 }
 
 export default function MarketModal({
-  myCollection, market, onClose, onBuy, onListCard,
+  myCollection, market, onClose, onBuy, onListCard, loading = false,
   myListings, onCancelListing, onCancelAllListings, gold, cardPool, transactions = [],
   initialTab = 'acheter',
   initialSellCard = null,
@@ -133,10 +133,17 @@ export default function MarketModal({
               const q = buySearch.trim().toLowerCase()
               const filtered = q ? gArr.filter(({ card }) => card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q)) : gArr
               return filtered.length === 0 ? (
-              <div style={{ textAlign: 'center',color: '#888',padding: '30px 0' }}>
-                <div style={{ fontSize: 36 }}>🏜️</div>
-                <div style={{ marginTop: 8 }}>{t('market_empty')}</div>
-              </div>
+              loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 0', gap: 10 }}>
+                  <style>{`@keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-8px);opacity:1}}`}</style>
+                  {[0, 0.18, 0.36].map(d => <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />)}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', color: '#888', padding: '30px 0' }}>
+                  <div style={{ fontSize: 36 }}>🏜️</div>
+                  <div style={{ marginTop: 8 }}>{t('market_empty')}</div>
+                </div>
+              )
             ) : (
               <div style={{ display: 'flex',flexDirection: 'column',gap: 9 }}>
                 {filtered.map(({ card, tiersArr, totalQty, maxQty }) => {
