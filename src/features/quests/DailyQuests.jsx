@@ -55,7 +55,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
         display: 'flex', alignItems: 'center', gap: 4,
       }}>
         {t('quest_title')}
-        {allDone && <span style={{ color: theme.gold, fontSize: 8 }}>✦ COMPLÈTES</span>}
+        {allDone && <span style={{ color: theme.gold, fontSize: 8 }}>{t('quest_all_done')}</span>}
       </div>
 
       {quests.map(q => {
