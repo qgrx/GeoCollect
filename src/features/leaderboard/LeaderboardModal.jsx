@@ -12,13 +12,15 @@ import { DEFAULT_RANKS } from '../../data/constants.js';
 function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, onBack }) {
   const { t } = useT();
   const { theme } = useTheme();
-  const [col, setCol] = useState(null);       // { cardId: qty }
+  const [col,      setCol]      = useState(null);  // { cardId: qty }
+  const [shinyCol, setShinyCol] = useState(null);  // { cardId: qty }
   const [loading, setLoading] = useState(true);
   const [showCol, setShowCol] = useState(false);
 
   useEffect(() => {
     if (player.isMe) {
       setCol(player.col || {});
+      setShinyCol(player.shinyCol || {});
       setLoading(false);
       return;
     }
@@ -31,11 +33,17 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
       } else {
         setCol(raw);
       }
+      setShinyCol(data?.shiny_collection || {});
       setLoading(false);
     });
   }, [player.id]);
 
-  const uniqueCards = col ? Object.values(col).filter(n => n > 0).length : null;
+  const uniqueCards = col
+    ? new Set([
+        ...Object.keys(col).filter(k => (col[k] || 0) > 0),
+        ...Object.keys(shinyCol || {}).filter(k => ((shinyCol || {})[k] || 0) > 0),
+      ]).size
+    : null;
 
   const score       = player.isMe ? (myScore ?? player.score ?? 0) : (player.score ?? 0);
   const gold        = player.isMe ? (myGold  ?? player.gold  ?? 0) : (player.gold  ?? 0);
@@ -48,11 +56,18 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
   const prevMin  = [...sortedRanks].reverse().find(r => r.min <= score)?.min || 0;
   const pct      = nextRank ? Math.round(((score - prevMin) / (nextRank.min - prevMin)) * 100) : 100;
 
-  const cards = col
-    ? Object.entries(col).filter(([, n]) => n > 0)
-        .map(([id, cnt]) => ({ card: cardPool.find(c => c.id === +id) || { id: +id, name: `#${id}`, type: '?', rarity: 'commun' }, cnt }))
-        .sort((a, b) => (RC[b.card.rarity]?.order ?? 9) - (RC[a.card.rarity]?.order ?? 9))
-    : [];
+  const cards = [];
+  if (col) {
+    Object.entries(col).filter(([, n]) => n > 0).forEach(([id, cnt]) => {
+      cards.push({ card: cardPool.find(c => c.id === +id) || { id: +id, name: `#${id}`, type: '?', rarity: 'commun' }, cnt, isShiny: false });
+    });
+  }
+  if (shinyCol) {
+    Object.entries(shinyCol).filter(([, n]) => n > 0).forEach(([id, cnt]) => {
+      cards.push({ card: cardPool.find(c => c.id === +id) || { id: +id, name: `#${id}`, type: '?', rarity: 'commun' }, cnt, isShiny: true });
+    });
+  }
+  cards.sort((a, b) => (RC[b.card.rarity]?.order ?? 9) - (RC[a.card.rarity]?.order ?? 9));
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
@@ -134,7 +149,7 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
                 {cards.length === 0
                   ? <div style={{ color: theme.textMuted, textAlign: 'center', padding: '18px 0', fontSize: 13 }}>{t('lb_empty')}</div>
                   : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
-                      {cards.map(({ card, cnt }) => <Card key={card.id} card={card} count={cnt} small />)}
+                      {cards.map(({ card, cnt, isShiny }) => <Card key={`${card.id}${isShiny?'_s':''}`} card={card} count={cnt} small isShiny={isShiny} />)}
                     </div>
                 }
               </div>
@@ -147,7 +162,7 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
 }
 
 // ─── Leaderboard Modal ────────────────────────────────────────────────────────
-export default function LeaderboardModal({ myCollection, myPseudo, myId, myScore, myGold, myForgePoints, cardPool, ranks, onClose, inline = false }) {
+export default function LeaderboardModal({ myCollection, myShinyCollection, myPseudo, myId, myScore, myGold, myForgePoints, cardPool, ranks, onClose, inline = false }) {
   const { t } = useT();
   const { theme } = useTheme();
   const [players, setPlayers] = useState([]);
@@ -165,7 +180,7 @@ export default function LeaderboardModal({ myCollection, myPseudo, myId, myScore
         // Injecter le joueur courant s'il n'est pas dans la page
         let list = data.players.map(p => p.id === myId ? { ...p, isMe: true, score: myScore ?? p.score } : p);
         if (page === 0 && myId && !list.find(p => p.isMe)) {
-          const me = { id: myId, pseudo: myPseudo || 'Moi', isMe: true, score: myScore ?? 0, col: myCollection };
+          const me = { id: myId, pseudo: myPseudo || 'Moi', isMe: true, score: myScore ?? 0, col: myCollection, shinyCol: myShinyCollection };
           list = [me, ...list];
         }
         setPlayers(list);
@@ -221,7 +236,7 @@ export default function LeaderboardModal({ myCollection, myPseudo, myId, myScore
             {players.map((p, i) => {
               const rank = page * PG + i;
               return (
-                <div key={p.id || p.pseudo} onClick={() => setViewing(p.isMe ? { ...p, col: myCollection } : p)}
+                <div key={p.id || p.pseudo} onClick={() => setViewing(p.isMe ? { ...p, col: myCollection, shinyCol: myShinyCollection } : p)}
                   style={{ display: 'flex', alignItems: 'center', gap: 9, background: p.isMe ? 'linear-gradient(135deg,#f9ca2415,#e8439315)' : theme.overlay, border: p.isMe ? '1.5px solid #f9ca2444' : `1.5px solid ${theme.border}`, borderRadius: 11, padding: '9px 13px', cursor: 'pointer', transition: 'transform .12s' }}
                   onMouseEnter={e => e.currentTarget.style.transform = 'translateX(4px)'}
                   onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
