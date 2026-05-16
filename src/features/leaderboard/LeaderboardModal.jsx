@@ -67,7 +67,13 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
       cards.push({ card: cardPool.find(c => c.id === +id) || { id: +id, name: `#${id}`, type: '?', rarity: 'commun' }, cnt, isShiny: true });
     });
   }
-  cards.sort((a, b) => (RC[b.card.rarity]?.order ?? 9) - (RC[a.card.rarity]?.order ?? 9));
+  cards.sort((a, b) => {
+    const rDiff = (RC[b.card.rarity]?.order ?? 9) - (RC[a.card.rarity]?.order ?? 9);
+    if (rDiff !== 0) return rDiff;
+    const idDiff = a.card.id - b.card.id;   // même rareté → regrouper par carte
+    if (idDiff !== 0) return idDiff;
+    return a.isShiny ? 1 : -1;             // normal avant shiny
+  });
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
@@ -236,10 +242,10 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
             {players.map((p, i) => {
               const rank = page * PG + i;
               return (
-                <div key={p.id || p.pseudo} onClick={() => setViewing(p.isMe ? { ...p, col: myCollection, shinyCol: myShinyCollection } : p)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 9, background: p.isMe ? 'linear-gradient(135deg,#f9ca2415,#e8439315)' : theme.overlay, border: p.isMe ? '1.5px solid #f9ca2444' : `1.5px solid ${theme.border}`, borderRadius: 11, padding: '9px 13px', cursor: 'pointer', transition: 'transform .12s' }}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'translateX(4px)'}
-                  onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+                <div key={p.id || p.pseudo} onClick={p.isMe ? undefined : () => setViewing(p)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 9, background: p.isMe ? 'linear-gradient(135deg,#f9ca2415,#e8439315)' : theme.overlay, border: p.isMe ? '1.5px solid #f9ca2444' : `1.5px solid ${theme.border}`, borderRadius: 11, padding: '9px 13px', cursor: p.isMe ? 'default' : 'pointer', transition: 'transform .12s' }}
+                  onMouseEnter={e => { if (!p.isMe) e.currentTarget.style.transform = 'translateX(4px)' }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}>
                   <div style={{ fontWeight: 900, fontSize: 16, width: 26, textAlign: 'center' }}>{medal[rank] || `#${rank + 1}`}</div>
                   <div style={{ width: 32, height: 32, borderRadius: '50%', background: p.isMe ? 'linear-gradient(135deg,#f9ca24,#e17055)' : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
                     {(p.pseudo || p.name || '?')[0].toUpperCase()}
