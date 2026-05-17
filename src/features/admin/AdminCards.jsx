@@ -4,6 +4,7 @@ import { useT } from '../../i18n/translations.js';
 import { RC, cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
 import { apiAdminSaveCardNameTrans, apiGetAdminSeasons } from '../../services/api.js';
+import Card from '../../components/Card.jsx';
 
 // Petits utilitaires dupliqués pour rendre le composant autonome
 function Fld({lbl,children}){
@@ -25,11 +26,24 @@ function parseCSV(text) {
 
 export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard, onDeleteCard, onUpdateCardInPool, setMsg, imgUpload }) {
   const { t } = useT();
-  const [selectedType, setSelectedType] = useState(null);
-  const [cardTypePage, setCardTypePage] = useState(0);
-  const [editCard, setEditCard] = useState(null);
+  const [editCard, setEditCard]     = useState(null);
+  const [newCardMode, setNewCardMode] = useState(false);
+  const [search, setSearch]         = useState('');
+  const [filterType, setFilterType] = useState('Tous');
+  const [filterRarity, setFilterRarity] = useState('');
+  const [gridPage, setGridPage]     = useState(0);
+  const GRID_PAGE = 24;
   const [circulation, setCirculation] = useState(null);
   const [nc, setNc] = useState({ name: "", type: cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "", forgeable: false, forgeCost: "", shiny_forge_cost: null, season_id: null });
+
+  const displayCards = useMemo(() => {
+    const RARITY_ORDER = { légendaire: 0, épique: 1, rare: 2, commun: 3 };
+    let cards = cardPool.filter(c => !c.type?.toLowerCase().includes('achievement'));
+    if (filterType !== 'Tous') cards = cards.filter(c => c.type === filterType);
+    if (filterRarity) cards = cards.filter(c => c.rarity === filterRarity);
+    if (search) cards = cards.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+    return [...cards].sort((a, b) => (RARITY_ORDER[a.rarity] ?? 4) - (RARITY_ORDER[b.rarity] ?? 4) || a.name.localeCompare(b.name));
+  }, [cardPool, filterType, filterRarity, search]);
 
   const [seasons, setSeasons] = useState([]);
   const [transCard, setTransCard] = useState(null);
@@ -39,7 +53,6 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const csvCardRef = useRef();
   const fileRef = useRef();
   const editFileRef = useRef();
-  const CARDS_PER_PAGE = 20;
 
   const { c1p, c2p } = useMemo(() => { const { c1, c2 } = cardCC(nc.rarity); return { c1p: c1, c2p: c2 }; }, [nc.rarity]);
 
@@ -155,51 +168,87 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
     } catch (err) { setMsg("❌ Erreur export: " + err.message); }
   }
 
+  function closeForm() {
+    setEditCard(null); setNewCardMode(false);
+    setNc({ name:"", type: filterType !== 'Tous' ? filterType : cardTypes[0]||"", rarity:"commun", image:null, thumbnail:null, desc:"", sellable:true, minPrice:"", forgeable:false, forgeCost:"", shiny_forge_cost:null, season_id:null });
+    if (fileRef.current) fileRef.current.value = '';
+    if (editFileRef.current) editFileRef.current.value = '';
+  }
+
   return (
     <div>
-      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
-        <div style={{flex:1,fontWeight:800,color:"#e74c3c",fontSize:14}}>{editCard?"✏️ Éditer une carte":selectedType?`➕ Créer dans « ${selectedType} »`:"🃏 Types de cartes"}</div>
-        <button onClick={()=>csvCardRef.current.click()} style={{...BTN("#ffffff18"),padding:"6px 12px",fontSize:11,borderRadius:8}}>📥 Importer CSV/ZIP</button>
-        <button onClick={exportCSVCards} style={{...BTN("#ffffff18"),padding:"6px 12px",fontSize:11,borderRadius:8}}>📤 Exporter ZIP</button>
+      {/* ── Header ── */}
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+        <div style={{flex:1,fontWeight:800,color:"#e74c3c",fontSize:14}}>
+          {editCard ? `✏️ ${editCard.name}` : newCardMode ? "➕ Nouvelle carte" : "🃏 Geocoins"}
+        </div>
+        {!editCard && !newCardMode && (
+          <button onClick={()=>{ setNewCardMode(true); setNc({name:"",type:filterType!=='Tous'?filterType:cardTypes[0]||"",rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:"",shiny_forge_cost:null,season_id:null}); }}
+            style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"6px 14px",fontSize:12,borderRadius:8}}>➕ Nouvelle carte</button>
+        )}
+        <button onClick={()=>csvCardRef.current.click()} style={{...BTN("#ffffff18"),padding:"6px 12px",fontSize:11,borderRadius:8}}>📥 Importer</button>
+        <button onClick={exportCSVCards} style={{...BTN("#ffffff18"),padding:"6px 12px",fontSize:11,borderRadius:8}}>📤 Exporter</button>
         <input ref={csvCardRef} type="file" accept=".csv,.zip" onChange={handleCSVCards} style={{display:"none"}}/>
       </div>
-      {(selectedType||editCard)&&(
+
+      {/* ── Fil d'Ariane ── */}
+      {(editCard || newCardMode) && (
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14,fontSize:12,color:"#888"}}>
-          <button onClick={()=>{setSelectedType(null);setEditCard(null);setNc({name:"",type:cardTypes[0]||"",rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:""});if(fileRef.current)fileRef.current.value='';if(editFileRef.current)editFileRef.current.value='';}} style={{background:"none",border:"none",color:"#e74c3c",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif",padding:0}}>Tous les types</button>
-          {selectedType&&<><span>›</span><button onClick={()=>{setEditCard(null);setNc({name:"",type:selectedType,rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:""});if(fileRef.current)fileRef.current.value='';if(editFileRef.current)editFileRef.current.value='';}} disabled={!editCard} style={{background:"none",border:"none",color:"#fff",fontWeight:700,fontSize:12,cursor:editCard?"pointer":"default",fontFamily:"'Nunito',sans-serif",padding:0}}>{selectedType} ({cardPool.filter(c=>c.type===selectedType).length})</button></>}
-          {editCard&&<><span>›</span><span style={{color:"#f9ca24",fontWeight:700}}>✏️ {editCard.name} {circulation!==null&&<span style={{color:"#aaa",fontSize:11,fontWeight:600,marginLeft:4}}>({circulation} en circulation)</span>}</span></>}
+          <button onClick={closeForm} style={{background:"none",border:"none",color:"#e74c3c",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif",padding:0}}>← Tous les geocoins</button>
+          <span>›</span>
+          <span style={{color:"#f9ca24",fontWeight:700}}>
+            {editCard ? <>✏️ {editCard.name}{circulation!==null&&<span style={{color:"#aaa",fontSize:11,fontWeight:600,marginLeft:4}}>({circulation} en circulation)</span>}</> : "Nouvelle carte"}
+          </span>
         </div>
       )}
-      {!selectedType&&!editCard&&(
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10,marginBottom:16}}>
-          {cardTypes.map(type=>{
-            const count=cardPool.filter(c=>c.type===type).length;
-            return(
-              <button key={type} onClick={()=>{setSelectedType(type);setEditCard(null);setNc({name:"",type:type,rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:""});if(fileRef.current)fileRef.current.value='';if(editFileRef.current)editFileRef.current.value='';}} style={{background:"#ffffff0a",border:"1.5px solid #ffffff18",borderRadius:12,padding:"14px 10px",cursor:"pointer",fontFamily:"'Nunito',sans-serif",textAlign:"center",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background="#e74c3c18";e.currentTarget.style.borderColor="#e74c3c66";}} onMouseLeave={e=>{e.currentTarget.style.background="#ffffff0a";e.currentTarget.style.borderColor="#ffffff18";}}>
-                <div style={{fontSize:22,marginBottom:5}}>🃏</div>
-                <div style={{fontWeight:900,color:"#fff",fontSize:13,marginBottom:3}}>{type}</div>
-                <div style={{fontSize:11,color:"#888",fontWeight:700}}>{count} carte{count!==1?"s":""}</div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {selectedType&&!editCard&&(()=>{
-        const typeCards=cardPool.filter(c=>c.type===selectedType); const totalPages=Math.ceil(typeCards.length/CARDS_PER_PAGE); const pg=Math.min(cardTypePage,Math.max(0,totalPages-1)); const slice=typeCards.slice(pg*CARDS_PER_PAGE,(pg+1)*CARDS_PER_PAGE);
-        return(
-          <div style={{marginBottom:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <div style={{fontSize:11,color:"#888"}}>{t("admin_click_to_edit")} · {typeCards.length} cartes</div>
-              {totalPages>1&&(<div style={{display:"flex",alignItems:"center",gap:5}}><button onClick={()=>setCardTypePage(p=>Math.max(0,p-1))} disabled={pg===0} style={{background:pg===0?"#ffffff0a":"#ffffff18",border:"none",color:pg===0?"#444":"#fff",width:22,height:22,borderRadius:6,cursor:pg===0?"default":"pointer",fontWeight:900,fontSize:12}}>‹</button><span style={{fontSize:10,color:"#666",fontWeight:700}}>{pg+1}/{totalPages}</span><button onClick={()=>setCardTypePage(p=>Math.min(totalPages-1,p+1))} disabled={pg===totalPages-1} style={{background:pg===totalPages-1?"#ffffff0a":"#ffffff18",border:"none",color:pg===totalPages-1?"#444":"#fff",width:22,height:22,borderRadius:6,cursor:pg===totalPages-1?"default":"pointer",fontWeight:900,fontSize:12}}>›</button></div>)}
-            </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
-              {slice.map(c=>(<button key={c.id} onClick={()=>setEditCard({...c})} style={{background:"#ffffff12",border:"1px solid #ffffff22",color:"#fff",padding:"4px 10px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{c.name}</button>))}
-              {typeCards.length===0&&<div style={{color:"#555",fontSize:12,fontStyle:"italic"}}>Aucune carte dans ce type.</div>}
-            </div>
+
+      {/* ── Grille de geocoins ── */}
+      {!editCard && !newCardMode && (
+        <>
+          <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+            <input value={search} onChange={e=>{setSearch(e.target.value);setGridPage(0);}} placeholder="Rechercher…"
+              style={{...INP,flex:1,minWidth:120,fontSize:12,padding:"6px 10px"}}/>
+            <select value={filterType} onChange={e=>{setFilterType(e.target.value);setGridPage(0);}} style={{...SEL,fontSize:12,padding:"6px 10px"}}>
+              <option value="Tous">Tous les types</option>
+              {cardTypes.map(tp=><option key={tp} value={tp}>{tp}</option>)}
+            </select>
+            <select value={filterRarity} onChange={e=>{setFilterRarity(e.target.value);setGridPage(0);}} style={{...SEL,fontSize:12,padding:"6px 10px"}}>
+              <option value="">Toutes raretés</option>
+              {["commun","rare","épique","légendaire"].map(r=><option key={r} value={r}>{RC[r]?.label||r}</option>)}
+            </select>
           </div>
-        );
-      })()}
-      {(selectedType||editCard)&&(
+          <div style={{fontSize:11,color:"#666",marginBottom:8}}>{displayCards.length} geocoin{displayCards.length!==1?"s":""} · {t("admin_click_to_edit")}</div>
+          {displayCards.length === 0
+            ? <div style={{color:"#555",fontSize:13,textAlign:"center",padding:"30px 0",fontStyle:"italic"}}>Aucun geocoin trouvé.</div>
+            : (()=>{
+                const totalPg = Math.ceil(displayCards.length / GRID_PAGE);
+                const pg = Math.min(gridPage, Math.max(0, totalPg-1));
+                const slice = displayCards.slice(pg*GRID_PAGE, (pg+1)*GRID_PAGE);
+                return (
+                  <>
+                    <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-evenly",gap:6,marginBottom:10}}>
+                      {slice.map(c=>(
+                        <div key={c.id} onClick={()=>setEditCard({...c})} style={{cursor:"pointer"}} title={c.name}>
+                          <Card card={c} small />
+                        </div>
+                      ))}
+                    </div>
+                    {totalPg>1&&(
+                      <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,marginBottom:8}}>
+                        <button onClick={()=>setGridPage(p=>Math.max(0,p-1))} disabled={pg===0} style={{background:pg===0?"#ffffff0a":"#ffffff18",border:"none",color:pg===0?"#444":"#fff",padding:"4px 12px",borderRadius:6,cursor:pg===0?"default":"pointer",fontWeight:900,fontSize:12}}>←</button>
+                        <span style={{fontSize:11,color:"#666",fontWeight:700}}>{pg+1}/{totalPg}</span>
+                        <button onClick={()=>setGridPage(p=>Math.min(totalPg-1,p+1))} disabled={pg===totalPg-1} style={{background:pg===totalPg-1?"#ffffff0a":"#ffffff18",border:"none",color:pg===totalPg-1?"#444":"#fff",padding:"4px 12px",borderRadius:6,cursor:pg===totalPg-1?"default":"pointer",fontWeight:900,fontSize:12}}>→</button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()
+          }
+        </>
+      )}
+
+      {/* ── Formulaire création / édition ── */}
+      {(editCard || newCardMode) && (
         <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
           <div style={{flex:1,minWidth:240}}>
             {[["Nom de la carte","name","ex: Frostpike"],["Description","desc","Courte description…"]].map(([label,key,ph])=>(<Fld key={key} lbl={label}><input value={editCard?editCard[key]:nc[key]} onChange={e=>{editCard?setEditCard({...editCard,[key]:e.target.value}):setNc({...nc,[key]:e.target.value});}} placeholder={ph} style={INP}/></Fld>))}
@@ -236,7 +285,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
                 <span style={{color:"#aaa",fontSize:12}}>pts</span>
               </div>
             </Fld>
-            <div style={{display:"flex",gap:8,marginTop:4}}>{editCard?(<><button onClick={async()=>{if(!editCard.name.trim()){setMsg("❌ Nom requis.");return;}const payload={...editCard, image_url: editCard.image, image_url_thumb: editCard.thumbnail, is_offered: !!editCard.is_offered, forgeable: !!editCard.forgeable, forge_cost: editCard.forgeable ? (editCard.forge_cost??editCard.forgeCost??null) : null}; if(payload.minPrice!==undefined){payload.min_price=payload.minPrice; delete payload.minPrice;} delete payload.image; delete payload.thumbnail; delete payload.forgeCost; const err=await onEditCard(payload);if(err){setMsg("❌ "+err);return;}onUpdateCardInPool?.(payload);setEditCard(null);setSelectedType(payload.type);setNc({name:"",type:payload.type,rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:""});if(editFileRef.current)editFileRef.current.value='';if(fileRef.current)fileRef.current.value='';setMsg(`✅ "${editCard.name}" mis à jour !`);}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>Enregistrer ✏️</button><button onClick={()=>{setEditCard(null);setNc({name:"",type:selectedType||cardTypes[0]||"",rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:""});if(editFileRef.current)editFileRef.current.value='';if(fileRef.current)fileRef.current.value='';}} style={{...BTN("#ffffff18"),padding:"11px",borderRadius:10}}>Annuler</button><button onClick={async()=>{if(!window.confirm(`Supprimer définitivement "${editCard.name}" ?`)) return;const name=editCard.name; const type=editCard.type;const err=await onDeleteCard(editCard.id);if(err){setMsg("❌ "+err);return;}setEditCard(null);setSelectedType(type);setNc({name:"",type:type,rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:""});if(editFileRef.current)editFileRef.current.value='';if(fileRef.current)fileRef.current.value='';setMsg(`✅ "${name}" supprimée.`);}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)","#fff"),padding:"11px",borderRadius:10}} title="Supprimer cette carte">🗑️</button></>):(<button onClick={async()=>{if(!nc.name.trim()){setMsg("❌ Nom requis.");return;}const payload={name:nc.name.trim(), type:nc.type||selectedType||cardTypes[0]||"", rarity:nc.rarity, image_url:nc.image, image_url_thumb:nc.thumbnail, desc:nc.desc, sellable:nc.forgeable?false:nc.sellable, min_price:nc.minPrice||null, forgeable:!!nc.forgeable, forge_cost:nc.forgeable?(nc.forge_cost??null):null, season_id:nc.season_id||null}; const err=await onAddCard(payload);if(err){setMsg("❌ "+err);return;}setMsg(`✅ "${nc.name}" créée !`);setSelectedType(payload.type);setNc({name:"",type:payload.type,rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:""});if(fileRef.current)fileRef.current.value='';}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>{t("admin_create_card")}</button>)}</div>
+            <div style={{display:"flex",gap:8,marginTop:4}}>{editCard?(<><button onClick={async()=>{if(!editCard.name.trim()){setMsg("❌ Nom requis.");return;}const payload={...editCard, image_url: editCard.image, image_url_thumb: editCard.thumbnail, is_offered: !!editCard.is_offered, forgeable: !!editCard.forgeable, forge_cost: editCard.forgeable ? (editCard.forge_cost??editCard.forgeCost??null) : null}; if(payload.minPrice!==undefined){payload.min_price=payload.minPrice; delete payload.minPrice;} delete payload.image; delete payload.thumbnail; delete payload.forgeCost; const err=await onEditCard(payload);if(err){setMsg("❌ "+err);return;}onUpdateCardInPool?.(payload);closeForm();setMsg(`✅ "${editCard.name}" mis à jour !`);}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>Enregistrer ✏️</button><button onClick={closeForm} style={{...BTN("#ffffff18"),padding:"11px",borderRadius:10}}>Annuler</button><button onClick={async()=>{if(!window.confirm(`Supprimer définitivement "${editCard.name}" ?`)) return;const name=editCard.name;const err=await onDeleteCard(editCard.id);if(err){setMsg("❌ "+err);return;}closeForm();setMsg(`✅ "${name}" supprimée.`);}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)","#fff"),padding:"11px",borderRadius:10}} title="Supprimer cette carte">🗑️</button></>):(<button onClick={async()=>{if(!nc.name.trim()){setMsg("❌ Nom requis.");return;}const payload={name:nc.name.trim(), type:nc.type||cardTypes[0]||"", rarity:nc.rarity, image_url:nc.image, image_url_thumb:nc.thumbnail, desc:nc.desc, sellable:nc.forgeable?false:nc.sellable, min_price:nc.minPrice||null, forgeable:!!nc.forgeable, forge_cost:nc.forgeable?(nc.forge_cost??null):null, season_id:nc.season_id||null}; const err=await onAddCard(payload);if(err){setMsg("❌ "+err);return;}setMsg(`✅ "${nc.name}" créée !`);closeForm();}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>{t("admin_create_card")}</button>)}</div>
           </div>
           <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:7}}><div style={{fontSize:10,color:"#888",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Aperçu</div>{(()=>{const src=editCard||nc;const {c1,c2}=cardCC(src.rarity);const isLeg=src.rarity==="légendaire";return(<div style={{position:"relative",width:148,height:190,borderRadius:16,border:isLeg?`2px solid ${c1}`:`1.5px solid ${c1}66`,boxShadow:isLeg?`0 0 20px ${c1}66,0 4px 20px #0004`:"0 4px 14px #0003",overflow:"hidden",background:src.image?"transparent":`linear-gradient(145deg,${c1}44,${c2}66)`,fontFamily:"'Nunito',sans-serif"}}>{isLeg&&<div style={{position:"absolute",inset:0,borderRadius:16,zIndex:2,background:"linear-gradient(135deg,transparent 40%,#ffffff1a 50%,transparent 60%)",backgroundSize:"400px 100%",animation:"shimmer 2.5s linear infinite",pointerEvents:"none"}}/>}<div style={{position:"absolute",inset:0,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:6}}>{src.image?<img src={src.image} style={{width:"100%",height:"88%",objectFit:"contain"}} alt=""/>:<div style={{fontSize:52,opacity:.22,marginTop:40}}>🃏</div>}</div><div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,background:`linear-gradient(to top,${c1}ee 0%,${c1}99 50%,transparent 100%)`,padding:"28px 8px 7px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:13,color:"#fff",textShadow:"0 1px 4px #0008",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",letterSpacing:.3}}>{src.name||"Nom"}</div></div><div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:4,height:4,background:`linear-gradient(90deg,${c1},${c2})`}}/>{src.forgeable&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#6c5ce7cc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>🔨 {src.forge_cost??src.forgeCost??'?'}pts</div>}{!src.forgeable&&src.sellable===false&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#e74c3ccc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>NON VENDABLE</div>}{!src.forgeable&&src.minPrice>0&&<div style={{position:"absolute",top:5,right:5,zIndex:5,background:"#f39c12cc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>MIN {src.minPrice}G</div>}</div>);})()}</div>
         </div>
