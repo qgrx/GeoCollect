@@ -6,6 +6,7 @@ const TRANSLATIONS = {
   fr: {
     score_detail_title:"Détail du score", score_detail_total:"Total", score_detail_tiers:"Paliers de rang", score_detail_current:"actuel",
     forge_subtitle:"Dépense tes points de forge pour acquérir des geocoins exclusifs",
+    forge_archived_desc:"Ces geocoins représentent des géocaches archivées ou des types de géocaches disparus. Il est temps de les faire revivre pour ne pas les oublier.",
     forge_title:"Atelier de Forge",
     forge_missing_pts:"Manque {n} pts",
     forge_undefined_cost:"Coût non défini",
@@ -335,6 +336,7 @@ const TRANSLATIONS = {
   en: {
     score_detail_title:"Score breakdown", score_detail_total:"Total", score_detail_tiers:"Rank tiers", score_detail_current:"current",
     forge_subtitle:"Spend your forge points to acquire exclusive geocoins",
+    forge_archived_desc:"These geocoins represent archived geocaches or vanished cache types. Time to revive them so they're never forgotten.",
     forge_title:"Forge Workshop",
     forge_missing_pts:"Missing {n} pts",
     forge_undefined_cost:"Cost undefined",
@@ -664,6 +666,7 @@ const TRANSLATIONS = {
   de: {
     score_detail_title:"Score-Aufschlüsselung", score_detail_total:"Gesamt", score_detail_tiers:"Rangstufen", score_detail_current:"aktuell",
     forge_subtitle:"Gib deine Schmiedepunkte aus, um exklusive Geocoins zu erwerben",
+    forge_archived_desc:"Diese Geocoins stellen archivierte Geocaches oder verschwundene Cache-Typen dar. Zeit, sie wiederzubeleben, damit sie nicht in Vergessenheit geraten.",
     forge_title:"Schmiedewerkstatt",
     forge_missing_pts:"Fehlen {n} Pkt.",
     forge_undefined_cost:"Kosten undefiniert",
@@ -993,6 +996,7 @@ const TRANSLATIONS = {
   es: {
     score_detail_title:"Detalle del score", score_detail_total:"Total", score_detail_tiers:"Niveles de rango", score_detail_current:"actual",
     forge_subtitle:"Gasta tus puntos de forja para adquirir geocoins exclusivos",
+    forge_archived_desc:"Estos geocoins representan geocaches archivadas o tipos de geocaches desaparecidos. Es hora de revivirlos para que no caigan en el olvido.",
     forge_title:"Taller de Forja",
     forge_missing_pts:"Faltan {n} pts",
     forge_undefined_cost:"Coste no definido",

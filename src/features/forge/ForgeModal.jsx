@@ -468,6 +468,11 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
         </div>
 
         {/* Tab Normal */}
+        {activeTab === 'normal' && forgeableCards.length > 0 && (
+          <div style={{ background: '#a29bfe18', border: '1px solid #a29bfe33', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#a29bfe', lineHeight: 1.6 }}>
+            🗺️ {t('forge_archived_desc')}
+          </div>
+        )}
         {activeTab === 'normal' && (forgeableCards.length === 0 ? (
           loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', gap: 10 }}>
