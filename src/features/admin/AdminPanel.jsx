@@ -12,7 +12,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiAdminAddCard,
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
   apiGetDailySchedule, apiRegenerateDailySchedule,
-  apiResetQuestionReports,
+  apiResetQuestionReports, apiAdminGetQuestions,
 } from '../../services/api.js';
 
 const DEFAULT_TYPE = 'Normal';
@@ -57,7 +57,13 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [qPage,setQPage]=useState(0);
   const [qSearch,setQSearch]=useState("");
   const [qFilterReported,setQFilterReported]=useState(false);
-  const [resetReports,setResetReports]=useState(()=>new Set());
+  const [resetReports]=useState(()=>new Set()); // conservé pour compatibilité badge
+  const [liveQuestions,setLiveQuestions]=useState(null); // null = utilise le prop
+
+  useEffect(()=>{
+    if(tab!=='questions') return;
+    apiAdminGetQuestions().then(({data})=>{ if(data?.questions) setLiveQuestions(data.questions); });
+  },[tab]);
   const [achCards,setAchCards]=useState([]);
   const [editAch,setEditAch]=useState(null);
   const [achDefs,setAchDefs]=useState([]);
@@ -328,7 +334,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {/* ── QUESTIONS ── */}
         {tab==="questions"&&<div>
           <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
-            <div style={{flex:1,fontWeight:900,color:"#e74c3c",fontSize:14}}>❓ Questions ({questions.length})</div>
+            <div style={{flex:1,fontWeight:900,color:"#e74c3c",fontSize:14}}>❓ Questions ({(liveQuestions??questions).length})</div>
             <button onClick={()=>csvQRef.current.click()} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📥 CSV</button>
             <button onClick={exportCSVQ} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📤 Export</button>
             <input ref={csvQRef} type="file" accept=".csv" onChange={handleCSVQ} style={{display:"none"}}/>
@@ -364,7 +370,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           {/* Recherche + pagination */}
           {(()=>{
             const Q_PAGE=10;
-            const filtered=questions.filter(q=>
+            const filtered=(liveQuestions??questions).filter(q=>
               (!qFilterReported || ((q.report_count||0)>0 && !resetReports.has(q.id))) &&
               (q.q.toLowerCase().includes(qSearch.toLowerCase())||
               q.a.toLowerCase().includes(qSearch.toLowerCase())||
@@ -394,7 +400,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         {(q.report_count||0)>0&&!resetReports.has(q.id)&&(
                           <div style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:3}}>
                             <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#e74c3c22",border:"1px solid #e74c3c44",borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800,color:"#e74c3c"}}>⚠ {q.report_count} signalement{q.report_count>1?"s":""}</div>
-                            <button onClick={async()=>{const{error}=await apiResetQuestionReports(q.id);if(error){setMsg("❌ "+error);return;}setResetReports(s=>{const n=new Set(s);n.add(q.id);return n;});setMsg(`✅ Signalements réinitialisés.`);}} title="Réinitialiser les signalements" style={{background:"#ffffff12",border:"1px solid #ffffff22",color:"#aaa",padding:"1px 7px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>↺ reset</button>
+                            <button onClick={async()=>{const{error}=await apiResetQuestionReports(q.id);if(error){setMsg("❌ "+error);return;}setLiveQuestions(qs=>(qs??questions).map(x=>x.id===q.id?{...x,report_count:0}:x));setMsg(`✅ Signalements réinitialisés.`);}} title="Réinitialiser les signalements" style={{background:"#ffffff12",border:"1px solid #ffffff22",color:"#aaa",padding:"1px 7px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>↺ reset</button>
                           </div>
                         )}
                         {inactive&&<div style={{fontSize:9,color:"#e74c3c",fontWeight:800,marginTop:3}}>DÉSACTIVÉE</div>}
