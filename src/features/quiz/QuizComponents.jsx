@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { soundCorrect, soundWrong } from '../../utils/sounds.js';
 import { useT } from '../../i18n/translations.js';
 import { useTheme } from '../../ThemeContext.jsx';
+import { apiReportQuestion } from '../../services/api.js';
 import { normA, wordCount } from '../../utils/gameUtils.js';
 import { RC, cardCC, rarityLabel, cardName } from '../../data/cards.js';
 import { getLang } from '../../i18n/translations.js';
@@ -102,6 +103,10 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
 export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
+  const [reportStatus,setReportStatus]=useState(()=>{
+    if(!quiz.question_id) return 'idle';
+    try { const r=JSON.parse(localStorage.getItem('gc_qreported')||'[]'); return r.includes(quiz.question_id)?'done':'idle'; } catch{return 'idle';}
+  });
   const [elapsed,setElapsed]=useState(()=>{
     if(!quiz.started_at) return 0;
     return Math.floor((Date.now()-new Date(quiz.started_at).getTime())/1000);
@@ -134,6 +139,13 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
     return()=>clearTimeout(t);
   },[elapsed,status]);
 
+  async function handleReport(){
+    if(!quiz.question_id||reportStatus!=='idle') return;
+    setReportStatus('loading');
+    await apiReportQuestion(quiz.question_id).catch(()=>{});
+    try { const r=JSON.parse(localStorage.getItem('gc_qreported')||'[]'); if(!r.includes(quiz.question_id)){r.push(quiz.question_id);localStorage.setItem('gc_qreported',JSON.stringify(r));} } catch(_){}
+    setReportStatus('done');
+  }
   function finish(n){if(doneRef.current)return;doneRef.current=true;setNpc(n || 'Un autre joueur');setStatus("lost");onExpire(n || 'Un autre joueur');}
     async function submit(){
     if(status!=="open") return;
@@ -208,6 +220,16 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
         {/* Turnstile invisible — aucune UI visible */}
         {status==="won"&&<div style={{textAlign:"center",padding:"14px 0",background:"#00b89420",borderRadius:13,border:"1.5px solid #00b89444",animation:"winGlow 1.5s infinite"}}><div style={{fontSize:38}}>🎉</div><div style={{color:"#00b894",fontWeight:900,fontSize:19,marginTop:7}}>{t("quiz_won").replace("{card}",cardName(quiz.card, getLang()))}</div></div>}
         {status==="lost"&&<div style={{textAlign:"center",padding:"14px 0",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}><div style={{fontSize:36}}>😤</div><div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div></div>}
+        {/* Signalement */}
+        <div style={{textAlign:"right",marginTop:8}}>
+          {reportStatus==='done'
+            ? <span style={{fontSize:10,color:"#00b894",fontWeight:700}}>✓ {t('quiz_report_thanks')}</span>
+            : <button onClick={handleReport} disabled={reportStatus==='loading'}
+                style={{background:"none",border:"none",color:"#555",fontSize:10,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:600,padding:0,textDecoration:"underline",opacity:reportStatus==='loading'?0.5:1}}>
+                ⚠ {t('quiz_report_btn')}
+              </button>
+          }
+        </div>
       </div>
     </div>
   );

@@ -73,6 +73,9 @@ export const apiJoinQuiz = (quizId) =>
 export const apiAnswerQuiz = (quizId, answer) =>
   apiFetch('/api/quiz/answer', { method: 'POST', body: { quiz_id: quizId, answer } })
 
+export const apiReportQuestion = (questionId) =>
+  apiFetch(`/api/quiz/questions/${questionId}/report`, { method: 'POST' })
+
 // ─── Transactions ─────────────────────────────────────────────────────────────
 export const apiGetTransactions = (params = {}) => {
   const qs = new URLSearchParams(params).toString()

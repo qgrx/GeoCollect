@@ -55,6 +55,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [editQ,setEditQ]=useState(null);
   const [qPage,setQPage]=useState(0);
   const [qSearch,setQSearch]=useState("");
+  const [qFilterReported,setQFilterReported]=useState(false);
   const [achCards,setAchCards]=useState([]);
   const [editAch,setEditAch]=useState(null);
   const [achDefs,setAchDefs]=useState([]);
@@ -362,9 +363,10 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           {(()=>{
             const Q_PAGE=10;
             const filtered=questions.filter(q=>
-              q.q.toLowerCase().includes(qSearch.toLowerCase())||
+              (!qFilterReported || (q.report_count||0)>0) &&
+              (q.q.toLowerCase().includes(qSearch.toLowerCase())||
               q.a.toLowerCase().includes(qSearch.toLowerCase())||
-              (q.hint||"").toLowerCase().includes(qSearch.toLowerCase())
+              (q.hint||"").toLowerCase().includes(qSearch.toLowerCase()))
             );
             const totalPages=Math.ceil(filtered.length/Q_PAGE);
             const pg=Math.min(qPage,Math.max(0,totalPages-1));
@@ -373,6 +375,10 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               <>
                 <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
                   <input value={qSearch} onChange={e=>{setQSearch(e.target.value);setQPage(0);}} placeholder="Rechercher…" style={{...INP,flex:1,padding:"7px 11px",fontSize:12}}/>
+                  <button onClick={()=>{setQFilterReported(v=>!v);setQPage(0);}}
+                    style={{background:qFilterReported?"#e74c3c22":"#ffffff0a",border:`1px solid ${qFilterReported?"#e74c3c66":"#ffffff18"}`,color:qFilterReported?"#e74c3c":"#888",padding:"5px 10px",borderRadius:7,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}}>
+                    ⚠ Signalées {qFilterReported&&`(${filtered.length})`}
+                  </button>
                   <span style={{fontSize:11,color:"#888",whiteSpace:"nowrap",fontWeight:700}}>{filtered.length}/{questions.length}</span>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
@@ -383,6 +389,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         <div style={{fontSize:12,color:inactive?"#666":"#fff",fontWeight:700,marginBottom:2,textDecoration:inactive?"line-through":"none"}}>{q.q}</div>
                         <div style={{fontSize:11,color:"#00b894",fontWeight:700}}>→ {q.a}</div>
                         {q.hint&&<div style={{fontSize:10,color:"#555",marginTop:2}}>💡 {q.hint}</div>}
+                        {(q.report_count||0)>0&&<div style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:3,background:"#e74c3c22",border:"1px solid #e74c3c44",borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800,color:"#e74c3c"}}>⚠ {q.report_count} signalement{q.report_count>1?"s":""}</div>}
                         {inactive&&<div style={{fontSize:9,color:"#e74c3c",fontWeight:800,marginTop:3}}>DÉSACTIVÉE</div>}
                       </div>
                       <div style={{display:"flex",gap:5,flexShrink:0}}>
