@@ -40,7 +40,9 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const [filterMinPriceVal, setFilterMinPriceVal] = useState('');
   const [filterShiny, setFilterShiny]             = useState('');
   const [filterShinyVal, setFilterShinyVal]       = useState('');
-  const advActiveCount = [filterForgeable, filterSellable, filterMinPrice, filterShiny].filter(Boolean).length;
+  const [filterForgeCost, setFilterForgeCost]     = useState('');
+  const [filterForgeCostVal, setFilterForgeCostVal] = useState('');
+  const advActiveCount = [filterForgeable, filterSellable, filterMinPrice, filterShiny, filterForgeCost].filter(Boolean).length;
   const [circulation, setCirculation] = useState(null);
   const [nc, setNc] = useState({ name: "", type: cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "", forgeable: false, forgeCost: "", shiny_forge_cost: null, season_id: null });
 
@@ -62,8 +64,12 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
     if (filterShiny === 'none') cards = cards.filter(c => sf(c) == null);
     if (filterShiny === 'gt' && filterShinyVal !== '') cards = cards.filter(c => (sf(c) ?? 0) > +filterShinyVal);
     if (filterShiny === 'lt' && filterShinyVal !== '') cards = cards.filter(c => (sf(c) ?? 0) < +filterShinyVal);
+    const fc = c => c.forge_cost ?? c.forgeCost ?? null;
+    if (filterForgeCost === 'none') cards = cards.filter(c => fc(c) == null);
+    if (filterForgeCost === 'gt' && filterForgeCostVal !== '') cards = cards.filter(c => (fc(c) ?? 0) > +filterForgeCostVal);
+    if (filterForgeCost === 'lt' && filterForgeCostVal !== '') cards = cards.filter(c => (fc(c) ?? 0) < +filterForgeCostVal);
     return [...cards].sort((a, b) => (RARITY_ORDER[a.rarity] ?? 4) - (RARITY_ORDER[b.rarity] ?? 4) || a.name.localeCompare(b.name));
-  }, [cardPool, filterType, filterRarity, search, filterForgeable, filterSellable, filterMinPrice, filterMinPriceVal, filterShiny, filterShinyVal]);
+  }, [cardPool, filterType, filterRarity, search, filterForgeable, filterSellable, filterMinPrice, filterMinPriceVal, filterShiny, filterShinyVal, filterForgeCost, filterForgeCostVal]);
 
   const [seasons, setSeasons] = useState([]);
   const [transCard, setTransCard] = useState(null);
@@ -286,8 +292,23 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
                     placeholder="valeur" style={{...INP,width:70,fontSize:11,padding:"4px 8px"}}/>
                 )}
               </div>
+              {/* Coût de forge */}
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:"#a29bfe",fontWeight:700,minWidth:90}}>🔨 Forge :</span>
+                <select value={filterForgeCost} onChange={e=>{setFilterForgeCost(e.target.value);setFilterForgeCostVal('');setGridPage(0);}} style={{...SEL,fontSize:11,padding:"4px 8px",flex:1}}>
+                  <option value="">Tous</option>
+                  <option value="none">Sans coût de forge</option>
+                  <option value="gt">Coût supérieur à</option>
+                  <option value="lt">Coût inférieur à</option>
+                </select>
+                {(filterForgeCost==='gt'||filterForgeCost==='lt')&&(
+                  <input type="text" inputMode="numeric" value={filterForgeCostVal}
+                    onChange={e=>{setFilterForgeCostVal(e.target.value.replace(/[^0-9]/g,''));setGridPage(0);}}
+                    placeholder="valeur" style={{...INP,width:70,fontSize:11,padding:"4px 8px"}}/>
+                )}
+              </div>
               {advActiveCount>0&&(
-                <button onClick={()=>{setFilterForgeable('');setFilterSellable('');setFilterMinPrice('');setFilterMinPriceVal('');setFilterShiny('');setFilterShinyVal('');setGridPage(0);}}
+                <button onClick={()=>{setFilterForgeable('');setFilterSellable('');setFilterMinPrice('');setFilterMinPriceVal('');setFilterShiny('');setFilterShinyVal('');setFilterForgeCost('');setFilterForgeCostVal('');setGridPage(0);}}
                   style={{background:"#e74c3c22",border:"1px solid #e74c3c44",color:"#e74c3c",padding:"4px 10px",borderRadius:6,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",alignSelf:"flex-start"}}>
                   ✕ Réinitialiser les filtres avancés
                 </button>
