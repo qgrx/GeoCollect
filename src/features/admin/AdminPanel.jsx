@@ -12,6 +12,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiAdminAddCard,
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
   apiGetDailySchedule, apiRegenerateDailySchedule,
+  apiResetQuestionReports,
 } from '../../services/api.js';
 
 const DEFAULT_TYPE = 'Normal';
@@ -56,6 +57,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [qPage,setQPage]=useState(0);
   const [qSearch,setQSearch]=useState("");
   const [qFilterReported,setQFilterReported]=useState(false);
+  const [resetReports,setResetReports]=useState(()=>new Set());
   const [achCards,setAchCards]=useState([]);
   const [editAch,setEditAch]=useState(null);
   const [achDefs,setAchDefs]=useState([]);
@@ -363,7 +365,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           {(()=>{
             const Q_PAGE=10;
             const filtered=questions.filter(q=>
-              (!qFilterReported || (q.report_count||0)>0) &&
+              (!qFilterReported || ((q.report_count||0)>0 && !resetReports.has(q.id))) &&
               (q.q.toLowerCase().includes(qSearch.toLowerCase())||
               q.a.toLowerCase().includes(qSearch.toLowerCase())||
               (q.hint||"").toLowerCase().includes(qSearch.toLowerCase()))
@@ -389,7 +391,12 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         <div style={{fontSize:12,color:inactive?"#666":"#fff",fontWeight:700,marginBottom:2,textDecoration:inactive?"line-through":"none"}}>{q.q}</div>
                         <div style={{fontSize:11,color:"#00b894",fontWeight:700}}>→ {q.a}</div>
                         {q.hint&&<div style={{fontSize:10,color:"#555",marginTop:2}}>💡 {q.hint}</div>}
-                        {(q.report_count||0)>0&&<div style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:3,background:"#e74c3c22",border:"1px solid #e74c3c44",borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800,color:"#e74c3c"}}>⚠ {q.report_count} signalement{q.report_count>1?"s":""}</div>}
+                        {(q.report_count||0)>0&&!resetReports.has(q.id)&&(
+                          <div style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:3}}>
+                            <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#e74c3c22",border:"1px solid #e74c3c44",borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800,color:"#e74c3c"}}>⚠ {q.report_count} signalement{q.report_count>1?"s":""}</div>
+                            <button onClick={async()=>{const{error}=await apiResetQuestionReports(q.id);if(error){setMsg("❌ "+error);return;}setResetReports(s=>{const n=new Set(s);n.add(q.id);return n;});setMsg(`✅ Signalements réinitialisés.`);}} title="Réinitialiser les signalements" style={{background:"#ffffff12",border:"1px solid #ffffff22",color:"#aaa",padding:"1px 7px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>↺ reset</button>
+                          </div>
+                        )}
                         {inactive&&<div style={{fontSize:9,color:"#e74c3c",fontWeight:800,marginTop:3}}>DÉSACTIVÉE</div>}
                       </div>
                       <div style={{display:"flex",gap:5,flexShrink:0}}>

@@ -73,8 +73,10 @@ export const apiJoinQuiz = (quizId) =>
 export const apiAnswerQuiz = (quizId, answer) =>
   apiFetch('/api/quiz/answer', { method: 'POST', body: { quiz_id: quizId, answer } })
 
-export const apiReportQuestion = (questionId) =>
+export const apiReportQuestion      = (questionId) =>
   apiFetch(`/api/quiz/questions/${questionId}/report`, { method: 'POST' })
+export const apiResetQuestionReports = (questionId) =>
+  apiFetch(`/api/admin/questions/${questionId}/reports`, { method: 'DELETE' })
 
 // ─── Transactions ─────────────────────────────────────────────────────────────
 export const apiGetTransactions = (params = {}) => {
