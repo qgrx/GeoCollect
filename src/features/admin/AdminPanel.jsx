@@ -62,7 +62,13 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
   useEffect(()=>{
     if(tab!=='questions') return;
-    apiAdminGetQuestions().then(({data})=>{ if(data?.questions) setLiveQuestions(data.questions); });
+    apiAdminGetQuestions().then(({data})=>{
+      if(data?.questions) setLiveQuestions(data.questions.map(q=>({
+        id: q.id, q: q.question, a: q.answer, hint: q.hint||'',
+        active: q.active, translations: q.translations||{},
+        report_count: q.report_count||0,
+      })));
+    });
   },[tab]);
   const [achCards,setAchCards]=useState([]);
   const [editAch,setEditAch]=useState(null);
