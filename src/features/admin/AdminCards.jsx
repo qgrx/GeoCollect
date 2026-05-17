@@ -26,13 +26,21 @@ function parseCSV(text) {
 
 export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard, onDeleteCard, onUpdateCardInPool, setMsg, imgUpload }) {
   const { t } = useT();
-  const [editCard, setEditCard]     = useState(null);
+  const [editCard, setEditCard]       = useState(null);
   const [newCardMode, setNewCardMode] = useState(false);
-  const [search, setSearch]         = useState('');
-  const [filterType, setFilterType] = useState('Tous');
+  const [search, setSearch]           = useState('');
+  const [filterType, setFilterType]   = useState('Tous');
   const [filterRarity, setFilterRarity] = useState('');
-  const [gridPage, setGridPage]     = useState(0);
+  const [gridPage, setGridPage]       = useState(0);
   const GRID_PAGE = 24;
+  const [showAdv, setShowAdv]                     = useState(false);
+  const [filterForgeable, setFilterForgeable]     = useState('');
+  const [filterSellable, setFilterSellable]       = useState('');
+  const [filterMinPrice, setFilterMinPrice]       = useState('');
+  const [filterMinPriceVal, setFilterMinPriceVal] = useState('');
+  const [filterShiny, setFilterShiny]             = useState('');
+  const [filterShinyVal, setFilterShinyVal]       = useState('');
+  const advActiveCount = [filterForgeable, filterSellable, filterMinPrice, filterShiny].filter(Boolean).length;
   const [circulation, setCirculation] = useState(null);
   const [nc, setNc] = useState({ name: "", type: cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "", forgeable: false, forgeCost: "", shiny_forge_cost: null, season_id: null });
 
@@ -42,8 +50,20 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
     if (filterType !== 'Tous') cards = cards.filter(c => c.type === filterType);
     if (filterRarity) cards = cards.filter(c => c.rarity === filterRarity);
     if (search) cards = cards.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+    if (filterForgeable === 'true')  cards = cards.filter(c => !!c.forgeable);
+    if (filterForgeable === 'false') cards = cards.filter(c => !c.forgeable);
+    if (filterSellable === 'true')   cards = cards.filter(c => c.sellable !== false);
+    if (filterSellable === 'false')  cards = cards.filter(c => c.sellable === false);
+    const mp = c => c.min_price ?? c.minPrice ?? null;
+    if (filterMinPrice === 'none') cards = cards.filter(c => mp(c) == null);
+    if (filterMinPrice === 'gt' && filterMinPriceVal !== '') cards = cards.filter(c => (mp(c) ?? 0) > +filterMinPriceVal);
+    if (filterMinPrice === 'lt' && filterMinPriceVal !== '') cards = cards.filter(c => (mp(c) ?? 0) < +filterMinPriceVal);
+    const sf = c => c.shiny_forge_cost ?? null;
+    if (filterShiny === 'none') cards = cards.filter(c => sf(c) == null);
+    if (filterShiny === 'gt' && filterShinyVal !== '') cards = cards.filter(c => (sf(c) ?? 0) > +filterShinyVal);
+    if (filterShiny === 'lt' && filterShinyVal !== '') cards = cards.filter(c => (sf(c) ?? 0) < +filterShinyVal);
     return [...cards].sort((a, b) => (RARITY_ORDER[a.rarity] ?? 4) - (RARITY_ORDER[b.rarity] ?? 4) || a.name.localeCompare(b.name));
-  }, [cardPool, filterType, filterRarity, search]);
+  }, [cardPool, filterType, filterRarity, search, filterForgeable, filterSellable, filterMinPrice, filterMinPriceVal, filterShiny, filterShinyVal]);
 
   const [seasons, setSeasons] = useState([]);
   const [transCard, setTransCard] = useState(null);
@@ -205,7 +225,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
       {/* ── Grille de geocoins ── */}
       {!editCard && !newCardMode && (
         <>
-          <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
             <input value={search} onChange={e=>{setSearch(e.target.value);setGridPage(0);}} placeholder="Rechercher…"
               style={{...INP,flex:1,minWidth:120,fontSize:12,padding:"6px 10px"}}/>
             <select value={filterType} onChange={e=>{setFilterType(e.target.value);setGridPage(0);}} style={{...SEL,fontSize:12,padding:"6px 10px"}}>
@@ -216,7 +236,64 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
               <option value="">Toutes raretés</option>
               {["commun","rare","épique","légendaire"].map(r=><option key={r} value={r}>{RC[r]?.label||r}</option>)}
             </select>
+            <button onClick={()=>setShowAdv(v=>!v)}
+              style={{background:showAdv||advActiveCount>0?'#6c5ce722':'#ffffff0a',border:`1px solid ${advActiveCount>0?'#6c5ce7':'#ffffff22'}`,color:advActiveCount>0?'#a29bfe':'#aaa',padding:"6px 10px",borderRadius:6,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
+              Filtres {advActiveCount>0?`(${advActiveCount}) `:''}▾
+            </button>
           </div>
+          {showAdv && (
+            <div style={{background:"#ffffff08",border:"1px solid #ffffff14",borderRadius:8,padding:"10px 12px",marginBottom:8,display:"flex",flexDirection:"column",gap:7}}>
+              {/* Forgeable / Vendable */}
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                <select value={filterForgeable} onChange={e=>{setFilterForgeable(e.target.value);setGridPage(0);}} style={{...SEL,fontSize:11,padding:"4px 8px",flex:1}}>
+                  <option value="">Forgeable : tous</option>
+                  <option value="true">🔨 Forgeables</option>
+                  <option value="false">Non forgeables</option>
+                </select>
+                <select value={filterSellable} onChange={e=>{setFilterSellable(e.target.value);setGridPage(0);}} style={{...SEL,fontSize:11,padding:"4px 8px",flex:1}}>
+                  <option value="">Vendable : tous</option>
+                  <option value="true">✓ Vendables</option>
+                  <option value="false">✕ Non vendables</option>
+                </select>
+              </div>
+              {/* Prix minimum */}
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:"#aaa",fontWeight:700,minWidth:90}}>Prix min :</span>
+                <select value={filterMinPrice} onChange={e=>{setFilterMinPrice(e.target.value);setFilterMinPriceVal('');setGridPage(0);}} style={{...SEL,fontSize:11,padding:"4px 8px",flex:1}}>
+                  <option value="">Tous</option>
+                  <option value="none">Sans prix minimum</option>
+                  <option value="gt">Supérieur à</option>
+                  <option value="lt">Inférieur à</option>
+                </select>
+                {(filterMinPrice==='gt'||filterMinPrice==='lt')&&(
+                  <input type="text" inputMode="numeric" value={filterMinPriceVal}
+                    onChange={e=>{setFilterMinPriceVal(e.target.value.replace(/[^0-9]/g,''));setGridPage(0);}}
+                    placeholder="valeur" style={{...INP,width:70,fontSize:11,padding:"4px 8px"}}/>
+                )}
+              </div>
+              {/* Coût brillance */}
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:"#f9ca24",fontWeight:700,minWidth:90}}>✨ Brillance :</span>
+                <select value={filterShiny} onChange={e=>{setFilterShiny(e.target.value);setFilterShinyVal('');setGridPage(0);}} style={{...SEL,fontSize:11,padding:"4px 8px",flex:1}}>
+                  <option value="">Tous</option>
+                  <option value="none">Sans coût brillance</option>
+                  <option value="gt">Coût supérieur à</option>
+                  <option value="lt">Coût inférieur à</option>
+                </select>
+                {(filterShiny==='gt'||filterShiny==='lt')&&(
+                  <input type="text" inputMode="numeric" value={filterShinyVal}
+                    onChange={e=>{setFilterShinyVal(e.target.value.replace(/[^0-9]/g,''));setGridPage(0);}}
+                    placeholder="valeur" style={{...INP,width:70,fontSize:11,padding:"4px 8px"}}/>
+                )}
+              </div>
+              {advActiveCount>0&&(
+                <button onClick={()=>{setFilterForgeable('');setFilterSellable('');setFilterMinPrice('');setFilterMinPriceVal('');setFilterShiny('');setFilterShinyVal('');setGridPage(0);}}
+                  style={{background:"#e74c3c22",border:"1px solid #e74c3c44",color:"#e74c3c",padding:"4px 10px",borderRadius:6,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",alignSelf:"flex-start"}}>
+                  ✕ Réinitialiser les filtres avancés
+                </button>
+              )}
+            </div>
+          )}
           <div style={{fontSize:11,color:"#666",marginBottom:8}}>{displayCards.length} geocoin{displayCards.length!==1?"s":""} · {t("admin_click_to_edit")}</div>
           {displayCards.length === 0
             ? <div style={{color:"#555",fontSize:13,textAlign:"center",padding:"30px 0",fontStyle:"italic"}}>Aucun geocoin trouvé.</div>
