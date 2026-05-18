@@ -368,7 +368,7 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lost
             <div style={{fontSize:10,color:'#666'}}>
               {hasCard
                 ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}</>
-                : <span style={{color:theme.textMuted,fontStyle:'italic'}}>Geocoin mystère…</span>}
+                : <span style={{color:theme.textMuted,fontStyle:'italic'}}>{t('quiz_mystery_card')}</span>}
             </div>
           )}
         </div>

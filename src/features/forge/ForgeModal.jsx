@@ -397,12 +397,12 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
               animation: phase === 'heating' ? 'pulseBadge 0.6s infinite' : 'none',
             }}>
               {shinyMode
-                ? phase === 'heating' ? '✨ Transmutation en cours…'
-                  : phase === 'reveal' ? '🌟 Révélation…'
-                  : '💎 Carte brillante !'
-                : phase === 'heating' ? '🔥 Forge en cours…'
-                  : phase === 'reveal' ? '✨ Révélation…'
-                  : '🏆 Forgée !'}
+                ? phase === 'heating' ? t('forge_anim_shiny_heating')
+                  : phase === 'reveal' ? t('forge_anim_shiny_reveal')
+                  : t('forge_anim_shiny_done')
+                : phase === 'heating' ? t('forge_anim_heating')
+                  : phase === 'reveal' ? t('forge_anim_reveal')
+                  : t('forge_anim_done')}
             </div>
             {shinyMode
               ? <ShinyCard card={card} phase={phase} />
@@ -410,7 +410,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
             {phase === 'done' && (
               <div style={{ fontWeight: 900, fontSize: 15, animation: 'forgeBurst .4s ease-out',
                 color: shinyMode ? '#f9ca24' : '#00b894' }}>
-                {shinyMode ? '✨ Carte rendue brillante !' : 'Carte ajoutée à ta collection !'}
+                {shinyMode ? t('forge_anim_shiny_result') : t('forge_anim_result')}
               </div>
             )}
           </div>
@@ -481,7 +481,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
           ) : (
             <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>⚒️</div>
-              <div>Aucune carte forgeable disponible.</div>
+              <div>{t('forge_no_cards')}</div>
             </div>
           )
         ) : (
@@ -598,7 +598,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                   ) : (
                     <div style={{ textAlign: 'center', color: theme.textMuted, padding: '40px 0', width: '100%' }}>
                       <div style={{ fontSize: 40, marginBottom: 12 }}>✨</div>
-                      <div>Tu ne possèdes aucune carte à rendre brillante.</div>
+                      <div>{t('forge_no_shiny_cards')}</div>
                     </div>
                   )
                 ) : pageCards.map(card => {

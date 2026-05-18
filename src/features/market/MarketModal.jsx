@@ -320,7 +320,7 @@ export default function MarketModal({
                         </div>
                         {overCap && (
                           <div style={{ marginTop: 5, fontSize: 10, color: '#e74c3c', fontWeight: 800 }}>
-                            ⚠ Prix supérieur au plafond autorisé ({maxPrice}G)
+                            {t('market_cap_exceeded').replace('{max}', maxPrice)}
                           </div>
                         )}
 
