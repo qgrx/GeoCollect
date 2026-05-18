@@ -1216,7 +1216,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {tab==="quests"&&<div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
             <div style={{fontWeight:900,color:"#a29bfe",fontSize:14}}>🔨 Pool de quêtes quotidiennes</div>
-            <button onClick={()=>setNewQuest({name:'',description:'',type:'quiz_win',threshold:1,forge_points:10})}
+            <button onClick={()=>setNewQuest({name:'',description:'',type:'quiz_win',threshold:1,forge_points:10,gold_reward:0})}
               style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"6px 14px",borderRadius:8,fontSize:11}}>
               {newQuest?"✕ Annuler":"+ Nouvelle quête"}
             </button>
@@ -1234,7 +1234,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   </select>
                 </Fld>
                 <Fld lbl="Seuil"><input type="number" value={newQuest.threshold} onChange={e=>setNewQuest({...newQuest,threshold:+e.target.value})} min={1} style={INP}/></Fld>
-                <Fld lbl="Points de forge"><input type="number" value={newQuest.forge_points} onChange={e=>setNewQuest({...newQuest,forge_points:+e.target.value})} min={1} style={INP}/></Fld>
+                <Fld lbl="🔨 Points forge"><input type="number" value={newQuest.forge_points} onChange={e=>setNewQuest({...newQuest,forge_points:+e.target.value})} min={0} style={INP}/></Fld>
+                <Fld lbl="💰 Or (optionnel)"><input type="number" value={newQuest.gold_reward} onChange={e=>setNewQuest({...newQuest,gold_reward:+e.target.value})} min={0} placeholder="0" style={INP}/></Fld>
               </div>
               <div style={{display:"flex",gap:8}}>
                 <button onClick={async()=>{
@@ -1253,7 +1254,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:"'Nunito',sans-serif",marginBottom:24}}>
             <thead>
               <tr style={{color:"#888",textAlign:"left"}}>
-                {["Nom","Trigger","Seuil","🔨 Points","Actif",""].map(h=>(
+                {["Nom","Trigger","Seuil","🔨 Points","💰 Or","Actif",""].map(h=>(
                   <th key={h} style={{padding:"4px 8px",borderBottom:"1px solid #ffffff10",fontWeight:700}}>{h}</th>
                 ))}
               </tr>
@@ -1263,7 +1264,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 <tr key={q.id} style={{borderBottom:"1px solid #ffffff08",background:editQuest?.id===q.id?"#6c5ce710":"transparent"}}>
                   {editQuest?.id===q.id?(
                     <td colSpan={6} style={{padding:"8px"}}>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginBottom:6}}>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6,marginBottom:6}}>
                         <Fld lbl="Nom"><input value={editQuest.name} onChange={e=>setEditQuest({...editQuest,name:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
                         <Fld lbl="Trigger">
                           <select value={editQuest.type} onChange={e=>setEditQuest({...editQuest,type:e.target.value})} style={{...SEL,fontSize:11}}>
@@ -1271,7 +1272,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                           </select>
                         </Fld>
                         <Fld lbl="Seuil"><input type="number" value={editQuest.threshold} onChange={e=>setEditQuest({...editQuest,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
-                        <Fld lbl="🔨 Points"><input type="number" value={editQuest.forge_points} onChange={e=>setEditQuest({...editQuest,forge_points:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                        <Fld lbl="🔨 Points forge"><input type="number" value={editQuest.forge_points} onChange={e=>setEditQuest({...editQuest,forge_points:+e.target.value})} min={0} style={{...INP,fontSize:11}}/></Fld>
+                        <Fld lbl="💰 Or"><input type="number" value={editQuest.gold_reward||0} onChange={e=>setEditQuest({...editQuest,gold_reward:+e.target.value})} min={0} style={{...INP,fontSize:11}}/></Fld>
                         <Fld lbl="Actif">
                           <select value={editQuest.active?"1":"0"} onChange={e=>setEditQuest({...editQuest,active:e.target.value==="1"})} style={{...SEL,fontSize:11}}>
                             <option value="1">✅ Actif</option><option value="0">⏸ Inactif</option>
@@ -1301,6 +1303,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       <td style={{padding:"5px 8px"}}><span style={{background:"#ffffff12",borderRadius:5,padding:"2px 7px",fontSize:10}}>{q.type}</span></td>
                       <td style={{padding:"5px 8px",color:"#f9ca24",fontWeight:700}}>{q.threshold}</td>
                       <td style={{padding:"5px 8px",color:"#a29bfe",fontWeight:900}}>🔨 {q.forge_points}</td>
+                      <td style={{padding:"5px 8px",color:"#f9ca24",fontWeight:700}}>{(q.gold_reward||0)>0?`💰 ${q.gold_reward}`:'—'}</td>
                       <td style={{padding:"5px 8px"}}><span style={{color:q.active?"#00b894":"#e74c3c",fontWeight:800}}>●</span></td>
                       <td style={{padding:"5px 8px"}}><button onClick={()=>setEditQuest({...q})} style={{...BTN("#ffffff12"),padding:"3px 10px",borderRadius:6,fontSize:10}}>✏️</button></td>
                     </>

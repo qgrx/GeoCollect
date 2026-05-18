@@ -94,13 +94,18 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
                 )}
               </div>
 
-              {/* Points */}
-              <div style={{
-                fontSize: 10, fontWeight: 900, flexShrink: 0,
-                color: done ? '#f9ca24' : theme.textMuted,
-                display: 'flex', alignItems: 'center', gap: 2,
-              }}>
-                🔨 {q.forge_points}
+              {/* Récompenses */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
+                {q.forge_points > 0 && (
+                  <div style={{ fontSize: 10, fontWeight: 900, color: done ? '#a29bfe' : theme.textMuted }}>
+                    🔨 {q.forge_points}
+                  </div>
+                )}
+                {(q.gold_reward || 0) > 0 && (
+                  <div style={{ fontSize: 10, fontWeight: 900, color: done ? '#f9ca24' : theme.textMuted }}>
+                    💰 {q.gold_reward}G
+                  </div>
+                )}
               </div>
             </div>
 
