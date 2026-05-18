@@ -11,6 +11,8 @@ const TRIGGER_LABELS = {
   streak:           'Streak',
   collection_size:  'Cartes uniques',
   daily_connection: 'Connexions (3h)',
+  forge_card:       'Cartes forgées',
+  forge_shiny:      'Cartes rendues brillantes',
 }
 
 export default function DailyQuests({ questActivitySignal, initialQuests }) {
