@@ -37,4 +37,6 @@ export const INIT_LIMITS = {
   marketListingFee: 4,
   marketSaleTax: 0.12,
   quizJoinGoldCap: 50,
+  quizJoinGold:    1,
+  quizWinGold:     5,
 };

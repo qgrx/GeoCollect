@@ -5,7 +5,7 @@ import { getLang } from '../i18n/translations.js'
 
 export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned, limits }
 
   const [nextQuizTime,  setNextQuizTime] = useState(Date.now() + QUIZ_INTERVAL * 1000)
   const [countdown,     setCountdown]    = useState(QUIZ_INTERVAL)
@@ -105,11 +105,11 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
     if (profile && quiz.id) {
       if (!joinedQuizzesRef.current.has(quiz.id)) {
         joinedQuizzesRef.current.add(quiz.id)
-        // Nouvelle participation : incrément de l'or ET animation
-        cbRef.current.earnGoldWithFx(1)
+        const joinGold = cbRef.current.limits?.quizJoinGold ?? 1
+        if (joinGold > 0) cbRef.current.earnGoldWithFx(joinGold)
       } else {
-        // Déjà participé localement : on déclenche juste l'animation pour l'UX sans incrémenter le solde
-        if (cbRef.current.showGoldFlash) cbRef.current.showGoldFlash(1)
+        const joinGold = cbRef.current.limits?.quizJoinGold ?? 1
+        if (joinGold > 0 && cbRef.current.showGoldFlash) cbRef.current.showGoldFlash(joinGold)
       }
 
       apiJoinQuiz(quiz.id).then(({ data }) => {

@@ -1611,7 +1611,9 @@ export default function App() {
             try {
               await Promise.all([
                 apiSetConfig('limits_connected', limEdit.connected),
-                apiSetConfig('quiz_interval',    limEdit.quizInterval ?? 60),
+                apiSetConfig('quiz_interval',    limEdit.quizInterval  ?? 60),
+                apiSetConfig('quiz_join_gold',   limEdit.quizJoinGold  ?? 1),
+                apiSetConfig('quiz_win_gold',    limEdit.quizWinGold   ?? 5),
                 apiSetConfig('quiz_rarity_rates',  limEdit.quizRarityRates   ?? DEFAULT_RARITY_RATES),
                 ...(limEdit.cache_ttl_cards       != null ? [apiSetConfig('cache_ttl_cards',       limEdit.cache_ttl_cards)]       : []),
                 ...(limEdit.cache_ttl_config      != null ? [apiSetConfig('cache_ttl_config',      limEdit.cache_ttl_config)]      : []),

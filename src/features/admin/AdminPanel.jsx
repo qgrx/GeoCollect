@@ -594,6 +594,28 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>
             </div>
 
+            <div style={{display:"flex",gap:14,flexWrap:"wrap",marginTop:14}}>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>💰 Or par participation</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="number" min={0} max={100} value={limEdit.quizJoinGold??1}
+                    onChange={e=>setLimEdit({...limEdit,quizJoinGold:Math.max(0,+e.target.value)})}
+                    style={{...INP,width:70}}/>
+                  <span style={{color:"#aaa",fontSize:12}}>or / participation</span>
+                </div>
+                <div style={{fontSize:9,color:"#555",marginTop:3}}>0 = participation gratuite sans animation</div>
+              </div>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>🏆 Or par quiz gagné</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="number" min={0} max={1000} value={limEdit.quizWinGold??5}
+                    onChange={e=>setLimEdit({...limEdit,quizWinGold:Math.max(0,+e.target.value)})}
+                    style={{...INP,width:70}}/>
+                  <span style={{color:"#aaa",fontSize:12}}>or / victoire</span>
+                </div>
+                <div style={{fontSize:9,color:"#555",marginTop:3}}>0 = pas de récompense or</div>
+              </div>
+            </div>
             <div style={{fontSize:10,color:"#555",marginTop:10}}>
               Le changement prend effet au prochain quiz
             </div>
