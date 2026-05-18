@@ -615,6 +615,26 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 </div>
                 <div style={{fontSize:9,color:"#555",marginTop:3}}>0 = pas de récompense or</div>
               </div>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>🃏 Geocoins max / jour</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="number" min={0} max={999} value={limEdit.quizDailyCardCap??20}
+                    onChange={e=>setLimEdit({...limEdit,quizDailyCardCap:Math.max(0,+e.target.value)})}
+                    style={{...INP,width:70}}/>
+                  <span style={{color:"#aaa",fontSize:12}}>geocoins / jour</span>
+                </div>
+                <div style={{fontSize:9,color:"#555",marginTop:3}}>0 = illimité</div>
+              </div>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>🃏 Geocoins max / heure</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="number" min={0} max={99} value={limEdit.quizHourlyCardCap??0}
+                    onChange={e=>setLimEdit({...limEdit,quizHourlyCardCap:Math.max(0,+e.target.value)})}
+                    style={{...INP,width:70}}/>
+                  <span style={{color:"#aaa",fontSize:12}}>geocoins / heure</span>
+                </div>
+                <div style={{fontSize:9,color:"#555",marginTop:3}}>0 = pas de cap horaire</div>
+              </div>
             </div>
             <div style={{fontSize:10,color:"#555",marginTop:10}}>
               Le changement prend effet au prochain quiz
