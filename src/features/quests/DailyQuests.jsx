@@ -13,6 +13,7 @@ const TRIGGER_LABELS = {
   daily_connection: 'Connexions (3h)',
   forge_card:       'Cartes forgées',
   forge_shiny:      'Cartes rendues brillantes',
+  daily_treasure:   'Trésor quotidien réclamé',
 }
 
 export default function DailyQuests({ questActivitySignal, initialQuests }) {
