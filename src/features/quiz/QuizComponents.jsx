@@ -143,7 +143,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
     if(!quiz.question_id||reportStatus!=='idle') return;
     setReportStatus('loading');
     await apiReportQuestion(quiz.question_id).catch(()=>{});
-    try { const r=JSON.parse(localStorage.getItem('gc_qreported')||'[]'); if(!r.includes(quiz.question_id)){r.push(quiz.question_id);localStorage.setItem('gc_qreported',JSON.stringify(r));} } catch(_){}
+    try { const r=JSON.parse(localStorage.getItem('gc_qreported')||'[]'); if(!r.includes(quiz.question_id)){r.push(quiz.question_id);localStorage.setItem('gc_qreported',JSON.stringify(r));} } catch(_){ /* ignore */ }
     setReportStatus('done');
   }
   function finish(n){if(doneRef.current)return;doneRef.current=true;setNpc(n || 'Un autre joueur');setStatus("lost");onExpire(n || 'Un autre joueur');}
@@ -225,7 +225,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
           {reportStatus==='done'
             ? <span style={{fontSize:10,color:"#00b894",fontWeight:700}}>✓ {t('quiz_report_thanks')}</span>
             : <button onClick={handleReport} disabled={reportStatus==='loading'}
-                style={{background:"none",border:"none",color:"#555",fontSize:10,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:600,padding:0,textDecoration:"underline",opacity:reportStatus==='loading'?0.5:1}}>
+                style={{background:"none",border:"none",color:"#f39c12",fontSize:10,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:700,padding:0,textDecoration:"underline",opacity:reportStatus==='loading'?0.5:1}}>
                 ⚠ {t('quiz_report_btn')}
               </button>
           }
