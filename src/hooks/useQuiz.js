@@ -154,6 +154,10 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
       setHistory(h => [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false }, ...h].slice(0, 10))
       if (data.card_earned) {
         showToast(t('toast_quiz_won').replace('{card}', card.name))
+      } else if (data.consolation) {
+        showToast(t('toast_quiz_consolation')
+          .replace('{gold}',  data.consolation_gold  ?? 0)
+          .replace('{forge}', data.consolation_forge ?? 0))
       } else {
         showToast(t('toast_quiz_limit'), 'error')
       }

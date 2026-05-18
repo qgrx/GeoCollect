@@ -99,8 +99,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           quizJoinGoldCap:  cfg.quiz_join_gold_cap !== undefined ? +cfg.quiz_join_gold_cap  : prev.quizJoinGoldCap,
           quizJoinGold:      cfg.quiz_join_gold       !== undefined ? +cfg.quiz_join_gold       : prev.quizJoinGold,
           quizWinGold:       cfg.quiz_win_gold        !== undefined ? +cfg.quiz_win_gold        : prev.quizWinGold,
-          quizDailyCardCap:  cfg.quiz_daily_card_cap  !== undefined ? +cfg.quiz_daily_card_cap  : prev.quizDailyCardCap,
-          quizHourlyCardCap: cfg.quiz_hourly_card_cap !== undefined ? +cfg.quiz_hourly_card_cap : prev.quizHourlyCardCap,
+          quizDailyCardCap:    cfg.quiz_daily_card_cap    !== undefined ? +cfg.quiz_daily_card_cap    : prev.quizDailyCardCap,
+          quizHourlyCardCap:   cfg.quiz_hourly_card_cap   !== undefined ? +cfg.quiz_hourly_card_cap   : prev.quizHourlyCardCap,
+          quizConsolationGold: cfg.quiz_consolation_gold  !== undefined ? +cfg.quiz_consolation_gold  : prev.quizConsolationGold,
+          quizConsolationForge:cfg.quiz_consolation_forge !== undefined ? +cfg.quiz_consolation_forge : prev.quizConsolationForge,
         }))
       }
     })
@@ -236,8 +238,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             quizJoinGoldCap:  cfg.quiz_join_gold_cap !== undefined ? +cfg.quiz_join_gold_cap  : prev.quizJoinGoldCap,
             quizJoinGold:      cfg.quiz_join_gold       !== undefined ? +cfg.quiz_join_gold       : prev.quizJoinGold,
             quizWinGold:       cfg.quiz_win_gold        !== undefined ? +cfg.quiz_win_gold        : prev.quizWinGold,
-            quizDailyCardCap:  cfg.quiz_daily_card_cap  !== undefined ? +cfg.quiz_daily_card_cap  : prev.quizDailyCardCap,
-            quizHourlyCardCap: cfg.quiz_hourly_card_cap !== undefined ? +cfg.quiz_hourly_card_cap : prev.quizHourlyCardCap,
+            quizDailyCardCap:    cfg.quiz_daily_card_cap    !== undefined ? +cfg.quiz_daily_card_cap    : prev.quizDailyCardCap,
+            quizHourlyCardCap:   cfg.quiz_hourly_card_cap   !== undefined ? +cfg.quiz_hourly_card_cap   : prev.quizHourlyCardCap,
+            quizConsolationGold: cfg.quiz_consolation_gold  !== undefined ? +cfg.quiz_consolation_gold  : prev.quizConsolationGold,
+            quizConsolationForge:cfg.quiz_consolation_forge !== undefined ? +cfg.quiz_consolation_forge : prev.quizConsolationForge,
           }))
         }
 

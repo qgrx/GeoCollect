@@ -39,6 +39,8 @@ export const INIT_LIMITS = {
   quizJoinGoldCap: 50,
   quizJoinGold:      1,
   quizWinGold:       5,
-  quizDailyCardCap:  20,
-  quizHourlyCardCap: 0,
+  quizDailyCardCap:    20,
+  quizHourlyCardCap:   0,
+  quizConsolationGold: 5,
+  quizConsolationForge: 1,
 };

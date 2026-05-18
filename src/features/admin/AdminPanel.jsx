@@ -635,6 +635,24 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 </div>
                 <div style={{fontSize:9,color:"#555",marginTop:3}}>0 = pas de cap horaire</div>
               </div>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>🏅 Or de consolation (limite atteinte)</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="number" min={0} max={1000} value={limEdit.quizConsolationGold??5}
+                    onChange={e=>setLimEdit({...limEdit,quizConsolationGold:Math.max(0,+e.target.value)})}
+                    style={{...INP,width:70}}/>
+                  <span style={{color:"#aaa",fontSize:12}}>or</span>
+                </div>
+              </div>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>🔨 PF de consolation (limite atteinte)</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="number" min={0} max={100} value={limEdit.quizConsolationForge??1}
+                    onChange={e=>setLimEdit({...limEdit,quizConsolationForge:Math.max(0,+e.target.value)})}
+                    style={{...INP,width:70}}/>
+                  <span style={{color:"#aaa",fontSize:12}}>PF</span>
+                </div>
+              </div>
             </div>
             <div style={{fontSize:10,color:"#555",marginTop:10}}>
               Le changement prend effet au prochain quiz
