@@ -6,6 +6,7 @@ import Card from '../../components/Card.jsx'
 import { TxHistoryModal } from '../achievements/NotifComponents.jsx'
 import { ThumbImage } from '../quiz/QuizComponents.jsx'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
+import { apiGetPriceCaps } from '../../services/api.js'
 
 function PanelWrapper({ inline, onClose, theme, children }) {
   if (inline) return <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
@@ -45,6 +46,11 @@ export default function MarketModal({
   const [sellCard, setSellCard] = useState(initialSellCard)
   const [sellPrice, setSellPrice] = useState('')
   const [msg, setMsg] = useState('')
+  const [priceCaps, setPriceCaps] = useState({})
+
+  useEffect(() => {
+    apiGetPriceCaps().then(({ data }) => { if (data?.caps) setPriceCaps(data.caps) }).catch(() => {})
+  }, [])
   const [exp, setExp] = useState(null)
   const [listPage, setListPage]           = useState(0)
   const [cancelConfirm, setCancelConfirm] = useState(null)
@@ -275,40 +281,60 @@ export default function MarketModal({
                   <div style={{ display: 'flex', justifyContent: 'center' }}><Card card={sellCard} /></div>
 
                   {/* Prix */}
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, display: 'block', marginBottom: 6 }}>{t('market_price_label')}</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={sellPrice} placeholder="0"
-                        onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setSellPrice(+v > 9999 ? '9999' : v); }}
-                        style={{ flex: 1, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRight: 'none', color: theme.textPrimary, padding: '9px 12px', borderRadius: '8px 0 0 8px', fontFamily: "'Nunito',sans-serif", fontSize: 16, fontWeight: 900, outline: 'none' }} />
-                      <span style={{ background: theme.bgElevated, border: `1px solid ${theme.border}`, color: theme.textMuted, padding: '9px 12px', borderRadius: '0 8px 8px 0', fontWeight: 800, fontSize: 14 }}>G</span>
-                    </div>
-                    {(() => {
-                      const lowestPrice = ob[sellCard.id]?.tiersArr?.[0]?.price;
-                      if (!lowestPrice) return null;
-                      const targetPrice = Math.max(sellCard.minPrice || 1, lowestPrice);
-                      return (
-                        <button onClick={() => { setSellPrice(String(targetPrice)); setMsg(''); }}
-                          style={{ marginTop: 6, background: 'none', border: 'none', color: '#00b894', padding: 0, fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11, cursor: 'pointer', textDecoration: 'underline', display: 'block' }}>
-                          {t('market_lowest_price')} {targetPrice}G
+                  {(() => {
+                    const cap = priceCaps[sellCard.rarity]
+                    const maxPrice = cap?.max ?? null
+                    const overCap = maxPrice !== null && +sellPrice > maxPrice
+                    const underMin = sellCard.minPrice && +sellPrice < sellCard.minPrice
+                    const invalid = !(+sellPrice > 0) || underMin || overCap
+                    return (
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, display: 'block', marginBottom: 6 }}>{t('market_price_label')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                          <input type="text" inputMode="numeric" pattern="[0-9]*" value={sellPrice} placeholder="0"
+                            onChange={e => { setSellPrice(e.target.value.replace(/[^0-9]/g, '')); setMsg('') }}
+                            style={{ flex: 1, background: theme.bgInput, border: `1px solid ${overCap ? '#e74c3c' : theme.border}`, borderRight: 'none', color: overCap ? '#e74c3c' : theme.textPrimary, padding: '9px 12px', borderRadius: '8px 0 0 8px', fontFamily: "'Nunito',sans-serif", fontSize: 16, fontWeight: 900, outline: 'none', transition: 'border-color .2s, color .2s' }} />
+                          <span style={{ background: theme.bgElevated, border: `1px solid ${overCap ? '#e74c3c' : theme.border}`, color: theme.textMuted, padding: '9px 12px', borderRadius: '0 8px 8px 0', fontWeight: 800, fontSize: 14 }}>G</span>
+                        </div>
+                        {(() => {
+                          const lowestPrice = ob[sellCard.id]?.tiersArr?.[0]?.price
+                          if (!lowestPrice) return null
+                          const targetPrice = Math.max(sellCard.minPrice || 1, lowestPrice)
+                          return (
+                            <button onClick={() => { setSellPrice(String(targetPrice)); setMsg('') }}
+                              style={{ marginTop: 6, background: 'none', border: 'none', color: '#00b894', padding: 0, fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11, cursor: 'pointer', textDecoration: 'underline', display: 'block' }}>
+                              {t('market_lowest_price')} {targetPrice}G
+                            </button>
+                          )
+                        })()}
+                        <div style={{ display: 'flex', gap: 12, marginTop: 5, flexWrap: 'wrap' }}>
+                          {sellCard.minPrice && (
+                            <div style={{ fontSize: 10, color: theme.textMuted }}>{t('market_min_price')} {sellCard.minPrice}G</div>
+                          )}
+                          {maxPrice !== null && (
+                            <div style={{ fontSize: 10, color: overCap ? '#e74c3c' : '#f39c12', fontWeight: overCap ? 800 : 700 }}>
+                              {t('market_max_price')} {maxPrice}G
+                              {cap.sales_count === 0 && <span style={{ color: theme.textMuted }}> *</span>}
+                            </div>
+                          )}
+                        </div>
+                        {overCap && (
+                          <div style={{ marginTop: 5, fontSize: 10, color: '#e74c3c', fontWeight: 800 }}>
+                            ⚠ Prix supérieur au plafond autorisé ({maxPrice}G)
+                          </div>
+                        )}
+
+                        {msg && <div style={{ color: '#00b894', fontWeight: 800, fontSize: 11, marginTop: 4 }}>{msg}</div>}
+
+                        <button
+                          disabled={invalid}
+                          onClick={() => { onListCard(sellCard, +sellPrice); setMsg(''); setSellCard(null); setSellPrice(''); setTab('meslistes') }}
+                          style={{ width: '100%', marginTop: 4, background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', padding: '11px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: invalid ? 'not-allowed' : 'pointer', opacity: invalid ? 0.5 : 1 }}>
+                          {t('market_list_btn')}
                         </button>
-                      )
-                    })()}
-                    {sellCard.minPrice && (
-                      <div style={{ marginTop: 5, fontSize: 10, color: theme.textMuted }}>
-                        {t('market_min_price')} {sellCard.minPrice}G
                       </div>
-                    )}
-                  </div>
-
-                  {msg && <div style={{ color: '#00b894', fontWeight: 800, fontSize: 11 }}>{msg}</div>}
-
-                  <button
-                    disabled={!(+sellPrice > 0) || (sellCard.minPrice && +sellPrice < sellCard.minPrice)}
-                    onClick={() => { onListCard(sellCard, +sellPrice); setMsg(''); setSellCard(null); setSellPrice(''); setTab('meslistes'); }}
-                    style={{ width: '100%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', padding: '11px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: (!(+sellPrice > 0) || (sellCard.minPrice && +sellPrice < sellCard.minPrice)) ? 'not-allowed' : 'pointer', opacity: (!(+sellPrice > 0) || (sellCard.minPrice && +sellPrice < sellCard.minPrice)) ? 0.5 : 1 }}>
-                    {t('market_list_btn')}
-                  </button>
+                    )
+                  })()}
                 </div>
               ) : (
                 <div style={{ background: theme.overlay,border: `1.5px dashed ${theme.border}`,borderRadius: 15,padding: 22,textAlign: 'center',color: theme.textMuted }}>

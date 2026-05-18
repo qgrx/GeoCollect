@@ -50,7 +50,8 @@ export const apiGetCollection   = ()          => apiFetch('/api/collection')
 export const apiGetUserCollection = (userId)  => apiFetch(`/api/collection/${userId}`)
 
 // ─── Market ───────────────────────────────────────────────────────────────────
-export const apiGetMarket = () => apiFetch('/api/market')
+export const apiGetMarket     = () => apiFetch('/api/market')
+export const apiGetPriceCaps  = () => apiFetch('/api/market/price-caps')
 
 export const apiGetMyListings = () => apiFetch('/api/market/my')
 
