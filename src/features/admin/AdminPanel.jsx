@@ -1230,7 +1230,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 <Fld lbl="Description"><input value={newQuest.description} onChange={e=>setNewQuest({...newQuest,description:e.target.value})} placeholder="Remporte 2 quiz" style={INP}/></Fld>
                 <Fld lbl="Trigger">
                   <select value={newQuest.type} onChange={e=>setNewQuest({...newQuest,type:e.target.value})} style={SEL}>
-                    {['buy_count','sell_count','quiz_win','new_card','streak'].map(t=><option key={t} value={t}>{t}</option>)}
+                    {['buy_count','sell_count','quiz_win','new_card','streak','daily_connection'].map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
                 </Fld>
                 <Fld lbl="Seuil"><input type="number" value={newQuest.threshold} onChange={e=>setNewQuest({...newQuest,threshold:+e.target.value})} min={1} style={INP}/></Fld>
@@ -1268,7 +1268,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         <Fld lbl="Nom"><input value={editQuest.name} onChange={e=>setEditQuest({...editQuest,name:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
                         <Fld lbl="Trigger">
                           <select value={editQuest.type} onChange={e=>setEditQuest({...editQuest,type:e.target.value})} style={{...SEL,fontSize:11}}>
-                            {['buy_count','sell_count','quiz_win','new_card','streak'].map(t=><option key={t} value={t}>{t}</option>)}
+                            {['buy_count','sell_count','quiz_win','new_card','streak','daily_connection'].map(t=><option key={t} value={t}>{t}</option>)}
                           </select>
                         </Fld>
                         <Fld lbl="Seuil"><input type="number" value={editQuest.threshold} onChange={e=>setEditQuest({...editQuest,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>

@@ -7,7 +7,7 @@ import {
   apiBuyCard, apiListCard, apiCancelListing, apiGetTransactions,
   apiPingProfile, apiSetConfig, apiGetAdminConfig, apiGetPublicConfig,
   apiAdminAddCard, apiAdminEditCard, apiAdminDeleteCard, apiAdminDeleteType, apiAdminRenameType,
-  apiGetDailyQuests,
+  apiGetDailyQuests, apiQuestCheckin,
 } from '../services/api.js'
 
 
@@ -277,6 +277,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     }
 
     loadAll()
+    // Checkin quête connexion (fire-and-forget, 3h interval géré côté serveur)
+    apiQuestCheckin().then(({ data }) => {
+      if (data?.forge_points_earned > 0) setForgePointsSignal(s => s + data.forge_points_earned)
+    }).catch(() => {})
   }, [profile?.id])
 
   // ── Recharger le marché périodiquement (toutes les 30s) ──────────────────

@@ -4,12 +4,13 @@ import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
 
 const TRIGGER_LABELS = {
-  buy_count:       'Achats marché',
-  sell_count:      'Mises en vente',
-  quiz_win:        'Quiz gagnés',
-  new_card:        'Nouvelles cartes',
-  streak:          'Streak',
-  collection_size: 'Cartes uniques',
+  buy_count:        'Achats marché',
+  sell_count:       'Mises en vente',
+  quiz_win:         'Quiz gagnés',
+  new_card:         'Nouvelles cartes',
+  streak:           'Streak',
+  collection_size:  'Cartes uniques',
+  daily_connection: 'Connexions (3h)',
 }
 
 export default function DailyQuests({ questActivitySignal, initialQuests }) {
