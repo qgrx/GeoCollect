@@ -33,6 +33,8 @@ export default function MarketModal({
   onClearUnreadSales = () => {},
   onClearNewTransactions = () => {},
   inline = false,
+  listingFee = 4,
+  saleTax = 0.12,
 }) {
   const { t } = useT()
   const { theme } = useTheme()
@@ -286,7 +288,8 @@ export default function MarketModal({
                     const maxPrice = cap?.max ?? null
                     const overCap = maxPrice !== null && +sellPrice > maxPrice
                     const underMin = sellCard.minPrice && +sellPrice < sellCard.minPrice
-                    const invalid = !(+sellPrice > 0) || underMin || overCap
+                    const noFeeGold = gold < listingFee
+                    const invalid = !(+sellPrice > 0) || underMin || overCap || noFeeGold
                     return (
                       <div>
                         <label style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, display: 'block', marginBottom: 6 }}>{t('market_price_label')}</label>
@@ -321,6 +324,24 @@ export default function MarketModal({
                         {overCap && (
                           <div style={{ marginTop: 5, fontSize: 10, color: '#e74c3c', fontWeight: 800 }}>
                             {t('market_cap_exceeded').replace('{max}', maxPrice)}
+                          </div>
+                        )}
+
+                        {/* Récapitulatif frais + taxe */}
+                        {+sellPrice > 0 && (
+                          <div style={{ marginTop: 8, padding: '8px 10px', background: theme.overlayMd, borderRadius: 8, fontSize: 10, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#e74c3c' }}>
+                              <span>{t('market_fee_label')} <span style={{ opacity: .7 }}>({t('market_fee_nonrefund')})</span></span>
+                              <span style={{ fontWeight: 800 }}>−{listingFee}G</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#e17055' }}>
+                              <span>{t('market_tax_label')} ({Math.round(saleTax * 100)}%)</span>
+                              <span style={{ fontWeight: 800 }}>−{Math.ceil(+sellPrice * saleTax)}G</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#00b894', fontWeight: 900, borderTop: `1px solid ${theme.border}`, paddingTop: 3, marginTop: 1 }}>
+                              <span>{t('market_you_receive')}</span>
+                              <span>{Math.floor(+sellPrice * (1 - saleTax))}G</span>
+                            </div>
                           </div>
                         )}
 

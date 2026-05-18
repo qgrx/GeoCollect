@@ -94,6 +94,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           shopPacks:               cfg.shop_packs                 ?? prev.shopPacks,
           shopTestMode:            cfg.shop_test_mode !== undefined ? (cfg.shop_test_mode === true || cfg.shop_test_mode === 'true') : prev.shopTestMode,
           releaseNotesPublishedAt: cfg.release_notes_published_at ?? prev.releaseNotesPublishedAt,
+          marketListingFee: cfg.market_listing_fee !== undefined ? +cfg.market_listing_fee : prev.marketListingFee,
+          marketSaleTax:    cfg.market_sale_tax    !== undefined ? +cfg.market_sale_tax    : prev.marketSaleTax,
+          quizJoinGoldCap:  cfg.quiz_join_gold_cap !== undefined ? +cfg.quiz_join_gold_cap  : prev.quizJoinGoldCap,
         }))
       }
     })
@@ -224,6 +227,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             shopPacks:               cfg.shop_packs ?? prev.shopPacks,
             shopTestMode:            cfg.shop_test_mode !== undefined ? (cfg.shop_test_mode === true || cfg.shop_test_mode === 'true') : prev.shopTestMode,
             releaseNotesPublishedAt: cfg.release_notes_published_at ?? prev.releaseNotesPublishedAt,
+            marketListingFee: cfg.market_listing_fee !== undefined ? +cfg.market_listing_fee : prev.marketListingFee,
+            marketSaleTax:    cfg.market_sale_tax    !== undefined ? +cfg.market_sale_tax    : prev.marketSaleTax,
+            quizJoinGoldCap:  cfg.quiz_join_gold_cap !== undefined ? +cfg.quiz_join_gold_cap  : prev.quizJoinGoldCap,
           }))
         }
 

@@ -1265,6 +1265,8 @@ export default function App() {
                   initialTab={marketTab} initialSellCard={marketTab === 'vendre' ? marketSellCard : null}
                   ranks={gs.limits.playerRanks}
                   marketSalesOpen={gs.limits.marketSalesOpen !== false}
+                  listingFee={gs.limits.marketListingFee ?? 4}
+                  saleTax={gs.limits.marketSaleTax ?? 0.12}
                   myPseudo={auth.profile?.pseudo}
                   unreadSales={gs.unreadSales}
                   onClearUnreadSales={() => gs.setUnreadSales(0)}

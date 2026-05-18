@@ -34,4 +34,7 @@ export const INIT_LIMITS = {
   shinyMultiplier: 2,
   shinyForgeCostByRarity: { commun: null, rare: null, épique: null, légendaire: null },
   releaseNotesPublishedAt: null,
+  marketListingFee: 4,
+  marketSaleTax: 0.12,
+  quizJoinGoldCap: 50,
 };
