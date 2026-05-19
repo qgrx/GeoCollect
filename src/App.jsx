@@ -399,7 +399,7 @@ export default function App() {
   const [marketTab,       setMarketTab]       = useState('acheter');
   const [marketSellCard,  setMarketSellCard]  = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showAdmin,       setShowAdmin]       = useState(false);
+  const [showAdmin,       setShowAdmin]       = useState(() => window.location.pathname === '/admin');
   const docsPath = ['/support', '/faq', '/release-notes']
   const [showDocs, setShowDocs] = useState(() => docsPath.includes(window.location.pathname))
   const [docsPage, setDocsPage] = useState(() => {
@@ -710,7 +710,7 @@ export default function App() {
         if (showSettings)       { setShowSettings(false); return }
         if (showAuth)           { setShowAuth(false); return }
         if (showTxHistory)      { setShowTxHistory(false); return }
-        if (showAdmin)          { setShowAdmin(false); return }
+        if (showAdmin)          { setShowAdmin(false); window.history.pushState({}, '', '/'); return }
         if (showShop)           { setShowShop(false); return }
         if (menuOpen)           { setMenuOpen(false); return }
       }
@@ -828,7 +828,7 @@ export default function App() {
   );
 
   // SPA : chemins valides
-  const validPaths = ['/', '/support', '/faq', '/release-notes']
+  const validPaths = ['/', '/support', '/faq', '/release-notes', '/admin']
   if (!validPaths.includes(window.location.pathname) && !window.location.hash.includes('access_token')) {
     return (
       <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Nunito',sans-serif", color: '#fff', flexDirection: 'column', gap: 16 }}>
@@ -970,7 +970,7 @@ export default function App() {
                 {[
                   { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
                   { icon: '💬', label: 'Support', notif: hasReleaseNotif, fn: () => { clearReleaseNotif(); setDocsPage('release-notes'); setShowDocs(true); setAvatarMenu(false); window.history.pushState({}, '', '/release-notes') } },
-                  ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false) } }] : []),
+                  ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false); window.history.pushState({}, '', '/admin') } }] : []),
                   null,
                   { icon: '↩', label: t('btn_logout'), color: '#f85149', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
                 ].map((item, i) => item === null ? (
@@ -1576,7 +1576,7 @@ export default function App() {
           cardPool={gs.cardPool} cardTypes={gs.cardTypes} questions={questions} limits={gs.limits}
           maintenanceMode={gs.maintenance.on} maintenanceText={gs.maintenance.text}
           bannedIPs={gs.bannedIPs}
-          onClose={() => setShowAdmin(false)}
+          onClose={() => { setShowAdmin(false); window.history.pushState({}, '', '/') }}
           onAddCard={gs.adminAddCard} onEditCard={gs.adminEditCard} onDeleteCard={gs.adminDeleteCard}
           onAddType={gs.adminAddType} onDeleteType={gs.adminDeleteType} onRenameType={gs.adminRenameType}
           onAddQuestion={async q => {
