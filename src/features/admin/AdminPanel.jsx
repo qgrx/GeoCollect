@@ -256,12 +256,12 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         <div style={{width:188,flexShrink:0,background:"#0a1018",borderRight:"1px solid #ffffff08",padding:"10px 6px",overflowY:"auto"}}>
           {NAV.map(group=>(
             <div key={group.label}>
-              <div style={{fontSize:9,color:"#333",fontWeight:700,textTransform:"uppercase",letterSpacing:1.2,padding:"14px 12px 4px"}}>{group.label}</div>
+              <div style={{fontSize:9,color:"#556678",fontWeight:700,textTransform:"uppercase",letterSpacing:1.2,padding:"14px 12px 4px"}}>{group.label}</div>
               {group.items.map(item=>(
                 <button key={item.id} onClick={()=>{setTab(item.id);setMsg('');}}
-                  style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:tab===item.id?"#e74c3c14":"none",border:"none",borderLeft:`3px solid ${tab===item.id?"#e74c3c":"transparent"}`,color:tab===item.id?"#e74c3c":"#666",padding:"8px 12px",borderRadius:"0 8px 8px 0",fontFamily:"'Nunito',sans-serif",fontWeight:tab===item.id?800:600,fontSize:13,cursor:"pointer",textAlign:"left",transition:"all .12s"}}
-                  onMouseEnter={e=>{if(tab!==item.id){e.currentTarget.style.color="#bbb";e.currentTarget.style.background="#ffffff06"}}}
-                  onMouseLeave={e=>{if(tab!==item.id){e.currentTarget.style.color="#666";e.currentTarget.style.background="none"}}}>
+                  style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:tab===item.id?"#e74c3c14":"none",border:"none",borderLeft:`3px solid ${tab===item.id?"#e74c3c":"transparent"}`,color:tab===item.id?"#e74c3c":"#8daacc",padding:"8px 12px",borderRadius:"0 8px 8px 0",fontFamily:"'Nunito',sans-serif",fontWeight:tab===item.id?800:600,fontSize:13,cursor:"pointer",textAlign:"left",transition:"all .12s"}}
+                  onMouseEnter={e=>{if(tab!==item.id){e.currentTarget.style.color="#d4e8f8";e.currentTarget.style.background="#ffffff08"}}}
+                  onMouseLeave={e=>{if(tab!==item.id){e.currentTarget.style.color="#8daacc";e.currentTarget.style.background="none"}}}>
                   <span style={{fontSize:14,width:18,textAlign:"center"}}>{item.icon}</span>
                   <span>{item.label}</span>
                 </button>
