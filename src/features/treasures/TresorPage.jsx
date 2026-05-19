@@ -29,9 +29,9 @@ const DEFAULT_SLOTS = {
 }
 
 const PACK_DEFS = [
-  { id: 'petit_soutien', emoji: '🎁', gradient: 'linear-gradient(135deg,#0984e3,#74b9ff)', glowColor: '#0984e344', borderColor: '#74b9ff55', defaultName: 'Petit soutien',  defaultPrice: '3,00 €',  defaultGold: 50,  highlight: false },
-  { id: 'soutien',       emoji: '💎', gradient: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', glowColor: '#6c5ce755', borderColor: '#a29bfe66', defaultName: 'Soutien',        defaultPrice: '8,00 €',  defaultGold: 150, highlight: true,  badge: '⭐ Populaire' },
-  { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Gros soutien',   defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
+  { id: 'petit_soutien', emoji: '🎁', gradient: 'linear-gradient(135deg,#0984e3,#74b9ff)', glowColor: '#0984e344', borderColor: '#74b9ff55', defaultName: 'Pack Découverte',  defaultPrice: '3,00 €',  defaultGold: 50,  highlight: false },
+  { id: 'soutien',       emoji: '💎', gradient: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', glowColor: '#6c5ce755', borderColor: '#a29bfe66', defaultName: 'Pack Exploration', defaultPrice: '8,00 €',  defaultGold: 150, highlight: true,  badge: '⭐ Populaire' },
+  { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Pack Légendaire',  defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
 export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = {}, packsLoading = false, shopTestMode = false, isAdmin = false }) {

@@ -6,9 +6,9 @@ const RARITIES = ['commun', 'rare', 'épique', 'légendaire']
 const R_LABEL  = { commun: 'Commun', rare: 'Rare', épique: 'Épique', légendaire: 'Légendaire' }
 
 const PACK_META = {
-  petit_soutien: { title: 'Petit soutien', defaultGold: 50,  defaultTranslations: { en: 'Small Support', de: 'Kleine Unterstützung', es: 'Pequeño apoyo' } },
-  soutien:       { title: 'Soutien',       defaultGold: 150, defaultTranslations: { en: 'Support',       de: 'Unterstützung',        es: 'Apoyo'         } },
-  gros_soutien:  { title: 'Gros soutien',  defaultGold: 300, defaultTranslations: { en: 'Big Support',   de: 'Große Unterstützung',  es: 'Gran apoyo'    } },
+  petit_soutien: { title: 'Pack Découverte', defaultGold: 50,  defaultTranslations: { en: 'Discovery Pack',  de: 'Entdeckungspaket',  es: 'Pack Descubrimiento' } },
+  soutien:       { title: 'Pack Exploration', defaultGold: 150, defaultTranslations: { en: 'Exploration Pack', de: 'Explorationspaket',  es: 'Pack Exploración'    } },
+  gros_soutien:  { title: 'Pack Légendaire',  defaultGold: 300, defaultTranslations: { en: 'Legendary Pack',  de: 'Legendäres Paket',  es: 'Pack Legendario'     } },
 }
 
 const TRANS_LANGS = [
