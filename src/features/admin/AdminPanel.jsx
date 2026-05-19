@@ -561,14 +561,6 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <input type="number" min={0} value={limEdit[k].dailyCards} onChange={e=>setLimEdit({...limEdit,[k]:{...limEdit[k],dailyCards:+e.target.value}})} style={{...INP,width:"100%"}}/>
                 </div>
               </div>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Bouton "Classement"</div>
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
-                  <input type="checkbox" checked={limEdit.leaderboardVisible!==false}
-                    onChange={e=>setLimEdit({...limEdit,leaderboardVisible:e.target.checked})} style={{width:16,height:16}}/>
-                  <span style={{color:"#fff",fontSize:13}}>Afficher le bouton dans la barre supérieure</span>
-                </label>
-              </div>
             </div>
           ))}
 
