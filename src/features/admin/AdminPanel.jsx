@@ -572,126 +572,143 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
             </div>
           ))}
 
-          {/* Fréquence et durée des quiz */}
+          {/* ── TABLE 1 : Quiz ── */}
           <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:16}}>
-            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:12,fontSize:13}}>⏱️ Paramètres des quiz</div>
-
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Intervalle entre chaque quiz</div>
-              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                <input type="number" min={10} max={3600} value={limEdit.quizInterval??60}
-                  onChange={e=>setLimEdit({...limEdit,quizInterval:Math.max(10,+e.target.value)})}
-                  style={{...INP,width:90}}/>
-                <span style={{color:"#aaa",fontSize:12}}>secondes</span>
-                <div style={{display:"flex",gap:5}}>
-                  {[[30,"30s"],[60,"1 min"],[120,"2 min"],[300,"5 min"]].map(([v,lbl])=>(
-                    <button key={v} onClick={()=>setLimEdit({...limEdit,quizInterval:v})}
-                      style={{background:(limEdit.quizInterval??60)===v?"#e74c3c":"#ffffff18",border:"none",color:"#fff",padding:"4px 10px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
-                      {lbl}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div style={{display:"flex",gap:14,flexWrap:"wrap",marginTop:14}}>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>💰 Or par participation</div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input type="number" min={0} max={100} value={limEdit.quizJoinGold??1}
-                    onChange={e=>setLimEdit({...limEdit,quizJoinGold:Math.max(0,+e.target.value)})}
-                    style={{...INP,width:70}}/>
-                  <span style={{color:"#aaa",fontSize:12}}>or / participation</span>
-                </div>
-                <div style={{fontSize:9,color:"#555",marginTop:3}}>0 = participation gratuite sans animation</div>
-              </div>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>🏆 Or par quiz gagné</div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input type="number" min={0} max={1000} value={limEdit.quizWinGold??5}
-                    onChange={e=>setLimEdit({...limEdit,quizWinGold:Math.max(0,+e.target.value)})}
-                    style={{...INP,width:70}}/>
-                  <span style={{color:"#aaa",fontSize:12}}>or / victoire</span>
-                </div>
-                <div style={{fontSize:9,color:"#555",marginTop:3}}>0 = pas de récompense or</div>
-              </div>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>🃏 Geocoins max / jour</div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input type="number" min={0} max={999} value={limEdit.quizDailyCardCap??20}
-                    onChange={e=>setLimEdit({...limEdit,quizDailyCardCap:Math.max(0,+e.target.value)})}
-                    style={{...INP,width:70}}/>
-                  <span style={{color:"#aaa",fontSize:12}}>geocoins / jour</span>
-                </div>
-                <div style={{fontSize:9,color:"#555",marginTop:3}}>0 = illimité</div>
-              </div>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>🃏 Geocoins max / heure</div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input type="number" min={0} max={99} value={limEdit.quizHourlyCardCap??0}
-                    onChange={e=>setLimEdit({...limEdit,quizHourlyCardCap:Math.max(0,+e.target.value)})}
-                    style={{...INP,width:70}}/>
-                  <span style={{color:"#aaa",fontSize:12}}>geocoins / heure</span>
-                </div>
-                <div style={{fontSize:9,color:"#555",marginTop:3}}>0 = pas de cap horaire</div>
-              </div>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>🏅 Or de consolation (limite atteinte)</div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input type="number" min={0} max={1000} value={limEdit.quizConsolationGold??5}
-                    onChange={e=>setLimEdit({...limEdit,quizConsolationGold:Math.max(0,+e.target.value)})}
-                    style={{...INP,width:70}}/>
-                  <span style={{color:"#aaa",fontSize:12}}>or</span>
-                </div>
-              </div>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>🔨 PF de consolation (limite atteinte)</div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input type="number" min={0} max={100} value={limEdit.quizConsolationForge??1}
-                    onChange={e=>setLimEdit({...limEdit,quizConsolationForge:Math.max(0,+e.target.value)})}
-                    style={{...INP,width:70}}/>
-                  <span style={{color:"#aaa",fontSize:12}}>PF</span>
-                </div>
-              </div>
-            </div>
-            <div style={{fontSize:10,color:"#555",marginTop:10}}>
-              Le changement prend effet au prochain quiz
-            </div>
+            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:12,fontSize:13}}>🎮 Économie Quiz</div>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{color:"#666",textAlign:"left"}}>
+                {["Paramètre","Valeur","Effet anti-triche / économique"].map(h=><th key={h} style={{padding:"5px 8px",borderBottom:"1px solid #ffffff14",fontWeight:700}}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {[
+                  ["Intervalle entre quiz", <><input type="number" min={10} max={3600} value={limEdit.quizInterval??60} onChange={e=>setLimEdit({...limEdit,quizInterval:Math.max(10,+e.target.value)})} style={{...INP,width:70}}/> <span style={{color:"#aaa"}}>s</span></>, "Cadence des sessions"],
+                  ["Or / participation", <><input type="number" min={0} max={100} value={limEdit.quizJoinGold??1} onChange={e=>setLimEdit({...limEdit,quizJoinGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or</span></>, "0 = accès gratuit sans animation"],
+                  ["Or / victoire (sous limite)", <><input type="number" min={0} max={1000} value={limEdit.quizWinGold??5} onChange={e=>setLimEdit({...limEdit,quizWinGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or + 1 Geocoin</span></>, "Récompense standard du gagnant"],
+                  ["Or / victoire (hors limite)", <><input type="number" min={0} max={1000} value={limEdit.quizConsolationGold??5} onChange={e=>setLimEdit({...limEdit,quizConsolationGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or +</span> <input type="number" min={0} max={100} value={limEdit.quizConsolationForge??1} onChange={e=>setLimEdit({...limEdit,quizConsolationForge:Math.max(0,+e.target.value)})} style={{...INP,width:55,marginLeft:4}}/> <span style={{color:"#aaa"}}>PF</span></>, "Zéro inflation — boost Forge"],
+                  ["Limite horaire", <><input type="number" min={0} max={99} value={limEdit.quizHourlyCardCap??0} onChange={e=>setLimEdit({...limEdit,quizHourlyCardCap:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>/ heure (0 = ∞)</span></>, "Bloque le siphonnage nocturne"],
+                  ["Limite journalière", <><input type="number" min={0} max={999} value={limEdit.quizDailyCardCap??20} onChange={e=>setLimEdit({...limEdit,quizDailyCardCap:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>/ jour (0 = ∞)</span></>, "Régule le rythme de l'album"],
+                ].map(([label,input,desc],i)=>(
+                  <tr key={i} style={{background:i%2===0?"transparent":"#ffffff04"}}>
+                    <td style={{padding:"7px 8px",color:"#ddd",fontWeight:700}}>{label}</td>
+                    <td style={{padding:"7px 8px"}}>{input}</td>
+                    <td style={{padding:"7px 8px",color:"#555",fontSize:11}}>{desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{fontSize:9,color:"#555",marginTop:8}}>Le changement prend effet au prochain quiz</div>
           </div>
 
-          {/* Marché */}
-          <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
-            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:10,fontSize:13}}>🏪 Marché</div>
-            <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Annonces actives max / joueur</div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input type="number" min={1} max={100} value={limEdit.maxActiveListings??10}
-                    onChange={e=>setLimEdit({...limEdit,maxActiveListings:Math.max(1,+e.target.value)})}
-                    style={{...INP,width:80}}/>
-                  <span style={{color:"#aaa",fontSize:12}}>annonces</span>
+          {/* ── TABLE 2 : Forge ── */}
+          {(()=>{
+            const RARITIES=[['commun','#78909c'],['rare','#1565c0'],['épique','#6a1b9a'],['légendaire','#e65100']]
+            const fc=limEdit.forgeCostByRarity??{commun:60,rare:180,épique:600,légendaire:1800}
+            const sc=limEdit.shinyForgeCostByRarity??{}
+            return(
+              <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
+                <div style={{fontWeight:800,color:"#f9ca24",marginBottom:12,fontSize:13}}>🔨 Coûts de Forge</div>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{color:"#666",textAlign:"left"}}>
+                    {["Rareté","Coût Craft (PF)","Coût Évolution Shiny (PF)"].map(h=><th key={h} style={{padding:"5px 8px",borderBottom:"1px solid #ffffff14",fontWeight:700}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {RARITIES.map(([r,color],i)=>(
+                      <tr key={r} style={{background:i%2===0?"transparent":"#ffffff04"}}>
+                        <td style={{padding:"7px 8px",color,fontWeight:800,textTransform:"capitalize"}}>{r}</td>
+                        <td style={{padding:"7px 8px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:5}}>
+                            <input type="number" min={1} max={9999} value={fc[r]??''} placeholder="—"
+                              onChange={e=>setLimEdit({...limEdit,forgeCostByRarity:{...fc,[r]:Math.max(1,+e.target.value)}})}
+                              style={{...INP,width:75}}/>
+                            <span style={{color:"#aaa"}}>PF</span>
+                          </div>
+                        </td>
+                        <td style={{padding:"7px 8px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:5}}>
+                            <input type="number" min={1} max={9999} value={sc[r]??''} placeholder="—"
+                              onChange={e=>{const v=e.target.value===''?null:Math.max(1,+e.target.value);setLimEdit({...limEdit,shinyForgeCostByRarity:{...sc,[r]:v}})}}
+                              style={{...INP,width:75}}/>
+                            <span style={{color:"#aaa"}}>PF</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })()}
+
+          {/* ── TABLE 3 : Marché ── */}
+          {(()=>{
+            const RARITIES=[['commun','#78909c'],['rare','#1565c0'],['épique','#6a1b9a'],['légendaire','#e65100']]
+            const caps=limEdit.marketPriceCaps??{commun:{floor:5,k:2},rare:{floor:25,k:2.5},épique:{floor:150,k:3},légendaire:{floor:1000,k:4}}
+            return(
+              <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
+                <div style={{fontWeight:800,color:"#f9ca24",marginBottom:12,fontSize:13}}>🏪 Marché — Prix par rareté</div>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,marginBottom:14}}>
+                  <thead><tr style={{color:"#666",textAlign:"left"}}>
+                    {["Rareté","Plancher (Or)","Multiplicateur médiane 7j"].map(h=><th key={h} style={{padding:"5px 8px",borderBottom:"1px solid #ffffff14",fontWeight:700}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {RARITIES.map(([r,color],i)=>{
+                      const cap=caps[r]??{floor:5,k:2}
+                      return(
+                        <tr key={r} style={{background:i%2===0?"transparent":"#ffffff04"}}>
+                          <td style={{padding:"7px 8px",color,fontWeight:800,textTransform:"capitalize"}}>{r}</td>
+                          <td style={{padding:"7px 8px"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:5}}>
+                              <input type="number" min={0} max={99999} value={cap.floor}
+                                onChange={e=>setLimEdit({...limEdit,marketPriceCaps:{...caps,[r]:{...cap,floor:Math.max(0,+e.target.value)}}})}
+                                style={{...INP,width:80}}/>
+                              <span style={{color:"#aaa"}}>Or</span>
+                            </div>
+                          </td>
+                          <td style={{padding:"7px 8px"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:5}}>
+                              <span style={{color:"#aaa"}}>×</span>
+                              <input type="number" min={1} max={20} step={0.5} value={cap.k}
+                                onChange={e=>setLimEdit({...limEdit,marketPriceCaps:{...caps,[r]:{...cap,k:Math.max(1,+e.target.value)}}})}
+                                style={{...INP,width:65}}/>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                <div style={{display:"flex",gap:16,flexWrap:"wrap",borderTop:"1px solid #ffffff10",paddingTop:12}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12}}>
+                    <span style={{color:"#aaa",fontWeight:700}}>Frais de mise en ligne :</span>
+                    <input type="number" min={0} max={100} value={limEdit.marketListingFee??1}
+                      onChange={e=>setLimEdit({...limEdit,marketListingFee:Math.max(0,+e.target.value)})}
+                      style={{...INP,width:60}}/>
+                    <span style={{color:"#aaa"}}>Or (non remboursable)</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12}}>
+                    <span style={{color:"#aaa",fontWeight:700}}>Taxe sur vente :</span>
+                    <input type="number" min={0} max={50} step={1} value={Math.round((limEdit.marketSaleTax??0.05)*100)}
+                      onChange={e=>setLimEdit({...limEdit,marketSaleTax:Math.min(0.5,Math.max(0,+e.target.value/100))})}
+                      style={{...INP,width:55}}/>
+                    <span style={{color:"#aaa"}}>% (détruits)</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12}}>
+                    <span style={{color:"#aaa",fontWeight:700}}>Annonces max / joueur :</span>
+                    <input type="number" min={1} max={100} value={limEdit.maxActiveListings??10}
+                      onChange={e=>setLimEdit({...limEdit,maxActiveListings:Math.max(1,+e.target.value)})}
+                      style={{...INP,width:60}}/>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12}}>
+                    <span style={{color:"#aaa",fontWeight:700}}>Expiration :</span>
+                    <input type="number" min={1} max={365} value={limEdit.marketExpireDays??30}
+                      onChange={e=>setLimEdit({...limEdit,marketExpireDays:Math.max(1,+e.target.value)})}
+                      style={{...INP,width:60}}/>
+                    <span style={{color:"#aaa"}}>jours</span>
+                  </div>
                 </div>
               </div>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Bots dans l'interface</div>
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
-                  <input type="checkbox" checked={!!limEdit.botsVisible}
-                    onChange={e=>setLimEdit({...limEdit,botsVisible:e.target.checked})} style={{width:16,height:16}}/>
-                  <span style={{color:"#fff",fontSize:13}}>Afficher les bots aux joueurs</span>
-                </label>
-                <div style={{fontSize:10,color:"#555",marginTop:4}}>Si désactivé, les bots sont masqués du classement et du marché.</div>
-              </div>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Expiration automatique</div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input type="number" min={1} max={365} value={limEdit.marketExpireDays??30}
-                    onChange={e=>setLimEdit({...limEdit,marketExpireDays:Math.max(1,+e.target.value)})}
-                    style={{...INP,width:80}}/>
-                  <span style={{color:"#aaa",fontSize:12}}>jours</span>
-                </div>
-              </div>
-            </div>
-          </div>
+            )
+          })()}
 
           {/* Règles de score */}
           <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
@@ -739,29 +756,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 </div>
                 <div style={{fontSize:10,color:"#555",marginTop:4}}>Points × ce coefficient pour les geocoins brillants</div>
               </div>
-              <div style={{flex:'0 0 100%'}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Coût forge brillance par rareté (si non défini sur la carte)</div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
-                  {['commun','rare','épique','légendaire'].map(r=>{
-                    const cur = (limEdit.shinyForgeCostByRarity ?? {})[r]
-                    return (
-                      <div key={r}>
-                        <div style={{fontSize:10,color:"#aaa",marginBottom:3,textTransform:"capitalize"}}>{r}</div>
-                        <div style={{display:"flex",alignItems:"center",gap:6}}>
-                          <input type="number" min={1} max={9999} placeholder="—"
-                            value={cur ?? ''}
-                            onChange={e=>{
-                              const val = e.target.value === '' ? null : Math.max(1,+e.target.value)
-                              setLimEdit({...limEdit,shinyForgeCostByRarity:{...(limEdit.shinyForgeCostByRarity??{}),[r]:val}})
-                            }}
-                            style={{...INP,width:70}}/>
-                          <span style={{color:"#aaa",fontSize:11}}>pts</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
+              <div style={{flex:'0 0 100%',fontSize:10,color:"#555"}}>Les coûts de forge brillance sont maintenant configurables dans le tableau Forge ci-dessus.</div>
               <div style={{flex:1,minWidth:180}}>
                 <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Forge Brillance</div>
                 <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>

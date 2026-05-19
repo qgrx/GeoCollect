@@ -41,6 +41,10 @@ export const INIT_LIMITS = {
   quizWinGold:       5,
   quizDailyCardCap:    20,
   quizHourlyCardCap:   0,
-  quizConsolationGold: 5,
+  quizConsolationGold:  5,
   quizConsolationForge: 1,
+  forgeCostByRarity:    { commun: 60, rare: 180, épique: 600, légendaire: 1800 },
+  marketPriceCaps:      { commun: {floor:5,k:2}, rare: {floor:25,k:2.5}, épique: {floor:150,k:3}, légendaire: {floor:1000,k:4} },
+  marketListingFee:     1,
+  marketSaleTax:        0.05,
 };

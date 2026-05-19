@@ -103,6 +103,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           quizHourlyCardCap:   cfg.quiz_hourly_card_cap   !== undefined ? +cfg.quiz_hourly_card_cap   : prev.quizHourlyCardCap,
           quizConsolationGold: cfg.quiz_consolation_gold  !== undefined ? +cfg.quiz_consolation_gold  : prev.quizConsolationGold,
           quizConsolationForge:cfg.quiz_consolation_forge !== undefined ? +cfg.quiz_consolation_forge : prev.quizConsolationForge,
+          forgeCostByRarity:   cfg.forge_cost_by_rarity  ?? prev.forgeCostByRarity,
+          marketPriceCaps:     cfg.market_price_caps      ?? prev.marketPriceCaps,
         }))
       }
     })
@@ -242,6 +244,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             quizHourlyCardCap:   cfg.quiz_hourly_card_cap   !== undefined ? +cfg.quiz_hourly_card_cap   : prev.quizHourlyCardCap,
             quizConsolationGold: cfg.quiz_consolation_gold  !== undefined ? +cfg.quiz_consolation_gold  : prev.quizConsolationGold,
             quizConsolationForge:cfg.quiz_consolation_forge !== undefined ? +cfg.quiz_consolation_forge : prev.quizConsolationForge,
+            forgeCostByRarity:   cfg.forge_cost_by_rarity  ?? prev.forgeCostByRarity,
+            marketPriceCaps:     cfg.market_price_caps      ?? prev.marketPriceCaps,
           }))
         }
 

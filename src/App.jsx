@@ -1618,6 +1618,8 @@ export default function App() {
                 apiSetConfig('quiz_hourly_card_cap',   limEdit.quizHourlyCardCap   ?? 0),
                 apiSetConfig('quiz_consolation_gold',  limEdit.quizConsolationGold  ?? 5),
                 apiSetConfig('quiz_consolation_forge', limEdit.quizConsolationForge ?? 1),
+                apiSetConfig('forge_cost_by_rarity',   limEdit.forgeCostByRarity   ?? { commun:60,rare:180,épique:600,légendaire:1800 }),
+                apiSetConfig('market_price_caps',      limEdit.marketPriceCaps      ?? { commun:{floor:5,k:2},rare:{floor:25,k:2.5},épique:{floor:150,k:3},légendaire:{floor:1000,k:4} }),
                 apiSetConfig('quiz_rarity_rates',  limEdit.quizRarityRates   ?? DEFAULT_RARITY_RATES),
                 ...(limEdit.cache_ttl_cards       != null ? [apiSetConfig('cache_ttl_cards',       limEdit.cache_ttl_cards)]       : []),
                 ...(limEdit.cache_ttl_config      != null ? [apiSetConfig('cache_ttl_config',      limEdit.cache_ttl_config)]      : []),
