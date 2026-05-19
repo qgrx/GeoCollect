@@ -225,48 +225,53 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   },[tab,listingsPage,listingsQ]);
 
 
+  const NAV=[
+    {label:'Contenu',items:[{id:'cards',icon:'🃏',label:'Cartes'},{id:'types',icon:'🏷️',label:'Types'},{id:'seasons',icon:'🌸',label:'Saisons'}]},
+    {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'}]},
+    {label:'Économie',items:[{id:'limits',icon:'💰',label:'Limites & Prix'},{id:'shop',icon:'🛍️',label:'Boutique'},{id:'ranks',icon:'🎖️',label:'Rangs'}]},
+    {label:'Récompenses',items:[{id:'quests',icon:'🔨',label:'Quêtes'},{id:'achievements',icon:'🏆',label:'Achievements'}]},
+    {label:'Communauté',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'bots',icon:'🤖',label:'Bots'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_history',icon:'💸',label:'Historique'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
+    {label:'Système',items:[{id:'maintenance',icon:'🛠️',label:'Maintenance'},{id:'interface',icon:'📱',label:'Interface'},{id:'cache',icon:'⚡',label:'Cache'},{id:'stats',icon:'📈',label:'Stats'},{id:'domains',icon:'🔒',label:'Domaines'}]},
+  ]
+
   return (
-    <div style={{position:"fixed",inset:0,background:"#000d",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,backdropFilter:"blur(8px)"}}>
-      <div style={{background:"linear-gradient(135deg,#1a0505,#1e3045)",borderRadius:20,padding:22,width:"min(96vw,940px)",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px #000b",border:"2px solid #e74c3c55",fontFamily:"'Nunito',sans-serif"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <div>
-            <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:21,color:"#e74c3c"}}>{t("admin_title")}</div>
-          </div>
-          <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            {onStartTour && (
-              <button onClick={onStartTour}
-                style={{background:"linear-gradient(135deg,#6c5ce7,#a29bfe)",border:"none",color:"#fff",padding:"6px 12px",borderRadius:9,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}}>
-                🎓 Tester le tuto
-              </button>
-            )}
-            <button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#fff",width:32,height:32,borderRadius:"50%",fontSize:16,cursor:"pointer"}}>✕</button>
-          </div>
+    <div style={{position:"fixed",inset:0,zIndex:2000,display:"flex",flexDirection:"column",fontFamily:"'Nunito',sans-serif",background:"#0f1923"}}>
+
+      {/* ── Header ── */}
+      <div style={{height:52,flexShrink:0,background:"#0c1620",borderBottom:"1px solid #e74c3c22",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",gap:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontFamily:"'Fredoka One',sans-serif",fontSize:18,color:"#e74c3c"}}>🔧 {t("admin_title")}</span>
+          {msg&&<div style={{background:msg.startsWith("❌")?"#e74c3c22":"#00b89422",border:`1px solid ${msg.startsWith("❌")?"#e74c3c55":"#00b89455"}`,color:msg.startsWith("❌")?"#e74c3c":"#00b894",fontWeight:800,fontSize:11,padding:"3px 10px",borderRadius:6,maxWidth:320,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg}</div>}
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {onStartTour&&<button onClick={onStartTour} style={{background:"linear-gradient(135deg,#6c5ce7,#a29bfe)",border:"none",color:"#fff",padding:"5px 12px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>🎓 Tuto</button>}
+          <button onClick={onClose} style={{background:"#ffffff12",border:"none",color:"#888",width:32,height:32,borderRadius:"50%",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+      </div>
+
+      {/* ── Body ── */}
+      <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+
+        {/* Sidebar */}
+        <div style={{width:188,flexShrink:0,background:"#0a1018",borderRight:"1px solid #ffffff08",padding:"10px 6px",overflowY:"auto"}}>
+          {NAV.map(group=>(
+            <div key={group.label}>
+              <div style={{fontSize:9,color:"#333",fontWeight:700,textTransform:"uppercase",letterSpacing:1.2,padding:"14px 12px 4px"}}>{group.label}</div>
+              {group.items.map(item=>(
+                <button key={item.id} onClick={()=>{setTab(item.id);setMsg('');}}
+                  style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:tab===item.id?"#e74c3c14":"none",border:"none",borderLeft:`3px solid ${tab===item.id?"#e74c3c":"transparent"}`,color:tab===item.id?"#e74c3c":"#666",padding:"8px 12px",borderRadius:"0 8px 8px 0",fontFamily:"'Nunito',sans-serif",fontWeight:tab===item.id?800:600,fontSize:13,cursor:"pointer",textAlign:"left",transition:"all .12s"}}
+                  onMouseEnter={e=>{if(tab!==item.id){e.currentTarget.style.color="#bbb";e.currentTarget.style.background="#ffffff06"}}}
+                  onMouseLeave={e=>{if(tab!==item.id){e.currentTarget.style.color="#666";e.currentTarget.style.background="none"}}}>
+                  <span style={{fontSize:14,width:18,textAlign:"center"}}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
         </div>
 
-        <div style={{display:"flex",gap:6,marginBottom:18,flexWrap:"wrap"}}>
-          <Tb id="cards"       lbl="🃏 Cartes"                         tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="types"       lbl="🏷️ Types"                         tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="questions"   lbl="❓ Questions"                     tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="quiz_config" lbl="🎲 Quiz"                              tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="limits"      lbl="📊 Limites"                       tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="interface"   lbl="📱 Interface"                     tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="players"     lbl="👤 Joueurs"                       tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="ips"         lbl={`🌐 IPs (${bannedIPs.length})`}   tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="maintenance"  lbl="🛠️ Maintenance"                   tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="achievements"  lbl="🏆 Achievements"                  tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="quests"        lbl="🔨 Quêtes"                         tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="bots"         lbl="🤖 Bots"                           tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="cache"        lbl="⚡ Cache"                           tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="stats"        lbl="📊 Stats"                          tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="market_history" lbl="💸 Historique marché"             tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="market_admin" lbl="🏪 Marché admin"                  tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="ranks"        lbl="🎖️ Rangs"                         tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="domains"      lbl="🔒 Domaines"                      tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="seasons"      lbl="🌸 Saisons"                       tab={tab} setTab={setTab} setMsg={setMsg}/>
-          <Tb id="shop"         lbl="🛍️ Boutique"                      tab={tab} setTab={setTab} setMsg={setMsg}/>
-        </div>
-
-        {msg&&<div style={{background:msg.startsWith("❌")?"#e74c3c22":"#00b89422",border:`1px solid ${msg.startsWith("❌")?"#e74c3c44":"#00b89444"}`,color:msg.startsWith("❌")?"#e74c3c":"#00b894",fontWeight:800,fontSize:12,padding:"7px 12px",borderRadius:8,marginBottom:12}}>{msg}</div>}
+        {/* Contenu */}
+        <div style={{flex:1,overflowY:"auto",padding:"22px 26px",minWidth:0}}>
 
         {/* ── CARTES ── */}
         {tab==="cards" && (
@@ -1891,6 +1896,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
         {tab==="shop"&&<AdminShop setMsg={setMsg} onSaved={onShopPacksSaved} onShopTestModeChange={onShopTestModeChange}/>}
 
+        </div>
       </div>
     </div>
   );
