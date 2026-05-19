@@ -6,10 +6,16 @@ const RARITIES = ['commun', 'rare', 'épique', 'légendaire']
 const R_LABEL  = { commun: 'Commun', rare: 'Rare', épique: 'Épique', légendaire: 'Légendaire' }
 
 const PACK_META = {
-  petit_soutien: { title: 'Petit soutien',  defaultGold: 50 },
-  soutien:       { title: 'Soutien',        defaultGold: 150 },
-  gros_soutien:  { title: 'Gros soutien',   defaultGold: 300 },
+  petit_soutien: { title: 'Petit soutien', defaultGold: 50,  defaultTranslations: { en: 'Small Support', de: 'Kleine Unterstützung', es: 'Pequeño apoyo' } },
+  soutien:       { title: 'Soutien',       defaultGold: 150, defaultTranslations: { en: 'Support',       de: 'Unterstützung',        es: 'Apoyo'         } },
+  gros_soutien:  { title: 'Gros soutien',  defaultGold: 300, defaultTranslations: { en: 'Big Support',   de: 'Große Unterstützung',  es: 'Gran apoyo'    } },
 }
+
+const TRANS_LANGS = [
+  { code: 'en', label: 'English'  },
+  { code: 'de', label: 'Deutsch'  },
+  { code: 'es', label: 'Español'  },
+]
 
 const DEFAULT_SLOTS = {
   petit_soutien: [
@@ -87,7 +93,11 @@ export default function AdminShop({ setMsg, onSaved, onShopTestModeChange }) {
       const p = data?.packs || {}
       const merged = {}
       for (const id of Object.keys(PACK_META)) {
-        merged[id] = { ...p[id], slots: p[id]?.slots || DEFAULT_SLOTS[id] }
+        merged[id] = {
+          ...p[id],
+          slots: p[id]?.slots || DEFAULT_SLOTS[id],
+          name_translations: p[id]?.name_translations || PACK_META[id].defaultTranslations,
+        }
       }
       setPacks(merged)
       setEdit(JSON.parse(JSON.stringify(merged)))
@@ -195,13 +205,23 @@ export default function AdminShop({ setMsg, onSaved, onShopTestModeChange }) {
               </label>
             </div>
 
-            {/* Nom + Prix + Gold */}
+            {/* Nom + Traductions + Prix + Gold */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 9, color: '#aaa', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase' }}>Nom</div>
+                <div style={{ fontSize: 9, color: '#aaa', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase' }}>Nom (FR)</div>
                 <input value={pk.name || ''} onChange={e => updatePack(id, 'name', e.target.value)}
-                  placeholder={title} style={{ ...INP, width: 150 }} />
+                  placeholder={title} style={{ ...INP, width: 140 }} />
               </div>
+              {TRANS_LANGS.map(({ code, label }) => (
+                <div key={code}>
+                  <div style={{ fontSize: 9, color: '#aaa', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase' }}>{label}</div>
+                  <input
+                    value={pk.name_translations?.[code] || ''}
+                    onChange={e => updatePack(id, 'name_translations', { ...(pk.name_translations || {}), [code]: e.target.value })}
+                    placeholder={PACK_META[id].defaultTranslations[code]}
+                    style={{ ...INP, width: 130 }} />
+                </div>
+              ))}
               <div>
                 <div style={{ fontSize: 9, color: '#aaa', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase' }}>Prix</div>
                 <input value={pk.price || ''} onChange={e => updatePack(id, 'price', e.target.value)}

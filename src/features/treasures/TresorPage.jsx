@@ -120,7 +120,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
       const gold  = cfg.gold  ?? p.defaultGold
       return {
         ...p,
-        name:     cfg.name  || p.defaultName,
+        name:     (cfg.name_translations?.[getLang()] ?? cfg.name) || p.defaultName,
         price:    cfg.price || p.defaultPrice,
         slots,
         gold,
