@@ -139,33 +139,44 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ fontSize: 20 }}>🎁</span>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>{t('tresor_daily_title')}</div>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-            {dailyOfferGold > 0 && <div style={{ background: '#f9ca2420', border: '1px solid #f9ca2444', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 900, color: '#f9ca24' }}>+{dailyOfferGold}G</div>}
-            <div style={{ background: '#00b89420', border: '1px solid #00b89444', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 900, color: '#00b894' }}>{t('tresor_daily_free')}</div>
-          </div>
+          <div style={{ marginLeft: 'auto', background: '#00b89420', border: '1px solid #00b89444', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 900, color: '#00b894' }}>{t('tresor_daily_free')}</div>
         </div>
 
-        <div style={{ background: claimed ? theme.overlay : `linear-gradient(135deg,${c1}18,${c2}12)`, border: `1.5px solid ${claimed ? theme.border : c1 + '55'}`, borderRadius: 16, padding: '14px 16px', transition: 'all .4s' }}>
+        <div style={{ background: claimed ? theme.overlay : `linear-gradient(135deg,${c1}18,${c2}12)`, border: `1.5px solid ${claimed ? theme.border : c1 + '55'}`, borderRadius: 16, padding: '16px', transition: 'all .4s' }}>
           {card ? (
-            <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-              <div style={{ width: 56, height: 56, borderRadius: 10, overflow: 'hidden', flexShrink: 0, border: `2px solid ${c1}`, background: '#1e3045', boxShadow: claimed ? 'none' : `0 0 14px ${c1}44` }}>
-                {card.image_url
-                  ? <ThumbImage src={card.image_url} alt={cardName(card, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
-                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{cardName(card, getLang())[0]}</div>
-                }
+            <>
+              {/* Geocoin */}
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
+                <div style={{ width: 60, height: 60, borderRadius: 10, overflow: 'hidden', flexShrink: 0, border: `2px solid ${c1}`, background: '#1e3045', boxShadow: claimed ? 'none' : `0 0 16px ${c1}44` }}>
+                  {card.image_url
+                    ? <ThumbImage src={card.image_url} alt={cardName(card, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
+                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{cardName(card, getLang())[0]}</div>
+                  }
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 900, fontSize: 16, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cardName(card, getLang())}</div>
+                  <div style={{ fontSize: 12, color: rc?.color, fontWeight: 800, marginTop: 3 }}>{rarityLabel(card.rarity, t)}</div>
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 900, fontSize: 15, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cardName(card, getLang())}</div>
-                <div style={{ fontSize: 11, color: rc?.color, fontWeight: 800, marginTop: 2 }}>{rarityLabel(card.rarity, t)}</div>
-              </div>
+
+              {/* Ligne Or prominente */}
+              {dailyOfferGold > 0 && (
+                <div style={{ background: claimed ? '#f9ca2410' : 'linear-gradient(135deg,#f9ca2422,#e1705518)', border: `1.5px solid ${claimed ? '#f9ca2430' : '#f9ca2466'}`, borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 24 }}>💰</span>
+                  <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: claimed ? '#f9ca2480' : '#f9ca24', lineHeight: 1 }}>+{dailyOfferGold}</span>
+                  <span style={{ fontSize: 16, fontWeight: 900, color: claimed ? '#f9ca2880' : '#f9ca24', marginTop: 4 }}>Golds</span>
+                </div>
+              )}
+
+              {/* Bouton réclamer */}
               <button
                 onClick={!claimed && !claiming ? handleClaim : undefined}
-                style={{ background: claimed ? '#ffffff18' : `linear-gradient(135deg,${c1},${c2})`, border: 'none', color: claimed ? '#666' : '#1e3045', padding: '9px 15px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: claimed ? 'default' : 'pointer', flexShrink: 0, transition: 'all .3s', opacity: claiming ? 0.6 : 1 }}>
-                {claimed ? t('tresor_daily_claimed') : claiming ? '…' : t('tresor_daily_claim')}
+                style={{ width: '100%', background: claimed ? '#ffffff10' : `linear-gradient(135deg,${c1},${c2})`, border: 'none', color: claimed ? theme.textMuted : '#fff', padding: '13px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 16, cursor: claimed ? 'default' : 'pointer', transition: 'all .3s', opacity: claiming ? 0.7 : 1, boxShadow: claimed ? 'none' : `0 4px 20px ${c1}44`, letterSpacing: .3 }}>
+                {claimed ? `✓ ${t('tresor_daily_claimed')}` : claiming ? '…' : t('tresor_daily_claim')}
               </button>
-            </div>
+            </>
           ) : (
-            <div style={{ textAlign: 'center', color: '#666', padding: '10px 0', fontSize: 13 }}>…</div>
+            <div style={{ textAlign: 'center', color: theme.textMuted, padding: '10px 0', fontSize: 13 }}>…</div>
           )}
         </div>
 
