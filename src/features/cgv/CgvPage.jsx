@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../i18n/translations.js'
 
 function SellerIdentity() {
@@ -33,6 +33,61 @@ const S = {
 }
 
 export default function CgvPage({ onClose }) {
+  const [verified, setVerified] = useState(!import.meta.env.VITE_TURNSTILE_SITE_KEY)
+  const tsRef    = useRef(null)
+  const tsWidget = useRef(null)
+
+  // noindex dynamique
+  useEffect(() => {
+    const m = document.createElement('meta')
+    m.name = 'robots'; m.content = 'noindex, nofollow, noarchive'
+    document.head.appendChild(m)
+    return () => document.head.removeChild(m)
+  }, [])
+
+  // Turnstile
+  useEffect(() => {
+    const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
+    if (!siteKey || verified) return
+    function init() {
+      if (!tsRef.current || !window.turnstile || tsWidget.current) return
+      tsWidget.current = window.turnstile.render(tsRef.current, {
+        sitekey: siteKey,
+        appearance: 'always',
+        callback: () => setVerified(true),
+        'error-callback': () => {},
+        'expired-callback': () => setVerified(false),
+      })
+    }
+    if (window.turnstile) { init(); return }
+    const s = document.createElement('script')
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+    s.async = true; s.onload = init
+    document.head.appendChild(s)
+    return () => { if (tsWidget.current && window.turnstile) { window.turnstile.remove(tsWidget.current); tsWidget.current = null } }
+  }, [verified])
+
+  if (!verified) {
+    return (
+      <div style={{ ...S.page, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
+        <div style={S.header}>
+          <button onClick={onClose} style={S.back}>← Retour</button>
+          <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: '#f9ca24' }}>🗺️ Geocoins</span>
+        </div>
+        <div style={{ textAlign: 'center', marginTop: 80 }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
+          <div style={{ fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 16, color: '#1a2d3d', marginBottom: 8 }}>
+            Vérification requise
+          </div>
+          <div style={{ fontSize: 13, color: '#6b7d92', marginBottom: 24 }}>
+            Veuillez confirmer que vous n'êtes pas un robot pour accéder aux CGV.
+          </div>
+          <div ref={tsRef} />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={S.page}>
       <div style={S.header}>
