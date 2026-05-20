@@ -1766,8 +1766,6 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
                 {ranks.map((rank,i)=>(
                   <div key={rank.label+i} style={{display:"flex",alignItems:"center",gap:8,background:"#ffffff08",borderRadius:10,padding:"10px 12px",border:"1px solid #ffffff10",flexWrap:"wrap"}}>
-                    <input value={rank.icon} onChange={e=>{const r=[...ranks];r[i]={...r[i],icon:e.target.value};setRanks(r);}}
-                      style={{...INP,width:50,textAlign:"center",fontSize:18,padding:"4px"}}/>
                     <input value={rank.label} onChange={e=>{const r=[...ranks];r[i]={...r[i],label:e.target.value};setRanks(r);}}
                       style={{...INP,flex:1,minWidth:100}}/>
                     <div style={{display:"flex",alignItems:"center",gap:5}}>
@@ -1784,7 +1782,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 ))}
               </div>
               <div style={{display:"flex",gap:8}}>
-                <button onClick={()=>setRanks([...ranks,{min:(ranks[ranks.length-1]?.min||0)+50,label:"Nouveau rang",color:"#ffffff",icon:"⭐"}])}
+                <button onClick={()=>setRanks([...ranks,{min:(ranks[ranks.length-1]?.min||0)+50,label:"Nouveau rang",color:"#ffffff"}])}
                   style={{...BTN("#ffffff18"),padding:"8px 16px",borderRadius:9,fontSize:12}}>+ Ajouter un rang</button>
                 <button onClick={async()=>{
                   const sorted={...limEdit,playerRanks:[...ranks].sort((a,b)=>(+a.min||0)-(+b.min||0))};
