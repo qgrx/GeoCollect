@@ -35,6 +35,7 @@ import { QuizNotif, QuizModal, CountdownWidget, ThumbImage } from './features/qu
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
+import CgvPage from './features/cgv/CgvPage.jsx';
 import ShopModal from './features/shop/ShopModal.jsx';
 import { AchievementToast, SaleNotif, TxHistoryModal } from './features/achievements/NotifComponents.jsx';
 import DailyQuests from './features/quests/DailyQuests.jsx';
@@ -400,6 +401,7 @@ export default function App() {
   const [marketSellCard,  setMarketSellCard]  = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdmin,       setShowAdmin]       = useState(() => window.location.pathname === '/admin');
+  const [showCgv,         setShowCgv]         = useState(() => window.location.pathname === '/cgv');
   const docsPath = ['/support', '/faq', '/release-notes']
   const [showDocs, setShowDocs] = useState(() => docsPath.includes(window.location.pathname))
   const [docsPage, setDocsPage] = useState(() => {
@@ -829,7 +831,7 @@ export default function App() {
   );
 
   // SPA : chemins valides
-  const validPaths = ['/', '/support', '/faq', '/release-notes', '/admin']
+  const validPaths = ['/', '/support', '/faq', '/release-notes', '/admin', '/cgv']
   if (!validPaths.includes(window.location.pathname) && !window.location.hash.includes('access_token')) {
     return (
       <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Nunito',sans-serif", color: '#fff', flexDirection: 'column', gap: 16 }}>
@@ -1311,6 +1313,7 @@ export default function App() {
                   isAdmin={auth.profile?.role === 'admin'}
                   packsLoading={gs.loadingData}
                   dailyOfferGold={gs.limits?.dailyOfferGold ?? 5}
+                  onOpenCgv={() => { setShowCgv(true); window.history.pushState({}, '', '/cgv') }}
                 />
               )}
 
@@ -1575,6 +1578,7 @@ export default function App() {
 
       {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
       {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0); setRevealPayment('') }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} initialPaymentLabel={revealPayment} />}
+      {showCgv && <CgvPage onClose={() => { setShowCgv(false); window.history.pushState({}, '', '/') }} />}
       {showAdmin && (
         <AdminPanel
           cardPool={gs.cardPool} cardTypes={gs.cardTypes} questions={questions} limits={gs.limits}

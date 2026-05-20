@@ -34,12 +34,13 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Pack Légendaire',  defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
-export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = {}, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5 }) {
+export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = {}, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5, onOpenCgv }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [claiming, setClaiming]       = useState(false)
   const [localClaimed, setLocalClaimed] = useState(false)
   const [countdown, setCountdown]     = useState('--:--:--')
+  const [cgvAccepted,    setCgvAccepted]    = useState(false)
   const [checkoutPack,   setCheckoutPack]   = useState(null)
   const [checkoutError,  setCheckoutError]  = useState('')
   const [sumupCheckout,  setSumupCheckout]  = useState(null) // { checkoutId, pack }
@@ -189,6 +190,19 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           <span style={{ color: theme.textMuted }}>{t('tresor_no_subscription')}</span>
         </div>
 
+        {/* Checkbox CGV obligatoire */}
+        <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16, cursor: 'pointer', padding: '12px 14px', background: cgvAccepted ? '#00b89410' : theme.overlay, border: `1px solid ${cgvAccepted ? '#00b89444' : theme.border}`, borderRadius: 10, transition: 'all .2s' }}>
+          <input id="cgv-checkbox" type="checkbox" checked={cgvAccepted} onChange={e => setCgvAccepted(e.target.checked)}
+            style={{ width: 17, height: 17, flexShrink: 0, marginTop: 2, cursor: 'pointer', accentColor: '#00b894' }} />
+          <span style={{ fontSize: 12, color: theme.textPrimary, lineHeight: 1.6 }}>
+            J'accepte les{' '}
+            <a onClick={e => { e.preventDefault(); onOpenCgv?.() }}
+              href="/cgv" style={{ color: '#1e7fca', fontWeight: 800 }}>Conditions Générales de Vente</a>
+            {' '}et je demande l'exécution immédiate du contenu numérique. J'accepte qu'en accédant
+            immédiatement à mes objets virtuels, je renonce expressément à mon droit de rétractation.
+          </span>
+        </label>
+
         {/* 3 cartes packs — skeleton tant que les prix ne sont pas chargés */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
           {packsLoading ? (
@@ -207,10 +221,11 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           ) : visiblePacks.map(p => {
             const isLoading = checkoutPack === p.id
             const isBlocked = shopTestMode && !isAdmin
-            const clickable = !checkoutPack && !isBlocked
+            const clickable = !checkoutPack && !isBlocked && cgvAccepted
+            const needsCgv  = !isBlocked && !checkoutPack && !cgvAccepted
             return (
               <div key={p.id}
-                onClick={clickable ? () => handleCheckout(p) : undefined}
+                onClick={needsCgv ? () => { document.getElementById('cgv-checkbox')?.focus() } : clickable ? () => handleCheckout(p) : undefined}
                 style={{
                   background: 'linear-gradient(145deg,#1a1a2e,#16213e)',
                   borderRadius: 16,
