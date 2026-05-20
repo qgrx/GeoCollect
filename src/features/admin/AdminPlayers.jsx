@@ -58,10 +58,10 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
     <div>
       {playerView?(
         <div>
-          <button onClick={()=>{setPlayerView(null);setPlayerGoldEdit('');setPlayerCollection(null);setCardSearch2('');}} style={{background:"none",border:"none",color:"#888",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif",marginBottom:12}}>← Retour</button>
+          <button onClick={()=>{setPlayerView(null);setPlayerGoldEdit('');setPlayerCollection(null);setCardSearch2('');}} style={{background:"none",border:"none",color:"#a8bfcf",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif",marginBottom:12}}>← Retour</button>
           <div style={{fontWeight:900,color:"#e74c3c",fontSize:15,marginBottom:14}}>Fiche de {playerView.name}</div>
           {[["Email",playerView.email],["IP",playerView.ip],["UA",playerView.ua],["Inscrit",playerView.joined],["Dernière co.",playerView.lastSeen],["Statut",playerView.status]].map(([lbl,val])=>(
-            <div key={lbl} style={{display:"flex",gap:12,marginBottom:8}}><div style={{fontSize:11,color:"#888",width:100,flexShrink:0}}>{lbl}</div><div style={{fontSize:12,color:"#fff",fontWeight:700,fontFamily:lbl==="IP"||lbl==="UA"?"monospace":"inherit",wordBreak:"break-all"}}>{val}</div></div>
+            <div key={lbl} style={{display:"flex",gap:12,marginBottom:8}}><div style={{fontSize:11,color:"#a8bfcf",width:100,flexShrink:0}}>{lbl}</div><div style={{fontSize:12,color:"#fff",fontWeight:700,fontFamily:lbl==="IP"||lbl==="UA"?"monospace":"inherit",wordBreak:"break-all"}}>{val}</div></div>
           ))}
           <div style={{marginTop:14,display:"flex",gap:8,flexWrap:"wrap"}}>
             <button onClick={async()=>{
@@ -156,10 +156,10 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
                   </div>
                 )}
                 <div style={{display:"flex",flexWrap:"wrap",gap:5,maxHeight:140,overflowY:"auto"}}>
-                  {playerCollection.length===0&&<div style={{fontSize:11,color:"#555"}}>Collection vide.</div>}
+                  {playerCollection.length===0&&<div style={{fontSize:11,color:"#a8bfcf"}}>Collection vide.</div>}
                   {playerCollection.map(x=>(
                     <div key={x.card_id} style={{display:"flex",alignItems:"center",gap:4,background:"#ffffff0a",border:"1px solid #ffffff12",borderRadius:7,padding:"3px 8px"}}>
-                      <span style={{fontSize:11,color:"#ccc",fontWeight:700}}>{x.cards?.name||`#${x.card_id}`}</span><span style={{fontSize:10,color:"#888"}}>×{x.quantity}</span>
+                      <span style={{fontSize:11,color:"#ccc",fontWeight:700}}>{x.cards?.name||`#${x.card_id}`}</span><span style={{fontSize:10,color:"#a8bfcf"}}>×{x.quantity}</span>
                       <button onClick={async()=>{
                         const ex=playerCollection.find(p=>p.card_id===x.card_id);
                         setPlayerCollection(prev=>{const ex=prev.find(p=>p.card_id===x.card_id);if(ex?.quantity<=1) return prev.filter(p=>p.card_id!==x.card_id);return prev.map(p=>p.card_id===x.card_id?{...p,quantity:p.quantity-1}:p);});
@@ -201,9 +201,9 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
                     setMsg(banned ? "✅ Compte réactivé." : "⛔ Compte banni.");
                   }
                 }} style={{background:banned?"#00b89422":"#e74c3c22",border:`1px solid ${banned?"#00b89444":"#e74c3c44"}`,color:banned?"#00b894":"#e74c3c",padding:"4px 10px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{banned?"Réactiver":"Désactiver"}</button>{!banned&&<button onClick={()=>{onBanIP(p.ip);setMsg(`IP ${p.ip} bannie.`);setTab("ips");}} style={{background:"#e74c3c22",border:"1px solid #e74c3c44",color:"#e74c3c",padding:"4px 10px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>🌐 IP</button>}<button onClick={async()=>{if(!window.confirm(`Supprimer DÉFINITIVEMENT le joueur ${p.name} ?`)) return;const { data: { session } } = await supabase.auth.getSession();const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/players/${p.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${session.access_token}` } });const d = await res.json();if (d.error) { setMsg("❌ " + d.error); return; }setPlayersData(prev => ({ ...prev, players: prev.players.filter(x => x.id !== p.id), total: prev.total - 1 }));setMsg(`✅ Compte ${p.name} supprimé définitivement.`);}} style={{background:"#e74c3c22",border:"1px solid #e74c3c44",color:"#e74c3c",padding:"4px 10px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}} title="Supprimer définitivement">🗑️</button></div></div>);})}
-                {pagPl.length===0&&<div style={{color:"#666",textAlign:"center",padding:"16px 0"}}>{t("admin_no_player")}</div>}
+                {pagPl.length===0&&<div style={{color:"#a8bfcf",textAlign:"center",padding:"16px 0"}}>{t("admin_no_player")}</div>}
               </div>
-              {pages>1&&<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,marginTop:11}}><button onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={page===0} style={{background:page===0?"#222":"#ffffff22",border:"none",color:page===0?"#444":"#fff",padding:"5px 12px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:page===0?"default":"pointer"}}>{t("lb_prev")}</button><span style={{fontSize:11,color:"#888"}}>Page {page+1}/{pages}</span><button onClick={()=>setPage(p=>Math.min(pages-1,p+1))} disabled={page===pages-1} style={{background:page===pages-1?"#222":"#ffffff22",border:"none",color:page===pages-1?"#444":"#fff",padding:"5px 12px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:page===pages-1?"default":"pointer"}}>{t("lb_next")}</button></div>}
+              {pages>1&&<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,marginTop:11}}><button onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={page===0} style={{background:page===0?"#222":"#ffffff22",border:"none",color:page===0?"#444":"#fff",padding:"5px 12px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:page===0?"default":"pointer"}}>{t("lb_prev")}</button><span style={{fontSize:11,color:"#a8bfcf"}}>Page {page+1}/{pages}</span><button onClick={()=>setPage(p=>Math.min(pages-1,p+1))} disabled={page===pages-1} style={{background:page===pages-1?"#222":"#ffffff22",border:"none",color:page===pages-1?"#444":"#fff",padding:"5px 12px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:page===pages-1?"default":"pointer"}}>{t("lb_next")}</button></div>}
             </>
           )}
         </div>

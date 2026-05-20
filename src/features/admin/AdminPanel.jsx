@@ -256,7 +256,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         <div style={{width:188,flexShrink:0,background:"#0a1018",borderRight:"1px solid #ffffff08",padding:"10px 6px",overflowY:"auto"}}>
           {NAV.map(group=>(
             <div key={group.label}>
-              <div style={{fontSize:9,color:"#556678",fontWeight:700,textTransform:"uppercase",letterSpacing:1.2,padding:"14px 12px 4px"}}>{group.label}</div>
+              <div style={{fontSize:9,color:"#7a94aa",fontWeight:700,textTransform:"uppercase",letterSpacing:1.2,padding:"14px 12px 4px"}}>{group.label}</div>
               {group.items.map(item=>(
                 <button key={item.id} onClick={()=>{setTab(item.id);setMsg('');}}
                   style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:tab===item.id?"#e74c3c14":"none",border:"none",borderLeft:`3px solid ${tab===item.id?"#e74c3c":"transparent"}`,color:tab===item.id?"#e74c3c":"#8daacc",padding:"8px 12px",borderRadius:"0 8px 8px 0",fontFamily:"'Nunito',sans-serif",fontWeight:tab===item.id?800:600,fontSize:13,cursor:"pointer",textAlign:"left",transition:"all .12s"}}
@@ -401,13 +401,13 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <span style={{fontSize:11,color:"#8daacc",whiteSpace:"nowrap",fontWeight:700}}>{filtered.length}/{questions.length}</span>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-                  {slice.length===0&&<div style={{textAlign:"center",color:"#8899aa",padding:"18px 0",fontSize:12}}>Aucune question trouvée.</div>}
+                  {slice.length===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"18px 0",fontSize:12}}>Aucune question trouvée.</div>}
                   {slice.map(q=>{const inactive=q.active===false;return(
                     <div key={q.id} style={{display:"flex",alignItems:"flex-start",gap:9,background:editQ?.id===q.id?"#f9ca2410":inactive?"#e74c3c08":"#ffffff08",borderRadius:9,padding:"9px 12px",border:`1px solid ${editQ?.id===q.id?"#f9ca2444":inactive?"#e74c3c22":"#ffffff10"}`,opacity:inactive?0.6:1}}>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:12,color:inactive?"#666":"#fff",fontWeight:700,marginBottom:2,textDecoration:inactive?"line-through":"none"}}>{q.q}</div>
                         <div style={{fontSize:11,color:"#00b894",fontWeight:700}}>→ {q.a}</div>
-                        {q.hint&&<div style={{fontSize:10,color:"#8899aa",marginTop:2}}>💡 {q.hint}</div>}
+                        {q.hint&&<div style={{fontSize:10,color:"#a8bfcf",marginTop:2}}>💡 {q.hint}</div>}
                         {(q.report_count||0)>0&&!resetReports.has(q.id)&&(
                           <div style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:3}}>
                             <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#e74c3c22",border:"1px solid #e74c3c44",borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800,color:"#e74c3c"}}>⚠ {q.report_count} signalement{q.report_count>1?"s":""}</div>
@@ -526,7 +526,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
             const filtered=quizStats.filter(s=>!q||s.card?.name?.toLowerCase().includes(q)||s.card?.rarity?.toLowerCase().includes(q));
             return(
               <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:400,overflowY:"auto"}}>
-                {filtered.length===0&&<div style={{textAlign:"center",color:"#8899aa",padding:"16px 0",fontSize:12}}>Aucune apparition.</div>}
+                {filtered.length===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"16px 0",fontSize:12}}>Aucune apparition.</div>}
                 {filtered.map((s,i)=>{
                   const {c1}=cardCC(s.card?.rarity||'commun');
                   return(
@@ -534,13 +534,13 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       <div style={{width:8,height:8,borderRadius:"50%",background:c1,flexShrink:0}}/>
                       <div style={{flex:1,minWidth:120}}>
                         <div style={{fontSize:12,color:"#fff",fontWeight:700}}>{s.card?.name||`#${s.card?.id}`}</div>
-                        <div style={{fontSize:10,color:"#8899aa",marginTop:1}}>
+                        <div style={{fontSize:10,color:"#a8bfcf",marginTop:1}}>
                           {s.dates?.slice(0,3).map(d=>new Date(d).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})).join(' · ')}
                         </div>
                       </div>
                       <div style={{textAlign:"right",flexShrink:0}}>
                         <div style={{fontWeight:900,fontSize:15,color:c1}}>{s.count}</div>
-                        <div style={{fontSize:9,color:"#8899aa"}}>apparition{s.count>1?'s':''}</div>
+                        <div style={{fontSize:9,color:"#a8bfcf"}}>apparition{s.count>1?'s':''}</div>
                       </div>
                     </div>
                   );
@@ -588,12 +588,12 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <tr key={i} style={{background:i%2===0?"transparent":"#ffffff04"}}>
                     <td style={{padding:"7px 8px",color:"#ddd",fontWeight:700}}>{label}</td>
                     <td style={{padding:"7px 8px"}}>{input}</td>
-                    <td style={{padding:"7px 8px",color:"#8899aa",fontSize:11}}>{desc}</td>
+                    <td style={{padding:"7px 8px",color:"#a8bfcf",fontSize:11}}>{desc}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div style={{fontSize:9,color:"#8899aa",marginTop:8}}>Le changement prend effet au prochain quiz</div>
+            <div style={{fontSize:9,color:"#a8bfcf",marginTop:8}}>Le changement prend effet au prochain quiz</div>
           </div>
 
           {/* ── TABLE 2 : Forge ── */}
@@ -724,7 +724,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 </div>
               ))}
             </div>
-            <div style={{fontSize:10,color:"#8899aa",marginTop:8}}>Les cartes brillantes rapportent le double. Les changements s'appliquent immédiatement.</div>
+            <div style={{fontSize:10,color:"#a8bfcf",marginTop:8}}>Les cartes brillantes rapportent le double. Les changements s'appliquent immédiatement.</div>
           </div>
 
           {/* Brillance */}
@@ -740,7 +740,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                     style={{...INP,width:80}}/>
                   <span style={{color:"#aaa",fontSize:12}}>%</span>
                 </div>
-                <div style={{fontSize:10,color:"#8899aa",marginTop:4}}>Probabilité qu'un quiz génère un geocoin brillant</div>
+                <div style={{fontSize:10,color:"#a8bfcf",marginTop:4}}>Probabilité qu'un quiz génère un geocoin brillant</div>
               </div>
               <div style={{flex:1,minWidth:180}}>
                 <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Multiplicateur de score ✨</div>
@@ -751,9 +751,9 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                     style={{...INP,width:80}}/>
                   <span style={{color:"#aaa",fontSize:12}}>×</span>
                 </div>
-                <div style={{fontSize:10,color:"#8899aa",marginTop:4}}>Points × ce coefficient pour les geocoins brillants</div>
+                <div style={{fontSize:10,color:"#a8bfcf",marginTop:4}}>Points × ce coefficient pour les geocoins brillants</div>
               </div>
-              <div style={{flex:'0 0 100%',fontSize:10,color:"#8899aa"}}>Les coûts de forge brillance sont maintenant configurables dans le tableau Forge ci-dessus.</div>
+              <div style={{flex:'0 0 100%',fontSize:10,color:"#a8bfcf"}}>Les coûts de forge brillance sont maintenant configurables dans le tableau Forge ci-dessus.</div>
               <div style={{flex:1,minWidth:180}}>
                 <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Forge Brillance</div>
                 <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
@@ -823,7 +823,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"7px 14px",borderRadius:8,fontSize:12}}>Bannir</button>
             </div>
           </div>
-          {bannedIPs.length===0?<div style={{color:"#8899aa",textAlign:"center",padding:"18px 0"}}>{t("admin_no_ip")}</div>:(
+          {bannedIPs.length===0?<div style={{color:"#a8bfcf",textAlign:"center",padding:"18px 0"}}>{t("admin_no_ip")}</div>:(
             <div style={{display:"flex",flexDirection:"column",gap:5}}>
               {bannedIPs.map(ip=><div key={ip} style={{display:"flex",alignItems:"center",gap:10,background:"#e74c3c0a",border:"1px solid #e74c3c22",borderRadius:9,padding:"7px 13px"}}>
                 <span style={{fontFamily:"monospace",color:"#e74c3c",fontWeight:800,fontSize:12,flex:1}}>{ip}</span>
@@ -1015,7 +1015,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       <div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:4,height:4,background:`linear-gradient(90deg,${c1},${c2})`}}/>
                       <div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#e74c3ccc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>NON VENDABLE</div>
                     </div>
-                    <div style={{fontSize:9,color:"#8899aa",textAlign:"center",maxWidth:148}}>
+                    <div style={{fontSize:9,color:"#a8bfcf",textAlign:"center",maxWidth:148}}>
                       type: Achievements<br/>trigger: {newAchCard.trigger}<br/>seuil: {newAchCard.threshold}
                     </div>
                   </div>
@@ -1228,7 +1228,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   ))}
                 </tbody>
               </table>
-              {achDefs.length===0&&<div style={{color:"#8899aa",fontSize:11,textAlign:"center",padding:16}}>Aucune définition chargée.</div>}
+              {achDefs.length===0&&<div style={{color:"#a8bfcf",fontSize:11,textAlign:"center",padding:16}}>Aucune définition chargée.</div>}
             </div>
           </div>
 
@@ -1247,7 +1247,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   )
                 })}
               </div>
-              <div style={{fontSize:10,color:"#8899aa",marginTop:8}}>Affiche la modale "Geocoin offert !" sans modifier la collection.</div>
+              <div style={{fontSize:10,color:"#a8bfcf",marginTop:8}}>Affiche la modale "Geocoin offert !" sans modifier la collection.</div>
               <div style={{marginTop:14,borderTop:"1px solid #ffffff10",paddingTop:12}}>
                 <button onClick={async()=>{
                   if(!window.confirm("Supprimer tous tes geocoins achievement de ta collection pour re-tester ?")) return;
@@ -1258,7 +1258,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"7px 16px",borderRadius:8,fontSize:11}}>
                   🔄 Réinitialiser mes achievements (test)
                 </button>
-                <div style={{fontSize:10,color:"#8899aa",marginTop:6}}>Supprime les cartes achievement de ta collection. Recharge ensuite la page.</div>
+                <div style={{fontSize:10,color:"#a8bfcf",marginTop:6}}>Supprime les cartes achievement de ta collection. Recharge ensuite la page.</div>
               </div>
             </div>
           )}
@@ -1351,7 +1351,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                     </td>
                   ):(
                     <>
-                      <td style={{padding:"5px 8px",color:"#fff",fontWeight:700}}>{q.name}<div style={{fontSize:9,color:"#8899aa",fontWeight:400}}>{q.description}</div></td>
+                      <td style={{padding:"5px 8px",color:"#fff",fontWeight:700}}>{q.name}<div style={{fontSize:9,color:"#a8bfcf",fontWeight:400}}>{q.description}</div></td>
                       <td style={{padding:"5px 8px"}}><span style={{background:"#ffffff12",borderRadius:5,padding:"2px 7px",fontSize:10}}>{q.type}</span></td>
                       <td style={{padding:"5px 8px",color:"#f9ca24",fontWeight:700}}>{q.threshold}</td>
                       <td style={{padding:"5px 8px",color:"#a29bfe",fontWeight:900}}>🔨 {q.forge_points}</td>
@@ -1370,7 +1370,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
               <div style={{fontWeight:900,color:"#f9ca24",fontSize:12}}>
                 📅 Quêtes du jour — {new Date().toLocaleDateString('fr-FR')}
-                <span style={{fontSize:10,color:"#8899aa",fontWeight:400,marginLeft:8}}>({questSchedule.length}/3)</span>
+                <span style={{fontSize:10,color:"#a8bfcf",fontWeight:400,marginLeft:8}}>({questSchedule.length}/3)</span>
               </div>
               <button onClick={async()=>{
                 if(!window.confirm("Régénérer aléatoirement les 3 quêtes du jour ?")) return;
@@ -1382,7 +1382,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               }} style={{...BTN("#ffffff18"),padding:"5px 12px",borderRadius:8,fontSize:11}}>🎲 Régénérer</button>
             </div>
             {questSchedule.length===0
-              ?<div style={{color:"#8899aa",fontSize:11}}>Aucune quête planifiée. Le planning se crée automatiquement à la première connexion du jour.</div>
+              ?<div style={{color:"#a8bfcf",fontSize:11}}>Aucune quête planifiée. Le planning se crée automatiquement à la première connexion du jour.</div>
               :<div style={{display:"flex",flexDirection:"column",gap:6}}>
                 {questSchedule.map((s,i)=>{
                   const q=s.daily_quest_definitions;
@@ -1390,7 +1390,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                     <div key={i} style={{display:"flex",alignItems:"center",gap:10,background:"#ffffff08",borderRadius:8,padding:"6px 12px"}}>
                       <span style={{color:"#a29bfe",fontWeight:900,fontSize:11}}>#{i+1}</span>
                       <span style={{flex:1,fontWeight:700,fontSize:12}}>{q?.name}</span>
-                      <span style={{fontSize:10,color:"#8899aa"}}>{q?.type} × {q?.threshold}</span>
+                      <span style={{fontSize:10,color:"#a8bfcf"}}>{q?.type} × {q?.threshold}</span>
                       <span style={{color:"#a29bfe",fontWeight:900,fontSize:11}}>🔨 {q?.forge_points}</span>
                     </div>
                   );
@@ -1446,7 +1446,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
           {/* Liste des bots */}
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {bots.length===0&&<div style={{textAlign:"center",color:"#8899aa",padding:"18px 0",fontSize:12}}>Aucun bot configuré.</div>}
+            {bots.length===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"18px 0",fontSize:12}}>Aucun bot configuré.</div>}
             {bots.map(bot=>{
               const typeIcon={seller:"🏷️",buyer:"🛒",quiz:"❓"}[bot.type]||"🤖";
               const cfg={...(BOT_DEFAULTS[bot.type]||{}),...(bot.config||{})};
@@ -1531,14 +1531,14 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               ].map(({key,label,hint})=>(
                 <div key={key} style={{background:"#ffffff08",borderRadius:10,padding:"10px 12px",border:"1px solid #ffffff10"}}>
                   <div style={{fontWeight:800,color:"#fff",fontSize:12,marginBottom:2}}>{label}</div>
-                  <div style={{fontSize:10,color:"#8899aa",marginBottom:7}}>{hint}</div>
+                  <div style={{fontSize:10,color:"#a8bfcf",marginBottom:7}}>{hint}</div>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <input type="number" min={0} max={3600} value={limEdit[key]??''}
                       placeholder="—"
                       onChange={e=>setLimEdit(p=>({...p,[key]:e.target.value===''?undefined:+e.target.value}))}
                       style={{...INP,width:70}}/>
                     <span style={{fontSize:11,color:"#8daacc"}}>s</span>
-                    {limEdit[key]!=null&&<span style={{fontSize:9,color:"#8899aa"}}>{limEdit[key]>=60?`${Math.round(limEdit[key]/60)}min`:`${limEdit[key]}s`}</span>}
+                    {limEdit[key]!=null&&<span style={{fontSize:9,color:"#a8bfcf"}}>{limEdit[key]>=60?`${Math.round(limEdit[key]/60)}min`:`${limEdit[key]}s`}</span>}
                   </div>
                 </div>
               ))}
@@ -1604,7 +1604,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           ):(
             <>
               <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-                {mktHist.transactions.length===0&&<div style={{textAlign:"center",color:"#8899aa",padding:"18px 0",fontSize:12}}>Aucune transaction sur les 7 derniers jours.</div>}
+                {mktHist.transactions.length===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"18px 0",fontSize:12}}>Aucune transaction sur les 7 derniers jours.</div>}
                 {mktHist.transactions.map((tx,i)=>{
                   const isAchat=tx.type==='achat';
                   return(
@@ -1713,7 +1713,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           ):(
             <>
               <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-                {listingsData.listings.length===0&&<div style={{textAlign:"center",color:"#8899aa",fontSize:12,padding:"14px 0"}}>Aucune annonce active.</div>}
+                {listingsData.listings.length===0&&<div style={{textAlign:"center",color:"#a8bfcf",fontSize:12,padding:"14px 0"}}>Aucune annonce active.</div>}
                 {listingsData.listings.map(l=>{
                   const rc=RC[l.cards?.rarity||"commun"]; const {c1,c2}=cardCC(l.cards?.rarity||"commun");
                   return(
@@ -1851,7 +1851,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                     Ajouter
                   </button>
                 </div>
-                <div style={{fontSize:10,color:"#8899aa",marginTop:6}}>Sans le "@" — ex : gmail.com, maboite.fr</div>
+                <div style={{fontSize:10,color:"#a8bfcf",marginTop:6}}>Sans le "@" — ex : gmail.com, maboite.fr</div>
               </div>
 
               {/* Sauvegarder */}
@@ -1874,7 +1874,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>
               <div style={{maxHeight:320,overflowY:"auto",display:"flex",flexDirection:"column",gap:4}}>
                 {filtered.length===0&&(
-                  <div style={{textAlign:"center",color:"#8899aa",padding:"16px 0",fontSize:12}}>
+                  <div style={{textAlign:"center",color:"#a8bfcf",padding:"16px 0",fontSize:12}}>
                     {q?"Aucun résultat.":"Aucun domaine configuré."}
                   </div>
                 )}
