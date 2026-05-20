@@ -52,7 +52,7 @@ function Tb({id,lbl,tab,setTab,setMsg}){
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
 export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool,onTestAchievement,onShopPacksSaved,onShopTestModeChange}){
   const {t}=useT();
-  const [tab,setTab]=useState("cards");
+  const [tab,setTab]=useState(()=>window.location.hash.slice(1)||"cards");
   const [editQ,setEditQ]=useState(null);
   const [qPage,setQPage]=useState(0);
   const [qSearch,setQSearch]=useState("");
@@ -258,10 +258,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
             <div key={group.label}>
               <div style={{fontSize:9,color:"#7a94aa",fontWeight:700,textTransform:"uppercase",letterSpacing:1.2,padding:"14px 12px 4px"}}>{group.label}</div>
               {group.items.map(item=>(
-                <button key={item.id} onClick={()=>{setTab(item.id);setMsg('');}}
+                <button key={item.id}
                   style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:tab===item.id?"#e74c3c14":"none",border:"none",borderLeft:`3px solid ${tab===item.id?"#e74c3c":"transparent"}`,color:tab===item.id?"#e74c3c":"#8daacc",padding:"8px 12px",borderRadius:"0 8px 8px 0",fontFamily:"'Nunito',sans-serif",fontWeight:tab===item.id?800:600,fontSize:13,cursor:"pointer",textAlign:"left",transition:"all .12s"}}
                   onMouseEnter={e=>{if(tab!==item.id){e.currentTarget.style.color="#d4e8f8";e.currentTarget.style.background="#ffffff08"}}}
-                  onMouseLeave={e=>{if(tab!==item.id){e.currentTarget.style.color="#8daacc";e.currentTarget.style.background="none"}}}>
+                  onMouseLeave={e=>{if(tab!==item.id){e.currentTarget.style.color="#8daacc";e.currentTarget.style.background="none"}}}
+                  onClick={()=>{setTab(item.id);setMsg('');window.location.hash=item.id;}}>
                   <span style={{fontSize:14,width:18,textAlign:"center"}}>{item.icon}</span>
                   <span>{item.label}</span>
                 </button>
