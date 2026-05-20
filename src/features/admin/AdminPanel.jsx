@@ -235,7 +235,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   ]
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:2000,display:"flex",flexDirection:"column",fontFamily:"'Nunito',sans-serif",background:"#0f1923"}}>
+    <div style={{position:"fixed",inset:0,zIndex:2000,display:"flex",flexDirection:"column",fontFamily:"'Nunito',sans-serif",background:"#0f1923",color:"#d4e8f8"}}>
 
       {/* ── Header ── */}
       <div style={{height:52,flexShrink:0,background:"#0c1620",borderBottom:"1px solid #e74c3c22",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",gap:12}}>
