@@ -18,7 +18,7 @@ function SellerIdentity() {
 }
 
 const S = {
-  page:    { minHeight: '100vh', background: '#f8fafc', fontFamily: "'Georgia', serif", color: '#1a2d3d', lineHeight: 1.7 },
+  page:    { position: 'fixed', inset: 0, zIndex: 2500, overflowY: 'auto', background: '#f8fafc', fontFamily: "'Georgia', serif", color: '#1a2d3d', lineHeight: 1.7 },
   header:  { background: '#1e2d3d', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 14, position: 'sticky', top: 0, zIndex: 10 },
   back:    { background: 'none', border: '1px solid #ffffff44', color: '#fff', padding: '6px 14px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13, cursor: 'pointer' },
   wrap:    { maxWidth: 800, margin: '0 auto', padding: '40px 24px 80px' },
