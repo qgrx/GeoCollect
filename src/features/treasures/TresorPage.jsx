@@ -139,10 +139,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ fontSize: 20 }}>🎁</span>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>{t('tresor_daily_title')}</div>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-            {dailyOfferGold > 0 && <div style={{ background: '#f9ca2420', border: '1px solid #f9ca2444', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 900, color: '#f9ca24' }}>+{dailyOfferGold}G</div>}
-            <div style={{ background: '#00b89420', border: '1px solid #00b89444', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 900, color: '#00b894' }}>{t('tresor_daily_free')}</div>
-          </div>
+          <div style={{ marginLeft: 'auto', background: '#00b89420', border: '1px solid #00b89444', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 900, color: '#00b894' }}>{t('tresor_daily_free')}</div>
         </div>
 
         <div style={{ background: claimed ? theme.overlay : `linear-gradient(135deg,${c1}18,${c2}12)`, border: `1.5px solid ${claimed ? theme.border : c1 + '55'}`, borderRadius: 16, padding: '16px', transition: 'all .4s' }}>
@@ -157,6 +154,11 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 900, fontSize: 15, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cardName(card, getLang())}</div>
                 <div style={{ fontSize: 11, color: rc?.color, fontWeight: 800, marginTop: 2 }}>{rarityLabel(card.rarity, t)}</div>
+                {dailyOfferGold > 0 && (
+                  <div style={{ fontSize: 11, color: '#f9ca24', fontWeight: 800, marginTop: 4 }}>
+                    💰 {t('tresor_daily_gold').replace('{n}', dailyOfferGold)}
+                  </div>
+                )}
               </div>
               <button
                 onClick={!claimed && !claiming ? handleClaim : undefined}
