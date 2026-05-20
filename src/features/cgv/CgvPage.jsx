@@ -65,6 +65,22 @@ export default function CgvPage({ onClose }) {
 
         <hr style={S.divider} />
 
+        <h2 style={S.h2}>Article 1.2 – Capacité juridique et Minorité</h2>
+        <p style={S.p}>
+          Le Site geocoins.fr est accessible aux personnes physiques majeures ou mineures. L'Acheteur
+          déclare être âgé d'au moins 18 ans et disposer de la pleine capacité juridique pour s'engager
+          au titre des présentes CGV.
+        </p>
+        <p style={S.p}>
+          Si l'Acheteur est un mineur, il déclare et garantit avoir obtenu l'autorisation expresse de
+          ses parents (ou titulaires de l'autorité parentale) avant de passer commande et d'effectuer
+          un paiement sur le Site. Le Vendeur décline toute responsabilité en cas de déclaration
+          frauduleuse de l'Acheteur ou d'achat effectué par un mineur sans l'accord de ses représentants
+          légaux.
+        </p>
+
+        <hr style={S.divider} />
+
         <h2 style={S.h2}>Article 2 – Caractéristiques des Produits Virtuels</h2>
         <p style={S.p}>
           Le Site geocoins.fr propose à la vente des biens exclusivement immatériels et numériques
@@ -200,7 +216,19 @@ export default function CgvPage({ onClose }) {
 
         <hr style={S.divider} />
 
-        <h2 style={S.h2}>Article 11 – Litiges et Médiation</h2>
+        <h2 style={S.h2}>Article 11 – Dispositions Générales</h2>
+        <p style={S.p}>
+          <strong>11.1 – Langue du contrat :</strong> Les présentes CGV sont rédigées en langue française.
+          Seul le texte français ferait foi en cas de litige.
+        </p>
+        <p style={S.p}>
+          <strong>11.2 – Nullité partielle :</strong> Si une ou plusieurs stipulations sont tenues pour
+          non valides, les autres stipulations garderont toute leur force et leur portée.
+        </p>
+
+        <hr style={S.divider} />
+
+        <h2 style={S.h2}>Article 12 – Litiges et Médiation</h2>
         <p style={S.p}>
           Les présentes CGV sont soumises au droit français. En cas de litige, l'Acheteur s'engage à
           contacter en priorité le Vendeur à l'adresse{' '}
@@ -212,18 +240,6 @@ export default function CgvPage({ onClose }) {
           consommation : <a href="https://www.mediateur-consommation-smp.fr/" target="_blank" rel="noreferrer" style={{ color: '#1e7fca' }}>Société de la Médiation Professionnelle</a> — 5 rue Salvaing, 12000 Rodez.
         </p>
         <p style={S.p}>À défaut d'accord, le litige sera porté devant les tribunaux français compétents.</p>
-
-        <hr style={S.divider} />
-
-        <h2 style={S.h2}>Article 12 – Dispositions Générales</h2>
-        <p style={S.p}>
-          <strong>12.1 – Langue du contrat :</strong> Les présentes CGV sont rédigées en langue française.
-          Seul le texte français ferait foi en cas de litige.
-        </p>
-        <p style={S.p}>
-          <strong>12.2 – Nullité partielle :</strong> Si une ou plusieurs stipulations sont tenues pour
-          non valides, les autres stipulations garderont toute leur force et leur portée.
-        </p>
 
         <div style={{ marginTop: 40, padding: '16px 20px', background: '#eef4fb', borderRadius: 10, fontSize: 12, color: '#6b7d92', fontFamily: "'Nunito',sans-serif" }}>
           Contact : <a href="mailto:contact@geocoins.fr" style={{ color: '#1e7fca' }}>contact@geocoins.fr</a> — geocoins.fr

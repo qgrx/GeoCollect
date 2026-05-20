@@ -350,6 +350,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
             {checkoutPack === selectedPack?.id ? '⏳ Chargement…' : '🔒 Acheter'}
           </button>
           {!cgvAccepted && <div style={{ textAlign: 'center', fontSize: 11, color: '#e74c3c', marginTop: 8, fontWeight: 700 }}>Veuillez accepter les CGV pour continuer</div>}
+          <div style={{ textAlign: 'center', fontSize: 10, color: theme.textMuted, marginTop: 10, lineHeight: 1.5 }}>{t('tresor_buy_confirm')}</div>
         </div>
       </div>
     )}
