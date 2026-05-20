@@ -134,6 +134,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
     })
 
   return (
+    <>
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
 
       {/* ── Offre du jour ── */}
@@ -352,5 +353,6 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         </div>
       </div>
     )}
+    </>
   )
 }
