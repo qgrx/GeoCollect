@@ -347,7 +347,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
             disabled={!cgvAccepted || !!checkoutPack}
             onClick={() => { if (cgvAccepted && !checkoutPack) { setSelectedPack(null); handleCheckout(selectedPack) } }}
             style={{ width: '100%', background: cgvAccepted ? `linear-gradient(135deg,${selectedPack.gradient?.match(/#[0-9a-f]+/gi)?.[0] || '#6c5ce7'},${selectedPack.gradient?.match(/#[0-9a-f]+/gi)?.[1] || '#a29bfe'})` : theme.overlay, border: 'none', color: cgvAccepted ? '#fff' : theme.textMuted, padding: '14px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: cgvAccepted ? 'pointer' : 'not-allowed', transition: 'all .2s', boxShadow: cgvAccepted ? '0 4px 20px #0004' : 'none', letterSpacing: .3 }}>
-            {checkoutPack === selectedPack?.id ? '⏳ Chargement…' : '🔒 Commande avec obligation de paiement'}
+            {checkoutPack === selectedPack?.id ? '⏳ Chargement…' : '🔒 Acheter'}
           </button>
           {!cgvAccepted && <div style={{ textAlign: 'center', fontSize: 11, color: '#e74c3c', marginTop: 8, fontWeight: 700 }}>Veuillez accepter les CGV pour continuer</div>}
         </div>
