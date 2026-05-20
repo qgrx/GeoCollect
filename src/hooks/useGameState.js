@@ -105,6 +105,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           quizConsolationForge:cfg.quiz_consolation_forge !== undefined ? +cfg.quiz_consolation_forge : prev.quizConsolationForge,
           forgeCostByRarity:   cfg.forge_cost_by_rarity  ?? prev.forgeCostByRarity,
           marketPriceCaps:     cfg.market_price_caps      ?? prev.marketPriceCaps,
+          featureTresor:       cfg.feature_tresor      !== undefined ? cfg.feature_tresor      !== false : prev.featureTresor,
+          featureMarket:       cfg.feature_market      !== undefined ? cfg.feature_market      !== false : prev.featureMarket,
+          featureForge:        cfg.feature_forge       !== undefined ? cfg.feature_forge       !== false : prev.featureForge,
+          featureLeaderboard:  cfg.feature_leaderboard !== undefined ? cfg.feature_leaderboard !== false : prev.featureLeaderboard,
         }))
       }
     })
@@ -246,6 +250,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             quizConsolationForge:cfg.quiz_consolation_forge !== undefined ? +cfg.quiz_consolation_forge : prev.quizConsolationForge,
             forgeCostByRarity:   cfg.forge_cost_by_rarity  ?? prev.forgeCostByRarity,
             marketPriceCaps:     cfg.market_price_caps      ?? prev.marketPriceCaps,
+            featureTresor:       cfg.feature_tresor      !== undefined ? cfg.feature_tresor      !== false : prev.featureTresor,
+            featureMarket:       cfg.feature_market      !== undefined ? cfg.feature_market      !== false : prev.featureMarket,
+            featureForge:        cfg.feature_forge       !== undefined ? cfg.feature_forge       !== false : prev.featureForge,
+            featureLeaderboard:  cfg.feature_leaderboard !== undefined ? cfg.feature_leaderboard !== false : prev.featureLeaderboard,
           }))
         }
 

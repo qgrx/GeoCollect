@@ -902,21 +902,22 @@ export default function App() {
             <div style={{ flex: 1 }} />
             <nav style={{ display: 'flex' }}>
               {[
-                { id: 'tresors',    icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0 },
+                { id: 'tresors',    icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0, disabled: gs.limits.featureTresor === false },
                 { id: 'collection', icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
-                { id: 'market',     icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market' },
-                ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge' }] : []),
-                { id: 'top',        icon: '🏆', label: t('nav_top'), tour: 'nav-top' },
+                { id: 'market',     icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market', disabled: gs.limits.featureMarket === false },
+                ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge', disabled: gs.limits.featureForge === false }] : []),
+                { id: 'top',        icon: '🏆', label: t('nav_top'), tour: 'nav-top', disabled: gs.limits.featureLeaderboard === false },
               ].map(tb => {
                 const active = activeTab === tb.id
                 return (
-                  <button key={tb.id} onClick={() => setActiveTab(tb.id)}
+                  <button key={tb.id} onClick={() => !tb.disabled && setActiveTab(tb.id)}
                     data-tour={tb.tour}
-                    style={{ position: 'relative', background: 'none', border: 'none', color: active ? '#f9ca24' : theme.headerMuted, padding: '6px 18px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
+                    style={{ position: 'relative', background: 'none', border: 'none', color: tb.disabled ? theme.textMuted : active ? '#f9ca24' : theme.headerMuted, padding: '6px 18px 8px', cursor: tb.disabled ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, fontFamily: "'Nunito',sans-serif", transition: 'color .15s', opacity: tb.disabled ? 0.45 : 1 }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>{tb.icon}</span>
                     <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{tb.label}</span>
-                    {tb.badge > 0 && <span style={{ position: 'absolute', top: 4, left: '55%', background: '#e74c3c', color: '#fff', width: 14, height: 14, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${theme.badgeBorder}` }}>{tb.badge > 9 ? '9+' : tb.badge}</span>}
-                    {active && <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '3px 3px 0 0' }} />}
+                    {tb.disabled && <span style={{ fontSize: 7, fontWeight: 800, color: '#e74c3c', letterSpacing: .2, whiteSpace: 'nowrap' }}>{t('coming_soon')}</span>}
+                    {!tb.disabled && tb.badge > 0 && <span style={{ position: 'absolute', top: 4, left: '55%', background: '#e74c3c', color: '#fff', width: 14, height: 14, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${theme.badgeBorder}` }}>{tb.badge > 9 ? '9+' : tb.badge}</span>}
+                    {!tb.disabled && active && <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '3px 3px 0 0' }} />}
                   </button>
                 )
               })}
@@ -1331,21 +1332,22 @@ export default function App() {
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: theme.navBg, backdropFilter: 'blur(20px)', borderTop: `1px solid ${theme.border}`, display: 'flex' }}>
           {[
             { id: 'home',        icon: '🏠', label: t('nav_home') },
-            { id: 'tresors',     icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0 },
+            { id: 'tresors',     icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0, disabled: gs.limits.featureTresor === false },
             { id: 'collection',  icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
-            { id: 'market',      icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market' },
-            ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge' }] : []),
-            { id: 'top',         icon: '🏆', label: t('nav_top'), tour: 'nav-top' },
+            { id: 'market',      icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market', disabled: gs.limits.featureMarket === false },
+            ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge', disabled: gs.limits.featureForge === false }] : []),
+            { id: 'top',         icon: '🏆', label: t('nav_top'), tour: 'nav-top', disabled: gs.limits.featureLeaderboard === false },
           ].map(item => {
             const active = activeTab === item.id
             return (
-              <button key={item.id} onClick={() => setActiveTab(item.id)}
+              <button key={item.id} onClick={() => !item.disabled && setActiveTab(item.id)}
                 data-tour={item.tour}
-                style={{ flex: 1, background: 'none', border: 'none', color: active ? '#f9ca24' : theme.textSecondary, padding: '9px 4px 11px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s' }}>
+                style={{ flex: 1, background: 'none', border: 'none', color: item.disabled ? theme.textMuted : active ? '#f9ca24' : theme.textSecondary, padding: '9px 4px 11px', cursor: item.disabled ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s', opacity: item.disabled ? 0.45 : 1 }}>
                 <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
                 <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{item.label}</span>
-                {item.badge > 0 && <span style={{ position: 'absolute', top: 7, left: '55%', background: '#e74c3c', color: '#fff', width: 15, height: 15, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${theme.badgeBorder}` }}>{item.badge > 9 ? '9+' : item.badge}</span>}
-                {active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '0 0 3px 3px' }} />}
+                {item.disabled && <span style={{ fontSize: 7, fontWeight: 800, color: '#e74c3c', letterSpacing: .2, whiteSpace: 'nowrap' }}>{t('coming_soon')}</span>}
+                {!item.disabled && item.badge > 0 && <span style={{ position: 'absolute', top: 7, left: '55%', background: '#e74c3c', color: '#fff', width: 15, height: 15, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${theme.badgeBorder}` }}>{item.badge > 9 ? '9+' : item.badge}</span>}
+                {!item.disabled && active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '0 0 3px 3px' }} />}
               </button>
             )
           })}
@@ -1620,6 +1622,10 @@ export default function App() {
                 apiSetConfig('quiz_consolation_forge', limEdit.quizConsolationForge ?? 1),
                 apiSetConfig('forge_cost_by_rarity',   limEdit.forgeCostByRarity   ?? { commun:60,rare:180,épique:600,légendaire:1800 }),
                 apiSetConfig('market_price_caps',      limEdit.marketPriceCaps      ?? { commun:{floor:5,k:2},rare:{floor:25,k:2.5},épique:{floor:150,k:3},légendaire:{floor:1000,k:4} }),
+                apiSetConfig('feature_tresor',       limEdit.featureTresor      ?? true),
+                apiSetConfig('feature_market',       limEdit.featureMarket      ?? true),
+                apiSetConfig('feature_forge',        limEdit.featureForge       ?? true),
+                apiSetConfig('feature_leaderboard',  limEdit.featureLeaderboard ?? true),
                 apiSetConfig('quiz_rarity_rates',  limEdit.quizRarityRates   ?? DEFAULT_RARITY_RATES),
                 ...(limEdit.cache_ttl_cards       != null ? [apiSetConfig('cache_ttl_cards',       limEdit.cache_ttl_cards)]       : []),
                 ...(limEdit.cache_ttl_config      != null ? [apiSetConfig('cache_ttl_config',      limEdit.cache_ttl_config)]      : []),

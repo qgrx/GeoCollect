@@ -47,4 +47,8 @@ export const INIT_LIMITS = {
   marketPriceCaps:      { commun: {floor:5,k:2}, rare: {floor:25,k:2.5}, épique: {floor:150,k:3}, légendaire: {floor:1000,k:4} },
   marketListingFee:     1,
   marketSaleTax:        0.05,
+  featureTresor:        true,
+  featureMarket:        true,
+  featureForge:         true,
+  featureLeaderboard:   true,
 };

@@ -788,16 +788,22 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {tab==="interface"&&<div>
           <div style={{fontWeight:900,color:"#e74c3c",marginBottom:14,fontSize:14}}>📱 Personnalisation de l'interface</div>
           <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
-            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:10,fontSize:13}}>Menus et boutons</div>
-            <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Bouton "Soutenir"</div>
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
-                  <input type="checkbox" checked={limEdit.supportVisible!==false}
-                    onChange={e=>setLimEdit({...limEdit,supportVisible:e.target.checked})} style={{width:16,height:16}}/>
-                  <span style={{color:"#fff",fontSize:13}}>Afficher le bouton dans le menu principal</span>
+            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:4,fontSize:13}}>Fonctionnalités</div>
+            <div style={{fontSize:10,color:"#a8bfcf",marginBottom:12}}>Quand désactivée, la section s'affiche grisée avec un bandeau "Revient bientôt".</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {[
+                {key:'featureTresor',     label:'💎 Trésors'},
+                {key:'featureMarket',     label:'🏪 Marché'},
+                {key:'featureForge',      label:'🔨 Forge'},
+                {key:'featureLeaderboard',label:'🏆 Classement'},
+              ].map(({key,label})=>(
+                <label key={key} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+                  <input type="checkbox" checked={limEdit[key]!==false}
+                    onChange={e=>setLimEdit({...limEdit,[key]:e.target.checked})} style={{width:15,height:15}}/>
+                  <span style={{fontSize:13,fontWeight:700,color:limEdit[key]!==false?"#fff":"#a8bfcf"}}>{label}</span>
+                  {limEdit[key]===false&&<span style={{fontSize:10,background:"#e74c3c22",color:"#e74c3c",border:"1px solid #e74c3c33",borderRadius:50,padding:"1px 8px",fontWeight:700}}>désactivé</span>}
                 </label>
-              </div>
+              ))}
             </div>
           </div>
           <button onClick={async ()=>{await onSetLimits(limEdit);setMsg("✅ Interface sauvegardée !");}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"10px 22px",borderRadius:9}}>
