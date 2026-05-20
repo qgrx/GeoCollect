@@ -34,7 +34,7 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Pack Légendaire',  defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
-export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = {}, packsLoading = false, shopTestMode = false, isAdmin = false }) {
+export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = {}, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5 }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [claiming, setClaiming]       = useState(false)
@@ -139,7 +139,10 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ fontSize: 20 }}>🎁</span>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>{t('tresor_daily_title')}</div>
-          <div style={{ marginLeft: 'auto', background: '#00b89420', border: '1px solid #00b89444', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 900, color: '#00b894' }}>{t('tresor_daily_free')}</div>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+            {dailyOfferGold > 0 && <div style={{ background: '#f9ca2420', border: '1px solid #f9ca2444', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 900, color: '#f9ca24' }}>+{dailyOfferGold}G</div>}
+            <div style={{ background: '#00b89420', border: '1px solid #00b89444', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 900, color: '#00b894' }}>{t('tresor_daily_free')}</div>
+          </div>
         </div>
 
         <div style={{ background: claimed ? theme.overlay : `linear-gradient(135deg,${c1}18,${c2}12)`, border: `1.5px solid ${claimed ? theme.border : c1 + '55'}`, borderRadius: 16, padding: '14px 16px', transition: 'all .4s' }}>

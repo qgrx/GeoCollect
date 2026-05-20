@@ -614,6 +614,7 @@ export default function App() {
     if (error) throw new Error(error)
     setDailyOffer(d => d ? { ...d, claimed: true } : d)
     gs.earnCard(data.card, false)
+    if (data.gold_earned > 0) gs.earnGoldWithFx(data.gold_earned)
     showToast(t('toast_daily_claimed').replace('{card}', data.card.name))
   }
 
@@ -1309,6 +1310,7 @@ export default function App() {
                   shopTestMode={!!gs.limits?.shopTestMode}
                   isAdmin={auth.profile?.role === 'admin'}
                   packsLoading={gs.loadingData}
+                  dailyOfferGold={gs.limits?.dailyOfferGold ?? 5}
                 />
               )}
 
