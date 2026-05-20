@@ -41,6 +41,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
   const [localClaimed, setLocalClaimed] = useState(false)
   const [countdown, setCountdown]     = useState('--:--:--')
   const [cgvAccepted,    setCgvAccepted]    = useState(false)
+  const [selectedPack,   setSelectedPack]   = useState(null)  // Premier Clic — écran récapitulatif
   const [checkoutPack,   setCheckoutPack]   = useState(null)
   const [checkoutError,  setCheckoutError]  = useState('')
   const [sumupCheckout,  setSumupCheckout]  = useState(null) // { checkoutId, pack }
@@ -190,19 +191,6 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           <span style={{ color: theme.textMuted }}>{t('tresor_no_subscription')}</span>
         </div>
 
-        {/* Checkbox CGV obligatoire */}
-        <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16, cursor: 'pointer', padding: '12px 14px', background: cgvAccepted ? '#00b89410' : theme.overlay, border: `1px solid ${cgvAccepted ? '#00b89444' : theme.border}`, borderRadius: 10, transition: 'all .2s' }}>
-          <input id="cgv-checkbox" type="checkbox" checked={cgvAccepted} onChange={e => setCgvAccepted(e.target.checked)}
-            style={{ width: 17, height: 17, flexShrink: 0, marginTop: 2, cursor: 'pointer', accentColor: '#00b894' }} />
-          <span style={{ fontSize: 12, color: theme.textPrimary, lineHeight: 1.6 }}>
-            J'accepte les{' '}
-            <a onClick={e => { e.preventDefault(); onOpenCgv?.() }}
-              href="/cgv" style={{ color: '#1e7fca', fontWeight: 800 }}>Conditions Générales de Vente</a>
-            {' '}et je demande l'exécution immédiate du contenu numérique. J'accepte qu'en accédant
-            immédiatement à mes objets virtuels, je renonce expressément à mon droit de rétractation.
-          </span>
-        </label>
-
         {/* 3 cartes packs — skeleton tant que les prix ne sont pas chargés */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
           {packsLoading ? (
@@ -221,11 +209,10 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           ) : visiblePacks.map(p => {
             const isLoading = checkoutPack === p.id
             const isBlocked = shopTestMode && !isAdmin
-            const clickable = !checkoutPack && !isBlocked && cgvAccepted
-            const needsCgv  = !isBlocked && !checkoutPack && !cgvAccepted
+            const clickable = !checkoutPack && !isBlocked
             return (
               <div key={p.id}
-                onClick={needsCgv ? () => { document.getElementById('cgv-checkbox')?.focus() } : clickable ? () => handleCheckout(p) : undefined}
+                onClick={clickable ? () => setSelectedPack(p) : undefined}
                 style={{
                   background: 'linear-gradient(145deg,#1a1a2e,#16213e)',
                   borderRadius: 16,
@@ -313,5 +300,57 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         />
       )}
     </div>
+
+    {/* ── Modale récapitulatif (Premier Clic → Second Clic) ── */}
+    {selectedPack && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 1200, background: '#000000bb', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        onClick={e => { if (e.target === e.currentTarget) { setSelectedPack(null); setCgvAccepted(false) } }}>
+        <div style={{ background: theme.bgSurface, borderRadius: 20, padding: '22px 24px', width: 'min(96vw,460px)', border: `1px solid ${theme.border}`, boxShadow: '0 24px 60px #000c', fontFamily: "'Nunito',sans-serif" }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>📋 Récapitulatif</div>
+            <button onClick={() => { setSelectedPack(null); setCgvAccepted(false) }} style={{ background: theme.overlay, border: 'none', color: theme.textMuted, width: 28, height: 28, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>✕</button>
+          </div>
+
+          {/* Détail du pack */}
+          <div style={{ background: theme.overlay, borderRadius: 12, padding: '14px 16px', marginBottom: 16, border: `1px solid ${theme.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <span style={{ fontSize: 28 }}>{selectedPack.emoji}</span>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 16, color: theme.textPrimary }}>{selectedPack.name}</div>
+                <div style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>{selectedPack.contents?.map(c => `${c.icon} ${c.label}`).join(' · ')}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
+              <span style={{ fontSize: 12, color: theme.textMuted }}>Prix TTC (TVA non applicable — art. 293B CGI)</span>
+              <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: theme.gold }}>{selectedPack.price}</span>
+            </div>
+          </div>
+
+          {/* Checkbox CGV — obligatoire, non pré-cochée */}
+          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 18, cursor: 'pointer', padding: '12px 14px', background: cgvAccepted ? '#00b89412' : theme.overlayMd, border: `1.5px solid ${cgvAccepted ? '#00b89466' : theme.border}`, borderRadius: 10, transition: 'all .2s' }}>
+            <input id="cgv-checkbox" type="checkbox" checked={cgvAccepted} onChange={e => setCgvAccepted(e.target.checked)}
+              style={{ width: 17, height: 17, flexShrink: 0, marginTop: 2, cursor: 'pointer', accentColor: '#00b894' }} />
+            <span style={{ fontSize: 11, color: theme.textPrimary, lineHeight: 1.6 }}>
+              J'accepte les{' '}
+              <a onClick={e => { e.preventDefault(); onOpenCgv?.() }} href="/cgv"
+                style={{ color: '#1e7fca', fontWeight: 800, textDecoration: 'underline' }}>
+                Conditions Générales de Vente
+              </a>
+              {' '}et je demande l'exécution immédiate du contenu numérique. J'accepte qu'en accédant
+              immédiatement à mes objets virtuels, je renonce expressément à mon droit de rétractation.
+            </span>
+          </label>
+
+          {/* Second Clic — bouton de paiement */}
+          <button
+            disabled={!cgvAccepted || !!checkoutPack}
+            onClick={() => { if (cgvAccepted && !checkoutPack) { setSelectedPack(null); handleCheckout(selectedPack) } }}
+            style={{ width: '100%', background: cgvAccepted ? `linear-gradient(135deg,${selectedPack.gradient?.match(/#[0-9a-f]+/gi)?.[0] || '#6c5ce7'},${selectedPack.gradient?.match(/#[0-9a-f]+/gi)?.[1] || '#a29bfe'})` : theme.overlay, border: 'none', color: cgvAccepted ? '#fff' : theme.textMuted, padding: '14px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: cgvAccepted ? 'pointer' : 'not-allowed', transition: 'all .2s', boxShadow: cgvAccepted ? '0 4px 20px #0004' : 'none', letterSpacing: .3 }}>
+            {checkoutPack === selectedPack?.id ? '⏳ Chargement…' : '🔒 Commande avec obligation de paiement'}
+          </button>
+          {!cgvAccepted && <div style={{ textAlign: 'center', fontSize: 11, color: '#e74c3c', marginTop: 8, fontWeight: 700 }}>Veuillez accepter les CGV pour continuer</div>}
+        </div>
+      </div>
+    )}
   )
 }
