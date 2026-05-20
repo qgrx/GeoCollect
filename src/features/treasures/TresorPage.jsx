@@ -127,7 +127,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         slots,
         gold,
         contents: [
-          ...slotsToContents(slots),
+          ...slotsToContents(slots, t),
           ...(gold > 0 ? [{ icon: '🪙', label: `${gold} Golds` }] : []),
         ],
       }
