@@ -100,6 +100,8 @@ export default function CgvPage({ onClose }) {
         <div style={S.date}>En vigueur au 23/05/2026 — geocoins.fr</div>
 
         <h2 style={S.h2}>Article 1 – Objet et Champ d'Application</h2>
+
+        <h3 style={{ ...S.h2, fontSize: 15, marginTop: 16, color: '#2d4456' }}>Article 1.1 – Identification des Parties</h3>
         <p style={S.p}>
           Les présentes Conditions Générales de Vente (ci-après "CGV") s'appliquent, sans restriction ni réserve,
           à l'ensemble des ventes d'objets virtuels, monnaies numériques, licences d'utilisation et contenus
@@ -118,9 +120,7 @@ export default function CgvPage({ onClose }) {
           par l'Acheteur, qui reconnaît en avoir pris connaissance avant de valider sa commande.
         </p>
 
-        <hr style={S.divider} />
-
-        <h2 style={S.h2}>Article 1.2 – Capacité juridique et Minorité</h2>
+        <h3 style={{ ...S.h2, fontSize: 15, marginTop: 20, color: '#2d4456' }}>Article 1.2 – Capacité juridique et Minorité</h3>
         <p style={S.p}>
           Le Site geocoins.fr est accessible aux personnes physiques majeures ou mineures. L'Acheteur
           déclare être âgé d'au moins 18 ans et disposer de la pleine capacité juridique pour s'engager
