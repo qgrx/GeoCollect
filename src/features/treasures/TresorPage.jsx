@@ -116,6 +116,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
   const rc = card ? RC[card.rarity] : null
 
   const visiblePacks = PACK_DEFS
+    .filter(p => (shopPacksConfig[p.id]?.enabled ?? true) !== false)
     .map(p => {
       const cfg   = shopPacksConfig[p.id] || {}
       const slots = cfg.slots || DEFAULT_SLOTS[p.id]
