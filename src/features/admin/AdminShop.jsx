@@ -205,23 +205,13 @@ export default function AdminShop({ setMsg, onSaved, onShopTestModeChange }) {
               </label>
             </div>
 
-            {/* Nom + Traductions + Prix + Gold */}
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+            {/* Nom + Prix + Gold */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
               <div>
                 <div style={{ fontSize: 9, color: '#aaa', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase' }}>Nom (FR)</div>
                 <input value={pk.name || ''} onChange={e => updatePack(id, 'name', e.target.value)}
-                  placeholder={title} style={{ ...INP, width: 140 }} />
+                  placeholder={title} style={{ ...INP, width: 150 }} />
               </div>
-              {TRANS_LANGS.map(({ code, label }) => (
-                <div key={code}>
-                  <div style={{ fontSize: 9, color: '#aaa', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase' }}>{label}</div>
-                  <input
-                    value={pk.name_translations?.[code] || ''}
-                    onChange={e => updatePack(id, 'name_translations', { ...(pk.name_translations || {}), [code]: e.target.value })}
-                    placeholder={PACK_META[id].defaultTranslations[code]}
-                    style={{ ...INP, width: 130 }} />
-                </div>
-              ))}
               <div>
                 <div style={{ fontSize: 9, color: '#aaa', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase' }}>Prix</div>
                 <input value={pk.price || ''} onChange={e => updatePack(id, 'price', e.target.value)}
@@ -232,6 +222,23 @@ export default function AdminShop({ setMsg, onSaved, onShopTestModeChange }) {
                 <input type="number" min="0" value={pk.gold ?? PACK_META[id].defaultGold}
                   onChange={e => updatePack(id, 'gold', +e.target.value || 0)}
                   style={{ ...INP, width: 70 }} />
+              </div>
+            </div>
+
+            {/* Traductions du nom */}
+            <div style={{ background: '#ffffff08', border: '1px solid #6c5ce744', borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
+              <div style={{ fontSize: 10, color: '#a29bfe', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: .5 }}>🌐 Traductions du nom</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {TRANS_LANGS.map(({ code, label }) => (
+                  <div key={code}>
+                    <div style={{ fontSize: 9, color: '#aaa', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase' }}>{label}</div>
+                    <input
+                      value={pk.name_translations?.[code] || ''}
+                      onChange={e => updatePack(id, 'name_translations', { ...(pk.name_translations || {}), [code]: e.target.value })}
+                      placeholder={PACK_META[id].defaultTranslations[code]}
+                      style={{ ...INP, width: 145 }} />
+                  </div>
+                ))}
               </div>
             </div>
 
