@@ -251,7 +251,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
                   <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 64 }}>
                     <div style={{ fontSize: 34, filter: `drop-shadow(0 4px 10px ${p.glowColor})`, lineHeight: 1 }}>{p.emoji}</div>
                     <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: '#f9ca24', marginTop: 5, lineHeight: 1 }}>{p.price}</div>
-                    <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>{t('tresor_one_time')}</div>
+                    <div style={{ fontSize: 9, color: '#8daacc', marginTop: 2 }}>{t('tresor_one_time')}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 900, fontSize: 14, color: '#fff', marginBottom: 6 }}>{p.name}</div>
@@ -260,7 +260,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
                         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 11 }}>{icon}</span>
                           <span style={{ fontSize: 11, color: '#bbb', fontWeight: 700 }}>{label}</span>
-                          {note && <span style={{ fontSize: 9, color: '#666', fontStyle: 'italic' }}>({note})</span>}
+                          {note && <span style={{ fontSize: 9, color: '#a8bfcf', fontStyle: 'italic' }}>({note})</span>}
                         </div>
                       ))}
                     </div>
