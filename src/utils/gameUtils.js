@@ -96,7 +96,7 @@ const R_LABEL = { légendaire: 'Légendaire', épique: 'Épique', rare: 'Rare', 
 export function slotsToContents(slots, t) {
   return (slots || []).map(s => {
     const qty = s.qty || 1
-    const rKey   = r => 'rarity_' + r.normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const rKey   = r => 'rarity_' + r.replace(/[éèêëàâùûîïôœæç]/g, c => ({ é:'e',è:'e',ê:'e',ë:'e',à:'a',â:'a',ù:'u',û:'u',î:'i',ï:'i',ô:'o',œ:'oe',æ:'ae',ç:'c' })[c] || c)
     const rLabel = r => (t ? t(rKey(r)) : null) || R_LABEL[r] || r
     if (s.alt) {
       const label = t
