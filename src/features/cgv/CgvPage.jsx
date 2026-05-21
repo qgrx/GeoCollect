@@ -70,7 +70,6 @@ function CgvFR() {
     <h2 style={S.h2}>Article 5 – Livraison</h2>
     <p style={S.p}>Les Produits Virtuels étant par nature dématérialisés, aucune livraison physique n'est effectuée. La livraison s'effectue par injection directe sur le compte de l'Acheteur, de manière immédiate (ou dans un délai maximal de 24 heures en cas de vérification anti-fraude) après la validation du paiement.</p>
     <p style={S.p}>Si la livraison technique n'a pas pu être effectuée dans un délai de 7 jours après le paiement pour des raisons non imputables à l'Acheteur, ce dernier pourra demander l'annulation de la vente et le remboursement intégral des sommes versées.</p>
-    <p style={S.p}>Le Vendeur se réserve le droit de modifier, suspendre ou arrêter définitivement le Site geocoins.fr, sous réserve d'un préavis de 30 jours notifié par e-mail. Passé ce délai, aucun remboursement ni indemnité ne pourra être réclamé pour les Produits Virtuels restants.</p>
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 6 – Absence de Droit de Rétractation</h2>
     <div style={S.warn}><p style={{ ...S.p, marginBottom: 0 }}>Conformément à l'article L. 221-28 13° du Code de la consommation, le droit de rétractation ne peut être exercé pour les contrats de fourniture de contenu numérique non fourni sur un support matériel dont l'exécution a commencé après accord préalable exprès du consommateur et renonciation expresse à son droit de rétractation.</p></div>
@@ -83,19 +82,14 @@ function CgvFR() {
     <p style={S.p}>Le Vendeur collecte les données strictement nécessaires au traitement des commandes (Nom, prénom, adresse e-mail, adresse IP). Ces données ne sont jamais cédées à des tiers à des fins publicitaires.</p>
     <p style={S.p}>Conformément au RGPD, l'Acheteur dispose d'un droit d'accès, de rectification et de suppression de ses données personnelles à l'adresse : <a href="mailto:contact@geocoins.fr" style={{ color: '#1e7fca' }}>contact@geocoins.fr</a>.</p>
     <hr style={S.divider} />
-    <h2 style={S.h2}>Article 9 – Responsabilité et Disponibilité Technique</h2>
-    <p style={{ ...S.p, fontWeight: 700 }}>9.1 – Obligation de moyens et Interruptions de service</p>
-    <p style={S.p}>L'activité du Site est soumise à une simple obligation de moyens. La responsabilité du Vendeur ne saurait être engagée pour tout dommage direct ou indirect découlant de l'indisponibilité temporaire du Site.</p>
-    <p style={{ ...S.p, fontWeight: 700 }}>9.2 – Force Majeure et Défaillances Tiers</p>
-    <p style={S.p}>La responsabilité du Vendeur ne pourra être recherchée en cas de force majeure au sens de l'article 1218 du Code civil, notamment : attaques DDoS, piratage, incendies, coupures d'électricité, défaillances des hébergeurs tiers (OVH, Cloudflare, Vercel).</p>
-    <p style={{ ...S.p, fontWeight: 700 }}>9.3 – Erreurs Manifestes, Bugs et Exploits de Failles</p>
+    <h2 style={S.h2}>Article 9 – Erreurs Manifestes, Bugs et Exploits de Failles</h2>
     <p style={S.p}>En cas de bug ou d'exploitation frauduleuse d'une faille du système permettant d'obtenir des Produits Virtuels sans contrepartie financière réelle, la transaction sera considérée comme nulle. Le Vendeur se réserve le droit d'annuler la commande et de retirer les Produits Virtuels indûment acquis.</p>
     <hr style={S.divider} />
-    <h2 style={S.h2}>Article 11 – Dispositions Générales</h2>
-    <p style={S.p}><strong>11.1 – Langue du contrat :</strong> Les présentes CGV sont rédigées en langue française, traduites automatiquement en anglais. Seul le texte français ferait foi en cas de litige.</p>
-    <p style={S.p}><strong>11.2 – Nullité partielle :</strong> Si une ou plusieurs stipulations sont tenues pour non valides, les autres stipulations garderont toute leur force et leur portée.</p>
+    <h2 style={S.h2}>Article 10 – Dispositions Générales</h2>
+    <p style={S.p}><strong>10.1 – Langue du contrat :</strong> Les présentes CGV sont rédigées en langue française, traduites automatiquement en anglais. Seul le texte français ferait foi en cas de litige.</p>
+    <p style={S.p}><strong>10.2 – Nullité partielle :</strong> Si une ou plusieurs stipulations sont tenues pour non valides, les autres stipulations garderont toute leur force et leur portée.</p>
     <hr style={S.divider} />
-    <h2 style={S.h2}>Article 12 – Litiges et Médiation</h2>
+    <h2 style={S.h2}>Article 11 – Litiges et Médiation</h2>
     <p style={S.p}>Les présentes CGV sont soumises au droit français. En cas de litige, l'Acheteur s'engage à contacter en priorité le Vendeur à l'adresse <a href="mailto:contact@geocoins.fr" style={{ color: '#1e7fca' }}>contact@geocoins.fr</a>.</p>
     <p style={S.p}>Si aucune solution amiable n'est trouvée, l'Acheteur consommateur a le droit de recourir gratuitement à la <a href="https://www.mediateur-consommation-smp.fr/" target="_blank" rel="noreferrer" style={{ color: '#1e7fca' }}>Société de la Médiation Professionnelle</a> — 5 rue Salvaing, 12000 Rodez.</p>
     <p style={S.p}>À défaut d'accord, le litige sera porté devant les tribunaux français compétents.</p>
@@ -137,7 +131,6 @@ function CgvEN() {
     <h2 style={S.h2}>Article 5 – Delivery</h2>
     <p style={S.p}>As Virtual Products are digital by nature, no physical delivery is made. Delivery is made by direct injection into the Buyer's account immediately (or within 24 hours for anti-fraud verification) after payment confirmation.</p>
     <p style={S.p}>If delivery has not been completed within 7 days of payment for reasons not attributable to the Buyer, the Buyer may request cancellation and a full refund.</p>
-    <p style={S.p}>The Seller reserves the right to modify, suspend or permanently shut down the Site, subject to 30 days' notice by email. After this period, no refund may be claimed for remaining Virtual Products.</p>
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 6 – No Right of Withdrawal</h2>
     <div style={S.warn}><p style={{ ...S.p, marginBottom: 0 }}>In accordance with Article L. 221-28 13° of the French Consumer Code, the right of withdrawal cannot be exercised for the supply of digital content where performance has begun after the consumer's prior express consent and express waiver of their right of withdrawal.</p></div>
@@ -150,19 +143,14 @@ function CgvEN() {
     <p style={S.p}>The Seller collects only the data strictly necessary for order processing (name, email address, IP address). This data is never sold to third parties for advertising purposes.</p>
     <p style={S.p}>In accordance with the GDPR, the Buyer has the right to access, rectify and delete their personal data by contacting: <a href="mailto:contact@geocoins.fr" style={{ color: '#1e7fca' }}>contact@geocoins.fr</a>.</p>
     <hr style={S.divider} />
-    <h2 style={S.h2}>Article 9 – Liability and Technical Availability</h2>
-    <p style={{ ...S.p, fontWeight: 700 }}>9.1 – Best-efforts obligation and Service Interruptions</p>
-    <p style={S.p}>The Seller's obligation is one of best efforts only. The Seller shall not be liable for any direct or indirect loss resulting from temporary unavailability of the Site.</p>
-    <p style={{ ...S.p, fontWeight: 700 }}>9.2 – Force Majeure and Third-Party Failures</p>
-    <p style={S.p}>The Seller shall not be liable in the event of force majeure within the meaning of Article 1218 of the French Civil Code, including: DDoS attacks, hacking, fires, power cuts, or failures by third-party hosting providers (OVH, Cloudflare, Vercel).</p>
-    <p style={{ ...S.p, fontWeight: 700 }}>9.3 – Obvious Errors, Bugs and Exploits</p>
+    <h2 style={S.h2}>Article 9 – Obvious Errors, Bugs and Exploits</h2>
     <p style={S.p}>In the event of a bug or fraudulent exploitation of a system vulnerability allowing Virtual Products to be obtained without real financial consideration, the transaction shall be deemed void. The Seller reserves the right to cancel the order and remove the improperly acquired Virtual Products.</p>
     <hr style={S.divider} />
-    <h2 style={S.h2}>Article 11 – General Provisions</h2>
-    <p style={S.p}><strong>11.1 – Language of contract:</strong> These Terms are written in French and automatically translated into English. Only the French text shall be legally binding in the event of a dispute.</p>
-    <p style={S.p}><strong>11.2 – Partial invalidity:</strong> If any provision of these Terms is found to be invalid, the remaining provisions shall retain their full force and effect.</p>
+    <h2 style={S.h2}>Article 10 – General Provisions</h2>
+    <p style={S.p}><strong>10.1 – Language of contract:</strong> These Terms are written in French and automatically translated into English. Only the French text shall be legally binding in the event of a dispute.</p>
+    <p style={S.p}><strong>10.2 – Partial invalidity:</strong> If any provision of these Terms is found to be invalid, the remaining provisions shall retain their full force and effect.</p>
     <hr style={S.divider} />
-    <h2 style={S.h2}>Article 12 – Disputes and Mediation</h2>
+    <h2 style={S.h2}>Article 11 – Disputes and Mediation</h2>
     <p style={S.p}>These Terms are governed by French law. In the event of a dispute, the Buyer agrees to contact the Seller first at <a href="mailto:contact@geocoins.fr" style={{ color: '#1e7fca' }}>contact@geocoins.fr</a>.</p>
     <p style={S.p}>If no amicable solution is reached, the consumer Buyer has the right to refer the matter free of charge to the <a href="https://www.mediateur-consommation-smp.fr/" target="_blank" rel="noreferrer" style={{ color: '#1e7fca' }}>Société de la Médiation Professionnelle</a> — 5 rue Salvaing, 12000 Rodez, France.</p>
     <p style={S.p}>Failing agreement, the dispute will be referred to the competent French courts.</p>
