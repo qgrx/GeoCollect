@@ -308,7 +308,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         onClick={e => { if (e.target === e.currentTarget) { setSelectedPack(null); setCgvAccepted(false) } }}>
         <div style={{ background: theme.bgSurface, borderRadius: 20, padding: '22px 24px', width: 'min(96vw,460px)', border: `1px solid ${theme.border}`, boxShadow: '0 24px 60px #000c', fontFamily: "'Nunito',sans-serif" }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>📋 Récapitulatif</div>
+            <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>📋 {t('shop_summary')}</div>
             <button onClick={() => { setSelectedPack(null); setCgvAccepted(false) }} style={{ background: theme.overlay, border: 'none', color: theme.textMuted, width: 28, height: 28, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>✕</button>
           </div>
 
@@ -322,7 +322,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
-              <span style={{ fontSize: 12, color: theme.textMuted }}>Prix TTC (TVA non applicable — art. 293B CGI)</span>
+              <span style={{ fontSize: 12, color: theme.textMuted }}>{t('tresor_price_ttc')}</span>
               <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: theme.gold }}>{selectedPack.price}</span>
             </div>
           </div>
@@ -332,13 +332,12 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
             <input id="cgv-checkbox" type="checkbox" checked={cgvAccepted} onChange={e => setCgvAccepted(e.target.checked)}
               style={{ width: 17, height: 17, flexShrink: 0, marginTop: 2, cursor: 'pointer', accentColor: '#00b894' }} />
             <span style={{ fontSize: 11, color: theme.textPrimary, lineHeight: 1.6 }}>
-              J'accepte les{' '}
+              {t('tresor_cgv_text').split('{link}')[0]}
               <a onClick={e => { e.preventDefault(); onOpenCgv?.() }} href="/cgv"
                 style={{ color: '#1e7fca', fontWeight: 800, textDecoration: 'underline' }}>
-                Conditions Générales de Vente
+                {t('tresor_cgv_link')}
               </a>
-              {' '}et je demande l'exécution immédiate du contenu numérique. J'accepte qu'en accédant
-              immédiatement à mes objets virtuels, je renonce expressément à mon droit de rétractation.
+              {t('tresor_cgv_text').split('{link}')[1]}
             </span>
           </label>
 
@@ -347,9 +346,9 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
             disabled={!cgvAccepted || !!checkoutPack}
             onClick={() => { if (cgvAccepted && !checkoutPack) { setSelectedPack(null); handleCheckout(selectedPack) } }}
             style={{ width: '100%', background: cgvAccepted ? `linear-gradient(135deg,${selectedPack.gradient?.match(/#[0-9a-f]+/gi)?.[0] || '#6c5ce7'},${selectedPack.gradient?.match(/#[0-9a-f]+/gi)?.[1] || '#a29bfe'})` : theme.overlay, border: 'none', color: cgvAccepted ? '#fff' : theme.textMuted, padding: '14px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: cgvAccepted ? 'pointer' : 'not-allowed', transition: 'all .2s', boxShadow: cgvAccepted ? '0 4px 20px #0004' : 'none', letterSpacing: .3 }}>
-            {checkoutPack === selectedPack?.id ? '⏳ Chargement…' : '🔒 Acheter'}
+            {checkoutPack === selectedPack?.id ? '⏳…' : t('tresor_buy_btn')}
           </button>
-          {!cgvAccepted && <div style={{ textAlign: 'center', fontSize: 11, color: '#e74c3c', marginTop: 8, fontWeight: 700 }}>Veuillez accepter les CGV pour continuer</div>}
+          {!cgvAccepted && <div style={{ textAlign: 'center', fontSize: 11, color: '#e74c3c', marginTop: 8, fontWeight: 700 }}>{t('tresor_cgv_required')}</div>}
           <div style={{ textAlign: 'center', fontSize: 10, color: theme.textMuted, marginTop: 10, lineHeight: 1.5 }}>{t('tresor_buy_confirm')}</div>
         </div>
       </div>
