@@ -160,10 +160,9 @@ function CgvEN() {
 // ─── Page principale ──────────────────────────────────────────────────────────
 export default function CgvPage({ onClose }) {
   const [verified, setVerified] = useState(!import.meta.env.VITE_TURNSTILE_SITE_KEY)
+  const [isEN, setIsEN]        = useState(getLang() !== 'fr')
   const tsRef    = useRef(null)
   const tsWidget = useRef(null)
-  const lang     = getLang()
-  const isEN     = lang !== 'fr'
 
   // noindex dynamique
   useEffect(() => {
@@ -223,6 +222,14 @@ export default function CgvPage({ onClose }) {
       <div style={S.header}>
         <button onClick={onClose} style={S.back}>← {isEN ? 'Back' : 'Retour'}</button>
         <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: '#f9ca24' }}>🗺️ Geocoins</span>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+          {['fr','en'].map(l => (
+            <button key={l} onClick={() => setIsEN(l === 'en')}
+              style={{ background: (l === 'en') === isEN ? '#f9ca24' : 'none', border: '1px solid #f9ca2444', color: (l === 'en') === isEN ? '#1e2d3d' : '#f9ca24', padding: '4px 10px', borderRadius: 6, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', textTransform: 'uppercase' }}>
+              {l}
+            </button>
+          ))}
+        </div>
       </div>
       <div style={S.wrap}>
         <div style={S.title}>{isEN ? 'Terms of Sale (CGV)' : 'Conditions Générales de Vente'}</div>
