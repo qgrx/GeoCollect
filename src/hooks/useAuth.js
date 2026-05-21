@@ -94,6 +94,13 @@ export function useAuth() {
     })
   }, [])
 
+  const signInWithFacebook = useCallback(async () => {
+    return supabase.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: { redirectTo: APP_URL },
+    })
+  }, [])
+
   const signInWithEmail = useCallback(async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     return { data, error }
@@ -176,5 +183,5 @@ export function useAuth() {
     return { error }
   }, [user, profile])
 
-  return { user, profile, setProfile, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
+  return { user, profile, setProfile, loading, signInWithGoogle, signInWithFacebook, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
 }
