@@ -261,7 +261,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
           borderRadius: '50%', fontSize: 15, cursor: 'pointer', fontWeight: 900 }}>✕</button>
 
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#f9ca24' }}>🗺️ Geocoins</div>
+          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#f9ca24' }}>Geocoins</div>
           <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
             {mode === 'login'        && 'Connexion à ton compte'}
             {mode === 'register'     && 'Créer un compte'}
