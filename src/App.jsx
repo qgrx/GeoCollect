@@ -491,7 +491,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
     const saved = typeof window !== 'undefined' && localStorage.getItem('geocoins_tab')
     const wide  = typeof window !== 'undefined' && window.innerWidth >= 640
-    return saved || (wide ? 'collection' : 'home')
+    return wide ? 'collection' : (saved || 'home')
   })
   useEffect(() => { localStorage.setItem('geocoins_tab', activeTab) }, [activeTab])
   useEffect(() => { gs.marketOpenRef.current = activeTab === 'market' }, [activeTab])

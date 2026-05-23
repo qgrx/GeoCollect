@@ -414,8 +414,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
               Clique sur le lien pour activer ton compte.
             </div>
             <div style={{ fontSize: 11, color: '#666', background: '#ffffff08', border: '1px solid #ffffff14', borderRadius: 8, padding: '8px 12px', marginBottom: 20, lineHeight: 1.6 }}>
-              📬 L'email est envoyé depuis <span style={{ color: '#aaa' }}>hello@mail.geocoin.fr</span>.<br/>
-              Si tu ne le vois pas, pense à vérifier tes <span style={{ color: '#f9ca24' }}>spams</span>.
+              {t('confirm_email_spam')}
             </div>
             <button onClick={() => { setMode('login'); reset() }}
               style={{ background: '#ffffff18', border: 'none', color: '#fff', padding: '10px 20px',
