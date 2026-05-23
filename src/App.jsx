@@ -194,6 +194,31 @@ export default function App() {
     }
   }, [])
 
+  // ── Retour de paiement SumUp (?checkout_id=...) ──────────────────────────────
+  useEffect(() => {
+    if (!pendingCheckout || !auth.profile || !gs.cardPool.length) return
+    const cid = pendingCheckout
+    setPendingCheckout(null)
+    import('./services/api.js').then(({ apiGetPurchase }) => {
+      apiGetPurchase(cid).then(({ data }) => {
+        if (data?.status !== 'paid') return
+        const cards = (data.card_ids || []).map(id => gs.cardPool.find(c => c.id === id)).filter(Boolean)
+        setRevealCards(cards)
+        setRevealGold(data.gold || 0)
+        setRevealPayment('')
+        setShowShop(true)
+        // Rafraîchir collection et profil crédités côté serveur
+        import('./services/api.js').then(({ apiGetCollection, apiGetProfile }) => {
+          apiGetCollection?.().then(({ data: d }) => {
+            if (d?.collection) gs.setCollection(d.collection)
+            if (d?.shiny_collection) gs.setShinyCollection(d.shiny_collection)
+          })
+          apiGetProfile?.().then(({ data: d }) => { if (d?.profile) auth.setProfile(d.profile) })
+        })
+      })
+    })
+  }, [pendingCheckout, auth.profile?.id, gs.cardPool.length])
+
   // ── Charger l'historique des quiz depuis la DB ────────────────────────────────
   useEffect(() => {
     if (!auth.profile || !import.meta.env.VITE_API_URL) return
@@ -418,6 +443,12 @@ export default function App() {
   const [revealCards,     setRevealCards]      = useState(null);
   const [revealGold,      setRevealGold]       = useState(0);
   const [revealPayment,   setRevealPayment]    = useState('');
+  const [pendingCheckout, setPendingCheckout]  = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    const cid = params.get('checkout_id')
+    if (cid) window.history.replaceState({}, '', window.location.pathname)
+    return cid || null
+  });
   const [showTxHistory,   setShowTxHistory]   = useState(false);
   const [filter,          setFilter]          = useState('Tous');
   const [showMissing,     setShowMissing]     = useState(false);
