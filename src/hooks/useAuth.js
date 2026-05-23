@@ -106,12 +106,7 @@ export function useAuth() {
     return { data, error }
   }, [])
 
-  const signUpWithEmail = useCallback(async (email, password, pseudo) => {
-    // Vérifier unicité du pseudo
-    const { data: existing } = await supabase
-      .from('profiles').select('id').ilike('pseudo', pseudo).maybeSingle()
-    if (existing) return { error: { message: 'pseudo_taken' } }
-
+  const signUpWithEmail = useCallback(async (email, password) => {
     // Vérifier la liste blanche de domaines
     const { data: wlData } = await supabase
       .from('config').select('value').eq('key', 'registration_whitelist').maybeSingle()
@@ -128,7 +123,7 @@ export function useAuth() {
     return supabase.auth.signUp({
       email, password,
       options: {
-        data: { pseudo, locale },
+        data: { locale },
         emailRedirectTo: APP_URL,
       },
     })

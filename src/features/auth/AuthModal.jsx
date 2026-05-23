@@ -175,8 +175,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
   }
 
   async function doRegister() {
-    if (!pseudo.trim() || !email.trim() || !pw) { err(t('auth_fill_fields')); return }
-    if (pseudo.trim().length < 3) { err(t('auth_pseudo_short')); return }
+    if (!email.trim() || !pw) { err(t('auth_fill_fields')); return }
     if (pw !== pw2) { err('❌ Les mots de passe ne correspondent pas.'); return }
     if (passwordStrength(pw) < 2) { err('❌ Mot de passe trop faible.'); return }
     // Vérification Turnstile si configuré
@@ -186,7 +185,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
       return
     }
     setBusy(true); clear()
-    const { error } = await auth.signUpWithEmail(email.trim(), pw, pseudo.trim())
+    const { error } = await auth.signUpWithEmail(email.trim(), pw)
     setBusy(false)
     if (error) {
       err(errMsg(error.message));
@@ -346,12 +345,6 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
         {mode === 'register' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
             <Back to="choice"/>
-            <div>
-              <input value={pseudo} onChange={e => setPseudo(e.target.value)}
-                placeholder={t('auth_pseudo')} style={{ ...INP, marginBottom: 0 }}
-                maxLength={20}/>
-              <div style={{ fontSize: 10, color: '#555', marginTop: 3 }}>3–20 caractères, unique</div>
-            </div>
             <input value={email} onChange={e => setEmail(e.target.value)} type="email"
               placeholder={t('auth_email')} style={{ ...INP, marginBottom: 0 }}/>
             <div>
