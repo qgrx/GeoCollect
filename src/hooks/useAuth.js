@@ -119,11 +119,13 @@ export function useAuth() {
     }
 
     const locale = (() => { try { return localStorage.getItem('geocards_lang') || 'fr' } catch { return 'fr' } })()
+    // Pseudo temporaire — remplacé lors de l'onboarding (trigger DB requiert une valeur non nulle)
+    const tempPseudo = `user_${Math.random().toString(36).slice(2, 8)}`
 
     return supabase.auth.signUp({
       email, password,
       options: {
-        data: { locale },
+        data: { pseudo: tempPseudo, locale },
         emailRedirectTo: APP_URL,
       },
     })
