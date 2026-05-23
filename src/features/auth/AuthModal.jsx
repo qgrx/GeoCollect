@@ -408,10 +408,11 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
         {mode === 'confirm_email' && (
           <div style={{ textAlign: 'center', padding: '8px 0' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>✉️</div>
-            <div style={{ fontWeight: 900, color: '#fff', fontSize: 16, marginBottom: 8 }}>Vérifie ton email</div>
+            <div style={{ fontWeight: 900, color: '#fff', fontSize: 16, marginBottom: 8 }}>{t('confirm_email_title')}</div>
             <div style={{ fontSize: 13, color: '#888', lineHeight: 1.6, marginBottom: 12 }}>
-              Un email de confirmation a été envoyé à <span style={{ color: '#f9ca24' }}>{email}</span>.<br/>
-              Clique sur le lien pour activer ton compte.
+              {t('confirm_email_body').split('{email}')[0]}
+              <span style={{ color: '#f9ca24' }}>{email}</span>
+              {t('confirm_email_body').split('{email}')[1]}
             </div>
             <div style={{ fontSize: 11, color: '#666', background: '#ffffff08', border: '1px solid #ffffff14', borderRadius: 8, padding: '8px 12px', marginBottom: 20, lineHeight: 1.6 }}>
               {t('confirm_email_spam')}
@@ -420,7 +421,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
               style={{ background: '#ffffff18', border: 'none', color: '#fff', padding: '10px 20px',
                 borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12,
                 cursor: 'pointer' }}>
-              J'ai confirmé → Me connecter
+              {t('confirm_email_cta')}
             </button>
           </div>
         )}
