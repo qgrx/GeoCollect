@@ -184,6 +184,10 @@ export default function App() {
   const cardPoolRef = useRef(gs.cardPool);
   useEffect(() => { cardPoolRef.current = gs.cardPool }, [gs.cardPool]);
 
+  const [pendingCheckout, setPendingCheckout] = useState(
+    () => new URLSearchParams(window.location.search).get('checkout_id') || null
+  )
+
   // ── Confirmation email uniquement — le SDK Supabase nettoie lui-même l'URL OAuth ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -444,9 +448,6 @@ export default function App() {
   const [revealCards,     setRevealCards]      = useState(null);
   const [revealGold,      setRevealGold]       = useState(0);
   const [revealPayment,   setRevealPayment]    = useState('');
-  const [pendingCheckout, setPendingCheckout]  = useState(
-    () => new URLSearchParams(window.location.search).get('checkout_id') || null
-  );
   const [showTxHistory,   setShowTxHistory]   = useState(false);
   const [filter,          setFilter]          = useState('Tous');
   const [showMissing,     setShowMissing]     = useState(false);
