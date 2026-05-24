@@ -1099,13 +1099,13 @@ export default function App() {
                         <div key={label} style={{ background: theme.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
                           <div style={{ fontSize: 12 }}>{icon}</div>
                           <div style={{ fontWeight: 900, fontSize: 12, color: theme.textPrimary, lineHeight: 1.2 }}>{value}</div>
-                          <div style={{ fontSize: 7, color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .2 }}>{label}</div>
+                          <div style={{ fontSize: 7, color: theme.textSecondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .2 }}>{label}</div>
                         </div>
                       ))}
                     </div>
                     {nextRank ? (
                       <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: theme.textMuted }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: theme.textSecondary }}>
                           <span>{t('rank_next')} <span style={{ background: nextRank.color, color: '#fff', fontWeight: 800, padding: '1px 6px', borderRadius: 4, fontSize: 9, textShadow: '0 1px 2px #0004' }}>{nextRank.label}</span></span>
                           <span onClick={() => setShowScoreDetail(true)} style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{userScore}/{nextRank.min}</span>
                         </div>

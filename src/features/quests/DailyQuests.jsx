@@ -92,7 +92,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
                   {q.name}
                 </div>
                 {!done && (
-                  <div style={{ fontSize: 9, color: '#8daacc', marginTop: 1 }}>
+                  <div style={{ fontSize: 9, color: theme.textSecondary, marginTop: 1 }}>
                     {q.progress}/{q.threshold} {TRIGGER_LABELS[q.type] || q.type}
                   </div>
                 )}
