@@ -86,7 +86,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontSize: 11, fontWeight: 800,
-                  color: done ? '#00b894' : '#d4e8f8',
+                  color: done ? '#00b894' : theme.textPrimary,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
                   {q.name}
