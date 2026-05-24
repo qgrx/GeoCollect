@@ -31,6 +31,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const [search, setSearch]           = useState('');
   const [filterType, setFilterType]   = useState('Tous');
   const [filterRarity, setFilterRarity] = useState('');
+  const [filterSeason, setFilterSeason] = useState('');
   const [gridPage, setGridPage]       = useState(0);
   const GRID_PAGE = 24;
   const [showAdv, setShowAdv]                     = useState(false);
@@ -51,6 +52,8 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
     let cards = cardPool.filter(c => !c.type?.toLowerCase().includes('achievement'));
     if (filterType !== 'Tous') cards = cards.filter(c => c.type === filterType);
     if (filterRarity) cards = cards.filter(c => c.rarity === filterRarity);
+    if (filterSeason === '__none__') cards = cards.filter(c => !c.season_id);
+    else if (filterSeason) cards = cards.filter(c => String(c.season_id) === filterSeason);
     if (search) cards = cards.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
     if (filterForgeable === 'true')  cards = cards.filter(c => !!c.forgeable);
     if (filterForgeable === 'false') cards = cards.filter(c => !c.forgeable);
@@ -69,7 +72,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
     if (filterForgeCost === 'gt' && filterForgeCostVal !== '') cards = cards.filter(c => (fc(c) ?? 0) > +filterForgeCostVal);
     if (filterForgeCost === 'lt' && filterForgeCostVal !== '') cards = cards.filter(c => (fc(c) ?? 0) < +filterForgeCostVal);
     return [...cards].sort((a, b) => (RARITY_ORDER[a.rarity] ?? 4) - (RARITY_ORDER[b.rarity] ?? 4) || a.name.localeCompare(b.name));
-  }, [cardPool, filterType, filterRarity, search, filterForgeable, filterSellable, filterMinPrice, filterMinPriceVal, filterShiny, filterShinyVal, filterForgeCost, filterForgeCostVal]);
+  }, [cardPool, filterType, filterRarity, filterSeason, search, filterForgeable, filterSellable, filterMinPrice, filterMinPriceVal, filterShiny, filterShinyVal, filterForgeCost, filterForgeCostVal]);
 
   const [seasons, setSeasons] = useState([]);
   const [transCard, setTransCard] = useState(null);
@@ -242,6 +245,13 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
               <option value="">Toutes raretés</option>
               {["commun","rare","épique","légendaire"].map(r=><option key={r} value={r}>{RC[r]?.label||r}</option>)}
             </select>
+            {seasons.length > 0 && (
+              <select value={filterSeason} onChange={e=>{setFilterSeason(e.target.value);setGridPage(0);}} style={{...SEL,fontSize:12,padding:"6px 10px"}}>
+                <option value="">Toutes saisons</option>
+                <option value="__none__">Sans saison</option>
+                {seasons.map(s=><option key={s.id} value={String(s.id)}>{s.name}</option>)}
+              </select>
+            )}
             <button onClick={()=>setShowAdv(v=>!v)}
               style={{background:showAdv||advActiveCount>0?'#6c5ce722':'#ffffff0a',border:`1px solid ${advActiveCount>0?'#6c5ce7':'#ffffff22'}`,color:advActiveCount>0?'#a29bfe':'#aaa',padding:"6px 10px",borderRadius:6,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
               Filtres {advActiveCount>0?`(${advActiveCount}) `:''}▾
