@@ -1588,11 +1588,16 @@ export default function App() {
                       {ranks.map(rank => {
                         const isCurrent = rank.label === currentRank?.label
                         const reached = userScore >= rank.min
+                        const n = parseInt((rank.color || '#888888').replace('#',''), 16)
+                        const lum = (0.299*((n>>16)&255) + 0.587*((n>>8)&255) + 0.114*(n&255)) / 255
+                        const shadow = lum > 0.45
+                          ? '0 0 6px rgba(0,0,0,1), 0 1px 4px rgba(0,0,0,0.9)'
+                          : '0 0 6px rgba(255,255,255,0.5), 0 1px 3px rgba(255,255,255,0.3)'
                         return (
                           <div key={rank.label} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 10px', borderRadius:8, background: isCurrent ? `${rank.color}22` : theme.overlay, border: isCurrent ? `1px solid ${rank.color}66` : `1px solid ${theme.border}`, opacity: reached ? 1 : 0.5 }}>
-                            <span style={{ flex:1, fontSize:12, fontWeight: isCurrent ? 900 : 700, color: rank.color }}>{rank.label}</span>
-                            <span style={{ fontSize:11, fontWeight:700, color: reached ? rank.color : theme.textMuted }}>{rank.min} pts</span>
-                            {isCurrent && <span style={{ fontSize:9, fontWeight:900, color:rank.color, background:`${rank.color}22`, padding:'1px 6px', borderRadius:50 }}>{t('score_detail_current')}</span>}
+                            <span style={{ flex:1, fontSize:12, fontWeight: isCurrent ? 900 : 700, color: rank.color, textShadow: shadow }}>{rank.label}</span>
+                            <span style={{ fontSize:11, fontWeight:700, color: reached ? rank.color : theme.textMuted, textShadow: reached ? shadow : 'none' }}>{rank.min} pts</span>
+                            {isCurrent && <span style={{ fontSize:9, fontWeight:900, color:rank.color, background:`${rank.color}22`, padding:'1px 6px', borderRadius:50, textShadow: shadow }}>{t('score_detail_current')}</span>}
                           </div>
                         )
                       })}
