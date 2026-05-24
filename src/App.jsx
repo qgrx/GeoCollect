@@ -199,6 +199,7 @@ export default function App() {
     if (!pendingCheckout || !auth.profile || !gs.cardPool.length) return
     const cid = pendingCheckout
     setPendingCheckout(null)
+    window.history.replaceState({}, '', window.location.pathname)
     import('./services/api.js').then(({ apiGetPurchase }) => {
       apiGetPurchase(cid).then(({ data }) => {
         if (data?.status !== 'paid') return
@@ -443,12 +444,9 @@ export default function App() {
   const [revealCards,     setRevealCards]      = useState(null);
   const [revealGold,      setRevealGold]       = useState(0);
   const [revealPayment,   setRevealPayment]    = useState('');
-  const [pendingCheckout, setPendingCheckout]  = useState(() => {
-    const params = new URLSearchParams(window.location.search)
-    const cid = params.get('checkout_id')
-    if (cid) window.history.replaceState({}, '', window.location.pathname)
-    return cid || null
-  });
+  const [pendingCheckout, setPendingCheckout]  = useState(
+    () => new URLSearchParams(window.location.search).get('checkout_id') || null
+  );
   const [showTxHistory,   setShowTxHistory]   = useState(false);
   const [filter,          setFilter]          = useState('Tous');
   const [showMissing,     setShowMissing]     = useState(false);
