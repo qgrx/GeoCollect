@@ -181,7 +181,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
       </div>
 
       {/* ── Packs ── */}
-      <div>
+      {(packsLoading || visiblePacks.length > 0) && <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <span style={{ fontSize: 20 }}>💎</span>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>{t('tresor_shop_title')}</div>
@@ -280,7 +280,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         <div style={{ fontSize: 9, color: '#444', textAlign: 'center' }}>
           {t('tresor_secure_payment')}
         </div>
-      </div>
+      </div>}
 
       {/* Widget SumUp embarqué (production) */}
       {sumupCheckout && (
