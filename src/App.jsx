@@ -1674,7 +1674,8 @@ export default function App() {
                 ...(limEdit.cache_ttl_leaderboard != null ? [apiSetConfig('cache_ttl_leaderboard', limEdit.cache_ttl_leaderboard)] : []),
                 ...(limEdit.cache_ttl_market      != null ? [apiSetConfig('cache_ttl_market',      limEdit.cache_ttl_market)]      : []),
                 ...(limEdit.cache_ttl_quiz_stats  != null ? [apiSetConfig('cache_ttl_quiz_stats',  limEdit.cache_ttl_quiz_stats)]  : []),
-                apiSetConfig('player_ranks',       limEdit.playerRanks    ?? DEFAULT_RANKS),
+                // Ne sauvegarder player_ranks que si explicitement modifié (evite d'écraser les rangs custom avec DEFAULT_RANKS quand la config n'était pas encore chargée)
+                ...(limEdit.playerRanks !== DEFAULT_RANKS ? [apiSetConfig('player_ranks', limEdit.playerRanks)] : []),
                 apiSetConfig('market_sales_open',   limEdit.marketSalesOpen   ?? true),
                 apiSetConfig('max_active_listings', limEdit.maxActiveListings ?? 10),
                 apiSetConfig('bots_visible',        limEdit.botsVisible       ?? false),

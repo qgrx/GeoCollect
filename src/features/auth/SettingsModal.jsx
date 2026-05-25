@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { BTN, INP } from '../../utils/styles.js'
@@ -8,28 +8,11 @@ import { PSEUDO_CHANGE_DAYS } from '../../data/constants.js'
 import { apiDeleteAccount } from '../../services/api.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
 
-// ─── Calcul du rang ───────────────────────────────────────────────────────────
-const RANKS = [
-  { min: 0,   label: 'Novice',           color: '#78909c', icon: '🌱' },
-  { min: 5,   label: 'Explorateur',      color: '#42a5f5', icon: '🧭' },
-  { min: 20,  label: 'Aventurier',       color: '#66bb6a', icon: '⛺' },
-  { min: 50,  label: 'Chasseur',         color: '#ffa726', icon: '🎯' },
-  { min: 100, label: 'Expert',           color: '#ab47bc', icon: '🔮' },
-  { min: 200, label: 'Maître Geocoins',  color: '#f9ca24', icon: '👑' },
-]
+import { DEFAULT_RANKS } from '../../data/constants.js'
 
 function getrank(score, ranks) {
-  const r = ranks?.length ? ranks : RANKS
+  const r = ranks?.length ? ranks : DEFAULT_RANKS
   return [...r].sort((a,b) => b.min - a.min).find(r => score >= r.min) || r[0]
-}
-
-function scoreFromCol(col, cardPool) {
-  const W = { commun: 1, rare: 3, épique: 7, légendaire: 20 }
-  return Object.entries(col || {}).reduce((s, [id, n]) => {
-    if (!n) return s
-    const c = cardPool.find(x => x.id === +id)
-    return s + (W[c?.rarity] || 1)
-  }, 0)
 }
 
 function bestRarity(col, cardPool) {
@@ -64,15 +47,13 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const [loading, setLoading] = useState(false)
   const [changed, setChanged] = useState(false)
 
-  const computedScore = useMemo(() => scoreFromCol(collection, cardPool), [collection, cardPool])
-
   if (!profile) return null
 
   const lastChange = profile.pseudo_changed_at ? new Date(profile.pseudo_changed_at) : null
   const daysSince  = lastChange ? Math.floor((Date.now() - lastChange.getTime()) / 864e5) : 999
   const canChange  = daysSince >= PSEUDO_CHANGE_DAYS
   const history    = profile.pseudo_history || []
-  const score = scoreProp ?? computedScore
+  const score = scoreProp ?? 0
   const rank = getrank(score, ranks)
   const { c1, c2 } = rankCC(rank)
   const uniqueCards = Object.values(collection).filter(n => n > 0).length
@@ -174,7 +155,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
 
         {/* ── Barre de progression vers le rang suivant ── */}
         {(() => {
-          const activeRanks = ranks?.length ? [...ranks].sort((a,b) => a.min - b.min) : RANKS
+          const activeRanks = ranks?.length ? [...ranks].sort((a,b) => a.min - b.min) : DEFAULT_RANKS
           const nextRank = activeRanks.find(r => r.min > score)
           if (!nextRank) return (
             <div style={{ padding: '12px 24px', background: '#f9ca2412', textAlign: 'center',
