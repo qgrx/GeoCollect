@@ -214,7 +214,7 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
                 <span style={{ fontSize: 32 }}>{selected.emoji}</span>
                 <div>
                   <div style={{ fontWeight: 900, fontSize: 17, color: '#fff' }}>{selected.name}</div>
-                  <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 24, color: '#f9ca24' }}>{selected.price}</div>
+                  <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 24, color: '#f9ca24', whiteSpace: 'nowrap' }}>{selected.price}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
