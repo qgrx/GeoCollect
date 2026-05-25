@@ -822,28 +822,7 @@ export default function App() {
         .map(([id, cnt]) => ({ card: gs.cardPool.find(c => c.id === +id), cnt, missing: false }))
         .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
     }
-    const shinyMap = {}
-    Object.entries(gs.shinyCollection || {}).forEach(([id, n]) => { if (n > 0) shinyMap[+id] = n })
-    const result = []
-    const shinyInserted = new Set()
-    for (const entry of normalList) {
-      result.push(entry)
-      const sid = entry.card?.id
-      if (sid && shinyMap[sid] && !shinyInserted.has(sid)) {
-        const card = entry.card
-        if ((af || card.type === filter) && matchSearch(card)) {
-          result.push({ card, count: shinyMap[sid], isShiny: true, missing: false })
-          shinyInserted.add(sid)
-        }
-      }
-    }
-    Object.entries(shinyMap).forEach(([id, n]) => {
-      if (shinyInserted.has(+id)) return
-      const card = gs.cardPool.find(c => c.id === +id)
-      if (!card || !(af || card.type === filter) || !matchSearch(card)) return
-      result.push({ card, count: n, isShiny: true, missing: false })
-    })
-    return result.sort(sortFn)
+    return normalList.sort(sortFn)
   }, [showMissing, showShiny, sortBy, filter, cardSearch, gs.collection, gs.cardPool, gs.shinyCollection]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0

@@ -129,11 +129,12 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
     async function loadAll() {
       setLoadingData(true)
+      // Collection lancée en parallèle mais sans bloquer — appliquée en arrière-plan
+      const collectionPromise = apiGetCollection()
       try {
         // Lancer toutes les requêtes indépendantes en parallèle
         const cardsPromise = apiGetCards()
-        const [colResult, mktResult, listResult, txResult, pubCfgResult] = await Promise.all([
-          apiGetCollection(),
+        const [mktResult, listResult, txResult, pubCfgResult] = await Promise.all([
           apiGetMarket(),
           apiGetMyListings(),
           apiGetTransactions({ limit: 500 }),
@@ -158,18 +159,6 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           setCardPool(normalized)
           const types = [...new Set(normalized.map(c => c.type).filter(t => t !== 'Achievement'))]
           setCardTypes(types)
-        }
-
-        // Collection
-        const { data: colData } = colResult
-        if (colData?.collection && mounted.current) {
-          setCollection(colData.collection)
-          if (colData.shiny_collection) setShinyCollection(colData.shiny_collection)
-          const alreadyUnlocked = ACHIEVEMENT_DEF
-            .filter(def => (colData.collection[def.cardId] || 0) > 0)
-            .map(def => def.id)
-          alreadyUnlocked.forEach(id => unlockedAchRef.current.add(id))
-          if (alreadyUnlocked.length) setUnlockedAch(alreadyUnlocked)
         }
 
         // Marché
@@ -300,6 +289,18 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       } finally {
         if (mounted.current) setLoadingData(false)
       }
+
+      // Collection appliquée en arrière-plan — n'a pas bloqué le rendu initial
+      collectionPromise.then(({ data: colData }) => {
+        if (!colData?.collection || !mounted.current) return
+        setCollection(colData.collection)
+        if (colData.shiny_collection) setShinyCollection(colData.shiny_collection)
+        const alreadyUnlocked = ACHIEVEMENT_DEF
+          .filter(def => (colData.collection[def.cardId] || 0) > 0)
+          .map(def => def.id)
+        alreadyUnlocked.forEach(id => unlockedAchRef.current.add(id))
+        if (alreadyUnlocked.length) setUnlockedAch(alreadyUnlocked)
+      }).catch(() => {})
     }
 
     loadAll()
