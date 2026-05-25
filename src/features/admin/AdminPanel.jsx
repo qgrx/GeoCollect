@@ -1786,9 +1786,12 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         style={{...INP,width:70}}/>
                       <span style={{fontSize:11,color:"#8daacc"}}>pts</span>
                     </div>
-                    <input type="color" value={rank.color} onChange={e=>{const r=[...ranks];r[i]={...r[i],color:e.target.value};setRanks(r);}}
-                      style={{width:32,height:32,borderRadius:6,border:"none",cursor:"pointer",background:"none",padding:0}}/>
-                    <div style={{width:10,height:10,borderRadius:"50%",background:rank.color,flexShrink:0}}/>
+                    <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(rank.color)?rank.color:'#ffffff'} onChange={e=>{const r=[...ranks];r[i]={...r[i],color:e.target.value};setRanks(r);}}
+                      style={{width:32,height:32,borderRadius:6,border:"none",cursor:"pointer",background:"none",padding:0,flexShrink:0}}/>
+                    <input value={rank.color} onChange={e=>{const r=[...ranks];r[i]={...r[i],color:e.target.value};setRanks(r);}}
+                      maxLength={7} placeholder="#rrggbb"
+                      style={{...INP,width:80,fontFamily:"monospace",fontSize:12,padding:"4px 8px",borderColor:/^#[0-9a-fA-F]{6}$/.test(rank.color)?undefined:"#e74c3c88"}}/>
+                    <div style={{width:10,height:10,borderRadius:"50%",background:/^#[0-9a-fA-F]{6}$/.test(rank.color)?rank.color:'transparent',flexShrink:0,border:"1px solid #ffffff22"}}/>
                     {ranks.length>1&&<button onClick={()=>setRanks(ranks.filter((_,j)=>j!==i))} style={{background:"#e74c3c22",border:"1px solid #e74c3c44",color:"#e74c3c",padding:"4px 8px",borderRadius:7,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>✕</button>}
                   </div>
                 ))}
