@@ -1557,7 +1557,7 @@ export default function App() {
                 <button onClick={() => setShowScoreDetail(false)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:theme.textMuted }}>✕</button>
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                {rows.map(({ r, normal, shiny, pts }) => (
+                {rows.map(({ r, normal, shiny, pts, shinyPts }) => (
                   <div key={r}>
                     {normal > 0 && (
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', background:theme.overlay, borderRadius:8 }}>
