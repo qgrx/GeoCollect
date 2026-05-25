@@ -129,87 +129,65 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
     async function loadAll() {
       setLoadingData(true)
-      // Collection lancée en parallèle mais sans bloquer — appliquée en arrière-plan
-      const collectionPromise = apiGetCollection()
-      try {
-        // Lancer toutes les requêtes indépendantes en parallèle
-        const cardsPromise = apiGetCards()
-        const [mktResult, listResult, txResult, pubCfgResult] = await Promise.all([
-          apiGetMarket(),
-          apiGetMyListings(),
-          apiGetTransactions({ limit: 500 }),
-          apiGetPublicConfig(),
-        ])
 
-        // Cartes — retry si vide (cache stale), mais pas sur 429 pour éviter la cascade
-        let cardsResult = await cardsPromise
-        if (!cardsResult.data?.cards?.length && cardsResult.error !== 'HTTP 429') {
-          await new Promise(r => setTimeout(r, 1000))
-          cardsResult = await apiGetCards()
-        }
-        if (cardsResult.data?.cards?.length && mounted.current) {
-          const normalized = cardsResult.data.cards.map(c => ({
-            ...c,
-            desc:      c.desc      ?? c.description    ?? '',
-            image:     c.image     ?? c.image_url      ?? null,
-            thumbnail: c.thumbnail ?? c.image_url_thumb ?? null,
-            minPrice:  c.minPrice  ?? c.min_price      ?? null,
-          }))
-          normalized.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
-          setCardPool(normalized)
-          const types = [...new Set(normalized.map(c => c.type).filter(t => t !== 'Achievement'))]
-          setCardTypes(types)
-        }
+      // ── Requêtes lentes (user-specific ou cache froid) — fire-and-forget ────
+      // Chacune met à jour l'état dès qu'elle arrive, sans bloquer le rendu.
+      apiGetCollection().then(({ data: colData }) => {
+        if (!colData?.collection || !mounted.current) return
+        setCollection(colData.collection)
+        if (colData.shiny_collection) setShinyCollection(colData.shiny_collection)
+        const alreadyUnlocked = ACHIEVEMENT_DEF
+          .filter(def => (colData.collection[def.cardId] || 0) > 0)
+          .map(def => def.id)
+        alreadyUnlocked.forEach(id => unlockedAchRef.current.add(id))
+        if (alreadyUnlocked.length) setUnlockedAch(alreadyUnlocked)
+      }).catch(() => {})
 
-        // Marché
-        const { data: mktData } = mktResult
-        if (mktData?.market && mounted.current) {
-          const flat = []
-          mktData.market.forEach(({ card, tiers }) => {
-            tiers.forEach(tier => {
-              tier.ids.forEach((id, i) => {
-                flat.push({ id, card, price: tier.price, seller: tier.sellers[i] || tier.sellers[0] })
-              })
+      apiGetMarket().then(({ data: mktData }) => {
+        if (!mktData?.market || !mounted.current) return
+        const flat = []
+        mktData.market.forEach(({ card, tiers }) => {
+          tiers.forEach(tier => {
+            tier.ids.forEach((id, i) => {
+              flat.push({ id, card, price: tier.price, seller: tier.sellers[i] || tier.sellers[0] })
             })
           })
-          setMarket(flat)
-        }
+        })
+        setMarket(flat)
+      }).catch(() => {})
 
-        // Mes annonces
-        const { data: listData } = listResult
-        if (listData?.listings && mounted.current) {
-          setMyListings(listData.listings.map(l => ({
-            id: l.id, card: l.cards, price: l.price,
-          })))
-        }
+      apiGetMyListings().then(({ data: listData }) => {
+        if (!listData?.listings || !mounted.current) return
+        setMyListings(listData.listings.map(l => ({ id: l.id, card: l.cards, price: l.price })))
+      }).catch(() => {})
 
-        // Transactions + compteurs persistés (achats/ventes)
-        const { data: txData } = txResult
-        if (txData?.transactions && mounted.current) {
-          const lastRead = parseFloat(localStorage.getItem(`last_read_tx_${profile.id}`) || '0')
-          let newSalesCount = 0
-          setTransactions(txData.transactions.map(tx => {
-            const txTime = new Date(tx.created_at).getTime()
-            const isNew = tx.type === 'vente' && txTime > lastRead
-            if (isNew) newSalesCount++
-            return {
-              type: tx.type, cardName: tx.card_name, rarity: tx.rarity,
-              counterpart: tx.counterpart, price: tx.price,
-              date: new Date(tx.created_at).toLocaleDateString('fr-FR'),
-              card_id: tx.card_id,
-              cards: tx.cards,
-              isNew
-            }
-          }))
-          if (newSalesCount > 0) _setUnreadSales(newSalesCount)
-          // Recalculer les compteurs depuis la DB pour éviter de perdre l'état
-          const buys  = txData.transactions.filter(tx => tx.type === 'achat').length
-          const sells = txData.transactions.filter(tx => tx.type === 'vente').length
-          if (mounted.current) { setTotalBuys(buys); setTotalSells(sells) }
-        }
+      apiGetTransactions({ limit: 500 }).then(({ data: txData }) => {
+        if (!txData?.transactions || !mounted.current) return
+        const lastRead = parseFloat(localStorage.getItem(`last_read_tx_${profile.id}`) || '0')
+        let newSalesCount = 0
+        setTransactions(txData.transactions.map(tx => {
+          const txTime = new Date(tx.created_at).getTime()
+          const isNew = tx.type === 'vente' && txTime > lastRead
+          if (isNew) newSalesCount++
+          return {
+            type: tx.type, cardName: tx.card_name, rarity: tx.rarity,
+            counterpart: tx.counterpart, price: tx.price,
+            date: new Date(tx.created_at).toLocaleDateString('fr-FR'),
+            card_id: tx.card_id, cards: tx.cards, isNew
+          }
+        }))
+        if (newSalesCount > 0) _setUnreadSales(newSalesCount)
+        const buys  = txData.transactions.filter(tx => tx.type === 'achat').length
+        const sells = txData.transactions.filter(tx => tx.type === 'vente').length
+        if (mounted.current) { setTotalBuys(buys); setTotalSells(sells) }
+      }).catch(() => {})
+
+      // ── Requêtes rapides (cache Redis chaud) — conditionnent setLoadingData ─
+      try {
+        const cardsPromise = apiGetCards()
 
         // Config publique — chargée pour tous les utilisateurs connectés
-        const { data: pubCfg } = pubCfgResult
+        const { data: pubCfg } = await apiGetPublicConfig()
         if (pubCfg?.config && mounted.current) {
           const cfg = pubCfg.config
           setLimits(prev => ({
@@ -248,10 +226,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           }))
         }
 
-        // Config admin — uniquement pour les admins (limits_connected, etc.)
+        // Config admin — fire-and-forget pour ne pas retarder setLoadingData
         if (profile.role === 'admin') {
-          const { data: admCfg } = await apiGetAdminConfig()
-          if (admCfg?.config && mounted.current) {
+          apiGetAdminConfig().then(({ data: admCfg }) => {
+            if (!admCfg?.config || !mounted.current) return
             const cfg = admCfg.config
             setLimits(prev => ({
               ...prev,
@@ -273,7 +251,27 @@ export function useGameState(auth, { onAchievementCard } = {}) {
               cache_ttl_market:      cfg.cache_ttl_market          ?? prev.cache_ttl_market,
               cache_ttl_quiz_stats:  cfg.cache_ttl_quiz_stats      ?? prev.cache_ttl_quiz_stats,
             }))
-          }
+          }).catch(() => {})
+        }
+
+        // Cartes — retry si vide (cache stale), mais pas sur 429 pour éviter la cascade
+        let cardsResult = await cardsPromise
+        if (!cardsResult.data?.cards?.length && cardsResult.error !== 'HTTP 429') {
+          await new Promise(r => setTimeout(r, 1000))
+          cardsResult = await apiGetCards()
+        }
+        if (cardsResult.data?.cards?.length && mounted.current) {
+          const normalized = cardsResult.data.cards.map(c => ({
+            ...c,
+            desc:      c.desc      ?? c.description    ?? '',
+            image:     c.image     ?? c.image_url      ?? null,
+            thumbnail: c.thumbnail ?? c.image_url_thumb ?? null,
+            minPrice:  c.minPrice  ?? c.min_price      ?? null,
+          }))
+          normalized.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
+          setCardPool(normalized)
+          const types = [...new Set(normalized.map(c => c.type).filter(t => t !== 'Achievement'))]
+          setCardTypes(types)
         }
 
         // Ping last_seen
@@ -289,18 +287,6 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       } finally {
         if (mounted.current) setLoadingData(false)
       }
-
-      // Collection appliquée en arrière-plan — n'a pas bloqué le rendu initial
-      collectionPromise.then(({ data: colData }) => {
-        if (!colData?.collection || !mounted.current) return
-        setCollection(colData.collection)
-        if (colData.shiny_collection) setShinyCollection(colData.shiny_collection)
-        const alreadyUnlocked = ACHIEVEMENT_DEF
-          .filter(def => (colData.collection[def.cardId] || 0) > 0)
-          .map(def => def.id)
-        alreadyUnlocked.forEach(id => unlockedAchRef.current.add(id))
-        if (alreadyUnlocked.length) setUnlockedAch(alreadyUnlocked)
-      }).catch(() => {})
     }
 
     loadAll()
