@@ -80,6 +80,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [dailyQuests,setDailyQuests]=useState([]);
   const [editQuest,setEditQuest]=useState(null);
   const [newQuest,setNewQuest]=useState(null);
+  const [questSort,setQuestSort]=useState({col:'id',dir:'asc'});
+  const [questTransOpen,setQuestTransOpen]=useState(false);
   const [questSchedule,setQuestSchedule]=useState([]);
   const achFileRef=useRef();
   const [listingsData,setListingsData]=useState({listings:[],total:0,loading:false});
@@ -1312,28 +1314,52 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           )}
 
           {/* Tableau des quêtes */}
+          {(()=>{
+            const COLS=[
+              {key:'name',lbl:'Nom'},
+              {key:'type',lbl:'Trigger'},
+              {key:'threshold',lbl:'Seuil'},
+              {key:'forge_points',lbl:'🔨 Points'},
+              {key:'gold_reward',lbl:'💰 Or'},
+              {key:'active',lbl:'Actif'},
+              {key:'',lbl:''},
+            ]
+            const sortQ=(col)=>setQuestSort(s=>s.col===col?{col,dir:s.dir==='asc'?'desc':'asc'}:{col,dir:'asc'})
+            const sorted=[...dailyQuests].sort((a,b)=>{
+              const {col,dir}=questSort
+              if(!col) return 0
+              const av=a[col]??'', bv=b[col]??''
+              const cmp=typeof av==='number'?av-bv:String(av).localeCompare(String(bv))
+              return dir==='asc'?cmp:-cmp
+            })
+            return(
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:"'Nunito',sans-serif",marginBottom:24}}>
             <thead>
               <tr style={{color:"#8daacc",textAlign:"left"}}>
-                {["Nom","Trigger","Seuil","🔨 Points","💰 Or","Actif",""].map(h=>(
-                  <th key={h} style={{padding:"4px 8px",borderBottom:"1px solid #ffffff10",fontWeight:700}}>{h}</th>
+                {COLS.map(({key,lbl})=>(
+                  <th key={lbl} onClick={key?()=>sortQ(key):undefined}
+                    style={{padding:"4px 8px",borderBottom:"1px solid #ffffff10",fontWeight:700,cursor:key?"pointer":"default",userSelect:"none",whiteSpace:"nowrap"}}>
+                    {lbl}{key&&questSort.col===key?<span style={{marginLeft:4}}>{questSort.dir==='asc'?'▲':'▼'}</span>:null}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {dailyQuests.map(q=>(
+              {sorted.map(q=>(
                 <tr key={q.id} style={{borderBottom:"1px solid #ffffff08",background:editQuest?.id===q.id?"#6c5ce710":"transparent"}}>
                   {editQuest?.id===q.id?(
-                    <td colSpan={6} style={{padding:"8px"}}>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6,marginBottom:6}}>
-                        <Fld lbl="Nom"><input value={editQuest.name} onChange={e=>setEditQuest({...editQuest,name:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
+                    <td colSpan={7} style={{padding:"8px"}}>
+                      {/* Ligne 1 : champs principaux */}
+                      <div style={{display:"grid",gridTemplateColumns:"2fr 2fr 1fr 1fr 1fr 1fr 1fr",gap:6,marginBottom:6}}>
+                        <Fld lbl="Nom (FR)"><input value={editQuest.name} onChange={e=>setEditQuest({...editQuest,name:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
+                        <Fld lbl="Description (FR)"><input value={editQuest.description||''} onChange={e=>setEditQuest({...editQuest,description:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
                         <Fld lbl="Trigger">
                           <select value={editQuest.type} onChange={e=>setEditQuest({...editQuest,type:e.target.value})} style={{...SEL,fontSize:11}}>
                             {['buy_count','sell_count','quiz_win','new_card','streak','daily_connection','forge_card','forge_shiny','daily_treasure'].map(t=><option key={t} value={t}>{t}</option>)}
                           </select>
                         </Fld>
                         <Fld lbl="Seuil"><input type="number" value={editQuest.threshold} onChange={e=>setEditQuest({...editQuest,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
-                        <Fld lbl="🔨 Points forge"><input type="number" value={editQuest.forge_points} onChange={e=>setEditQuest({...editQuest,forge_points:+e.target.value})} min={0} style={{...INP,fontSize:11}}/></Fld>
+                        <Fld lbl="🔨 Forge"><input type="number" value={editQuest.forge_points} onChange={e=>setEditQuest({...editQuest,forge_points:+e.target.value})} min={0} style={{...INP,fontSize:11}}/></Fld>
                         <Fld lbl="💰 Or"><input type="number" value={editQuest.gold_reward||0} onChange={e=>setEditQuest({...editQuest,gold_reward:+e.target.value})} min={0} style={{...INP,fontSize:11}}/></Fld>
                         <Fld lbl="Actif">
                           <select value={editQuest.active?"1":"0"} onChange={e=>setEditQuest({...editQuest,active:e.target.value==="1"})} style={{...SEL,fontSize:11}}>
@@ -1341,6 +1367,23 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                           </select>
                         </Fld>
                       </div>
+                      {/* Traductions */}
+                      <div style={{marginBottom:6}}>
+                        <button onClick={()=>setQuestTransOpen(o=>!o)} style={{background:"none",border:"1px solid #6c5ce755",color:"#a29bfe",padding:"3px 10px",borderRadius:6,fontSize:10,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:800}}>
+                          🌐 Traductions {questTransOpen?'▲':'▼'}
+                        </button>
+                      </div>
+                      {questTransOpen&&(
+                        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:8,padding:"10px 12px",background:"#6c5ce710",borderRadius:8,border:"1px solid #6c5ce733"}}>
+                          {['en','de','es'].map(lng=>(
+                            <div key={lng} style={{display:"grid",gridTemplateColumns:"40px 1fr 1fr",gap:6,alignItems:"center"}}>
+                              <span style={{fontSize:11,fontWeight:900,color:"#a29bfe",textTransform:"uppercase"}}>{lng}</span>
+                              <input placeholder={`Nom (${lng})`} value={editQuest.translations?.[lng]?.name||''} onChange={e=>setEditQuest(q=>({...q,translations:{...q.translations,[lng]:{...q.translations?.[lng],name:e.target.value}}}))} style={{...INP,fontSize:11}}/>
+                              <input placeholder={`Description (${lng})`} value={editQuest.translations?.[lng]?.description||''} onChange={e=>setEditQuest(q=>({...q,translations:{...q.translations,[lng]:{...q.translations?.[lng],description:e.target.value}}}))} style={{...INP,fontSize:11}}/>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div style={{display:"flex",gap:6}}>
                         <button onClick={async()=>{
                           const {data,error}=await apiUpdateAdminDailyQuest(editQuest.id,editQuest);
@@ -1373,6 +1416,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               ))}
             </tbody>
           </table>
+          )
+          })()}
 
           {/* Planning du jour */}
           <div style={{background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:12,padding:14}}>

@@ -18,7 +18,7 @@ const TRIGGER_LABELS = {
 
 export default function DailyQuests({ questActivitySignal, initialQuests }) {
   const { theme } = useTheme()
-  const { t } = useT()
+  const { t, lang } = useT()
   // Pré-remplir immédiatement depuis les données chargées au démarrage
   const [quests, setQuests] = useState(initialQuests ?? null)
 
@@ -89,7 +89,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
                   color: done ? '#00b894' : theme.textPrimary,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
-                  {q.name}
+                  {q.translations?.[lang]?.name || q.name}
                 </div>
                 {!done && (
                   <div style={{ fontSize: 9, color: theme.textSecondary, marginTop: 1 }}>
