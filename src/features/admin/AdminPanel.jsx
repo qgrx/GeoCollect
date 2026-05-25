@@ -960,7 +960,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                     <div style={{fontWeight:800,color:"#aaa",fontSize:10,textTransform:"uppercase",letterSpacing:.8,marginBottom:10,marginTop:6}}>🎯 Condition achievement</div>
                     <Fld lbl="Trigger">
                       <select value={newAchCard.trigger} onChange={e=>setNewAchCard({...newAchCard,trigger:e.target.value})} style={SEL}>
-                        {['buy_count','sell_count','quiz_win','new_card','streak','collection_size'].map(t=><option key={t} value={t}>{t}</option>)}
+                        {['buy_count','sell_count','quiz_win','new_card','streak','collection_size','rank_reached'].map(t=><option key={t} value={t}>{t}</option>)}
                       </select>
                     </Fld>
                     <Fld lbl="Seuil (nombre d'événements)">
@@ -1124,7 +1124,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <Fld lbl="Nom affiché"><input value={newDef.name} onChange={e=>setNewDef({...newDef,name:e.target.value})} placeholder="ex: Méga acheteur" style={INP}/></Fld>
                   <Fld lbl="Type de déclencheur">
                     <select value={newDef.type} onChange={e=>setNewDef({...newDef,type:e.target.value})} style={SEL}>
-                      {['buy_count','sell_count','quiz_win','new_card','streak','collection_size'].map(t=><option key={t} value={t}>{t}</option>)}
+                      {['buy_count','sell_count','quiz_win','new_card','streak','collection_size','rank_reached'].map(t=><option key={t} value={t}>{t}</option>)}
                     </select>
                   </Fld>
                   <Fld lbl="Seuil"><input type="number" value={newDef.threshold} onChange={e=>setNewDef({...newDef,threshold:+e.target.value})} min={1} style={INP}/></Fld>
@@ -1172,7 +1172,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                               <Fld lbl="Nom"><input value={editDef.name} onChange={e=>setEditDef({...editDef,name:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
                               <Fld lbl="Trigger">
                                 <select value={editDef.type} onChange={e=>setEditDef({...editDef,type:e.target.value})} style={{...SEL,fontSize:11}}>
-                                  {['buy_count','sell_count','quiz_win','new_card','streak','collection_size'].map(t=><option key={t} value={t}>{t}</option>)}
+                                  {['buy_count','sell_count','quiz_win','new_card','streak','collection_size','rank_reached'].map(t=><option key={t} value={t}>{t}</option>)}
                                 </select>
                               </Fld>
                               <Fld lbl="Seuil"><input type="number" value={editDef.threshold} onChange={e=>setEditDef({...editDef,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
