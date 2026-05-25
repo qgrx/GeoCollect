@@ -171,7 +171,7 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
                       {/* Emoji + prix */}
                       <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 64 }}>
                         <div style={{ fontSize: 34, filter: 'drop-shadow(0 3px 8px #0006)' }}>{pack.emoji}</div>
-                        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: '#f9ca24', marginTop: 2, lineHeight: 1 }}>{pack.price}</div>
+                        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: '#f9ca24', marginTop: 2, lineHeight: 1, whiteSpace: 'nowrap' }}>{pack.price}</div>
                         <div style={{ fontSize: 9, color: '#666', marginTop: 1 }}>unique</div>
                       </div>
                       {/* Contenu */}
