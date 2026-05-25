@@ -30,8 +30,7 @@ export const cardCC = (r) => {
 // Métadonnées d'affichage des achievements (icône, label) — la logique de déclenchement
 // est désormais entièrement gérée côté serveur (achievementService.js).
 export const ACHIEVEMENT_DEF = [
-  { id: 'first_blood',     label: 'First blood',       icon: '🩸', cardId: 901 },
-  { id: 'quiz_1000',       label: 'Légendaire',        icon: '🐉', cardId: 909 },
+{ id: 'quiz_1000',       label: 'Légendaire',        icon: '🐉', cardId: 909 },
   { id: 'collector_100',   label: 'Collectionneur',    icon: '🃏', cardId: 902 },
   { id: 'first_buy',       label: 'Premier achat',     icon: '🛍️', cardId: 903 },
   { id: 'buyer_50',        label: 'Acheteur vétérant', icon: '💳', cardId: 904 },
