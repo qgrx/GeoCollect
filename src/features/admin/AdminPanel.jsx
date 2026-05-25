@@ -562,10 +562,6 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Or max / jour</div>
                   <input type="number" min={0} value={limEdit[k].dailyGold} onChange={e=>setLimEdit({...limEdit,[k]:{...limEdit[k],dailyGold:+e.target.value}})} style={{...INP,width:"100%"}}/>
                 </div>
-                <div style={{flex:1,minWidth:140}}>
-                  <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Cartes max / jour</div>
-                  <input type="number" min={0} value={limEdit[k].dailyCards} onChange={e=>setLimEdit({...limEdit,[k]:{...limEdit[k],dailyCards:+e.target.value}})} style={{...INP,width:"100%"}}/>
-                </div>
               </div>
             </div>
           ))}
