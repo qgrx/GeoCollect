@@ -322,9 +322,9 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
                 <div style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>{selectedPack.contents?.map(c => `${c.icon} ${c.label}`).join(' · ')}</div>
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
-              <span style={{ fontSize: 12, color: theme.textMuted }}>{t('tresor_price_ttc')}</span>
-              <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: theme.gold }}>{selectedPack.price}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
+              <span style={{ fontSize: 12, color: theme.textMuted, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('tresor_price_ttc')}</span>
+              <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 20, color: theme.gold, flexShrink: 0, whiteSpace: 'nowrap' }}>{selectedPack.price}</span>
             </div>
           </div>
 
