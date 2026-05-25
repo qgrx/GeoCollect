@@ -43,7 +43,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const [filterShinyVal, setFilterShinyVal]       = useState('');
   const [filterForgeCost, setFilterForgeCost]     = useState('');
   const [filterForgeCostVal, setFilterForgeCostVal] = useState('');
-  const advActiveCount = [filterForgeable, filterSellable, filterMinPrice, filterShiny, filterForgeCost].filter(Boolean).length;
+  const advActiveCount = [filterSellable, filterMinPrice, filterShiny, filterForgeCost].filter(Boolean).length;
   const [circulation, setCirculation] = useState(null);
   const [nc, setNc] = useState({ name: "", type: cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "", forgeable: false, forgeCost: "", shiny_forge_cost: null, season_id: null });
 
@@ -252,6 +252,11 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
                 {seasons.map(s=><option key={s.id} value={String(s.id)}>{s.name}</option>)}
               </select>
             )}
+            <select value={filterForgeable} onChange={e=>{setFilterForgeable(e.target.value);setGridPage(0);}} style={{...SEL,fontSize:12,padding:"6px 10px"}}>
+              <option value="">Forge : tous</option>
+              <option value="true">🔨 Forgeables</option>
+              <option value="false">Non forgeables</option>
+            </select>
             <button onClick={()=>setShowAdv(v=>!v)}
               style={{background:showAdv||advActiveCount>0?'#6c5ce722':'#ffffff0a',border:`1px solid ${advActiveCount>0?'#6c5ce7':'#ffffff22'}`,color:advActiveCount>0?'#a29bfe':'#aaa',padding:"6px 10px",borderRadius:6,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
               Filtres {advActiveCount>0?`(${advActiveCount}) `:''}▾
@@ -259,13 +264,8 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
           </div>
           {showAdv && (
             <div style={{background:"#ffffff08",border:"1px solid #ffffff14",borderRadius:8,padding:"10px 12px",marginBottom:8,display:"flex",flexDirection:"column",gap:7}}>
-              {/* Forgeable / Vendable */}
+              {/* Vendable */}
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                <select value={filterForgeable} onChange={e=>{setFilterForgeable(e.target.value);setGridPage(0);}} style={{...SEL,fontSize:11,padding:"4px 8px",flex:1}}>
-                  <option value="">Forgeable : tous</option>
-                  <option value="true">🔨 Forgeables</option>
-                  <option value="false">Non forgeables</option>
-                </select>
                 <select value={filterSellable} onChange={e=>{setFilterSellable(e.target.value);setGridPage(0);}} style={{...SEL,fontSize:11,padding:"4px 8px",flex:1}}>
                   <option value="">Vendable : tous</option>
                   <option value="true">✓ Vendables</option>
@@ -318,7 +318,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
                 )}
               </div>
               {advActiveCount>0&&(
-                <button onClick={()=>{setFilterForgeable('');setFilterSellable('');setFilterMinPrice('');setFilterMinPriceVal('');setFilterShiny('');setFilterShinyVal('');setFilterForgeCost('');setFilterForgeCostVal('');setGridPage(0);}}
+                <button onClick={()=>{setFilterSellable('');setFilterMinPrice('');setFilterMinPriceVal('');setFilterShiny('');setFilterShinyVal('');setFilterForgeCost('');setFilterForgeCostVal('');setGridPage(0);}}
                   style={{background:"#e74c3c22",border:"1px solid #e74c3c44",color:"#e74c3c",padding:"4px 10px",borderRadius:6,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",alignSelf:"flex-start"}}>
                   ✕ Réinitialiser les filtres avancés
                 </button>
@@ -393,7 +393,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
                 <span style={{color:"#aaa",fontSize:12}}>pts</span>
               </div>
             </Fld>
-            <div style={{display:"flex",gap:8,marginTop:4}}>{editCard?(<><button onClick={async()=>{if(!editCard.name.trim()){setMsg("❌ Nom requis.");return;}const payload={...editCard, image_url: editCard.image, image_url_thumb: editCard.thumbnail, is_offered: !!editCard.is_offered, forgeable: !!editCard.forgeable, forge_cost: editCard.forgeable ? (editCard.forge_cost??editCard.forgeCost??null) : null}; if(payload.minPrice!==undefined){payload.min_price=payload.minPrice; delete payload.minPrice;} delete payload.image; delete payload.thumbnail; delete payload.forgeCost; const err=await onEditCard(payload);if(err){setMsg("❌ "+err);return;}onUpdateCardInPool?.(payload);closeForm();setMsg(`✅ "${editCard.name}" mis à jour !`);}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>Enregistrer ✏️</button><button onClick={closeForm} style={{...BTN("#ffffff18"),padding:"11px",borderRadius:10}}>Annuler</button><button onClick={async()=>{if(!window.confirm(`Supprimer définitivement "${editCard.name}" ?`)) return;const name=editCard.name;const err=await onDeleteCard(editCard.id);if(err){setMsg("❌ "+err);return;}closeForm();setMsg(`✅ "${name}" supprimée.`);}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)","#fff"),padding:"11px",borderRadius:10}} title="Supprimer cette carte">🗑️</button></>):(<button onClick={async()=>{if(!nc.name.trim()){setMsg("❌ Nom requis.");return;}const payload={name:nc.name.trim(), type:nc.type||cardTypes[0]||"", rarity:nc.rarity, image_url:nc.image, image_url_thumb:nc.thumbnail, desc:nc.desc, sellable:nc.forgeable?false:nc.sellable, min_price:nc.minPrice||null, forgeable:!!nc.forgeable, forge_cost:nc.forgeable?(nc.forge_cost??null):null, season_id:nc.season_id||null}; const err=await onAddCard(payload);if(err){setMsg("❌ "+err);return;}setMsg(`✅ "${nc.name}" créée !`);closeForm();}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>{t("admin_create_card")}</button>)}</div>
+            <div style={{display:"flex",gap:8,marginTop:4}}>{editCard?(<><button onClick={async()=>{if(!editCard.name.trim()){setMsg("❌ Nom requis.");return;}const payload={...editCard, image_url: editCard.image, image_url_thumb: editCard.thumbnail, is_offered: !!editCard.is_offered, forgeable: !!editCard.forgeable, forge_cost: editCard.forgeable ? (editCard.forge_cost != null ? editCard.forge_cost : (editCard.forgeCost !== '' && editCard.forgeCost != null ? +editCard.forgeCost : null)) : null}; if(payload.minPrice!==undefined){payload.min_price=payload.minPrice; delete payload.minPrice;} delete payload.image; delete payload.thumbnail; delete payload.forgeCost; const err=await onEditCard(payload);if(err){setMsg("❌ "+err);return;}onUpdateCardInPool?.(payload);closeForm();setMsg(`✅ "${editCard.name}" mis à jour !`);}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>Enregistrer ✏️</button><button onClick={closeForm} style={{...BTN("#ffffff18"),padding:"11px",borderRadius:10}}>Annuler</button><button onClick={async()=>{if(!window.confirm(`Supprimer définitivement "${editCard.name}" ?`)) return;const name=editCard.name;const err=await onDeleteCard(editCard.id);if(err){setMsg("❌ "+err);return;}closeForm();setMsg(`✅ "${name}" supprimée.`);}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)","#fff"),padding:"11px",borderRadius:10}} title="Supprimer cette carte">🗑️</button></>):(<button onClick={async()=>{if(!nc.name.trim()){setMsg("❌ Nom requis.");return;}const payload={name:nc.name.trim(), type:nc.type||cardTypes[0]||"", rarity:nc.rarity, image_url:nc.image, image_url_thumb:nc.thumbnail, desc:nc.desc, sellable:nc.forgeable?false:nc.sellable, min_price:nc.minPrice||null, forgeable:!!nc.forgeable, forge_cost:nc.forgeable?(nc.forge_cost??null):null, season_id:nc.season_id||null}; const err=await onAddCard(payload);if(err){setMsg("❌ "+err);return;}setMsg(`✅ "${nc.name}" créée !`);closeForm();}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>{t("admin_create_card")}</button>)}</div>
           </div>
           <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:7}}><div style={{fontSize:10,color:"#8daacc",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Aperçu</div>{(()=>{const src=editCard||nc;const {c1,c2}=cardCC(src.rarity);const isLeg=src.rarity==="légendaire";return(<div style={{position:"relative",width:148,height:190,borderRadius:16,border:isLeg?`2px solid ${c1}`:`1.5px solid ${c1}66`,boxShadow:isLeg?`0 0 20px ${c1}66,0 4px 20px #0004`:"0 4px 14px #0003",overflow:"hidden",background:src.image?"transparent":`linear-gradient(145deg,${c1}44,${c2}66)`,fontFamily:"'Nunito',sans-serif"}}>{isLeg&&<div style={{position:"absolute",inset:0,borderRadius:16,zIndex:2,background:"linear-gradient(135deg,transparent 40%,#ffffff1a 50%,transparent 60%)",backgroundSize:"400px 100%",animation:"shimmer 2.5s linear infinite",pointerEvents:"none"}}/>}<div style={{position:"absolute",inset:0,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:6}}>{src.image?<img src={src.image} style={{width:"100%",height:"88%",objectFit:"contain"}} alt=""/>:<div style={{fontSize:52,opacity:.22,marginTop:40}}>🃏</div>}</div><div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,background:`linear-gradient(to top,${c1}ee 0%,${c1}99 50%,transparent 100%)`,padding:"28px 8px 7px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:13,color:"#fff",textShadow:"0 1px 4px #0008",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",letterSpacing:.3}}>{src.name||"Nom"}</div></div><div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:4,height:4,background:`linear-gradient(90deg,${c1},${c2})`}}/>{src.forgeable&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#6c5ce7cc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>🔨 {src.forge_cost??src.forgeCost??'?'}pts</div>}{!src.forgeable&&src.sellable===false&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#e74c3ccc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>NON VENDABLE</div>}{!src.forgeable&&src.minPrice>0&&<div style={{position:"absolute",top:5,right:5,zIndex:5,background:"#f39c12cc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>MIN {src.minPrice}G</div>}</div>);})()}</div>
         </div>
