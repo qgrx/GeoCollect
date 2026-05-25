@@ -1777,7 +1777,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
                 {ranks.map((rank,i)=>(
-                  <div key={rank.label+i} style={{display:"flex",alignItems:"center",gap:8,background:"#ffffff08",borderRadius:10,padding:"10px 12px",border:"1px solid #ffffff10",flexWrap:"wrap"}}>
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"#ffffff08",borderRadius:10,padding:"10px 12px",border:"1px solid #ffffff10",flexWrap:"wrap"}}>
                     <input value={rank.label} onChange={e=>{const r=[...ranks];r[i]={...r[i],label:e.target.value};setRanks(r);}}
                       style={{...INP,flex:1,minWidth:100}}/>
                     <div style={{display:"flex",alignItems:"center",gap:5}}>
