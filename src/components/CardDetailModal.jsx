@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback } from 'react'
-import { RC, cardCC, rarityLabel } from '../data/cards.js'
+import { RC, cardCC, rarityLabel, cardName } from '../data/cards.js'
 import { useT } from '../i18n/translations.js'
 import { ShinyEffect } from './Card.jsx'
 
 export default function CardDetailModal({ card, count, onClose, onSell, isShiny = false }) {
-  const { t } = useT()
+  const { t, lang } = useT()
 
   const imgRef = useRef()
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
@@ -112,7 +112,7 @@ export default function CardDetailModal({ card, count, onClose, onSell, isShiny 
         {/* Infos */}
         <div style={{ padding: '14px 20px' }}>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 24, color: isShiny ? '#f9ca24' : '#fff', marginBottom: 4, textShadow: isShiny ? '-1px -1px 0 #0009, 1px -1px 0 #0009, -1px 1px 0 #0009, 1px 1px 0 #0009, 0 0 12px #f9ca2455' : 'none' }}>
-            {card.name}
+            {cardName(card, lang)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span style={{ color: rc.color, fontSize: 14 }}>{'★'.repeat(rc.stars)}{'☆'.repeat(4 - rc.stars)}</span>

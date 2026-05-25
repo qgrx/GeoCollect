@@ -1,4 +1,4 @@
-import { RARITY_CONFIG as RC, cardCC } from '../data/cards.js';
+import { RARITY_CONFIG as RC, cardCC, cardName } from '../data/cards.js';
 import { useT } from '../i18n/translations.js';
 
 const SHINY_CSS = `
@@ -58,7 +58,7 @@ export const ShinyEffect = ({ size = 'normal' }) => {
 }
 
 export default function Card({ card, count, onClick, selected, small, dimmed, isShiny = false }) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const rc = RC[card.rarity] || RC.commun
   const { c1, c2 } = cardCC(card.rarity)
   const isLeg = card.rarity === 'légendaire'
@@ -104,7 +104,7 @@ export default function Card({ card, count, onClick, selected, small, dimmed, is
         <div style={{fontWeight:900,fontSize: small ? 10 : 13,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',letterSpacing:0.3,fontFamily:"'Nunito',sans-serif",
           ...({ color: '#fff', textShadow: '0 1px 4px #0008' })
         }}>
-          {card.name}
+          {cardName(card, lang)}
         </div>
       </div>
 
