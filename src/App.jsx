@@ -762,8 +762,8 @@ export default function App() {
     [gs.collection]
   )
   const userScore = useMemo(
-    () => collScore(gs.collection, gs.cardPool, gs.shinyCollection || {}, gs.limits.scoreRules, gs.limits.shinyMultiplier ?? 2),
-    [gs.collection, gs.cardPool, gs.shinyCollection, gs.limits.scoreRules, gs.limits.shinyMultiplier]
+    () => collScore(gs.collection, gs.cardPool, gs.shinyCollection || {}, gs.limits.scoreRules, gs.limits.shinyScoreRules),
+    [gs.collection, gs.cardPool, gs.shinyCollection, gs.limits.scoreRules, gs.limits.shinyScoreRules]
   )
   const prevHadDuplicate = useRef(false)
   useEffect(() => {
@@ -1540,11 +1540,12 @@ export default function App() {
       {showChoosePseudo && <AuthModal auth={auth} initialMode="choose_pseudo" onClose={() => setShowChoosePseudo(false)} onSuccess={() => setShowChoosePseudo(false)} />}
       {showScoreDetail && (() => {
         const W = gs.limits.scoreRules || { commun: 1, rare: 3, épique: 7, légendaire: 20 }
+        const SW = gs.limits.shinyScoreRules || { commun: 2, rare: 6, épique: 14, légendaire: 40 }
         const rarities = ['légendaire', 'épique', 'rare', 'commun']
         const rows = rarities.map(r => {
           const normal = Object.entries(gs.collection).filter(([id, n]) => n > 0 && gs.cardPool.find(c => c.id === +id)?.rarity === r).length
           const shiny  = Object.entries(gs.shinyCollection || {}).filter(([id, n]) => n > 0 && gs.cardPool.find(c => c.id === +id)?.rarity === r).length
-          return { r, normal, shiny, pts: W[r] }
+          return { r, normal, shiny, pts: W[r], shinyPts: SW[r] ?? W[r] * 2 }
         }).filter(row => row.normal > 0 || row.shiny > 0)
         const labels = { commun: t('rarity_commun'), rare: t('rarity_rare'), épique: t('rarity_epique'), légendaire: t('rarity_legendaire') }
         const { c1 } = rankCC(getRank(userScore, gs.limits.playerRanks))
@@ -1567,7 +1568,7 @@ export default function App() {
                     {shiny > 0 && (
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', background:theme.overlay, borderRadius:8, marginTop: normal > 0 ? 4 : 0 }}>
                         <span style={{ fontSize:13, color:theme.textPrimary, fontWeight:700 }}>{shiny} × {labels[r]} ✨</span>
-                        <span style={{ fontSize:13, color:theme.gold, fontWeight:900 }}>+{shiny * pts * (gs.limits.shinyMultiplier ?? 2)} pts</span>
+                        <span style={{ fontSize:13, color:theme.gold, fontWeight:900 }}>+{shiny * shinyPts} pts</span>
                       </div>
                     )}
                   </div>
@@ -1685,7 +1686,7 @@ export default function App() {
                 apiSetConfig('shiny_rate',        limEdit.shinyRate        ?? 0.1),
                 apiSetConfig('shiny_forge_open',  limEdit.shinyForgeOpen   ?? true),
                 apiSetConfig('score_rules',       limEdit.scoreRules       ?? { commun:1, rare:3, épique:7, légendaire:20 }),
-                apiSetConfig('shiny_multiplier',          limEdit.shinyMultiplier        ?? 2),
+                apiSetConfig('shiny_score_rules',  limEdit.shinyScoreRules  ?? { commun:2, rare:6, épique:14, légendaire:40 }),
                 ...(limEdit.shinyForgeCostByRarity != null ? [apiSetConfig('shiny_forge_cost_by_rarity', limEdit.shinyForgeCostByRarity)] : []),
               ])
             } catch (err) {

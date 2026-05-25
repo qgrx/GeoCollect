@@ -5,7 +5,9 @@ export const normA = (s) =>
 
 export const wordCount = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 
-export function collScore(col, pool, shinyCol = {}, rules = { commun: 1, rare: 3, épique: 7, légendaire: 20 }, shinyMult = 2) {
+export const DEFAULT_SHINY_SCORE_RULES = { commun: 2, rare: 6, épique: 14, légendaire: 40 }
+
+export function collScore(col, pool, shinyCol = {}, rules = { commun: 1, rare: 3, épique: 7, légendaire: 20 }, shinyRules = DEFAULT_SHINY_SCORE_RULES) {
   const normal = Object.entries(col).reduce((sum, [id, n]) => {
     if (!n) return sum
     const c = pool.find(x => x.id === +id)
@@ -14,7 +16,7 @@ export function collScore(col, pool, shinyCol = {}, rules = { commun: 1, rare: 3
   const shiny = Object.entries(shinyCol).reduce((sum, [id, n]) => {
     if (!n) return sum
     const c = pool.find(x => x.id === +id)
-    return sum + (rules[c?.rarity] || 1) * shinyMult
+    return sum + (shinyRules[c?.rarity] ?? (rules[c?.rarity] || 1) * 2)
   }, 0)
   return normal + shiny
 }

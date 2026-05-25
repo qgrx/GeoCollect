@@ -725,7 +725,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 </div>
               ))}
             </div>
-            <div style={{fontSize:10,color:"#a8bfcf",marginTop:8}}>Les cartes brillantes rapportent le double. Les changements s'appliquent immédiatement.</div>
+            <div style={{fontSize:10,color:"#a8bfcf",marginTop:8}}>Points attribués lors de la première acquisition d'un geocoin normal.</div>
           </div>
 
           {/* Brillance */}
@@ -743,16 +743,22 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 </div>
                 <div style={{fontSize:10,color:"#a8bfcf",marginTop:4}}>Probabilité qu'un quiz génère un geocoin brillant</div>
               </div>
-              <div style={{flex:1,minWidth:180}}>
-                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Multiplicateur de score ✨</div>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input type="number" min={1} max={10} step={0.5}
-                    value={limEdit.shinyMultiplier ?? 2}
-                    onChange={e=>setLimEdit({...limEdit,shinyMultiplier:Math.max(1,+e.target.value)})}
-                    style={{...INP,width:80}}/>
-                  <span style={{color:"#aaa",fontSize:12}}>×</span>
+              <div style={{flex:'0 0 100%'}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Points par rareté ✨ (geocoins brillants)</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+                  {['commun','rare','épique','légendaire'].map(r=>(
+                    <div key={r}>
+                      <div style={{fontSize:11,color:"#aaa",marginBottom:4,textTransform:"capitalize"}}>{r}</div>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <input type="number" min={1} max={999}
+                          value={(limEdit.shinyScoreRules ?? {commun:2,rare:6,épique:14,légendaire:40})[r] ?? 2}
+                          onChange={e=>setLimEdit({...limEdit,shinyScoreRules:{...(limEdit.shinyScoreRules??{commun:2,rare:6,épique:14,légendaire:40}),[r]:Math.max(1,+e.target.value)}})}
+                          style={{...INP,width:70}}/>
+                        <span style={{color:"#aaa",fontSize:11}}>pts</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div style={{fontSize:10,color:"#a8bfcf",marginTop:4}}>Points × ce coefficient pour les geocoins brillants</div>
               </div>
               <div style={{flex:'0 0 100%',fontSize:10,color:"#a8bfcf"}}>Les coûts de forge brillance sont maintenant configurables dans le tableau Forge ci-dessus.</div>
               <div style={{flex:1,minWidth:180}}>
