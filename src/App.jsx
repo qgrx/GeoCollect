@@ -1316,6 +1316,7 @@ export default function App() {
                   shinyCollection={gs.shinyCollection || {}}
                   forgePoints={gs.forgePoints}
                   shinyForgeCostByRarity={gs.limits.shinyForgeCostByRarity ?? {}}
+                  forgeCostByRarity={gs.limits.forgeCostByRarity ?? {}}
                   onClose={() => setActiveTab('collection')}
                   onForged={(data) => {
                     if (data?.forge_points_remaining !== undefined) {

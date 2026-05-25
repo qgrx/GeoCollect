@@ -280,7 +280,7 @@ function ShinyCard({ card, phase }) {
 }
 
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
-export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, inline = false, shinyForgeCostByRarity = {}, loading = false }) {
+export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, inline = false, shinyForgeCostByRarity = {}, forgeCostByRarity = {}, loading = false }) {
   useEffect(() => { injectStyle() }, [])
   const { theme } = useTheme()
   const { t } = useT()
@@ -490,8 +490,9 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
               const { c1, c2 } = cardCC(card.rarity)
               const owned     = (collection[card.id] || 0) > 0
               const justDone  = recentlyForged.has(card.id)
-              const canForge  = !owned && !justDone
-              const canAfford = canForge && forgePoints >= (card.forge_cost || Infinity)
+              const canForge     = !owned && !justDone
+              const effectiveCost = card.forge_cost ?? forgeCostByRarity[card.rarity] ?? null
+              const canAfford    = canForge && effectiveCost != null && forgePoints >= effectiveCost
               const src = card.image || card.image_url
 
               return (
@@ -543,7 +544,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontWeight: 900, fontSize: 14,
                       color: canAfford ? '#a29bfe' : theme.textMuted }}>
-                      🔨 {card.forge_cost ?? '?'}
+                      🔨 {effectiveCost ?? '?'}
                     </span>
                     <span style={{ fontSize: 10, color: theme.textMuted }}>pts</span>
                   </div>
@@ -555,7 +556,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                   ) : (
                     <button
                       onClick={() => handleForge(card)}
-                      disabled={!canAfford || !card.forge_cost}
+                      disabled={!canAfford || effectiveCost == null}
                       style={{
                         width: '100%',
                         padding: '8px 0', borderRadius: 10,
@@ -571,9 +572,9 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                       onMouseEnter={e => { if (canAfford) e.currentTarget.style.transform = 'translateY(-1px)' }}
                       onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}
                     >
-                      {!card.forge_cost ? t('forge_undefined_cost')
+                      {effectiveCost == null ? t('forge_undefined_cost')
                         : canAfford ? t('forge_btn')
-                        : t('forge_missing_pts').replace('{n}', card.forge_cost - forgePoints)}
+                        : t('forge_missing_pts').replace('{n}', effectiveCost - forgePoints)}
                     </button>
                   )}
                 </div>
