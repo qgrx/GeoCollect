@@ -3,18 +3,6 @@ import { apiGetDailyQuests } from '../../services/api.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
 
-const TRIGGER_LABELS = {
-  buy_count:        'Achats marché',
-  sell_count:       'Mises en vente',
-  quiz_win:         'Quiz gagnés',
-  new_card:         'Nouvelles cartes',
-  streak:           'Streak',
-  collection_size:  'Cartes uniques',
-  daily_connection: 'Connexions (3h)',
-  forge_card:       'Cartes forgées',
-  forge_shiny:      'Cartes rendues brillantes',
-  daily_treasure:   'Trésor quotidien réclamé',
-}
 
 export default function DailyQuests({ questActivitySignal, initialQuests }) {
   const { theme } = useTheme()
@@ -93,7 +81,7 @@ export default function DailyQuests({ questActivitySignal, initialQuests }) {
                 </div>
                 {!done && (
                   <div style={{ fontSize: 9, color: theme.textSecondary, marginTop: 1 }}>
-                    {q.progress}/{q.threshold} {TRIGGER_LABELS[q.type] || q.type}
+                    {q.progress}/{q.threshold} {t(`trigger_${q.type}`) || q.type}
                   </div>
                 )}
               </div>
