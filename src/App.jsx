@@ -24,7 +24,7 @@ import Card from './components/Card.jsx';
 import CardDetailModal from './components/CardDetailModal.jsx';
 import OnboardingTour from './components/OnboardingTour.jsx';
 import PseudoDisplay from './components/PseudoDisplay.jsx';
-import { getRank, isTopRank, rankCC } from './utils/rankUtils.js';
+import { getRank, isTopRank, rankCC, getRankLabel } from './utils/rankUtils.js';
 import MaintenanceScreen from './components/MaintenanceScreen.jsx';
 
 // ─── Features ────────────────────────────────────────────────────────────────
@@ -1596,8 +1596,8 @@ export default function App() {
                           ? (() => { const r=(n>>16)&255,g=(n>>8)&255,b=n&255,f=0.65; return `rgb(${Math.round(r+(255-r)*f)},${Math.round(g+(255-g)*f)},${Math.round(b+(255-b)*f)})`})()
                           : rank.color
                         return (
-                          <div key={rank.label} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 10px', borderRadius:8, background: isCurrent ? `${rank.color}22` : theme.overlay, border: isCurrent ? `1px solid ${rank.color}66` : `1px solid ${theme.border}`, opacity: reached ? 1 : 0.5 }}>
-                            <span style={{ flex:1, fontSize:12, fontWeight: isCurrent ? 900 : 700, color: displayColor }}>{rank.label}</span>
+                          <div key={rank.min} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 10px', borderRadius:8, background: isCurrent ? `${rank.color}22` : theme.overlay, border: isCurrent ? `1px solid ${rank.color}66` : `1px solid ${theme.border}`, opacity: reached ? 1 : 0.5 }}>
+                            <span style={{ flex:1, fontSize:12, fontWeight: isCurrent ? 900 : 700, color: displayColor }}>{getRankLabel(rank, lang)}</span>
                             <span style={{ fontSize:11, fontWeight:700, color: reached ? displayColor : theme.textMuted }}>{rank.min} pts</span>
                             {isCurrent && <span style={{ fontSize:9, fontWeight:900, color:displayColor, background:`${rank.color}22`, padding:'1px 6px', borderRadius:50 }}>{t('score_detail_current')}</span>}
                           </div>

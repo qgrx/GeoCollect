@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { INP, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
+import { getRankLabel } from '../../utils/rankUtils.js';
 import { cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
 import {
@@ -9,7 +10,7 @@ import {
 } from '../../services/api.js';
 
 export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMsg }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [page, setPage]               = useState(0);
   const [search, setSearch]           = useState('');
   const [playerView, setPlayerView]   = useState(null);
@@ -289,7 +290,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
                   <div style={{ flex: 1, minWidth: 100 }}>
                     <button onClick={() => setPlayerView(p)} style={{ background: 'none', border: 'none', color: banned ? '#666' : '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", textDecoration: banned ? 'line-through' : 'none', padding: 0 }}>{p.name}</button>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 1, flexWrap: 'wrap' }}>
-                      {p.score != null && (() => { const ranks = limEdit.playerRanks || []; const rank = [...ranks].sort((a, b) => b.min - a.min).find(r => p.score >= r.min) || ranks[0]; return rank ? <span style={{ fontSize: 9, color: rank.color, fontWeight: 800 }}>{rank.label} · {p.score}pts</span> : null; })()}
+                      {p.score != null && (() => { const ranks = limEdit.playerRanks || []; const rank = [...ranks].sort((a, b) => b.min - a.min).find(r => p.score >= r.min) || ranks[0]; return rank ? <span style={{ fontSize: 9, color: rank.color, fontWeight: 800 }}>{getRankLabel(rank, lang)} · {p.score}pts</span> : null; })()}
                       {p.gold != null && <span style={{ fontSize: 9, color: '#f9ca24', fontWeight: 700 }}>{p.gold}G</span>}
                       {p.can_sell === false && <span style={{ fontSize: 9, background: '#e74c3c22', color: '#e74c3c', borderRadius: 50, padding: '1px 6px', fontWeight: 700 }}>vente interdite</span>}
                     </div>

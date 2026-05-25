@@ -9,6 +9,10 @@ export function isTopRank(score, ranks) {
   return score >= top.min
 }
 
+export function getRankLabel(rank, lang = 'fr') {
+  return rank?.labels?.[lang] || rank?.label || ''
+}
+
 // Dérive une paire de couleurs (c1, c2) depuis la couleur d'un rang
 export function rankCC(rank) {
   const c1 = rank?.color || '#78909c'

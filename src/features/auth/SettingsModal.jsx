@@ -3,7 +3,7 @@ import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { BTN, INP } from '../../utils/styles.js'
 import { RC, ACHIEVEMENT_DEF } from '../../data/cards.js'
-import { rankCC } from '../../utils/rankUtils.js'
+import { rankCC, getRankLabel } from '../../utils/rankUtils.js'
 import { PSEUDO_CHANGE_DAYS } from '../../data/constants.js'
 import { apiDeleteAccount } from '../../services/api.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
@@ -38,7 +38,7 @@ function memberSince(dateStr) {
 
 // ─── SettingsModal ────────────────────────────────────────────────────────────
 export default function SettingsModal({ auth, collection = {}, cardPool = [], unlockedAch = [], ranks = [], score: scoreProp, onClose, onStartTour }) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const { theme } = useTheme()
   const { profile } = auth
   const [tab,     setTab]     = useState('profil')   // profil | achievements
@@ -114,7 +114,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                 <span style={{ fontSize: 14 }}>{rank.icon}</span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: rank.color }}>{rank.label}</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: rank.color }}>{getRankLabel(rank, lang)}</span>
                 {profile.role === 'admin' && (
                   <span style={{ fontSize: 10, background: '#e74c3c', color: '#fff',
                     padding: '1px 7px', borderRadius: 50, fontWeight: 900, marginLeft: 2 }}>ADMIN</span>
@@ -168,7 +168,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           return (
             <div style={{ padding: '12px 24px', borderBottom: `1px solid ${theme.borderLight}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, color: theme.textMuted }}>
-                <span>{t('rank_next')} <span style={{ color: nextRank.color, fontWeight: 800 }}>{nextRank.icon} {nextRank.label}</span></span>
+                <span>{t('rank_next')} <span style={{ color: nextRank.color, fontWeight: 800 }}>{nextRank.icon} {getRankLabel(nextRank, lang)}</span></span>
                 <span style={{ fontWeight: 700 }}>{t('rank_progress').replace('{score}',score).replace('{max}',nextRank.min)}</span>
               </div>
               <div style={{ background: theme.overlay, borderRadius: 50, height: 6, overflow: 'hidden' }}>

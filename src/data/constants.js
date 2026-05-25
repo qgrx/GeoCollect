@@ -5,12 +5,12 @@ export const PSEUDO_NOTIF_DAYS  = 15;   // days to show "new pseudo" badge
 export const PACK_PRICE_LABEL   = '2,99 €';
 
 export const DEFAULT_RANKS = [
-  { min: 0,   label: 'Novice',          color: '#78909c', icon: '🌱' },
-  { min: 5,   label: 'Explorateur',     color: '#42a5f5', icon: '🧭' },
-  { min: 20,  label: 'Aventurier',      color: '#66bb6a', icon: '⛺' },
-  { min: 50,  label: 'Chasseur',        color: '#ffa726', icon: '🎯' },
-  { min: 100, label: 'Expert',          color: '#ab47bc', icon: '🔮' },
-  { min: 200, label: 'Maître Geocoins', color: '#f9ca24', icon: '👑' },
+  { min: 0,   label: 'Novice',          color: '#78909c', icon: '🌱', labels: { fr: 'Novice',          en: 'Novice',         de: 'Neuling',         es: 'Novato'          } },
+  { min: 5,   label: 'Explorateur',     color: '#42a5f5', icon: '🧭', labels: { fr: 'Explorateur',     en: 'Explorer',       de: 'Entdecker',       es: 'Explorador'      } },
+  { min: 20,  label: 'Aventurier',      color: '#66bb6a', icon: '⛺', labels: { fr: 'Aventurier',      en: 'Adventurer',     de: 'Abenteurer',      es: 'Aventurero'      } },
+  { min: 50,  label: 'Chasseur',        color: '#ffa726', icon: '🎯', labels: { fr: 'Chasseur',        en: 'Hunter',         de: 'Jäger',           es: 'Cazador'         } },
+  { min: 100, label: 'Expert',          color: '#ab47bc', icon: '🔮', labels: { fr: 'Expert',          en: 'Expert',         de: 'Experte',         es: 'Experto'         } },
+  { min: 200, label: 'Maître Geocoins', color: '#f9ca24', icon: '👑', labels: { fr: 'Maître Geocoins', en: 'Geocoin Master', de: 'Geocoin-Meister', es: 'Maestro Geocoins' } },
 ];
 
 export const DEFAULT_RARITY_RATES = { commun: 50, rare: 30, épique: 15, légendaire: 5 };
