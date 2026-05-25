@@ -95,10 +95,11 @@ export const apiOnboardingDone       = ()  => apiFetch('/api/profile/onboarding-
 export const apiResetAchievements    = ()  => apiFetch('/api/achievements/reset', { method: 'DELETE' })
 export const apiAdminReactivate         = (id)          => apiFetch(`/api/admin/players/${id}/reactivate`, { method: 'PATCH' })
 export const apiAdminResetOnboarding    = (id)          => apiFetch(`/api/admin/players/${id}/reset-onboarding`, { method: 'PATCH' })
-export const apiAdminSetGold             = (id, gold)    => apiFetch(`/api/admin/players/${id}/gold`, { method: 'PATCH', body: { gold } })
-export const apiAdminGetPlayerCollection = (id)          => apiFetch(`/api/admin/players/${id}/collection`)
-export const apiAdminGiveCard            = (id, card_id) => apiFetch(`/api/admin/players/${id}/cards`, { method: 'POST', body: { card_id } })
-export const apiAdminTakeCard            = (id, card_id) => apiFetch(`/api/admin/players/${id}/cards/${card_id}`, { method: 'DELETE' })
+export const apiAdminSetGold             = (id, gold)         => apiFetch(`/api/admin/players/${id}/gold`, { method: 'PATCH', body: { gold } })
+export const apiAdminSetForgePoints      = (id, forge_points) => apiFetch(`/api/admin/players/${id}/forge-points`, { method: 'PATCH', body: { forge_points } })
+export const apiAdminGetPlayerCollection = (id)               => apiFetch(`/api/admin/players/${id}/collection`)
+export const apiAdminGiveCard            = (id, card_id)      => apiFetch(`/api/admin/players/${id}/cards`, { method: 'POST', body: { card_id } })
+export const apiAdminTakeCard            = (id, card_id)      => apiFetch(`/api/admin/players/${id}/cards/${card_id}`, { method: 'DELETE' })
 
 // ─── Leaderboard ─────────────────────────────────────────────────────────────
 export const apiGetLeaderboard = (page = 0, q) => apiFetch(`/api/leaderboard?page=${page}${q ? '&q=' + encodeURIComponent(q) : ''}`)
