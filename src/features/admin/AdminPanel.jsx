@@ -1445,7 +1445,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       <span style={{color:"#a29bfe",fontWeight:900,fontSize:11}}>#{i+1}</span>
                       <span style={{flex:1,fontWeight:700,fontSize:12}}>{q?.name}</span>
                       <span style={{fontSize:10,color:"#a8bfcf"}}>{q?.type} × {q?.threshold}</span>
-                      <span style={{color:"#a29bfe",fontWeight:900,fontSize:11}}>🔨 {q?.forge_points}</span>
+                      {(q?.forge_points||0)>0&&<span style={{color:"#a29bfe",fontWeight:900,fontSize:11}}>🔨 {q.forge_points}</span>}
+                      {(q?.gold_reward||0)>0&&<span style={{color:"#f9ca24",fontWeight:900,fontSize:11}}>💰 {q.gold_reward}</span>}
                     </div>
                   );
                 })}
