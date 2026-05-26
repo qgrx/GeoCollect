@@ -42,7 +42,6 @@ import { AchievementToast, SaleNotif, TxHistoryModal } from './features/achievem
 import DailyQuests from './features/quests/DailyQuests.jsx';
 import ForgeModal  from './features/forge/ForgeModal.jsx'
 import TresorPage  from './features/treasures/TresorPage.jsx';
-import JeuQuotidien from './features/jeu/JeuQuotidien.jsx';
 import SeasonPopup  from './components/SeasonPopup.jsx';
 import DocsLayout   from './features/docs/DocsLayout.jsx';
 
@@ -1130,9 +1129,6 @@ export default function App() {
                   </div>
                 )
               })()}
-
-              {/* Géocoin du jour */}
-              <JeuQuotidien />
 
               {/* Daily quests */}
               <div data-tour="quests">
