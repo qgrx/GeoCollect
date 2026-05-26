@@ -163,9 +163,15 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
         if (data.consolation_forge > 0) cbRef.current.onForgePointsEarned?.(data.consolation_forge)
         setHoldOffer(data.hold_card)
       } else if (data.consolation) {
-        showToast(t('toast_quiz_consolation')
-          .replace('{gold}',  data.consolation_gold  ?? 0)
-          .replace('{forge}', data.consolation_forge ?? 0))
+        const gold  = data.consolation_gold  ?? 0
+        const forge = data.consolation_forge ?? 0
+        const parts = []
+        if (gold  > 0) parts.push(`+${gold}G`)
+        if (forge > 0) parts.push(`+${forge} PF`)
+        showToast(parts.length
+          ? `🏅 ${t('toast_quiz_consolation_prefix')} ${parts.join(` ${t('toast_and')} `)} !`
+          : `🏅 ${t('toast_quiz_consolation_prefix')} !`
+        )
       } else {
         showToast(t('toast_quiz_limit'), 'error')
       }
