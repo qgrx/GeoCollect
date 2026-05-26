@@ -758,7 +758,7 @@ export default function App() {
     const elapsed = Date.now() - giftEnteredAtRef.current
     const wait = Math.max(0, 2000 - elapsed)
     const timer = setTimeout(() => {
-      setOnboardingStep(welcomeCards.length > 0 ? 'card' : 'tour')
+      setOnboardingStep(welcomeCards.length > 0 ? 'card' : (seasonPopup ? 'season' : 'tour'))
     }, wait)
     return () => clearTimeout(timer)
   }, [onboardingStep, onboardingCardReady, gs.loadingData, gs.cardPool.length, welcomeCards.length])
@@ -944,7 +944,7 @@ export default function App() {
             <div style={{ flex: 1 }} />
             <nav style={{ display: 'flex' }}>
               {[
-                { id: 'tresors',    icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0, disabled: gs.limits.featureTresor === false },
+                { id: 'tresors',    icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0, disabled: gs.limits.featureTresor === false, tour: 'nav-tresors' },
                 { id: 'collection', icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
                 { id: 'market',     icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market', disabled: gs.limits.featureMarket === false },
                 ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge', disabled: gs.limits.featureForge === false }] : []),
@@ -1380,7 +1380,7 @@ export default function App() {
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: theme.navBg, backdropFilter: 'blur(20px)', borderTop: `1px solid ${theme.border}`, display: 'flex' }}>
           {[
             { id: 'home',        icon: '🏠', label: t('nav_home') },
-            { id: 'tresors',     icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0, disabled: gs.limits.featureTresor === false },
+            { id: 'tresors',     icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0, disabled: gs.limits.featureTresor === false, tour: 'nav-tresors' },
             { id: 'collection',  icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
             { id: 'market',      icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market', disabled: gs.limits.featureMarket === false },
             ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge', disabled: gs.limits.featureForge === false }] : []),
@@ -1461,13 +1461,14 @@ export default function App() {
 
       {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { window.location.replace('/') }} />}
 
-      {seasonPopup && (
+      {seasonPopup && !['pseudo', 'gift', 'card'].includes(onboardingStep) && (
         <SeasonPopup
           season={seasonPopup.season}
           cards={seasonPopup.cards}
           onClose={() => {
             setSeasonPopup(null)
             apiMarkSeasonSeen().catch(() => {})
+            if (onboardingStep === 'season') setOnboardingStep('tour')
           }}
         />
       )}
@@ -1482,7 +1483,7 @@ export default function App() {
             const next = welcomeCards.slice(1)
             setWelcomeCards(next)
             if (next.length === 0 && onboardingStep === 'card') {
-              setOnboardingStep('tour')
+              setOnboardingStep(seasonPopup ? 'season' : 'tour')
             }
           }}
         />

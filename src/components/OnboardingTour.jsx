@@ -13,6 +13,7 @@ export default function OnboardingTour({ onDone, setActiveTab, isMobile }) {
     { target: '[data-tour="profile"]',        title: t('tour_profile_title'),     text: t('tour_profile_text'),     mobileTab: 'home'       },
     { target: '[data-tour="quests"]',         title: t('tour_quests_title'),      text: t('tour_quests_text'),      mobileTab: 'home'       },
     { target: '[data-tour="nav-collection"]', title: t('tour_collection_title'),  text: t('tour_collection_text'),  mobileTab: 'collection' },
+    { target: '[data-tour="nav-tresors"]',    title: t('tour_tresors_title'),     text: t('tour_tresors_text'),     mobileTab: 'tresors'    },
     { target: '[data-tour="nav-market"]',     title: t('tour_market_title'),      text: t('tour_market_text'),      mobileTab: 'market'     },
     { target: '[data-tour="nav-forge"]',      title: t('tour_forge_title'),       text: t('tour_forge_text'),       mobileTab: 'forge'      },
     { target: '[data-tour="nav-top"]',        title: t('tour_leaderboard_title'), text: t('tour_leaderboard_text'), mobileTab: 'top'        },
