@@ -1,3 +1,4 @@
+/* global __COMMIT_SHA__ */
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
