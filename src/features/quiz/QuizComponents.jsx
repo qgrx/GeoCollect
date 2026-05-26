@@ -259,15 +259,18 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false}){
   const {t}=useT(); const {theme}=useTheme();
-  const pct       = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
-  const urgent    = !hasPendingQuiz && !lostTo && secondsLeft <= 10
+  const pct        = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
+  const urgent     = !hasPendingQuiz && !lostTo && secondsLeft <= 10
   const veryUrgent = urgent && secondsLeft <= 5 && secondsLeft > 0
-  const hasCard   = !!nextCard && hasPendingQuiz
-  const rc        = hasCard ? RC[nextCard.rarity] : null
-  const showColors= urgent || hasPendingQuiz
-  const {c1,c2}   = (nextCard && showColors) ? cardCC(nextCard.rarity) : {c1:'#6c7c93',c2:'#48576b'}
+  const hasCard    = !!nextCard && hasPendingQuiz
+  const rc         = hasCard ? RC[nextCard.rarity] : null
+  const showColors = urgent || hasPendingQuiz
+  // Pendant le quiz actif : rareté de la carte. Pendant le teaser : rareté annoncée.
+  const colorRarity = hasPendingQuiz ? nextCard?.rarity : (urgent ? nextQuizRarity : null)
+  const {c1,c2}    = (colorRarity && showColors) ? cardCC(colorRarity) : {c1:'#6c7c93',c2:'#48576b'}
+  const shinyActive = isShiny && (hasPendingQuiz || urgent)
 
   // ── État "Félicitations" — quelqu'un vient de gagner ──────────────────────
   if (lostTo) {
@@ -300,8 +303,8 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lost
   return (
     <>
       <style>{CW_STYLES}</style>
-      <div style={{position:'relative',overflow:isShiny&&hasPendingQuiz?'hidden':'visible',display:'flex',alignItems:'center',gap:11,background:isShiny&&hasPendingQuiz?'linear-gradient(135deg,#b8860b22,#f9ca2415,#b8860b22)':urgent?`${c1}15`:theme.overlay,border:`1.5px solid ${isShiny&&hasPendingQuiz?'#f9ca2488':urgent?`${c1}55`:theme.border}`,borderRadius:13,padding:'9px 14px',transition:'background .5s,border-color .5s',animation:isShiny&&hasPendingQuiz?'shinyGlow 2s ease-in-out infinite':'none',boxShadow:urgent?`0 0 22px ${c1}44`:undefined}}>
-        {isShiny&&hasPendingQuiz&&(
+      <div style={{position:'relative',overflow:shinyActive?'hidden':'visible',display:'flex',alignItems:'center',gap:11,background:shinyActive?'linear-gradient(135deg,#b8860b22,#f9ca2415,#b8860b22)':urgent?`${c1}15`:theme.overlay,border:`1.5px solid ${shinyActive?'#f9ca2488':urgent?`${c1}55`:theme.border}`,borderRadius:13,padding:'9px 14px',transition:'background .5s,border-color .5s',animation:shinyActive?'shinyGlow 2s ease-in-out infinite':'none',boxShadow:urgent?`0 0 22px ${c1}44`:undefined}}>
+        {shinyActive&&(
           <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:5,borderRadius:13}}>
             {BAR_SPARKLES.map((sp,i)=>(
               <div key={i} style={{position:'absolute',top:sp.top,left:sp.left,fontSize:sp.size,lineHeight:1,color:sp.color,animation:'barSp 1.8s ease-in-out infinite',animationDelay:`${sp.delay}s`,filter:`drop-shadow(0 0 ${Math.round(sp.size*.4)}px #fff) drop-shadow(0 0 ${Math.round(sp.size*.6)}px ${sp.color})`,userSelect:'none'}}>✦</div>
@@ -319,7 +322,7 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lost
               : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:900,color:urgent?c1:'#888',transition:'color .5s'}}>?</div>
             }
           </div>
-          {isShiny&&hasPendingQuiz&&(
+          {shinyActive&&(
             <div style={{position:'absolute',top:-4,right:-4,zIndex:15,fontSize:12,animation:'shinySparkle 2s ease-in-out infinite',filter:'drop-shadow(0 0 3px gold)'}}>✨</div>
           )}
         </div>
@@ -360,7 +363,7 @@ export function CountdownWidget({secondsLeft,nextCard,onJoin,hasPendingQuiz,lost
 
           {/* Barre de progression */}
           <div style={{background:theme.overlayMd,borderRadius:50,height:urgent?8:5,overflow:'hidden',marginBottom:urgent?0:3,marginTop:urgent?30:0,transition:'height .4s,margin .4s'}}>
-            <div style={{width:hasPendingQuiz?'100%':`${pct}%`,height:'100%',background:isShiny&&hasPendingQuiz?'linear-gradient(90deg,#f9ca24,#e17055)':`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:'width 1s linear,background .5s',boxShadow:urgent?`0 0 8px ${c1}`:''}}/>
+            <div style={{width:hasPendingQuiz?'100%':`${pct}%`,height:'100%',background:shinyActive?'linear-gradient(90deg,#f9ca24,#e17055)':`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:'width 1s linear,background .5s',boxShadow:urgent?`0 0 8px ${c1}`:''}}/>
           </div>
 
           {/* Infos carte (masquées en mode urgent) */}

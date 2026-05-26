@@ -12,6 +12,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
   const [pendingQuiz,   setPendingQuiz]  = useState(null)
   const [activeQuiz,    setActiveQuiz]   = useState(null)
   const [nextCard,      setNextCard]     = useState(null)
+  const [nextQuizRarity,setNextQuizRarity]=useState(null)
   const [history,       setHistory]      = useState([])
   const [lostToWinner,  setLostToWinner] = useState(null)
   const [quizKey,       setQuizKey]      = useState(0)
@@ -57,6 +58,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
               setNextCard(card)
               isFetchingRef.current = false
             } else {
+              if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
               setTimeout(() => { isFetchingRef.current = false }, 2000)
             }
           }).catch(() => {
@@ -212,6 +214,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
     pendingQuiz, setPendingQuiz,
     activeQuiz, setActiveQuiz,
     nextCard, setNextCard,
+    nextQuizRarity, setNextQuizRarity,
     history, setHistory,
     quizKey, setQuizKey,
     lostToWinner, setLostToWinner,

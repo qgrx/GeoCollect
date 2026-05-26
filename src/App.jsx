@@ -274,6 +274,7 @@ export default function App() {
         const msLeft    = Math.max(0, nextAt - serverNow)
         setNextQuizTime(Date.now() + msLeft)
         setQuizIsShiny(data.next_is_shiny || false)
+        if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
       }
 
       // Le quiz est actif indéfiniment jusqu'à ce que quelqu'un réponde
@@ -356,6 +357,7 @@ export default function App() {
           setNextQuizTime(Date.now() + msLeft)
         }
         setQuizIsShiny(data.next_is_shiny || false)
+        if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
 
         const iSelf = data.winner && data.winner === auth.profile?.pseudo
 
@@ -383,6 +385,7 @@ export default function App() {
           setNextQuizTime(Date.now() + msLeft)
         }
         setQuizIsShiny(data.next_is_shiny || false)
+        if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
         handleQuizExpireRef.current(null)
       })
 
@@ -597,7 +600,7 @@ export default function App() {
     onForgePointsEarned: gs.addForgePoints,
   })
   const { countdown, setNextQuizTime, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
-    nextCard, setNextCard, history, setHistory, quizKey, setQuizKey,
+    nextCard, setNextCard, nextQuizRarity, setNextQuizRarity, history, setHistory, quizKey, setQuizKey,
     lostToWinner, setLostToWinner,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
@@ -1035,7 +1038,7 @@ export default function App() {
               {/* Countdown hero (mobile only — en haut) */}
               {!isWide && !activeQuiz && auth.profile?.status !== 'banni' && (
                 <div data-tour="countdown">
-                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
+                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
                 </div>
               )}
 
@@ -1162,7 +1165,7 @@ export default function App() {
               {/* New geocoin available — above type filter */}
               {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
                 <div data-tour="countdown" style={{ marginBottom: 14 }}>
-                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
+                  <CountdownWidget secondsLeft={countdown} cycleTime={gs.limits?.quizInterval ?? QUIZ_INTERVAL} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
                 </div>
               )}
 
