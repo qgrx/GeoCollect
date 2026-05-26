@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Card from '../../components/Card.jsx';
 import { useT } from '../../i18n/translations.js';
+import JeuQuotidien from '../jeu/JeuQuotidien.jsx';
 
 const FAKE_COIN        = { id: 0, name: 'FTF', rarity: 'légendaire', type: 'Geocaching', image_url: '/geocoin-ftf.webp' };
 const FAKE_LEADERBOARD = [
@@ -220,6 +221,43 @@ export default function LandingSection({ onOpenAuth }) {
           <button onClick={e => { e.stopPropagation(); onOpenAuth(); }} style={{ background: 'linear-gradient(135deg,#f57f17,#fbc02d)', border: 'none', color: '#fff', padding: '12px 28px', borderRadius: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 16px #f57f1733' }}>
             {t('landing_lb_cta')}
           </button>
+        </div>
+      </section>
+
+      {/* ══ SLIDE 4 — GÉOCOIN DU JOUR ══════════════════════════════════════════ */}
+      <section style={{
+        scrollSnapAlign: 'start',
+        height: 'calc(100vh - 60px)',
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(160deg,#0a0e1a,#0f1627,#0c1220)',
+      }}>
+        {/* Halo décoratif */}
+        <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)',
+          width: 300, height: 300, borderRadius: '50%',
+          background: 'radial-gradient(ellipse,#f9ca2412 0%,transparent 70%)',
+          pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 360, padding: '0 24px' }}>
+          <JeuQuotidien />
+
+          {/* CTA inscription */}
+          <div style={{ marginTop: 20, textAlign: 'center' }}>
+            <div style={{ fontSize: 12, color: '#555', marginBottom: 10 }}>
+              {t('landing_hero_sub') || 'Connecte-toi pour participer aux quiz et collecter des géocoins'}
+            </div>
+            <button
+              onClick={onOpenAuth}
+              style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff',
+                padding: '12px 28px', borderRadius: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900,
+                fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 16px #6c5ce733' }}>
+              {t('btn_login')}
+            </button>
+          </div>
         </div>
       </section>
     </div>

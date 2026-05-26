@@ -185,6 +185,10 @@ export const apiGetPurchase          = (checkoutId) => apiFetch(`/api/shop/purch
 export const apiGetDocsPage   = (page)          => apiFetch(`/api/docs/${page}`)
 export const apiSaveDocsPage  = (page, content) => apiFetch(`/api/docs/${page}`, { method: 'PATCH', body: { content } })
 
+// ─── Jeu Quotidien ────────────────────────────────────────────────────────────
+export const apiGetJeuQuotidien = () => apiFetch('/api/jeu/quotidien')
+export const apiAdminSeedJeu    = () => apiFetch('/api/admin/jeu/seed', { method: 'POST' })
+
 // ─── Saisons ──────────────────────────────────────────────────────────────────
 export const apiGetCurrentSeason      = ()         => apiFetch('/api/seasons/current')
 export const apiMarkSeasonSeen        = ()         => apiFetch('/api/seasons/current/seen', { method: 'POST' })
