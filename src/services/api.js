@@ -126,8 +126,13 @@ export const apiAdminFlushCache         = () => apiFetch('/api/admin/cache/flush
 export const apiAdminRecalculateScores  = () => apiFetch('/api/admin/recalculate-scores', { method: 'POST' })
 
 // ─── Trésors ──────────────────────────────────────────────────────────────────
-export const apiGetDailyTreasure  = () => apiFetch('/api/treasures/daily')
+export const apiGetDailyTreasure   = () => apiFetch('/api/treasures/daily')
 export const apiClaimDailyTreasure = () => apiFetch('/api/treasures/daily/claim', { method: 'POST' })
+
+// ─── Dépôt d'Attente ─────────────────────────────────────────────────────────
+export const apiGetHold   = ()                    => apiFetch('/api/hold')
+export const apiStoreHold = (card_id, is_shiny)   => apiFetch('/api/hold', { method: 'POST', body: { card_id, is_shiny } })
+export const apiClaimHold = ()                    => apiFetch('/api/hold/claim', { method: 'POST' })
 export const apiAdminGetStats         = () => apiFetch('/api/admin/stats')
 export const apiAdminGetBots          = () => apiFetch('/api/admin/bots')
 export const apiAdminCreateBot        = (body) => apiFetch('/api/admin/bots', { method: 'POST', body })

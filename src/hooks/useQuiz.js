@@ -13,6 +13,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
   const [activeQuiz,    setActiveQuiz]   = useState(null)
   const [nextCard,      setNextCard]     = useState(null)
   const [nextQuizRarity,setNextQuizRarity]=useState(null)
+  const [holdOffer,     setHoldOffer]    = useState(null)
   const [history,       setHistory]      = useState([])
   const [lostToWinner,  setLostToWinner] = useState(null)
   const [quizKey,       setQuizKey]      = useState(0)
@@ -156,6 +157,11 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
       setHistory(h => [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false }, ...h].slice(0, 10))
       if (data.card_earned) {
         showToast(t('toast_quiz_won').replace('{card}', card.name))
+      } else if (data.hold_eligible) {
+        // server still gave consolation gold/forge — update client state silently
+        if (data.consolation_gold  > 0) earnGoldWithFx(data.consolation_gold)
+        if (data.consolation_forge > 0) cbRef.current.onForgePointsEarned?.(data.consolation_forge)
+        setHoldOffer(data.hold_card)
       } else if (data.consolation) {
         showToast(t('toast_quiz_consolation')
           .replace('{gold}',  data.consolation_gold  ?? 0)
@@ -215,6 +221,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
     activeQuiz, setActiveQuiz,
     nextCard, setNextCard,
     nextQuizRarity, setNextQuizRarity,
+    holdOffer, setHoldOffer,
     history, setHistory,
     quizKey, setQuizKey,
     lostToWinner, setLostToWinner,

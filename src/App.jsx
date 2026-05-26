@@ -15,7 +15,7 @@ import { collScore } from './utils/gameUtils.js';
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -32,7 +32,7 @@ import MaintenanceScreen from './components/MaintenanceScreen.jsx';
 import AuthModal from './features/auth/AuthModal.jsx';
 import SettingsModal from './features/auth/SettingsModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
-import { QuizNotif, QuizModal, CountdownWidget, ThumbImage } from './features/quiz/QuizComponents.jsx';
+import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
@@ -475,6 +475,7 @@ export default function App() {
   const [collPage,        setCollPage]        = useState(0);
   const [quizSessionActive, setQuizSessionActive] = useState(false);
   const [dailyOffer, setDailyOffer] = useState(null);
+  const [hold,       setHold]       = useState(null);
   const [seasonPopup, setSeasonPopup] = useState(null); // { season, cards }
   const COLL_PAGE_SIZE = 24;
   const [menuOpen,        setMenuOpen]        = useState(false);
@@ -542,10 +543,11 @@ export default function App() {
   useEffect(() => { localStorage.setItem('geocoins_tab', activeTab) }, [activeTab])
   useEffect(() => { gs.marketOpenRef.current = activeTab === 'market' }, [activeTab])
 
-  // Fetch offre du jour quand le profil est chargé ou quand on ouvre l'onglet Trésors
+  // Fetch offre du jour + dépôt d'attente quand le profil est chargé ou quand on ouvre l'onglet Trésors
   useEffect(() => {
     if (!auth.profile) return
     apiGetDailyTreasure().then(({ data }) => { if (data) setDailyOffer(data) })
+    apiGetHold().then(({ data }) => { setHold(data?.hold ?? null) })
   }, [auth.profile?.id, activeTab === 'tresors'])
 
   // Vérifier la saison en cours à la connexion — afficher la popup si nouvelle saison
@@ -600,7 +602,8 @@ export default function App() {
     onForgePointsEarned: gs.addForgePoints,
   })
   const { countdown, setNextQuizTime, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
-    nextCard, setNextCard, nextQuizRarity, setNextQuizRarity, history, setHistory, quizKey, setQuizKey,
+    nextCard, setNextCard, nextQuizRarity, setNextQuizRarity, holdOffer, setHoldOffer,
+    history, setHistory, quizKey, setQuizKey,
     lostToWinner, setLostToWinner,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
@@ -665,6 +668,16 @@ export default function App() {
     if (data.gold_earned > 0) gs.earnGoldWithFx(data.gold_earned)
     gs.triggerQuestRefresh()
     showToast(t('toast_daily_claimed').replace('{card}', data.card.name))
+  }
+
+  // ── Réclamer le dépôt d'attente ─────────────────────────────────────────────
+  async function handleClaimHold() {
+    const { data, error } = await apiClaimHold()
+    if (error) { showToast(error, 'error'); return }
+    setHold(null)
+    gs.earnCard(data.card, data.is_shiny || false)
+    gs.triggerQuestRefresh?.()
+    showToast(t('toast_hold_claimed').replace('{card}', data.card.name))
   }
 
   // Wrapper — bloque la soumission pour les non-connectés et propose l'inscription
@@ -1342,6 +1355,8 @@ export default function App() {
                   packsLoading={gs.loadingData}
                   dailyOfferGold={gs.limits?.dailyOfferGold ?? 5}
                   onOpenCgv={() => { setShowCgv(true); window.history.pushState({}, '', '/cgv') }}
+                  hold={hold}
+                  onClaimHold={handleClaimHold}
                 />
               )}
 
@@ -1424,6 +1439,20 @@ export default function App() {
           <span style={{ fontSize: 16 }}>🧪</span>
           <div><strong style={{ color: '#fff' }}>{t('no_api_title')}</strong> — {t('no_api_body')}</div>
         </div>
+      )}
+
+      {/* ── HoldModal — apparaît après un quiz hors-limite avec une carte éligible ── */}
+      {holdOffer && (
+        <HoldModal
+          holdCard={holdOffer}
+          hasExisting={!!hold}
+          onStored={(card) => {
+            setHold({ card, is_shiny: card.is_shiny || false, held_at: new Date().toISOString(), claimable: false })
+            setHoldOffer(null)
+            showToast(t('toast_hold_stored').replace('{card}', card.name))
+          }}
+          onIgnore={() => setHoldOffer(null)}
+        />
       )}
 
       {/* ── Modals ── */}

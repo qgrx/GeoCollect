@@ -34,11 +34,12 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Pack Légendaire',  defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
-export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = {}, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5, onOpenCgv }) {
+export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = {}, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5, onOpenCgv, hold = null, onClaimHold }) {
   const { t } = useT()
   const { theme } = useTheme()
-  const [claiming, setClaiming]       = useState(false)
-  const [localClaimed, setLocalClaimed] = useState(false)
+  const [claiming, setClaiming]             = useState(false)
+  const [localClaimed, setLocalClaimed]     = useState(false)
+  const [claimingHold, setClaimingHold]     = useState(false)
   const [countdown, setCountdown]     = useState('--:--:--')
   const [cgvAccepted,    setCgvAccepted]    = useState(false)
   const [selectedPack,   setSelectedPack]   = useState(null)  // Premier Clic — écran récapitulatif
@@ -178,6 +179,59 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
         <div style={{ textAlign: 'center', fontSize: 10, color: theme.textMuted, marginTop: 6 }}>
           🕛 {t('tresor_daily_next')} <span style={{ fontWeight: 900, color: theme.textSecondary, fontFamily: 'monospace' }}>{countdown}</span>
         </div>
+      </div>
+
+      {/* ── Dépôt d'Attente ── */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 20 }}>🗄️</span>
+          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>{t('hold_title')}</div>
+        </div>
+
+        {hold ? (() => {
+          const hCard = hold.card
+          const { c1, c2 } = cardCC(hCard?.rarity || 'commun')
+          const hRc = hCard ? RC[hCard.rarity] : null
+          return (
+            <div style={{ background: `linear-gradient(135deg,${c1}18,${c2}12)`, border: `1.5px solid ${c1}55`, borderRadius: 16, padding: '16px', transition: 'all .4s' }}>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                <div style={{ width: 56, height: 56, borderRadius: 10, overflow: 'hidden', flexShrink: 0, border: `2px solid ${c1}`, background: '#1e3045', boxShadow: hold.claimable ? `0 0 14px ${c1}44` : 'none', opacity: hold.claimable ? 1 : 0.7 }}>
+                  {hCard?.image_url
+                    ? <ThumbImage src={hCard.image_url} alt={cardName(hCard, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{hCard?.name?.[0] || '?'}</div>
+                  }
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 900, fontSize: 14, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {hold.is_shiny && <span style={{ marginRight: 4 }}>✨</span>}
+                    {cardName(hCard, getLang())}
+                  </div>
+                  <div style={{ fontSize: 11, color: hRc?.color, fontWeight: 800, marginTop: 2 }}>{rarityLabel(hCard?.rarity, t)}</div>
+                  <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 3 }}>
+                    {t('hold_held_since').replace('{date}', new Date(hold.held_at).toLocaleDateString(getLang()))}
+                  </div>
+                  {!hold.claimable && (
+                    <div style={{ fontSize: 10, color: '#e17055', fontWeight: 700, marginTop: 3 }}>{t('hold_claimable_tomorrow')}</div>
+                  )}
+                </div>
+                {hold.claimable && (
+                  <button
+                    onClick={claimingHold ? undefined : async () => { setClaimingHold(true); try { await onClaimHold?.() } finally { setClaimingHold(false) } }}
+                    style={{ background: `linear-gradient(135deg,${c1},${c2})`, border: 'none', color: '#1e3045', padding: '9px 15px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: claimingHold ? 'default' : 'pointer', flexShrink: 0, opacity: claimingHold ? 0.6 : 1 }}>
+                    {claimingHold ? '…' : t('hold_claim_btn')}
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })() : (
+          <div style={{ background: theme.overlay, border: `1.5px dashed ${theme.border}`, borderRadius: 16, padding: '20px 16px', textAlign: 'center' }}>
+            <div style={{ fontSize: 28, marginBottom: 6, opacity: 0.4 }}>🗄️</div>
+            <div style={{ fontWeight: 800, fontSize: 13, color: theme.textSecondary }}>{t('hold_empty_title')}</div>
+            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4, lineHeight: 1.5 }}>{t('hold_empty_desc')}</div>
+          </div>
+        )}
+        <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 6, textAlign: 'center' }}>{t('hold_slot_note')}</div>
       </div>
 
       {/* ── Packs ── */}

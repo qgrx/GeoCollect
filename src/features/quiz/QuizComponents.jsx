@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { soundCorrect, soundWrong } from '../../utils/sounds.js';
 import { useT } from '../../i18n/translations.js';
 import { useTheme } from '../../ThemeContext.jsx';
-import { apiReportQuestion } from '../../services/api.js';
+import { apiReportQuestion, apiStoreHold } from '../../services/api.js';
 import { normA, wordCount } from '../../utils/gameUtils.js';
 import { RC, cardCC, rarityLabel, cardName } from '../../data/cards.js';
 import { getLang } from '../../i18n/translations.js';
@@ -399,5 +399,78 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
         )}
       </div>
     </>
+  )
+}
+
+// ── HoldModal — popup "Mettre en Dépôt" après quiz hors-limite ────────────────
+export function HoldModal({ holdCard, hasExisting, onStored, onIgnore }) {
+  const { t } = useT()
+  const { theme } = useTheme()
+  const [loading, setLoading] = useState(false)
+  const { c1, c2 } = holdCard ? cardCC(holdCard.rarity) : { c1: '#6c5ce7', c2: '#a29bfe' }
+  const rc = holdCard ? RC[holdCard.rarity] : null
+
+  const handleStore = useCallback(async () => {
+    if (!holdCard || loading) return
+    setLoading(true)
+    await apiStoreHold(holdCard.id, holdCard.is_shiny || false)
+    setLoading(false)
+    onStored(holdCard)
+  }, [holdCard, loading, onStored])
+
+  if (!holdCard) return null
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000a', padding: 20 }}>
+      <div style={{ background: 'linear-gradient(145deg,#0f1923,#1a2736)', border: `1.5px solid ${c1}55`, borderRadius: 20, padding: '24px 22px', maxWidth: 360, width: '100%', boxShadow: `0 0 40px ${c1}33, 0 12px 40px #0008`, fontFamily: "'Nunito',sans-serif" }}>
+
+        {/* Titre */}
+        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 17, color: '#f9ca24', marginBottom: 4 }}>
+          🗄️ {t('hold_popup_title')}
+        </div>
+        <div style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 16, lineHeight: 1.5 }}>
+          {t('hold_popup_body').replace('{rarity}', rarityLabel(holdCard.rarity, t))}
+        </div>
+
+        {/* Carte */}
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', background: `linear-gradient(135deg,${c1}18,${c2}12)`, border: `1px solid ${c1}44`, borderRadius: 14, padding: '12px 14px', marginBottom: 14 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 9, overflow: 'hidden', flexShrink: 0, border: `2px solid ${c1}`, background: '#1e3045', boxShadow: `0 0 12px ${c1}44` }}>
+            {holdCard.image_url
+              ? <ThumbImage src={holdCard.image_url} alt={cardName(holdCard, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
+              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{cardName(holdCard, getLang())[0]}</div>
+            }
+          </div>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 14, color: theme.textPrimary }}>{cardName(holdCard, getLang())}{holdCard.is_shiny ? ' ✨' : ''}</div>
+            <div style={{ fontSize: 11, color: rc?.color, fontWeight: 800, marginTop: 2 }}>{rarityLabel(holdCard.rarity, t)}</div>
+          </div>
+        </div>
+
+        {/* Avertissement remplacement */}
+        {hasExisting && (
+          <div style={{ fontSize: 11, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2433', borderRadius: 9, padding: '7px 11px', marginBottom: 12 }}>
+            {t('hold_popup_replace_warning')}
+          </div>
+        )}
+
+        {/* Note */}
+        <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 18, display: 'flex', gap: 6 }}>
+          <span>🕛</span>
+          <span>{t('hold_popup_note')} {t('hold_slot_note')}</span>
+        </div>
+
+        {/* Boutons */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={handleStore} disabled={loading}
+            style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, opacity: loading ? 0.7 : 1 }}>
+            {loading ? '…' : t('hold_popup_store')}
+          </button>
+          <button onClick={onIgnore}
+            style={{ ...BTN('#ffffff18'), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, color: theme.textSecondary }}>
+            {t('hold_popup_ignore')}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
