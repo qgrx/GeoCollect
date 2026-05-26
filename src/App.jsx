@@ -1459,7 +1459,7 @@ export default function App() {
       {/* QuizNotif popup disabled */}
       {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={quizIsShiny} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
 
-      {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { window.location.replace('/') }} />}
+      {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
 
       {seasonPopup && !['pseudo', 'gift', 'card'].includes(onboardingStep) && (
         <SeasonPopup
