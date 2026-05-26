@@ -1,9 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import Card from '../../components/Card.jsx';
-import { useT } from '../../i18n/translations.js';
-import JeuQuotidien from '../jeu/JeuQuotidien.jsx';
+import { useT, getLang } from '../../i18n/translations.js';
+import { apiGetJeuQuotidien } from '../../services/api.js';
+import { cardName } from '../../data/cards.js';
 
-const FAKE_COIN        = { id: 0, name: 'FTF', rarity: 'légendaire', type: 'Geocaching', image_url: '/geocoin-ftf.webp' };
+const FALLBACK_COIN = { id: 0, name: 'FTF', rarity: 'légendaire', type: 'Geocaching', image_url: '/geocoin-ftf.webp' };
+
+function useMidnightCountdown() {
+  const [display, setDisplay] = useState('--:--:--');
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date(); const midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
+      const s = Math.max(0, Math.floor((midnight - now) / 1000));
+      setDisplay(`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`);
+    };
+    tick(); const id = setInterval(tick, 1000); return () => clearInterval(id);
+  }, []);
+  return display;
+}
 const FAKE_LEADERBOARD = [
   { pseudo: 'GeoMaster42', score: 4820, rank: 1 },
   { pseudo: 'CacheHunter', score: 3640, rank: 2 },
@@ -30,6 +44,16 @@ export default function LandingSection({ onOpenAuth }) {
   const containerRef = useRef(null);
   const scrollY = useScrollY(containerRef);
   const vh = typeof window !== 'undefined' ? window.innerHeight - 60 : 600;
+  const countdown = useMidnightCountdown();
+
+  const [geocoin, setGeocoin] = useState(null);
+  useEffect(() => {
+    apiGetJeuQuotidien().then(({ data }) => { if (data?.geocoin) setGeocoin(data.geocoin); }).catch(() => {});
+  }, []);
+
+  const dailyCoin = geocoin?.card
+    ? { id: geocoin.card.id, name: cardName(geocoin.card, getLang()), rarity: geocoin.card.rarity, type: geocoin.card.type, image_url: geocoin.card.image_url }
+    : FALLBACK_COIN;
 
   const p0 = scrollY * 0.4;
   const coinY = scrollY * 0.25;
@@ -83,9 +107,25 @@ export default function LandingSection({ onOpenAuth }) {
             {t('landing_badge')}
           </div>
 
-          <div style={{ transform: `translateY(${coinY * -0.15}px)`, willChange: 'transform', filter: 'drop-shadow(0 8px 24px #e6510044)', animation: 'coinFloat 4s ease-in-out infinite', marginBottom: 24 }}>
-            <Card card={FAKE_COIN} />
+          <div style={{ transform: `translateY(${coinY * -0.15}px)`, willChange: 'transform', filter: 'drop-shadow(0 8px 24px #e6510044)', animation: 'coinFloat 4s ease-in-out infinite', marginBottom: 14 }}>
+            <Card card={dailyCoin} />
           </div>
+
+          {/* Numéro + countdown */}
+          {geocoin && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 18, animation: 'fadeUp .6s .15s ease both', flexWrap: 'wrap' }}>
+              <div style={{ background: '#e6510012', border: '1px solid #e6510028', borderRadius: 20, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 11 }}>🪙</span>
+                <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 13, color: '#e65100', letterSpacing: .5 }}>
+                  {BigInt(geocoin.numero).toLocaleString('fr-FR')}
+                </span>
+              </div>
+              <div style={{ background: '#00000008', border: '1px solid #00000014', borderRadius: 20, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 10 }}>🕛</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#888', letterSpacing: .5 }}>{countdown}</span>
+              </div>
+            </div>
+          )}
 
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#2d1a00', marginBottom: 10, animation: 'fadeUp .7s .1s ease both' }}>
             {t('landing_hero_title')}
@@ -224,42 +264,6 @@ export default function LandingSection({ onOpenAuth }) {
         </div>
       </section>
 
-      {/* ══ SLIDE 4 — GÉOCOIN DU JOUR ══════════════════════════════════════════ */}
-      <section style={{
-        scrollSnapAlign: 'start',
-        height: 'calc(100vh - 60px)',
-        position: 'relative',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(160deg,#0a0e1a,#0f1627,#0c1220)',
-      }}>
-        {/* Halo décoratif */}
-        <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)',
-          width: 300, height: 300, borderRadius: '50%',
-          background: 'radial-gradient(ellipse,#f9ca2412 0%,transparent 70%)',
-          pointerEvents: 'none' }} />
-
-        <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 360, padding: '0 24px' }}>
-          <JeuQuotidien />
-
-          {/* CTA inscription */}
-          <div style={{ marginTop: 20, textAlign: 'center' }}>
-            <div style={{ fontSize: 12, color: '#555', marginBottom: 10 }}>
-              {t('landing_hero_sub') || 'Connecte-toi pour participer aux quiz et collecter des géocoins'}
-            </div>
-            <button
-              onClick={onOpenAuth}
-              style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff',
-                padding: '12px 28px', borderRadius: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900,
-                fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 16px #6c5ce733' }}>
-              {t('btn_login')}
-            </button>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
