@@ -1357,7 +1357,6 @@ export default function App() {
                   onReveal={(cards, gold, paymentLabel) => { setRevealCards(cards); setRevealGold(gold || 0); setRevealPayment(paymentLabel || ''); setShowShop(true) }}
                   cardPool={gs.cardPool}
                   shopPacksConfig={gs.limits?.shopPacks ?? null}
-                  configLoaded={gs.configLoaded}
                   shopTestMode={!!gs.limits?.shopTestMode}
                   isAdmin={auth.profile?.role === 'admin'}
                   packsLoading={gs.loadingData}

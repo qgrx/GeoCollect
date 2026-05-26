@@ -34,7 +34,7 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Pack Légendaire',  defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
-export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = null, configLoaded = false, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5, onOpenCgv, hold = null, onClaimHold }) {
+export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = null, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5, onOpenCgv, hold = null, onClaimHold }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [claiming, setClaiming]             = useState(false)
@@ -117,7 +117,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
   const rc = card ? RC[card.rarity] : null
 
   const visiblePacks = shopPacksConfig === null ? [] : PACK_DEFS
-    .filter(p => (shopPacksConfig[p.id]?.enabled ?? true) !== false)
+    .filter(p => shopPacksConfig[p.id]?.enabled === true)
     .map(p => {
       const cfg   = shopPacksConfig[p.id] || {}
       const slots = cfg.slots || DEFAULT_SLOTS[p.id]
@@ -235,7 +235,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
       </div>
 
       {/* ── Packs ── */}
-      {configLoaded && (packsLoading || visiblePacks.length > 0) && <div>
+      {visiblePacks.length > 0 && <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <span style={{ fontSize: 20 }}>💎</span>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>{t('tresor_shop_title')}</div>
