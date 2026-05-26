@@ -9,6 +9,7 @@ module.exports = {
   ],
   ignorePatterns: ['dist', '.eslintrc.cjs'],
   parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
+  globals: { __COMMIT_SHA__: 'readonly' },
   settings: { react: { version: '18.3' } },
   plugins: ['react-refresh'],
   rules: {
