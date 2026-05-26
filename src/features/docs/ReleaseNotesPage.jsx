@@ -70,9 +70,7 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 15, padding: 0, flexShrink: 0 }}>
                     {TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
-                ) : (
-                  <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{item.type}</span>
-                )}
+                ) : null}
                 {editMode
                   ? <div style={{ flex: 1 }}><RichTextEditor value={item.text} onChange={t => updateItem(ri, ii, { ...item, text: t })} mode={mode} /></div>
                   : <span style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6, flex: 1 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.text) }} />
