@@ -500,13 +500,20 @@ export default function App() {
   const [questions, setQuestions] = useState([]);
 
   useEffect(() => {
-    if (!showAdmin || !auth.profile) return
+    if (!showAdmin) return
+    // Rediriger les non-admins qui arrivent sur /admin (accès direct par URL)
+    if (auth.profile && auth.profile.role !== 'admin') {
+      setShowAdmin(false)
+      window.history.replaceState({}, '', '/')
+      return
+    }
+    if (!auth.profile) return
     apiAdminGetQuestions().then(({ data }) => {
       if (data?.questions) setQuestions(data.questions.map(q => ({
         id: q.id, q: q.question, a: q.answer, hint: q.hint || '', active: q.active, translations: q.translations || {}
       })))
     })
-  }, [showAdmin])
+  }, [showAdmin, auth.profile])
 
   // ── Re-traduire le quiz courant quand la langue change ─────────────────────
   useEffect(() => {
@@ -1642,7 +1649,7 @@ export default function App() {
       {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
       {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0); setRevealPayment('') }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} initialPaymentLabel={revealPayment} />}
       {/* CGV désactivée temporairement */}
-      {showAdmin && (
+      {showAdmin && auth.profile?.role === 'admin' && (
         <AdminPanel
           cardPool={gs.cardPool} cardTypes={gs.cardTypes} questions={questions} limits={gs.limits}
           maintenanceMode={gs.maintenance.on} maintenanceText={gs.maintenance.text}
