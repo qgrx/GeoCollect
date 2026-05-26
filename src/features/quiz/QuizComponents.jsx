@@ -441,7 +441,7 @@ export function HoldModal({ holdCard, hasExisting, onStored, onIgnore }) {
             }
           </div>
           <div>
-            <div style={{ fontWeight: 900, fontSize: 14, color: theme.textPrimary }}>{cardName(holdCard, getLang())}{holdCard.is_shiny ? ' ✨' : ''}</div>
+            <div style={{ fontWeight: 900, fontSize: 14, color: '#ffffff' }}>{cardName(holdCard, getLang())}{holdCard.is_shiny ? ' ✨' : ''}</div>
             <div style={{ fontSize: 11, color: rc?.color, fontWeight: 800, marginTop: 2 }}>{rarityLabel(holdCard.rarity, t)}</div>
           </div>
         </div>
@@ -456,7 +456,7 @@ export function HoldModal({ holdCard, hasExisting, onStored, onIgnore }) {
         {/* Note */}
         <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 18, display: 'flex', gap: 6 }}>
           <span>🕛</span>
-          <span>{t('hold_popup_note')} {t('hold_slot_note')}</span>
+          <span>{t('hold_popup_note')}</span>
         </div>
 
         {/* Boutons */}
