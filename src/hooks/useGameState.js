@@ -290,9 +290,12 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     }
 
     loadAll()
-    // Checkin quête connexion (fire-and-forget, 3h interval géré côté serveur)
+    // Checkin quête connexion puis rechargement des quêtes (séquentiel pour que daily_connection soit reflété)
     apiQuestCheckin().then(({ data }) => {
       if (data?.forge_points_earned > 0) setForgePointsSignal(s => s + data.forge_points_earned)
+      return apiGetDailyQuests()
+    }).then(({ data }) => {
+      if (data?.quests && mounted.current) setInitialQuests(data.quests)
     }).catch(() => {})
   }, [profile?.id])
 
@@ -688,6 +691,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       setForgePoints(fp => fp + pts)
       setForgePointsSignal(s => s + pts)
     },
+    triggerQuestRefresh: () => setQuestActivitySignal(s => s + 1),
     // Actions
     earnGold, earnCard, checkAchievements,
     handleBuy, handleListCard, handleCancelListing, handleCancelAllListings,

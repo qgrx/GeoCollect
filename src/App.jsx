@@ -648,6 +648,7 @@ export default function App() {
     setDailyOffer(d => d ? { ...d, claimed: true } : d)
     gs.earnCard(data.card, false)
     if (data.gold_earned > 0) gs.earnGoldWithFx(data.gold_earned)
+    gs.triggerQuestRefresh()
     showToast(t('toast_daily_claimed').replace('{card}', data.card.name))
   }
 
