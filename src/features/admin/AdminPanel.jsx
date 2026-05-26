@@ -15,6 +15,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiGetDailySchedule, apiRegenerateDailySchedule,
   apiResetQuestionReports, apiAdminGetQuestions,
   apiAdminGetVersion,
+  apiAdminSeedJeu,
 } from '../../services/api.js';
 
 const DEFAULT_TYPE = 'Normal';
@@ -510,6 +511,20 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 22px",borderRadius:9}}>✨ Déclencher un quiz shiny</button>
             </div>
             <div style={{fontSize:10,color:"#8daacc",marginTop:10}}>Expire tout quiz actif et en lance un nouveau immédiatement.</div>
+          </div>
+
+          {/* Jeu Quotidien — seed */}
+          <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12",marginBottom:16}}>
+            <div style={{fontWeight:900,color:"#f9ca24",fontSize:13,marginBottom:8}}>🪙 Jeu Quotidien — Initialisation</div>
+            <div style={{fontSize:11,color:"#8daacc",marginBottom:12}}>Peuple la table <code style={{background:"#ffffff10",padding:"1px 5px",borderRadius:4}}>jeu_geocoins</code> avec les 200 cartes actives et leurs numéros. Idempotent — peut être relancé sans risque.</div>
+            <button onClick={async()=>{
+              setMsg("⏳ Seed jeu quotidien en cours…");
+              const {data,error}=await apiAdminSeedJeu();
+              if(error) return setMsg("❌ "+error);
+              setMsg(`✅ Seed OK — ${data.seeded} cartes, somme = ${data.sum_check}`);
+            }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 22px",borderRadius:9}}>
+              🎲 Lancer le seed
+            </button>
           </div>
           {/* Taux de rareté */}
           <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12",marginBottom:16}}>
