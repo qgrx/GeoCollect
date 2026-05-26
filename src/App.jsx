@@ -1356,7 +1356,7 @@ export default function App() {
                   onClaim={handleClaimDaily}
                   onReveal={(cards, gold, paymentLabel) => { setRevealCards(cards); setRevealGold(gold || 0); setRevealPayment(paymentLabel || ''); setShowShop(true) }}
                   cardPool={gs.cardPool}
-                  shopPacksConfig={gs.limits?.shopPacks || {}}
+                  shopPacksConfig={gs.limits?.shopPacks ?? null}
                   shopTestMode={!!gs.limits?.shopTestMode}
                   isAdmin={auth.profile?.role === 'admin'}
                   packsLoading={gs.loadingData}
