@@ -375,6 +375,17 @@ export default function App() {
         }
       })
 
+      // Quiz — expiré sans réponse
+      s.on('quiz:expired', (data) => {
+        setQuizSessionActive(false)
+        if (data.next_quiz_at && data.server_time) {
+          const msLeft = Math.max(0, new Date(data.next_quiz_at).getTime() - new Date(data.server_time).getTime())
+          setNextQuizTime(Date.now() + msLeft)
+        }
+        setQuizIsShiny(data.next_is_shiny || false)
+        handleQuizExpireRef.current(null)
+      })
+
       // Marché — ma carte vendue
       s.on('market:sold', (data) => {
         gs.handleSaleNotifFromSocket(data)
@@ -401,6 +412,7 @@ export default function App() {
     return () => {
       socket?.off('quiz:new')
       socket?.off('quiz:solved')
+      socket?.off('quiz:expired')
       socket?.off('market:sold')
       socket?.off('maintenance')
       socket?.off('connect')
