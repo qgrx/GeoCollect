@@ -23,6 +23,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [maintenance, setMaintenance] = useState({ on: false, text: '' })
   const [loadingData, setLoadingData] = useState(false)
   const [configLoaded, setConfigLoaded] = useState(false)
+  const [collectionLoaded, setCollectionLoaded] = useState(false)
 
   // ── Player state ───────────────────────────────────────────────────────────
   const [gold,         setGold]        = useState(profile?.gold ?? 0)
@@ -136,7 +137,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       // ── Requêtes lentes (user-specific ou cache froid) — fire-and-forget ────
       // Chacune met à jour l'état dès qu'elle arrive, sans bloquer le rendu.
       apiGetCollection().then(({ data: colData }) => {
-        if (!colData?.collection || !mounted.current) return
+        if (!mounted.current) return
+        setCollectionLoaded(true)
+        if (!colData?.collection) return
         setCollection(colData.collection)
         if (colData.shiny_collection) setShinyCollection(colData.shiny_collection)
         if (colData.descriptions) setCollectionDescriptions(colData.descriptions)
@@ -145,7 +148,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           .map(def => def.id)
         alreadyUnlocked.forEach(id => unlockedAchRef.current.add(id))
         if (alreadyUnlocked.length) setUnlockedAch(alreadyUnlocked)
-      }).catch(() => {})
+      }).catch(() => { if (mounted.current) setCollectionLoaded(true) })
 
       apiGetMarket().then(({ data: mktData }) => {
         if (!mktData?.market || !mounted.current) return
@@ -681,7 +684,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   return {
     // World
     cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs,
-    limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded,
+    limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded, collectionLoaded,
     // Player
     gold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, myListings, dailyGold, dailyCards, totalBuys, totalSells,
     streak, setStreak, transactions, setTransactions, unlockedAch, pendingAch, setPendingAch,

@@ -1062,76 +1062,69 @@ export default function App() {
                 </div>
               )}
 
-              {/* User profile mini card — skeleton pendant le chargement */}
-              {gs.loadingData ? (
-                <div style={{ background: theme.overlay, borderRadius: 14, padding: '14px 16px', border: `1px solid ${theme.border}` }}>
-                  {/* Avatar + pseudo */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(90deg,#ffffff08,#ffffff14,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite', flexShrink: 0 }} />
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <div style={{ height: 14, width: '60%', borderRadius: 6, background: 'linear-gradient(90deg,#ffffff08,#ffffff14,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite' }} />
-                      <div style={{ height: 10, width: '35%', borderRadius: 6, background: 'linear-gradient(90deg,#ffffff05,#ffffff0f,#ffffff05)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s .1s infinite' }} />
-                    </div>
-                  </div>
-                  {/* Stats grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
-                    {[0, 0.08, 0.16].map(d => (
-                      <div key={d} style={{ height: 52, borderRadius: 8, background: 'linear-gradient(90deg,#ffffff05,#ffffff0f,#ffffff05)', backgroundSize: '400px 100%', animation: `shimmer 1.4s ${d}s infinite` }} />
-                    ))}
-                  </div>
-                  {/* Progress bar */}
-                  <div style={{ height: 10, borderRadius: 6, background: 'linear-gradient(90deg,#ffffff05,#ffffff0f,#ffffff05)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s .2s infinite' }} />
-                </div>
-              ) : (() => {
-                const rank = getRank(userScore, gs.limits.playerRanks)
-                const { c1, c2 } = rankCC(rank)
-                const sortedRanks = [...(gs.limits.playerRanks || DEFAULT_RANKS)].sort((a, b) => a.min - b.min)
-                const nextRank = sortedRanks.find(r => r.min > userScore)
-                const prevMin = [...sortedRanks].reverse().find(r => r.min <= userScore)?.min || 0
-                const pct = nextRank ? Math.round(((userScore - prevMin) / (nextRank.min - prevMin)) * 100) : 100
-                const uniqueCards = Object.values(gs.collection).filter(n => n > 0).length
+              {/* User profile mini card — données disponibles progressivement */}
+              {(() => {
+                const scoreReady = gs.collectionLoaded && gs.cardPool.length > 0
+                const rank   = scoreReady ? getRank(userScore, gs.limits.playerRanks) : null
+                const { c1, c2 } = rank ? rankCC(rank) : { c1: '#6b7280', c2: '#9ca3af' }
+                const sortedRanks = scoreReady ? [...(gs.limits.playerRanks || DEFAULT_RANKS)].sort((a, b) => a.min - b.min) : []
+                const nextRank = scoreReady ? sortedRanks.find(r => r.min > userScore) : null
+                const prevMin  = scoreReady ? ([...sortedRanks].reverse().find(r => r.min <= userScore)?.min || 0) : 0
+                const pct      = scoreReady ? (nextRank ? Math.round(((userScore - prevMin) / (nextRank.min - prevMin)) * 100) : 100) : 0
+                const uniqueCards = gs.collectionLoaded ? Object.values(gs.collection).filter(n => n > 0).length : null
                 const dk = THEMES.dark
+                const shimCell = { height: 12, borderRadius: 4, background: 'linear-gradient(90deg,#ffffff08,#ffffff18,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite', margin: '2px auto', width: '55%' }
                 return (
-                  <div data-tour="profile" style={{ background: dk.bgSurface, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden', animation: 'fadeUp .4s .05s ease-out both' }}>
-                    <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none' }} />
+                  <div data-tour="profile" style={{ background: dk.bgSurface, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden', animation: 'fadeUp .4s .05s ease-out both', transition: 'border-color .4s' }}>
+                    <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none', transition: 'background .4s' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 14px ${c1}44`, border: `2px solid ${c1}44` }}>
+                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 14px ${c1}44`, border: `2px solid ${c1}44`, transition: 'background .4s, box-shadow .4s' }}>
                         {auth.profile.pseudo?.[0]?.toUpperCase() || '?'}
                       </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: dk.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           <PseudoDisplay pseudo={auth.profile.pseudo} score={userScore} ranks={gs.limits.playerRanks} style={{ color: dk.textPrimary }}/>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: c1 }}>{rank?.label}</span>
+                        <div style={{ marginTop: 2, height: 16, display: 'flex', alignItems: 'center' }}>
+                          {rank
+                            ? <span style={{ fontSize: 11, fontWeight: 800, color: c1 }}>{rank.label}</span>
+                            : <div style={{ height: 10, width: '38%', borderRadius: 4, background: 'linear-gradient(90deg,#ffffff08,#ffffff18,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite' }} />
+                          }
                         </div>
                       </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
                       {[
-                        { icon: '🃏', value: uniqueCards,     label: t('stat_geocoins') },
+                        { icon: '🃏', value: uniqueCards,    label: t('stat_geocoins') },
                         { icon: '💰', value: gs.gold,        label: t('stat_gold') },
-                        { icon: '🔨', value: gs.forgePoints,  label: t('stat_forge') },
+                        { icon: '🔨', value: gs.forgePoints, label: t('stat_forge') },
                       ].map(({ icon, value, label }) => (
                         <div key={label} style={{ background: dk.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
                           <div style={{ fontSize: 12 }}>{icon}</div>
-                          <div style={{ fontWeight: 900, fontSize: 12, color: dk.textPrimary, lineHeight: 1.2 }}>{value}</div>
+                          {value === null
+                            ? <div style={shimCell} />
+                            : <div style={{ fontWeight: 900, fontSize: 12, color: dk.textPrimary, lineHeight: 1.2 }}>{value}</div>
+                          }
                           <div style={{ fontSize: 7, color: dk.textSecondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .2 }}>{label}</div>
                         </div>
                       ))}
                     </div>
-                    {nextRank ? (
-                      <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: dk.textSecondary }}>
-                          <span>{t('rank_next')} <span style={{ background: nextRank.color, color: '#fff', fontWeight: 800, padding: '1px 6px', borderRadius: 4, fontSize: 9, textShadow: '0 1px 2px #0004' }}>{nextRank.label}</span></span>
-                          <span onClick={() => setShowScoreDetail(true)} style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{userScore}/{nextRank.min}</span>
-                        </div>
-                        <div style={{ background: dk.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
-                        </div>
-                      </>
+                    {scoreReady ? (
+                      nextRank ? (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: dk.textSecondary }}>
+                            <span>{t('rank_next')} <span style={{ background: nextRank.color, color: '#fff', fontWeight: 800, padding: '1px 6px', borderRadius: 4, fontSize: 9, textShadow: '0 1px 2px #0004' }}>{nextRank.label}</span></span>
+                            <span onClick={() => setShowScoreDetail(true)} style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{userScore}/{nextRank.min}</span>
+                          </div>
+                          <div style={{ background: dk.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: 11, fontWeight: 800, color: c1, textAlign: 'center' }}>{t('rank_max')}</div>
+                      )
                     ) : (
-                      <div style={{ fontSize: 11, fontWeight: 800, color: c1, textAlign: 'center' }}>{t('rank_max')}</div>
+                      <div style={{ height: 8, borderRadius: 50, background: 'linear-gradient(90deg,#ffffff05,#ffffff12,#ffffff05)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s .1s infinite' }} />
                     )}
                   </div>
                 )
