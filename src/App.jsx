@@ -1280,7 +1280,7 @@ export default function App() {
                               : 'slideIn .35s ease both'
                             return (
                               <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
-                                <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={missing ? undefined : () => { setSelectedCard(card); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
+                                <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={missing ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '' }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
                               </div>
                             );
                           })}
