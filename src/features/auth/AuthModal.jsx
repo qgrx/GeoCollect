@@ -289,16 +289,6 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
               {t('auth_google')}
             </button>
 
-            <button onClick={doFacebook} disabled={busy}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#1877F2',
-                border: 'none', color: '#fff', padding: '12px 16px', borderRadius: 12,
-                fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff">
-                <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073c0 6.027 4.388 11.02 10.125 11.927v-8.437H7.078v-3.49h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796v8.437C19.612 23.093 24 18.1 24 12.073z"/>
-              </svg>
-              {t('auth_facebook') || 'Continuer avec Facebook'}
-            </button>
-
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ flex: 1, height: 1, background: '#ffffff18' }}/>
               <span style={{ fontSize: 11, color: '#555' }}>{t('auth_or')}</span>
