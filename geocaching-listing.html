@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Géocoin du Jour — geocoins.fr</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    background: #fdf8f2;
+    color: #2d1a00;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .gc-wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 32px 16px 56px;
+  }
+
+  /* ── HERO ──────────────────────────────────────────── */
+  .gc-hero {
+    position: relative;
+    text-align: center;
+    padding: 48px 28px 38px;
+    background: linear-gradient(160deg, #fff9f2, #fff3e0, #fdefd4);
+    border-radius: 24px;
+    border: 1.5px solid #f0d0a0;
+    margin-bottom: 18px;
+    overflow: hidden;
+  }
+  .gc-hero::before {
+    content: '';
+    position: absolute;
+    top: -50px; left: 50%; transform: translateX(-50%);
+    width: 320px; height: 220px;
+    background: radial-gradient(ellipse, #e6510012 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .gc-hero-coin {
+    margin: 0 auto 24px;
+    width: 120px; height: 120px;
+    filter: drop-shadow(0 8px 22px #e6510055);
+    animation: gcFloat 4s ease-in-out infinite;
+  }
+  @keyframes gcFloat {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50%       { transform: translateY(-12px) rotate(2deg); }
+  }
+  .gc-hero h1 {
+    font-size: 32px;
+    font-weight: 900;
+    color: #e65100;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+  }
+  .gc-hero .sub {
+    font-size: 15px;
+    color: #7a4e18;
+    max-width: 380px;
+    margin: 0 auto;
+    font-weight: 500;
+    line-height: 1.7;
+  }
+
+  /* ── PILLS ─────────────────────────────────────────── */
+  .gc-pills {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    margin-bottom: 18px;
+  }
+  .gc-pill {
+    background: #fff; border: 1.5px solid #edcfaa; border-radius: 22px;
+    padding: 7px 16px; font-size: 12.5px; color: #5c3a10; font-weight: 700;
+  }
+
+  /* ── CARD ──────────────────────────────────────────── */
+  .gc-card {
+    background: #fff;
+    border: 1.5px solid #e8ddd0;
+    border-radius: 18px;
+    padding: 26px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 14px #00000009;
+  }
+  .gc-card-title {
+    font-size: 17px; font-weight: 900; color: #1a0f00;
+    margin-bottom: 20px;
+  }
+
+  /* ── STEPS ─────────────────────────────────────────── */
+  .gc-steps { display: flex; flex-direction: column; gap: 14px; }
+  .gc-step  { display: flex; align-items: flex-start; gap: 13px; }
+  .gc-step-n {
+    min-width: 30px; height: 30px;
+    background: linear-gradient(135deg, #e65100, #ff8f00);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 900; color: #fff; flex-shrink: 0;
+  }
+  .gc-step-t { font-size: 14px; color: #444; line-height: 1.6; padding-top: 5px; }
+
+  /* ── EXAMPLE ────────────────────────────────────────── */
+  .gc-ex {
+    background: linear-gradient(135deg, #fffbf4, #fff5e6);
+    border: 1.5px dashed #dda060;
+    border-radius: 14px;
+    padding: 22px 18px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .gc-ex-badge {
+    display: inline-block; font-size: 10px; font-weight: 800; color: #e65100;
+    letter-spacing: 2px; text-transform: uppercase;
+    background: #e6510012; border: 1px solid #e6510028; border-radius: 12px;
+    padding: 3px 12px; margin-bottom: 16px;
+  }
+  .gc-ex-num {
+    font-size: 28px; font-weight: 900; color: #e65100;
+    letter-spacing: 1.5px;
+    text-shadow: 0 2px 10px #e6510028;
+    margin: 8px 0;
+  }
+  .gc-ex-hint { font-size: 12px; color: #a07040; margin-top: 8px; }
+
+  .gc-sum {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    justify-content: center; margin-top: 18px; font-size: 13px; color: #999;
+  }
+  .gc-sum strong { color: #5c3a10; }
+
+  /* ── CTA ────────────────────────────────────────────── */
+  .gc-cta {
+    text-align: center;
+    padding: 34px 28px;
+    background: linear-gradient(135deg, #e65100, #ff8f00);
+    border-radius: 20px;
+    color: #fff;
+    box-shadow: 0 8px 32px #e6510044;
+  }
+  .gc-cta h3 { font-size: 21px; font-weight: 900; margin-bottom: 10px; }
+  .gc-cta p  { font-size: 13px; opacity: 0.88; margin-bottom: 24px; }
+  .gc-cta a {
+    display: inline-block; background: #fff; color: #e65100;
+    font-weight: 900; font-size: 15px;
+    padding: 14px 34px; border-radius: 14px;
+    text-decoration: none; box-shadow: 0 4px 16px #00000022;
+    letter-spacing: 0.3px;
+  }
+
+  .gc-foot {
+    text-align: center; font-size: 11px; color: #c0a070;
+    margin-top: 26px; letter-spacing: 0.5px;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .gc-hero h1  { font-size: 26px; }
+    .gc-ex-num   { font-size: 22px; }
+    .gc-cta h3   { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="gc-wrap">
+
+  <!-- ══ HERO ══════════════════════════════════════════════════ -->
+  <div class="gc-hero">
+
+    <div class="gc-hero-coin">
+      <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="cOuter" cx="36%" cy="30%" r="70%">
+            <stop offset="0%"   stop-color="#ffe57a"/>
+            <stop offset="50%"  stop-color="#f9a825"/>
+            <stop offset="100%" stop-color="#e65100"/>
+          </radialGradient>
+          <radialGradient id="cInner" cx="40%" cy="36%" r="65%">
+            <stop offset="0%"   stop-color="#fffde7"/>
+            <stop offset="100%" stop-color="#ffe082"/>
+          </radialGradient>
+          <filter id="cShadow" x="-10%" y="-10%" width="120%" height="130%">
+            <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#e65100" flood-opacity="0.28"/>
+          </filter>
+        </defs>
+
+        <!-- Coin body -->
+        <circle cx="60" cy="60" r="57" fill="url(#cOuter)" filter="url(#cShadow)"/>
+        <circle cx="60" cy="60" r="57" fill="none" stroke="#f9a825" stroke-width="2" opacity="0.5"/>
+        <!-- Inner disc -->
+        <circle cx="60" cy="60" r="46" fill="url(#cInner)" stroke="#daa520" stroke-width="1" opacity="0.9"/>
+
+        <!-- Compass cross -->
+        <line x1="60" y1="20" x2="60" y2="100" stroke="#b8860b" stroke-width="0.8" opacity="0.22"/>
+        <line x1="20" y1="60" x2="100" y2="60" stroke="#b8860b" stroke-width="0.8" opacity="0.22"/>
+        <line x1="35" y1="35" x2="85" y2="85" stroke="#b8860b" stroke-width="0.6" opacity="0.14"/>
+        <line x1="85" y1="35" x2="35" y2="85" stroke="#b8860b" stroke-width="0.6" opacity="0.14"/>
+
+        <!-- North arrow (prominent) -->
+        <polygon points="60,23 55.5,37 60,33 64.5,37" fill="#8B6914" opacity="0.9"/>
+        <!-- S / E / W dots -->
+        <circle cx="60" cy="97" r="3" fill="#8B6914" opacity="0.4"/>
+        <circle cx="97" cy="60" r="3" fill="#8B6914" opacity="0.4"/>
+        <circle cx="23" cy="60" r="3" fill="#8B6914" opacity="0.4"/>
+
+        <!-- Center ring + dot -->
+        <circle cx="60" cy="60" r="15" fill="none" stroke="#b8860b" stroke-width="1" opacity="0.45"/>
+        <circle cx="60" cy="60" r="4"  fill="#8B6914" opacity="0.75"/>
+
+        <!-- "GEOCOIN" text along top arc -->
+        <path id="ta" d="M 18,60 A 42,42 0 0,1 102,60" fill="none"/>
+        <text font-family="Arial,sans-serif" font-size="9.5" font-weight="800"
+              fill="#7a5c14" letter-spacing="3">
+          <textPath href="#ta" startOffset="9%">GEOCOIN</textPath>
+        </text>
+
+        <!-- ".FR" text along bottom arc -->
+        <path id="ba" d="M 28,65 A 33,33 0 0,0 92,65" fill="none"/>
+        <text font-family="Arial,sans-serif" font-size="8" fill="#8B6914"
+              opacity="0.6" letter-spacing="2.5">
+          <textPath href="#ba" startOffset="28%">.FR</textPath>
+        </text>
+      </svg>
+    </div>
+
+    <h1>Géocoin du Jour</h1>
+    <p class="sub">200 géocoins cachés dans le web. Un nouveau chaque minuit. Note leurs numéros… les coordonnées finales t'attendent.</p>
+  </div>
+
+  <!-- ══ PILLS ══════════════════════════════════════════════════ -->
+  <div class="gc-pills">
+    <div class="gc-pill">📅 Un nouveau géocoin à minuit</div>
+    <div class="gc-pill">🪙 200 géocoins à collectionner</div>
+    <div class="gc-pill">🔢 Numéro unique par géocoin</div>
+  </div>
+
+  <!-- ══ RULES ══════════════════════════════════════════════════ -->
+  <div class="gc-card">
+    <div class="gc-card-title">🗺️ Comment jouer ?</div>
+    <div class="gc-steps">
+
+      <div class="gc-step">
+        <div class="gc-step-n">1</div>
+        <div class="gc-step-t">
+          Rends-toi sur <strong>geocoins.fr</strong> — sans inscription, gratuit, accessible à tous.
+        </div>
+      </div>
+
+      <div class="gc-step">
+        <div class="gc-step-n">2</div>
+        <div class="gc-step-t">
+          Observe le <strong>géocoin du jour</strong> sur la page d'accueil et note son <strong>numéro unique</strong> affiché sous la carte.
+        </div>
+      </div>
+
+      <div class="gc-step">
+        <div class="gc-step-n">3</div>
+        <div class="gc-step-t">
+          Reviens chaque jour à minuit — un nouveau géocoin est révélé. <strong>200 jours, 200 numéros différents.</strong>
+        </div>
+      </div>
+
+      <div class="gc-step">
+        <div class="gc-step-n">4</div>
+        <div class="gc-step-t">
+          <strong>Additionne</strong> tous les numéros collectés au fil des visites.
+        </div>
+      </div>
+
+      <div class="gc-step">
+        <div class="gc-step-n">5</div>
+        <div class="gc-step-t">
+          Le total révèle les <strong>coordonnées de la cache finale</strong> — et la vraie chasse commence !
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ EXAMPLE ════════════════════════════════════════════════ -->
+  <div class="gc-card">
+    <div class="gc-card-title">💡 Exemple de collecte</div>
+
+    <div class="gc-ex">
+      <div class="gc-ex-badge">Géocoin du jour — Jour 47 / 200</div>
+
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:14px;">
+        <!-- Mini coin (no gradient ID conflict — uses solid fills) -->
+        <svg width="56" height="56" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="60" cy="60" r="57" fill="#f9a825"/>
+          <circle cx="60" cy="60" r="46" fill="#ffe082" stroke="#daa520" stroke-width="1.5"/>
+          <line x1="60" y1="20" x2="60" y2="100" stroke="#b8860b" stroke-width="1" opacity="0.28"/>
+          <line x1="20" y1="60" x2="100" y2="60" stroke="#b8860b" stroke-width="1" opacity="0.28"/>
+          <polygon points="60,23 55.5,37 60,33 64.5,37" fill="#8B6914" opacity="0.9"/>
+          <circle cx="60" cy="60" r="4" fill="#8B6914" opacity="0.75"/>
+        </svg>
+        <div style="text-align:left;">
+          <div style="font-size:15px;font-weight:900;color:#1a0f00;">Geocoin FTF</div>
+          <div style="font-size:11px;color:#e65100;font-weight:800;margin-top:3px;">⭐ Légendaire</div>
+          <div style="font-size:10px;color:#aaa;margin-top:2px;">Type : Geocaching</div>
+        </div>
+      </div>
+
+      <div style="font-size:10px;font-weight:800;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">
+        Numéro unique
+      </div>
+      <div class="gc-ex-num">17 957 153 640</div>
+      <div class="gc-ex-hint">✏️ Note ce numéro dans ton carnet de cache !</div>
+    </div>
+
+    <div class="gc-sum">
+      <span>Jour 1 : <strong>4 201 887 334</strong></span>
+      <span style="color:#ddd;font-size:18px;">+</span>
+      <span>Jour 47 : <strong>17 957 153 640</strong></span>
+      <span style="color:#ddd;font-size:18px;">+</span>
+      <span style="color:#e65100;font-weight:800;">… ×200</span>
+    </div>
+    <div style="text-align:center;margin-top:12px;font-size:14px;color:#888;">
+      = <strong style="color:#e65100;font-size:17px;">coordonnées finales 🎯</strong>
+    </div>
+  </div>
+
+  <!-- ══ CTA ════════════════════════════════════════════════════ -->
+  <div class="gc-cta">
+    <h3>🪙 Commence la chasse aujourd'hui</h3>
+    <p>Aucune inscription requise &nbsp;·&nbsp; Gratuit &nbsp;·&nbsp; Mobile &amp; desktop</p>
+    <a href="https://geocoins.fr" target="_blank" rel="noopener">
+      Voir le Géocoin du jour →
+    </a>
+  </div>
+
+  <p class="gc-foot">geocoins.fr &nbsp;·&nbsp; Le mini-jeu pour les géocacheurs collectionneurs</p>
+
+</div>
+</body>
+</html>
