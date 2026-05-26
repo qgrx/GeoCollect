@@ -13,6 +13,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
   apiGetDailySchedule, apiRegenerateDailySchedule,
   apiResetQuestionReports, apiAdminGetQuestions,
+  apiAdminGetVersion,
 } from '../../services/api.js';
 
 const DEFAULT_TYPE = 'Normal';
@@ -92,6 +93,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [mktHistType,setMktHistType]=useState('');
   const [mktHistQ,setMktHistQ]=useState('');
   const [gameStats,setGameStats]=useState(null);
+  const [versionInfo,setVersionInfo]=useState(null);
   const [bots,setBots]=useState([]);
   const [botForm,setBotForm]=useState({pseudo:'',type:'seller',config:BOT_DEFAULTS.seller});  // { playerId: bool }
   const [listingsPage,setListingsPage]=useState(0);
@@ -191,6 +193,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   },[tab]);
 
   useEffect(()=>{
+    if(tab!=='version') return;
+    apiAdminGetVersion().then(({data})=>{ if(data) setVersionInfo(data); });
+  },[tab]);
+
+  useEffect(()=>{
     if(tab!=='quests') return;
     apiGetAdminDailyQuests().then(({data})=>{ if(data?.quests) setDailyQuests(data.quests); });
     apiGetDailySchedule().then(({data})=>{ if(data?.schedule) setQuestSchedule(data.schedule); });
@@ -233,7 +240,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
     {label:'Économie',items:[{id:'limits',icon:'💰',label:'Limites & Prix'},{id:'shop',icon:'🛍️',label:'Boutique'},{id:'ranks',icon:'🎖️',label:'Rangs'}]},
     {label:'Récompenses',items:[{id:'quests',icon:'🔨',label:'Quêtes'},{id:'achievements',icon:'🏆',label:'Achievements'}]},
     {label:'Communauté',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'bots',icon:'🤖',label:'Bots'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_history',icon:'💸',label:'Historique'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
-    {label:'Système',items:[{id:'maintenance',icon:'🛠️',label:'Maintenance'},{id:'interface',icon:'📱',label:'Interface'},{id:'cache',icon:'⚡',label:'Cache'},{id:'stats',icon:'📈',label:'Stats'},{id:'domains',icon:'🔒',label:'Domaines'}]},
+    {label:'Système',items:[{id:'maintenance',icon:'🛠️',label:'Maintenance'},{id:'interface',icon:'📱',label:'Interface'},{id:'cache',icon:'⚡',label:'Cache'},{id:'stats',icon:'📈',label:'Stats'},{id:'domains',icon:'🔒',label:'Domaines'},{id:'version',icon:'🔖',label:'Version'}]},
   ]
 
   return (
@@ -486,6 +493,23 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
         {/* ── QUIZ CONFIG ── */}
         {tab==="quiz_config"&&<div>
+          {/* Contrôle quiz */}
+          <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12",marginBottom:16}}>
+            <div style={{fontWeight:900,color:"#6c5ce7",fontSize:13,marginBottom:12}}>⚡ Contrôle du quiz</div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button onClick={async()=>{
+                setMsg("⏳ Déclenchement en cours…");
+                const {error}=await apiTriggerQuiz();
+                setMsg(error?"❌ "+error:"✅ Quiz déclenché !");
+              }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"10px 22px",borderRadius:9}}>⚡ Déclencher un quiz</button>
+              <button onClick={async()=>{
+                setMsg("⏳ Déclenchement shiny en cours…");
+                const {error}=await apiTriggerShinyQuiz();
+                setMsg(error?"❌ "+error:"✅ Quiz shiny déclenché !");
+              }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 22px",borderRadius:9}}>✨ Déclencher un quiz shiny</button>
+            </div>
+            <div style={{fontSize:10,color:"#8daacc",marginTop:10}}>Expire tout quiz actif et en lance un nouveau immédiatement.</div>
+          </div>
           {/* Taux de rareté */}
           <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12",marginBottom:16}}>
             <div style={{fontWeight:900,color:"#f9ca24",fontSize:13,marginBottom:4}}>🎲 Taux d'apparition par rareté</div>
@@ -1965,6 +1989,36 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {tab==="seasons"&&<AdminSeasons setMsg={setMsg}/>}
 
         {tab==="shop"&&<AdminShop setMsg={setMsg} onSaved={onShopPacksSaved} onShopTestModeChange={onShopTestModeChange}/>}
+
+        {/* ── VERSION ── */}
+        {tab==="version"&&<div>
+          <div style={{fontWeight:900,color:"#e74c3c",marginBottom:16,fontSize:14}}>🔖 Version déployée</div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12"}}>
+              <div style={{fontSize:11,color:"#8daacc",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Frontend (geocards)</div>
+              <div style={{fontFamily:"monospace",fontSize:16,color:"#a29bfe",fontWeight:900,letterSpacing:2}}>
+                {typeof __COMMIT_SHA__!=='undefined'?__COMMIT_SHA__:'unknown'}
+              </div>
+              <div style={{fontSize:10,color:"#556b7a",marginTop:4}}>Injecté au build Vite (git rev-parse --short HEAD)</div>
+            </div>
+            <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12"}}>
+              <div style={{fontSize:11,color:"#8daacc",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Backend (geocards-api)</div>
+              {!versionInfo?(
+                <div style={{color:"#8daacc",fontSize:12}}>Chargement…</div>
+              ):(
+                <>
+                  <div style={{fontFamily:"monospace",fontSize:16,color:"#00b894",fontWeight:900,letterSpacing:2}}>{versionInfo.commit}</div>
+                  <div style={{fontSize:10,color:"#556b7a",marginTop:4}}>Variable d'env COMMIT_SHA (build arg Docker)</div>
+                  <div style={{fontSize:10,color:"#556b7a",marginTop:2}}>NODE_ENV : {versionInfo.env}</div>
+                </>
+              )}
+              <button onClick={()=>{setVersionInfo(null);apiAdminGetVersion().then(({data})=>{if(data)setVersionInfo(data);});}}
+                style={{...BTN("linear-gradient(135deg,#2d3436,#636e72)"),padding:"6px 14px",borderRadius:7,marginTop:10,fontSize:11}}>
+                🔄 Rafraîchir
+              </button>
+            </div>
+          </div>
+        </div>}
 
         </div>
       </div>

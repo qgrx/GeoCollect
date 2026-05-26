@@ -109,6 +109,7 @@ export const apiAdminAnnounce         = (message, type = 'info') => apiFetch('/a
 export const apiPublishReleaseNote    = (version)               => apiFetch('/api/admin/docs/release-notes/publish', { method: 'POST', body: { version } })
 export const apiTriggerQuiz           = () => apiFetch('/api/admin/quiz/trigger', { method: 'POST' })
 export const apiTriggerShinyQuiz      = () => apiFetch('/api/admin/quiz/trigger-shiny', { method: 'POST' })
+export const apiAdminGetVersion       = () => apiFetch('/api/admin/version')
 export const apiAdminGetQuestions       = ()                         => apiFetch('/api/admin/questions')
 export const apiAdminAddQuestion        = (q, a, translations)       => apiFetch('/api/admin/questions', { method: 'POST', body: { question: q, answer: a, hint: '', translations: translations || {} } })
 export const apiAdminBatchAddQuestions  = (questions)                => apiFetch('/api/admin/questions/batch', { method: 'POST', body: { questions } })

@@ -1,5 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { execSync } from 'child_process'
+
+function getCommitSha() {
+  try { return execSync('git rev-parse --short HEAD').toString().trim() }
+  catch { return 'unknown' }
+}
 
 // Plugin pour SPA fallback en dev (toutes les routes → index.html)
 function spaFallback() {
@@ -23,6 +29,7 @@ function spaFallback() {
 
 export default defineConfig({
   plugins: [react(), spaFallback()],
+  define: { __COMMIT_SHA__: JSON.stringify(getCommitSha()) },
   server: { port: 5173, open: true },
   resolve: {
     dedupe: ['react', 'react-dom'],
