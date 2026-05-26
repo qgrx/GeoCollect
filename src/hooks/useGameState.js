@@ -22,6 +22,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [limits,      setLimits]      = useState(INIT_LIMITS)
   const [maintenance, setMaintenance] = useState({ on: false, text: '' })
   const [loadingData, setLoadingData] = useState(false)
+  const [configLoaded, setConfigLoaded] = useState(false)
 
   // ── Player state ───────────────────────────────────────────────────────────
   const [gold,         setGold]        = useState(profile?.gold ?? 0)
@@ -112,6 +113,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           featureForge:        cfg.feature_forge       !== undefined ? cfg.feature_forge       !== false : prev.featureForge,
           featureLeaderboard:  cfg.feature_leaderboard !== undefined ? cfg.feature_leaderboard !== false : prev.featureLeaderboard,
         }))
+        setConfigLoaded(true)
       }
     })
   }, [])
@@ -679,7 +681,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   return {
     // World
     cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs,
-    limits, setLimits, maintenance, setMaintenance, loadingData,
+    limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded,
     // Player
     gold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, myListings, dailyGold, dailyCards, totalBuys, totalSells,
     streak, setStreak, transactions, setTransactions, unlockedAch, pendingAch, setPendingAch,
