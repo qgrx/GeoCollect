@@ -231,7 +231,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
             <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4, lineHeight: 1.5 }}>{t('hold_empty_desc')}</div>
           </div>
         )}
-        <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 6, textAlign: 'center' }}>{t('hold_slot_note')}</div>
+
       </div>
 
       {/* ── Packs ── */}
