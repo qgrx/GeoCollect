@@ -195,19 +195,59 @@ export default function LandingSection({ onOpenAuth }) {
         <ScrollHint label={t('landing_scroll')} />
       </section>
 
-      {/* ══ SLIDE 1 — MARCHÉ ════════════════════════════════════════════════════ */}
+      {/* ══ SLIDE 1 — AVANTAGES ════════════════════════════════════════════════ */}
       <section style={{ scrollSnapAlign: 'start', height: 'calc(100vh - 60px)', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg,#f0fdf7,#e6faf4,#f0fff8)', transform: `translateY(${p1}px)`, willChange: 'transform' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 55% 50% at 70% 40%,#00b89418 0%,transparent 70%)', transform: `translateY(${p1 * .5}px)`, willChange: 'transform' }} />
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg,#00897b,#26a69a)', transform: `translateY(${p1}px)`, willChange: 'transform' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg,#f5f0ff,#ede8ff,#faf0ff)', transform: `translateY(${p1}px)`, willChange: 'transform' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 50% at 50% 40%,#6a1b9a14 0%,transparent 70%)', transform: `translateY(${p1 * .5}px)`, willChange: 'transform' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg,#6a1b9a,#ab47bc)', transform: `translateY(${p1}px)`, willChange: 'transform' }} />
+        {[
+          { top: '8%',  left: '6%',  size: 70,  color: '#6a1b9a0d' },
+          { top: '72%', left: '82%', size: 110, color: '#e6510010' },
+          { top: '60%', left: '4%',  size: 55,  color: '#ab47bc0d' },
+          { top: '18%', left: '84%', size: 80,  color: '#6a1b9a08' },
+        ].map((c, i) => (
+          <div key={i} style={{ position: 'absolute', width: c.size, height: c.size, borderRadius: '50%', background: c.color, top: c.top, left: c.left, transform: `translateY(${p1 * (0.08 + i * 0.04)}px)`, willChange: 'transform' }} />
+        ))}
+
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 20px', width: '100%', maxWidth: 400 }}>
+          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 25, color: '#2a004a', marginBottom: 20, transform: `translateY(${p1 * -0.08}px)`, willChange: 'transform', animation: 'fadeUp .5s ease both' }}>
+            {t('landing_signup_title')}
+          </div>
+
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 22, transform: `translateY(${p1 * -0.06}px)`, willChange: 'transform' }}>
+            {BENEFITS.map(({ icon, c1, c2, border, titleKey, bodyKey }, i) => (
+              <div key={i} style={{ background: '#fff', borderRadius: 16, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 12px #00000008', border: `1px solid ${border}`, animation: `fadeUp .5s ${0.08 + i * 0.08}s ease both` }}>
+                <div style={{ width: 44, height: 44, borderRadius: 13, background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}>
+                  {icon}
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontWeight: 900, fontSize: 13, color: '#2a004a', marginBottom: 2 }}>{t(titleKey)}</div>
+                  <div style={{ fontSize: 12, color: '#888', lineHeight: 1.45 }}>{t(bodyKey)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={onOpenAuth} style={{ background: 'linear-gradient(135deg,#6a1b9a,#ab47bc)', border: 'none', color: '#fff', padding: '13px 0', borderRadius: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 20px #6a1b9a33', width: '100%', maxWidth: 300, animation: 'fadeUp .5s .32s ease both' }}>
+            {t('landing_signup_cta')}
+          </button>
+        </div>
+        <ScrollHint label={t('landing_scroll')} />
+      </section>
+
+      {/* ══ SLIDE 2 — MARCHÉ ════════════════════════════════════════════════════ */}
+      <section style={{ scrollSnapAlign: 'start', height: 'calc(100vh - 60px)', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg,#f0fdf7,#e6faf4,#f0fff8)', transform: `translateY(${p2}px)`, willChange: 'transform' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 55% 50% at 70% 40%,#00b89418 0%,transparent 70%)', transform: `translateY(${p2 * .5}px)`, willChange: 'transform' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg,#00897b,#26a69a)', transform: `translateY(${p2}px)`, willChange: 'transform' }} />
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px', width: '100%', maxWidth: 420 }}>
-          <div style={{ transform: `translateY(${p1 * -0.1}px)`, willChange: 'transform', marginBottom: 10, pointerEvents: 'none' }}>
+          <div style={{ transform: `translateY(${p2 * -0.1}px)`, willChange: 'transform', marginBottom: 10, pointerEvents: 'none' }}>
             <img src="/geocoin-market.webp" alt="Geocoin Market" style={{ width: 100, height: 100, objectFit: 'contain', filter: 'drop-shadow(0 4px 16px #00897b44)' }} />
           </div>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#004d40', marginBottom: 10 }}>{t('landing_market_title')}</div>
           <div style={{ fontSize: 14, color: '#555', marginBottom: 22, lineHeight: 1.6 }}>{t('landing_market_sub')}</div>
-          <div style={{ display: 'flex', gap: 18, justifyContent: 'center', marginBottom: 26, transform: `translateY(${p1 * -0.08}px)`, willChange: 'transform' }}>
+          <div style={{ display: 'flex', gap: 18, justifyContent: 'center', marginBottom: 26, transform: `translateY(${p2 * -0.08}px)`, willChange: 'transform' }}>
             {[
               { src: '/geocoin-ape.webp',     price: '2 400 G', c: '#e65100', label: 'Légendaire' },
               { src: '/geocoin-ammobox.webp', price: '850 G',   c: '#6a1b9a', label: 'Épique' },
@@ -222,52 +262,6 @@ export default function LandingSection({ onOpenAuth }) {
           <button onClick={onOpenAuth} style={{ background: 'linear-gradient(135deg,#00897b,#26a69a)', border: 'none', color: '#fff', padding: '12px 28px', borderRadius: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 16px #00897b33' }}>
             {t('landing_market_cta')}
           </button>
-        </div>
-        <ScrollHint label={t('landing_scroll')} />
-      </section>
-
-      {/* ══ SLIDE 2 — AVANTAGES ════════════════════════════════════════════════ */}
-      <section style={{ scrollSnapAlign: 'start', height: 'calc(100vh - 60px)', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg,#f5f0ff,#ede8ff,#faf0ff)', transform: `translateY(${p2}px)`, willChange: 'transform' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 50% at 50% 40%,#6a1b9a14 0%,transparent 70%)', transform: `translateY(${p2 * .5}px)`, willChange: 'transform' }} />
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg,#6a1b9a,#ab47bc)', transform: `translateY(${p2}px)`, willChange: 'transform' }} />
-        {[
-          { top: '8%',  left: '6%',  size: 70,  color: '#6a1b9a0d' },
-          { top: '72%', left: '82%', size: 110, color: '#e6510010' },
-          { top: '60%', left: '4%',  size: 55,  color: '#ab47bc0d' },
-          { top: '18%', left: '84%', size: 80,  color: '#6a1b9a08' },
-        ].map((c, i) => (
-          <div key={i} style={{ position: 'absolute', width: c.size, height: c.size, borderRadius: '50%', background: c.color, top: c.top, left: c.left, transform: `translateY(${p2 * (0.08 + i * 0.04)}px)`, willChange: 'transform' }} />
-        ))}
-
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 20px', width: '100%', maxWidth: 400 }}>
-          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 25, color: '#2a004a', marginBottom: 6, transform: `translateY(${p2 * -0.08}px)`, willChange: 'transform', animation: 'fadeUp .5s ease both' }}>
-            {t('landing_signup_title')}
-          </div>
-          <div style={{ fontSize: 13, color: '#7c6a8a', marginBottom: 22, lineHeight: 1.5, animation: 'fadeUp .5s .08s ease both' }}>
-            {t('landing_signup_sub')}
-          </div>
-
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 22, transform: `translateY(${p2 * -0.06}px)`, willChange: 'transform' }}>
-            {BENEFITS.map(({ icon, c1, c2, border, titleKey, bodyKey }, i) => (
-              <div key={i} style={{ background: '#fff', borderRadius: 16, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 12px #00000008', border: `1px solid ${border}`, animation: `fadeUp .5s ${0.1 + i * 0.08}s ease both` }}>
-                <div style={{ width: 44, height: 44, borderRadius: 13, background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}>
-                  {icon}
-                </div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontWeight: 900, fontSize: 13, color: '#2a004a', marginBottom: 2 }}>{t(titleKey)}</div>
-                  <div style={{ fontSize: 12, color: '#888', lineHeight: 1.45 }}>{t(bodyKey)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button onClick={onOpenAuth} style={{ background: 'linear-gradient(135deg,#6a1b9a,#ab47bc)', border: 'none', color: '#fff', padding: '13px 0', borderRadius: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 20px #6a1b9a33', width: '100%', maxWidth: 300, animation: 'fadeUp .5s .35s ease both' }}>
-            {t('landing_signup_cta')}
-          </button>
-          <div style={{ fontSize: 11, color: '#b0a0c0', marginTop: 8, animation: 'fadeUp .5s .4s ease both' }}>
-            {t('landing_signup_free')}
-          </div>
         </div>
       </section>
 
