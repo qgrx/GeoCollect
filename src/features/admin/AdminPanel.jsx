@@ -9,6 +9,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiAdminGetBots, apiAdminCreateBot, apiAdminUpdateBot, apiAdminDeleteBot,
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
   apiAdminSaveTranslations,
+  apiAdminEditFullQuestion,
   apiGetAchievementDefs, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef,
   apiAdminAddCard,
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
@@ -69,6 +70,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
       if(data?.questions) setLiveQuestions(data.questions.map(q=>({
         id: q.id, q: q.question, a: q.answer, hint: q.hint||'',
         active: q.active, translations: q.translations||{},
+        alt_answers: q.alt_answers||[],
         report_count: q.report_count||0,
       })));
     });
@@ -101,7 +103,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [listingsPage,setListingsPage]=useState(0);
   const [listingsQ,setListingsQ]=useState('');
   const [expiredDays,setExpiredDays]=useState(limits.marketExpireDays || 30);
-  const [nq,setNq]=useState({q:"",a:"",hint:""});
+  const [nq,setNq]=useState({q:"",a:"",hint:"",alt_answers:[]});
+  const [altInput,setAltInput]=useState(""); // saisie d'une réponse alternative
   const [transQ,setTransQ]=useState(null);   // question en cours de traduction
   const [transLang,setTransLang]=useState('en');
   const TRANS_LANGS=[{code:'en',label:'English'},{code:'de',label:'Deutsch'},{code:'es',label:'Español'}];
@@ -376,20 +379,56 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           )}
 
           {/* Form */}
-          <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:14}}>
-            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:9,fontSize:13}}>{editQ?"✏️ Éditer":"➕ Nouvelle question"}</div>
-            <Fld lbl="Question"><input value={editQ?editQ.q:nq.q} onChange={e=>editQ?setEditQ({...editQ,q:e.target.value}):setNq({...nq,q:e.target.value})} style={INP} placeholder={t("admin_q_placeholder")}/></Fld>
-            <Fld lbl="Réponse attendue"><input value={editQ?editQ.a:nq.a} onChange={e=>editQ?setEditQ({...editQ,a:e.target.value}):setNq({...nq,a:e.target.value})} style={INP} placeholder={t("admin_q_answer_placeholder")||"Réponse exacte"}/></Fld>
-            <Fld lbl="Indice"><input value={editQ?editQ.hint:nq.hint} onChange={e=>editQ?setEditQ({...editQ,hint:e.target.value}):setNq({...nq,hint:e.target.value})} style={INP} placeholder={t("admin_hint_placeholder")}/></Fld>
-            <div style={{display:"flex",gap:8}}>
-              {editQ?(
-                <><button onClick={()=>{if(!editQ.q||!editQ.a){setMsg("❌ Q et R requis.");return;}onEditQuestion(editQ);setEditQ(null);setMsg("✅ Question mise à jour !");}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Enregistrer</button>
-                <button onClick={()=>setEditQ(null)} style={{background:"none",border:"none",color:"#8daacc",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>{t("shop_cancel")}</button></>
-              ):(
-                <button onClick={()=>{if(!nq.q||!nq.a){setMsg("❌ Q et R requis.");return;}onAddQuestion({...nq});setMsg("✅ Question ajoutée !");setNq({q:"",a:"",hint:""}); }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Ajouter</button>
-              )}
+          {(()=>{
+            const cur = editQ ?? nq;
+            const set = v => editQ ? setEditQ(v) : setNq(v);
+            const altAnswers = cur.alt_answers || [];
+            const addAlt = () => {
+              const v = altInput.trim();
+              if(!v || altAnswers.includes(v)) { setAltInput(""); return; }
+              set({...cur, alt_answers:[...altAnswers, v]});
+              setAltInput("");
+            };
+            return(
+            <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:14}}>
+              <div style={{fontWeight:800,color:"#f9ca24",marginBottom:9,fontSize:13}}>{editQ?"✏️ Éditer":"➕ Nouvelle question"}</div>
+              <Fld lbl="Question"><input value={cur.q} onChange={e=>set({...cur,q:e.target.value})} style={INP} placeholder={t("admin_q_placeholder")}/></Fld>
+              <Fld lbl="Réponse attendue"><input value={cur.a} onChange={e=>set({...cur,a:e.target.value})} style={INP} placeholder={t("admin_q_answer_placeholder")||"Réponse exacte"}/></Fld>
+              <Fld lbl="Réponses alternatives">
+                <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:6}}>
+                  {altAnswers.map((v,i)=>(
+                    <span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,background:"#00b89422",border:"1px solid #00b89444",borderRadius:50,padding:"2px 9px",fontSize:11,color:"#00b894",fontWeight:700}}>
+                      {v}
+                      <button onClick={()=>set({...cur,alt_answers:altAnswers.filter((_,j)=>j!==i)})} style={{background:"none",border:"none",color:"#00b894",cursor:"pointer",padding:0,fontSize:12,lineHeight:1,fontFamily:"'Nunito',sans-serif"}}>×</button>
+                    </span>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <input value={altInput} onChange={e=>setAltInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addAlt();}}} style={{...INP,flex:1,padding:"6px 10px"}} placeholder="Ex: 0, aucun… (Entrée pour ajouter)"/>
+                  <button onClick={addAlt} style={{...BTN("#00b89433"),padding:"6px 12px",borderRadius:8,fontSize:11,border:"1px solid #00b89444",color:"#00b894"}}>+</button>
+                </div>
+              </Fld>
+              <Fld lbl="Indice"><input value={cur.hint} onChange={e=>set({...cur,hint:e.target.value})} style={INP} placeholder={t("admin_hint_placeholder")}/></Fld>
+              <div style={{display:"flex",gap:8}}>
+                {editQ?(
+                  <><button onClick={async()=>{
+                    if(!editQ.q||!editQ.a){setMsg("❌ Q et R requis.");return;}
+                    const {data,error}=await apiAdminEditFullQuestion(editQ.id,editQ);
+                    if(error){setMsg("❌ Erreur sauvegarde");return;}
+                    const saved=data?.question;
+                    const mapped={...editQ,...(saved?{a:saved.answer,q:saved.question,hint:saved.hint||'',alt_answers:saved.alt_answers||[]}:{})};
+                    onEditQuestion(mapped);
+                    setLiveQuestions(qs=>(qs??questions).map(x=>x.id===mapped.id?mapped:x));
+                    setEditQ(null);setAltInput("");setMsg("✅ Question mise à jour !");
+                  }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Enregistrer</button>
+                  <button onClick={()=>{setEditQ(null);setAltInput("");}} style={{background:"none",border:"none",color:"#8daacc",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>{t("shop_cancel")}</button></>
+                ):(
+                  <button onClick={()=>{if(!nq.q||!nq.a){setMsg("❌ Q et R requis.");return;}onAddQuestion({...nq});setMsg("✅ Question ajoutée !");setNq({q:"",a:"",hint:"",alt_answers:[]});setAltInput("");}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Ajouter</button>
+                )}
+              </div>
             </div>
-          </div>
+            );
+          })()}
           {/* Recherche + pagination */}
           {(()=>{
             const Q_PAGE=10;
@@ -397,7 +436,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               (!qFilterReported || ((q.report_count||0)>0 && !resetReports.has(q.id))) &&
               (q.q.toLowerCase().includes(qSearch.toLowerCase())||
               q.a.toLowerCase().includes(qSearch.toLowerCase())||
-              (q.hint||"").toLowerCase().includes(qSearch.toLowerCase()))
+              (q.hint||"").toLowerCase().includes(qSearch.toLowerCase())||
+              (q.alt_answers||[]).some(a=>a.toLowerCase().includes(qSearch.toLowerCase())))
             );
             const totalPages=Math.ceil(filtered.length/Q_PAGE);
             const pg=Math.min(qPage,Math.max(0,totalPages-1));
@@ -419,6 +459,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:12,color:inactive?"#666":"#fff",fontWeight:700,marginBottom:2,textDecoration:inactive?"line-through":"none"}}>{q.q}</div>
                         <div style={{fontSize:11,color:"#00b894",fontWeight:700}}>→ {q.a}</div>
+                        {(q.alt_answers||[]).length>0&&<div style={{fontSize:10,color:"#00b894",opacity:.7,marginTop:1}}>∥ {q.alt_answers.join(", ")}</div>}
                         {q.hint&&<div style={{fontSize:10,color:"#a8bfcf",marginTop:2}}>💡 {q.hint}</div>}
                         {(q.report_count||0)>0&&!resetReports.has(q.id)&&(
                           <div style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:3}}>
@@ -429,7 +470,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         {inactive&&<div style={{fontSize:9,color:"#e74c3c",fontWeight:800,marginTop:3}}>DÉSACTIVÉE</div>}
                       </div>
                       <div style={{display:"flex",gap:5,flexShrink:0}}>
-                        {!inactive&&<button onClick={()=>setEditQ(editQ?.id===q.id?null:{...q})} style={{background:"#f9ca2422",border:"1px solid #f9ca2444",color:"#f9ca24",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>✏️</button>}
+                        {!inactive&&<button onClick={()=>{setEditQ(editQ?.id===q.id?null:{...q,alt_answers:q.alt_answers||[]});setAltInput("");}} style={{background:"#f9ca2422",border:"1px solid #f9ca2444",color:"#f9ca24",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>✏️</button>}
                         {!inactive&&<button onClick={()=>setTransQ(transQ?.id===q.id?null:{...q,translations:q.translations||{}})} title="Traduire" style={{background:"#6c5ce722",border:"1px solid #6c5ce744",color:"#a29bfe",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>🌐</button>}
                         <button onClick={()=>{onToggleQuestion(q.id);setMsg(inactive?"✅ Question réactivée.":"⛔ Question désactivée.");}} style={{background:inactive?"#00b89422":"#e74c3c22",border:`1px solid ${inactive?"#00b89444":"#e74c3c44"}`,color:inactive?"#00b894":"#e74c3c",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{inactive?"✅":"🗑️"}</button>
                       </div>

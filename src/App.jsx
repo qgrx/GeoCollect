@@ -1655,10 +1655,10 @@ export default function App() {
               setQuestions(prev => [...prev, q])
               return
             }
-            const { data, error } = await apiAdminAddQuestion(q.q, q.a, q.translations)
+            const { data, error } = await apiAdminAddQuestion(q.q, q.a, q.translations, q.alt_answers)
             if (!error && data?.question) {
               const saved = data.question
-              setQuestions(prev => [...prev, { id: saved.id, q: saved.question, a: saved.answer, hint: saved.hint || '', active: saved.active, translations: saved.translations || {} }])
+              setQuestions(prev => [...prev, { id: saved.id, q: saved.question, a: saved.answer, hint: saved.hint || '', active: saved.active, translations: saved.translations || {}, alt_answers: saved.alt_answers || [] }])
             }
           }}
           onReplaceQuestions={list => setQuestions(list)}
