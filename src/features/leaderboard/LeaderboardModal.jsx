@@ -185,9 +185,9 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
       if (data?.players) {
         // Injecter le joueur courant s'il n'est pas dans la page
         let list = data.players.map(p => p.id === myId ? { ...p, isMe: true, score: myScore ?? p.score } : p);
-        if (page === 0 && myId && !list.find(p => p.isMe)) {
-          const me = { id: myId, pseudo: myPseudo || 'Moi', isMe: true, score: myScore ?? 0, col: myCollection, shinyCol: myShinyCollection };
-          list = [me, ...list];
+        if (myId && !list.find(p => p.isMe)) {
+          const me = { id: myId, pseudo: myPseudo || 'Moi', isMe: true, isMeSeparate: true, score: myScore ?? 0, col: myCollection, shinyCol: myShinyCollection };
+          list = [...list, me];
         }
         setPlayers(list);
         setTotal(data.total || list.length);
@@ -240,23 +240,27 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {players.map((p, i) => {
-              const rank = page * PG + i;
+              const isSeparate = p.isMeSeparate;
+              const rank = page * PG + i - (isSeparate ? 1 : 0);
               return (
-                <div key={p.id || p.pseudo} onClick={p.isMe ? undefined : () => setViewing(p)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 9, background: p.isMe ? 'linear-gradient(135deg,#f9ca2415,#e8439315)' : theme.overlay, border: p.isMe ? '1.5px solid #f9ca2444' : `1.5px solid ${theme.border}`, borderRadius: 11, padding: '9px 13px', cursor: p.isMe ? 'default' : 'pointer', transition: 'transform .12s' }}
-                  onMouseEnter={e => { if (!p.isMe) e.currentTarget.style.transform = 'translateX(4px)' }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}>
-                  <div style={{ fontWeight: 900, fontSize: 16, width: 26, textAlign: 'center' }}>{medal[rank] || `#${rank + 1}`}</div>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: p.isMe ? 'linear-gradient(135deg,#f9ca24,#e17055)' : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
-                    {(p.pseudo || p.name || '?')[0].toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 900, fontSize: 13 }}>
-                      <PseudoDisplay pseudo={(p.pseudo||p.name)+(p.isMe?` ${t('lb_you')}`:'')} score={p.score||0} ranks={ranks} style={{ color: p.isMe ? theme.gold : theme.textPrimary }}/>
+                <div key={p.id || p.pseudo}>
+                  {isSeparate && <div style={{ textAlign: 'center', fontSize: 10, color: theme.textMuted, padding: '4px 0 2px', letterSpacing: .5 }}>· · ·</div>}
+                  <div onClick={p.isMe ? undefined : () => setViewing(p)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, background: p.isMe ? 'linear-gradient(135deg,#f9ca2415,#e8439315)' : theme.overlay, border: p.isMe ? '1.5px solid #f9ca2444' : `1.5px solid ${theme.border}`, borderRadius: 11, padding: '9px 13px', cursor: p.isMe ? 'default' : 'pointer', transition: 'transform .12s' }}
+                    onMouseEnter={e => { if (!p.isMe) e.currentTarget.style.transform = 'translateX(4px)' }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}>
+                    <div style={{ fontWeight: 900, fontSize: 16, width: 26, textAlign: 'center' }}>{isSeparate ? '—' : (medal[rank] || `#${rank + 1}`)}</div>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: p.isMe ? 'linear-gradient(135deg,#f9ca24,#e17055)' : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                      {(p.pseudo || p.name || '?')[0].toUpperCase()}
                     </div>
-                    <div style={{ fontSize: 10, color: theme.textMuted }}>{p.score ?? '—'} pts · 🃏 {p.card_count ?? '—'} · 💰 {p.gold ?? '—'} G</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 900, fontSize: 13 }}>
+                        <PseudoDisplay pseudo={(p.pseudo||p.name)+(p.isMe?` ${t('lb_you')}`:'')} score={p.score||0} ranks={ranks} style={{ color: p.isMe ? theme.gold : theme.textPrimary }}/>
+                      </div>
+                      <div style={{ fontSize: 10, color: theme.textMuted }}>{p.score ?? '—'} pts · 🃏 {p.card_count ?? '—'} · 💰 {p.gold ?? '—'} G</div>
+                    </div>
+                    {!p.isMe && <div style={{ color: '#888', fontSize: 12 }}>→</div>}
                   </div>
-                  <div style={{ color: '#888', fontSize: 12 }}>→</div>
                 </div>
               );
             })}
