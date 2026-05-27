@@ -52,8 +52,9 @@ export default function LandingSection({ onOpenAuth }) {
   const scrollY = useScrollY(containerRef);
   const vh = typeof window !== 'undefined' ? window.innerHeight - 60 : 600;
 
-  const [geocoin,  setGeocoin]  = useState(undefined)   // undefined = chargement initial
-  const [remains,  setRemains]  = useState(null)         // secondes restantes (local)
+  const [geocoin,      setGeocoin]      = useState(undefined)
+  const [remains,      setRemains]      = useState(null)
+  const [codeTooltip,  setCodeTooltip]  = useState(false)
   const fetchRef = useRef(null)
 
   fetchRef.current = async () => {
@@ -140,11 +141,32 @@ export default function LandingSection({ onOpenAuth }) {
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', animation: 'fadeUp .6s .15s ease both', flexWrap: 'wrap', minHeight: 34 }}>
             {geocoin && (
-              <div style={{ background: '#e6510012', border: '1px solid #e6510028', borderRadius: 20, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 11 }}>🪙</span>
-                <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 13, color: '#e65100', letterSpacing: .5 }}>
-                  {BigInt(geocoin.numero).toLocaleString('fr-FR')}
-                </span>
+              <div style={{ position: 'relative' }}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setCodeTooltip(v => !v)}
+                  onMouseEnter={() => setCodeTooltip(true)}
+                  onMouseLeave={() => setCodeTooltip(false)}
+                  style={{ background: '#e6510012', border: '1px solid #e6510028', borderRadius: 20, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', userSelect: 'none' }}>
+                  <span style={{ fontSize: 11 }}>🪙</span>
+                  <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 13, color: '#e65100', letterSpacing: .5 }}>
+                    {BigInt(geocoin.numero).toLocaleString('fr-FR')}
+                  </span>
+                  <span style={{ fontSize: 10, color: '#e6510088', marginLeft: 1 }}>ⓘ</span>
+                </div>
+                {codeTooltip && (
+                  <div style={{ position: 'absolute', bottom: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)', width: 240, background: '#1a1a2e', border: '1px solid #e6510044', borderRadius: 12, padding: '12px 14px', boxShadow: '0 8px 32px #00000044', zIndex: 100, animation: 'fadeUp .2s ease both', pointerEvents: 'none' }}>
+                    <div style={{ fontWeight: 900, fontSize: 12, color: '#e65100', marginBottom: 6 }}>
+                      {t('landing_code_tooltip_title')}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#ccc', lineHeight: 1.6 }}>
+                      {t('landing_code_tooltip_body')}
+                    </div>
+                    {/* Flèche */}
+                    <div style={{ position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: 10, height: 10, background: '#1a1a2e', border: '1px solid #e6510044', borderTop: 'none', borderLeft: 'none' }} />
+                  </div>
+                )}
               </div>
             )}
             {remainsFmt && (
