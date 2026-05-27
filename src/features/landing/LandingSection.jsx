@@ -41,6 +41,11 @@ function ScrollHint({ label }) {
 
 function fmtRemains(s) {
   if (s === null || s <= 0) return null
+  if (s >= 3600) {
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    return `${h}h${String(m).padStart(2, '0')}`
+  }
   const m = Math.floor(s / 60)
   const sec = s % 60
   return `${m}:${String(sec).padStart(2, '0')}`
@@ -54,6 +59,7 @@ export default function LandingSection({ onOpenAuth }) {
 
   const [geocoin,      setGeocoin]      = useState(undefined)
   const [remains,      setRemains]      = useState(null)
+  const [isSpecial,    setIsSpecial]    = useState(false)
   const [codeTooltip,  setCodeTooltip]  = useState(false)
   const [codeCopied,   setCodeCopied]   = useState(false)
   const fetchRef = useRef(null)
@@ -64,6 +70,7 @@ export default function LandingSection({ onOpenAuth }) {
     if (data.geocoin) {
       setGeocoin(data.geocoin)
       setRemains(data.remains_seconds ?? null)
+      setIsSpecial(data.special === true)
     }
   }
 
@@ -105,7 +112,8 @@ export default function LandingSection({ onOpenAuth }) {
     ? { id: geocoin.card.id, name: cardName(geocoin.card, getLang()), rarity: geocoin.card.rarity, type: geocoin.card.type, image_url: geocoin.card.image_url }
     : FALLBACK_COIN
   const remainsFmt = fmtRemains(remains)
-  const nearExpiry = remains !== null && remains < 60
+  // Coins spéciaux : pas d'alerte expiration (toute la journée est normale)
+  const nearExpiry = !isSpecial && remains !== null && remains < 60
 
   return (
     <div ref={containerRef} style={{
