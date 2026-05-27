@@ -55,6 +55,7 @@ export default function LandingSection({ onOpenAuth }) {
   const [geocoin,      setGeocoin]      = useState(undefined)
   const [remains,      setRemains]      = useState(null)
   const [codeTooltip,  setCodeTooltip]  = useState(false)
+  const [codeCopied,   setCodeCopied]   = useState(false)
   const fetchRef = useRef(null)
 
   fetchRef.current = async () => {
@@ -87,6 +88,17 @@ export default function LandingSection({ onOpenAuth }) {
   const coinY = scrollY * 0.25;
   const p1   = (scrollY - vh) * 0.35;
   const p2   = (scrollY - vh * 2) * 0.35;
+
+  const handleCodeClick = async () => {
+    if (!geocoin) return
+    try {
+      await navigator.clipboard.writeText(geocoin.numero)
+      setCodeCopied(true)
+      setTimeout(() => setCodeCopied(false), 2000)
+    } catch {
+      setCodeTooltip(v => !v)
+    }
+  }
 
   const isLoading = geocoin === undefined
   const dailyCoin = geocoin?.card
@@ -127,10 +139,6 @@ export default function LandingSection({ onOpenAuth }) {
         ))}
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: '#e65100', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 18, animation: 'fadeUp .6s ease both' }}>
-            {t('landing_badge')}
-          </div>
-
           {isLoading ? (
             <div style={{ width: 120, height: 160, borderRadius: 16, background: 'linear-gradient(135deg,#f0e8dc,#f8f0e8)', animation: 'glow 1.4s ease-in-out infinite', marginBottom: 14 }} />
           ) : (
@@ -145,15 +153,15 @@ export default function LandingSection({ onOpenAuth }) {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => setCodeTooltip(v => !v)}
+                  onClick={handleCodeClick}
                   onMouseEnter={() => setCodeTooltip(true)}
                   onMouseLeave={() => setCodeTooltip(false)}
-                  style={{ background: '#e6510012', border: '1px solid #e6510028', borderRadius: 20, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', userSelect: 'none' }}>
-                  <span style={{ fontSize: 11 }}>🪙</span>
-                  <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 13, color: '#e65100', letterSpacing: .5 }}>
-                    {BigInt(geocoin.numero).toLocaleString('fr-FR')}
+                  style={{ background: codeCopied ? '#00897b14' : '#e6510012', border: `1px solid ${codeCopied ? '#00897b44' : '#e6510028'}`, borderRadius: 20, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', userSelect: 'none', transition: 'all .2s' }}>
+                  <span style={{ fontSize: 11 }}>{codeCopied ? '✓' : '🪙'}</span>
+                  <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 13, color: codeCopied ? '#00897b' : '#e65100', letterSpacing: .5, transition: 'color .2s' }}>
+                    {codeCopied ? t('landing_code_copied') : BigInt(geocoin.numero).toLocaleString('fr-FR')}
                   </span>
-                  <span style={{ fontSize: 10, color: '#e6510088', marginLeft: 1 }}>ⓘ</span>
+                  {!codeCopied && <span style={{ fontSize: 10, color: '#e6510088', marginLeft: 1 }}>ⓘ</span>}
                 </div>
                 {codeTooltip && (
                   <div style={{ position: 'absolute', bottom: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)', width: 240, background: '#1a1a2e', border: '1px solid #e6510044', borderRadius: 12, padding: '12px 14px', boxShadow: '0 8px 32px #00000044', zIndex: 100, animation: 'fadeUp .2s ease both', pointerEvents: 'none' }}>
