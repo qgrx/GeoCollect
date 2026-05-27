@@ -5,19 +5,7 @@ import { apiGetJeuQuotidien } from '../../services/api.js';
 import { cardName } from '../../data/cards.js';
 
 const FALLBACK_COIN = { id: 0, name: 'FTF', rarity: 'légendaire', type: 'Geocaching', image_url: '/geocoin-ftf.webp' };
-
-function useMidnightCountdown() {
-  const [display, setDisplay] = useState('--:--:--');
-  useEffect(() => {
-    const tick = () => {
-      const now = new Date(); const midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
-      const s = Math.max(0, Math.floor((midnight - now) / 1000));
-      setDisplay(`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`);
-    };
-    tick(); const id = setInterval(tick, 1000); return () => clearInterval(id);
-  }, []);
-  return display;
-}
+const POLL_MS = 30_000  // re-sync serveur toutes les 30 s
 
 const FAKE_LEADERBOARD = [
   { pseudo: 'GeoMaster42', score: 4820, rank: 1 },
@@ -51,26 +39,60 @@ function ScrollHint({ label }) {
   );
 }
 
+function fmtRemains(s) {
+  if (s === null || s <= 0) return null
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${String(sec).padStart(2, '0')}`
+}
+
 export default function LandingSection({ onOpenAuth }) {
   const { t } = useT();
   const containerRef = useRef(null);
   const scrollY = useScrollY(containerRef);
   const vh = typeof window !== 'undefined' ? window.innerHeight - 60 : 600;
-  const countdown = useMidnightCountdown();
 
-  const [geocoin, setGeocoin] = useState(null);
+  const [geocoin,  setGeocoin]  = useState(undefined)   // undefined = chargement initial
+  const [remains,  setRemains]  = useState(null)         // secondes restantes (local)
+  const fetchRef = useRef(null)
+
+  fetchRef.current = async () => {
+    const { data } = await apiGetJeuQuotidien().catch(() => ({ data: null }))
+    if (!data) return
+    if (data.geocoin) {
+      setGeocoin(data.geocoin)
+      setRemains(data.remains_seconds ?? null)
+    }
+  }
+
+  // Chargement initial + polling de synchronisation
   useEffect(() => {
-    apiGetJeuQuotidien().then(({ data }) => { if (data?.geocoin) setGeocoin(data.geocoin); }).catch(() => {});
-  }, []);
+    fetchRef.current()
+    const id = setInterval(() => fetchRef.current(), POLL_MS)
+    return () => clearInterval(id)
+  }, [])
 
+  // Décompte local (évite de re-fetch à chaque seconde)
+  useEffect(() => {
+    if (remains === null || remains <= 0) return
+    const id = setInterval(() => setRemains(r => {
+      if (r === null || r <= 1) { fetchRef.current(); return null }
+      return r - 1
+    }), 1000)
+    return () => clearInterval(id)
+  }, [remains])
+
+  const p0   = scrollY * 0.4;
+  const coinY = scrollY * 0.25;
+  const p1   = (scrollY - vh) * 0.35;
+  const p2   = (scrollY - vh * 2) * 0.35;
+
+  const isLoading = geocoin === undefined
   const dailyCoin = geocoin?.card
     ? { id: geocoin.card.id, name: cardName(geocoin.card, getLang()), rarity: geocoin.card.rarity, type: geocoin.card.type, image_url: geocoin.card.image_url }
-    : FALLBACK_COIN;
-
-  const p0 = scrollY * 0.4;
-  const coinY = scrollY * 0.25;
-  const p1 = (scrollY - vh) * 0.35;
-  const p2 = (scrollY - vh * 2) * 0.35;
+    : FALLBACK_COIN
+  const remainsFmt = fmtRemains(remains)
+  const nearExpiry = remains !== null && remains < 60
 
   return (
     <div ref={containerRef} style={{
@@ -82,13 +104,15 @@ export default function LandingSection({ onOpenAuth }) {
     }}>
       <style>{`
         @keyframes coinFloat    { 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(-14px) rotate(4deg)} }
+        @keyframes coinIn       { from{opacity:0;transform:scale(.85) translateY(20px)} to{opacity:1;transform:scale(1) translateY(0)} }
         @keyframes glow         { 0%,100%{opacity:.4} 50%{opacity:.8} }
         @keyframes scrollBounce { 0%,100%{transform:translateX(-50%) translateY(0)} 60%{transform:translateX(-50%) translateY(10px)} }
         @keyframes fadeUp       { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pulse        { 0%,100%{opacity:1} 50%{opacity:.4} }
         ::-webkit-scrollbar     { display:none }
       `}</style>
 
-      {/* ══ SLIDE 0 — GÉOCOIN DU JOUR ═══════════════════════════════════════════ */}
+      {/* ══ SLIDE 0 — GÉOCOIN EN COURS ══════════════════════════════════════════ */}
       <section style={{ scrollSnapAlign: 'start', height: 'calc(100vh - 60px)', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg,#fff8f2,#fef2e4,#f8f4ff)', transform: `translateY(${p0}px)`, willChange: 'transform' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 50% at 50% 40%,#e6510018 0%,transparent 70%)', transform: `translateY(${p0 * 0.6}px)`, willChange: 'transform', animation: 'glow 4s ease-in-out infinite' }} />
@@ -105,23 +129,33 @@ export default function LandingSection({ onOpenAuth }) {
           <div style={{ fontSize: 11, fontWeight: 800, color: '#e65100', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 18, animation: 'fadeUp .6s ease both' }}>
             {t('landing_badge')}
           </div>
-          <div style={{ transform: `translateY(${coinY * -0.15}px)`, willChange: 'transform', filter: 'drop-shadow(0 8px 24px #e6510044)', animation: 'coinFloat 4s ease-in-out infinite', marginBottom: 14 }}>
-            <Card card={dailyCoin} />
-          </div>
-          {geocoin && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', animation: 'fadeUp .6s .15s ease both', flexWrap: 'wrap' }}>
+
+          {isLoading ? (
+            <div style={{ width: 120, height: 160, borderRadius: 16, background: 'linear-gradient(135deg,#f0e8dc,#f8f0e8)', animation: 'glow 1.4s ease-in-out infinite', marginBottom: 14 }} />
+          ) : (
+            <div key={geocoin?.ordre} style={{ transform: `translateY(${coinY * -0.15}px)`, willChange: 'transform', filter: 'drop-shadow(0 8px 24px #e6510044)', animation: 'coinIn .45s cubic-bezier(.34,1.56,.64,1) both, coinFloat 4s ease-in-out .5s infinite', marginBottom: 14 }}>
+              <Card card={dailyCoin} />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', animation: 'fadeUp .6s .15s ease both', flexWrap: 'wrap', minHeight: 34 }}>
+            {geocoin && (
               <div style={{ background: '#e6510012', border: '1px solid #e6510028', borderRadius: 20, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontSize: 11 }}>🪙</span>
                 <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 13, color: '#e65100', letterSpacing: .5 }}>
                   {BigInt(geocoin.numero).toLocaleString('fr-FR')}
                 </span>
               </div>
-              <div style={{ background: '#00000008', border: '1px solid #00000014', borderRadius: 20, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 10 }}>🕛</span>
-                <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#888', letterSpacing: .5 }}>{countdown}</span>
+            )}
+            {remainsFmt && (
+              <div style={{ background: nearExpiry ? '#e6510018' : '#00000008', border: `1px solid ${nearExpiry ? '#e6510044' : '#00000014'}`, borderRadius: 20, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5, transition: 'all .3s' }}>
+                <span style={{ fontSize: 10, animation: nearExpiry ? 'pulse 1s ease-in-out infinite' : 'none' }}>⏱</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, color: nearExpiry ? '#e65100' : '#888', fontWeight: 700 }}>
+                  {remainsFmt}
+                </span>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         <ScrollHint label={t('landing_scroll')} />
       </section>
@@ -157,7 +191,7 @@ export default function LandingSection({ onOpenAuth }) {
         <ScrollHint label={t('landing_scroll')} />
       </section>
 
-      {/* ══ SLIDE 3 — CLASSEMENT (dernière, pas d'indicateur) ═══════════════════ */}
+      {/* ══ SLIDE 2 — CLASSEMENT ════════════════════════════════════════════════ */}
       <section style={{ scrollSnapAlign: 'start', height: 'calc(100vh - 60px)', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg,#fffcf0,#fef8e1,#fff8f2)', transform: `translateY(${p2}px)`, willChange: 'transform' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 50% 55% at 50% 50%,#f9ca2418 0%,transparent 70%)', transform: `translateY(${p2 * .5}px)`, willChange: 'transform' }} />
