@@ -653,12 +653,15 @@ export default function App() {
     if (res === 'insufficient') { showToast('Pas assez d\'or ! 💸', 'error'); return; }
     showToast(t('toast_bought').replace('{card}', listing.card.name).replace('{price}', listing.price));
   }
-  function handleListCard(card, price) {
-    gs.handleListCard(card, price, auth.profile?.pseudo || 'Moi');
+  async function handleListCard(card, price) {
+    const error = await gs.handleListCard(card, price, auth.profile?.pseudo || 'Moi');
+    if (error) return error;
     showToast(t('toast_listed').replace('{card}', card.name).replace('{price}', price));
+    return null;
   }
-  function handleCancelListing(index) {
-    gs.handleCancelListing(index, auth.profile?.pseudo || 'Moi');
+  async function handleCancelListing(index) {
+    const error = await gs.handleCancelListing(index, auth.profile?.pseudo || 'Moi');
+    if (error) { showToast('❌ ' + error, 'error'); return; }
     showToast(t('toast_listing_cancelled'));
   }
   function handleCancelAllListings() {
