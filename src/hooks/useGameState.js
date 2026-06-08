@@ -31,8 +31,6 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [shinyCollection, setShinyCollection] = useState({})
   const [collectionDescriptions, setCollectionDescriptions] = useState({})
   const [myListings,   setMyListings]  = useState([])
-  const [dailyGold,    setDailyGold]   = useState(0)
-  const [dailyCards,   setDailyCards]  = useState(0)
   const [totalBuys,    setTotalBuys]   = useState(0)
   const [totalSells,   setTotalSells]  = useState(0)
   const [streak,       setStreak]      = useState(0)
@@ -329,7 +327,6 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const isGuest     = !profile
-  const lim         = limits.connected
   const uniqueCards = useMemo(() => Object.keys(collection).filter(k => collection[k] > 0).length, [collection])
   const totalUnique = cardPool.length
   const myScore     = useMemo(() => collScore(collection, cardPool), [collection, cardPool])
@@ -337,27 +334,27 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   // Ref pour checkAchievements (évite dépendance circulaire avec earnCard)
   const checkAchievementsRef = useRef(null)
 
-  // ── Gold / Card limits (local, synced to API via profile) ─────────────────
+  // ── Crédit gold / carte côté client ────────────────────────────────────────
+  // Les plafonds quotidiens (or, cartes) sont calculés et appliqués par le serveur,
+  // qui les persiste dans `profiles` avec une remise à zéro à minuit (`daily_reset_at`).
+  // On se contente ici de refléter localement ce que le serveur a déjà validé et
+  // crédité en base — toute re-vérification côté client serait redondante et, pire,
+  // utiliserait un compteur de session qui ne se réinitialise jamais à minuit
+  // (plafond appliqué « pour toujours » tant que l'onglet reste ouvert).
   const earnGold = useCallback((n) => {
-    const limit = lim?.dailyGold ?? 200
-    const can = Math.min(n, limit - dailyGold)
-    if (can <= 0) return 0
-    setGold(g => g + can)
-    setDailyGold(d => d + can)
-    return can
-  }, [lim, dailyGold])
+    if (n <= 0) return 0
+    setGold(g => g + n)
+    return n
+  }, [])
 
   const earnCard = useCallback((card, isShiny = false) => {
-    const limit = lim?.dailyCards ?? 20
-    if (dailyCards >= limit) return false
     if (isShiny) {
       setShinyCollection(prev => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }))
     } else {
       setCollection(prev => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }))
     }
-    setDailyCards(d => d + 1)
     return true
-  }, [dailyCards, lim])
+  }, [])
 
   // ── Achievements ──────────────────────────────────────────────────────────
   // Reçoit un tableau de card_id débloqués renvoyés par le serveur après chaque
@@ -686,11 +683,11 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs,
     limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded, collectionLoaded,
     // Player
-    gold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, myListings, dailyGold, dailyCards, totalBuys, totalSells,
+    gold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, myListings, totalBuys, totalSells,
     streak, setStreak, transactions, setTransactions, unlockedAch, pendingAch, setPendingAch,
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,
     // Derived
-    isGuest, lim, uniqueCards, totalUnique, myScore,
+    isGuest, uniqueCards, totalUnique, myScore,
     initialQuests, forgePoints, forgePointsSignal, questActivitySignal,
     addForgePoints: (pts) => {
       setQuestActivitySignal(s => s + 1)
