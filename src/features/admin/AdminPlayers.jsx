@@ -18,8 +18,11 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
   const [playerGoldEdit, setPlayerGoldEdit]     = useState('');
   const [playerForgeEdit, setPlayerForgeEdit]   = useState('');
   const [playerCollection, setPlayerCollection] = useState(null);
+  const [playerShinyCollection, setPlayerShinyCollection] = useState(null);
   const [playerScore, setPlayerScore]           = useState(null);
   const [cardSearch, setCardSearch]             = useState('');
+  const [shinyMode, setShinyMode]               = useState(false);
+  const [cardQty, setCardQty]                   = useState(1);
   const [playersData, setPlayersData] = useState({ players: [], total: 0, loading: false });
 
   // ── Chargement liste joueurs ────────────────────────────────────────────────
@@ -55,12 +58,13 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
 
   // ── Auto-chargement collection quand on ouvre un joueur ────────────────────
   useEffect(() => {
-    if (!playerView) { setPlayerCollection(null); setPlayerScore(null); return; }
+    if (!playerView) { setPlayerCollection(null); setPlayerShinyCollection(null); setPlayerScore(null); return; }
     setPlayerScore(playerView.score ?? null);
     setPlayerCollection(null);
+    setPlayerShinyCollection(null);
     apiAdminGetPlayerCollection(playerView.id).then(({ data }) => {
-      if (data?.collection) setPlayerCollection(data.collection);
-      else setPlayerCollection([]);
+      setPlayerCollection(data?.collection || []);
+      setPlayerShinyCollection(data?.shiny_collection || []);
     });
   }, [playerView?.id]);
 
@@ -75,32 +79,44 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
     return base.filter(c => c.name.toLowerCase().includes(q));
   }, [cardPool, cardSearch]);
 
-  async function handleToggleCard(card) {
-    if (!playerCollection) return;
-    const owned = playerCollection.find(x => x.card_id === card.id);
-    if (owned) {
-      // Retirer
-      setPlayerCollection(prev => {
+  // Ajoute (sign > 0) ou retire (sign < 0) `cardQty` exemplaires d'une carte (normale ou shiny selon shinyMode)
+  async function handleAdjustCard(card, sign) {
+    const collection = shinyMode ? playerShinyCollection : playerCollection;
+    const setCollection = shinyMode ? setPlayerShinyCollection : setPlayerCollection;
+    if (!collection) return;
+    const owned = collection.find(x => x.card_id === card.id);
+    const qty = Math.max(1, parseInt(cardQty) || 1);
+
+    if (sign > 0) {
+      setCollection(prev => {
         const ex = prev.find(x => x.card_id === card.id);
-        if (ex?.quantity <= 1) return prev.filter(x => x.card_id !== card.id);
-        return prev.map(x => x.card_id === card.id ? { ...x, quantity: x.quantity - 1 } : x);
+        return ex ? prev.map(x => x.card_id === card.id ? { ...x, quantity: x.quantity + qty } : x)
+                  : [...prev, { card_id: card.id, quantity: qty, cards: card }];
       });
-      const { data, error } = await apiAdminTakeCard(playerView.id, card.id);
+      const { data, error } = await apiAdminGiveCard(playerView.id, card.id, qty, shinyMode);
       if (error) {
-        setPlayerCollection(prev => {
+        setCollection(prev => {
           const ex = prev.find(x => x.card_id === card.id);
-          return ex ? prev.map(x => x.card_id === card.id ? { ...x, quantity: x.quantity + 1 } : x)
-                    : [...prev, { card_id: card.id, quantity: 1, cards: card }];
+          if (!ex) return prev;
+          return ex.quantity <= qty ? prev.filter(x => x.card_id !== card.id)
+                                     : prev.map(x => x.card_id === card.id ? { ...x, quantity: x.quantity - qty } : x);
         });
         setMsg('❌ ' + error); return;
       }
       if (data?.score != null) setPlayerScore(data.score);
     } else {
-      // Ajouter
-      setPlayerCollection(prev => [...prev, { card_id: card.id, quantity: 1, cards: card }]);
-      const { data, error } = await apiAdminGiveCard(playerView.id, card.id);
+      if (!owned) return;
+      const removeQty = Math.min(qty, owned.quantity);
+      setCollection(prev => owned.quantity <= removeQty
+        ? prev.filter(x => x.card_id !== card.id)
+        : prev.map(x => x.card_id === card.id ? { ...x, quantity: x.quantity - removeQty } : x));
+      const { data, error } = await apiAdminTakeCard(playerView.id, card.id, removeQty, shinyMode);
       if (error) {
-        setPlayerCollection(prev => prev.filter(x => x.card_id !== card.id));
+        setCollection(prev => {
+          const ex = prev.find(x => x.card_id === card.id);
+          return ex ? prev.map(x => x.card_id === card.id ? { ...x, quantity: x.quantity + removeQty } : x)
+                    : [...prev, { card_id: card.id, quantity: removeQty, cards: card }];
+        });
         setMsg('❌ ' + error); return;
       }
       if (data?.score != null) setPlayerScore(data.score);
@@ -109,6 +125,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
 
   function closeView() {
     setPlayerView(null); setPlayerGoldEdit(''); setPlayerForgeEdit(''); setCardSearch('');
+    setShinyMode(false); setCardQty(1);
   }
 
   // ── Vue détail joueur ───────────────────────────────────────────────────────
@@ -208,64 +225,90 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
 
       {/* Inventaire complet */}
       <div style={{ marginTop: 12, background: '#ffffff08', borderRadius: 10, padding: '12px 14px', border: '1px solid #ffffff10' }}>
-        <div style={{ fontWeight: 800, color: '#a29bfe', fontSize: 12, marginBottom: 8 }}>
-          🃏 Inventaire
-          {playerCollection && <span style={{ color: '#8daacc', fontWeight: 600, marginLeft: 8, fontSize: 11 }}>
-            {playerCollection.length} carte{playerCollection.length !== 1 ? 's' : ''} uniques · cliquer pour ajouter/retirer
-          </span>}
-        </div>
+        {(() => {
+          const collection = shinyMode ? playerShinyCollection : playerCollection;
+          return (
+            <>
+              <div style={{ fontWeight: 800, color: '#a29bfe', fontSize: 12, marginBottom: 8 }}>
+                🃏 Inventaire
+                {collection && <span style={{ color: '#8daacc', fontWeight: 600, marginLeft: 8, fontSize: 11 }}>
+                  {collection.length} carte{collection.length !== 1 ? 's' : ''} {shinyMode ? 'shiny ' : ''}uniques · clic = ajouter, clic droit = retirer
+                </span>}
+              </div>
 
-        {!playerCollection ? (
-          <div style={{ color: '#8daacc', fontSize: 11, textAlign: 'center', padding: '14px 0' }}>Chargement…</div>
-        ) : (
-          <>
-            <input value={cardSearch} onChange={e => setCardSearch(e.target.value)}
-              placeholder="Filtrer les cartes…"
-              style={{ ...INP, fontSize: 11, marginBottom: 10 }} />
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 420, overflowY: 'auto', paddingRight: 4 }}>
-              {inventoryCards.map(card => {
-                const owned = playerCollection.find(x => x.card_id === card.id);
-                const { c1 } = cardCC(card.rarity);
-                const thumb = card.image_url_thumb || card.thumbnail || card.image_url || card.image;
-                return (
-                  <div key={card.id}
-                    onClick={() => handleToggleCard(card)}
-                    title={`${card.name}${owned ? ` (×${owned.quantity})` : ' — non possédée'}`}
-                    style={{
-                      position: 'relative', width: 52, cursor: 'pointer',
-                      opacity: owned ? 1 : 0.28,
-                      filter: owned ? 'none' : 'grayscale(1)',
-                      transition: 'opacity .15s, transform .1s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.filter = 'none'; e.currentTarget.style.zIndex = '10'; }}
-                    onMouseLeave={e => { e.currentTarget.style.opacity = owned ? '1' : '0.28'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.filter = owned ? 'none' : 'grayscale(1)'; e.currentTarget.style.zIndex = '1'; }}
-                  >
-                    <div style={{
-                      width: 52, height: 68, borderRadius: 7, overflow: 'hidden',
-                      border: `2px solid ${owned ? c1 : '#333'}`,
-                      background: thumb ? 'transparent' : `linear-gradient(135deg,${c1}44,${c1}22)`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {thumb
-                        ? <img src={thumb} alt={card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                        : <span style={{ fontSize: 16, fontWeight: 900, color: c1 }}>{card.name[0]}</span>
-                      }
-                    </div>
-                    {owned && owned.quantity > 1 && (
-                      <div style={{ position: 'absolute', top: 2, right: 2, background: '#0009', color: '#fff', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '1px 3px', lineHeight: 1 }}>
-                        ×{owned.quantity}
-                      </div>
-                    )}
-                    <div style={{ fontSize: 7, color: owned ? '#ccc' : '#555', textAlign: 'center', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>
-                      {card.name}
-                    </div>
+              {!collection ? (
+                <div style={{ color: '#8daacc', fontSize: 11, textAlign: 'center', padding: '14px 0' }}>Chargement…</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                    <input value={cardSearch} onChange={e => setCardSearch(e.target.value)}
+                      placeholder="Filtrer les cartes…"
+                      style={{ ...INP, fontSize: 11, flex: 1, minWidth: 140 }} />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#8daacc', fontWeight: 700 }}>
+                      Quantité
+                      <input type="number" min={1} value={cardQty}
+                        onChange={e => setCardQty(Math.max(1, parseInt(e.target.value) || 1))}
+                        style={{ ...INP, fontSize: 11, width: 56, padding: '5px 6px' }} />
+                    </label>
+                    <button onClick={() => setShinyMode(s => !s)}
+                      title="Basculer entre cartes normales et cartes shiny"
+                      style={{
+                        ...BTN(shinyMode ? 'linear-gradient(135deg,#f9ca24,#e17055)' : 'linear-gradient(135deg,#3a4a5e,#2a3648)', shinyMode ? '#1e3045' : '#a8bfcf'),
+                        padding: '6px 12px', borderRadius: 8, fontSize: 11,
+                      }}>
+                      ✨ {shinyMode ? 'Shiny' : 'Normal'}
+                    </button>
                   </div>
-                );
-              })}
-              {inventoryCards.length === 0 && <div style={{ fontSize: 11, color: '#a8bfcf' }}>Aucune carte trouvée.</div>}
-            </div>
-          </>
-        )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 420, overflowY: 'auto', paddingRight: 4 }}>
+                    {inventoryCards.map(card => {
+                      const owned = collection.find(x => x.card_id === card.id);
+                      const { c1 } = cardCC(card.rarity);
+                      const thumb = card.image_url_thumb || card.thumbnail || card.image_url || card.image;
+                      const borderColor = owned ? (shinyMode ? '#f9ca24' : c1) : '#333';
+                      return (
+                        <div key={card.id}
+                          onClick={() => handleAdjustCard(card, +1)}
+                          onContextMenu={e => { e.preventDefault(); handleAdjustCard(card, -1); }}
+                          title={`${card.name}${owned ? ` (×${owned.quantity})` : ' — non possédée'} — clic: +${cardQty}, clic droit: -${cardQty}`}
+                          style={{
+                            position: 'relative', width: 52, cursor: 'pointer',
+                            opacity: owned ? 1 : 0.28,
+                            filter: owned ? 'none' : 'grayscale(1)',
+                            transition: 'opacity .15s, transform .1s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.filter = 'none'; e.currentTarget.style.zIndex = '10'; }}
+                          onMouseLeave={e => { e.currentTarget.style.opacity = owned ? '1' : '0.28'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.filter = owned ? 'none' : 'grayscale(1)'; e.currentTarget.style.zIndex = '1'; }}
+                        >
+                          <div style={{
+                            width: 52, height: 68, borderRadius: 7, overflow: 'hidden',
+                            border: `2px solid ${borderColor}`,
+                            boxShadow: owned && shinyMode ? '0 0 8px #f9ca2466' : 'none',
+                            background: thumb ? 'transparent' : `linear-gradient(135deg,${c1}44,${c1}22)`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {thumb
+                              ? <img src={thumb} alt={card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              : <span style={{ fontSize: 16, fontWeight: 900, color: c1 }}>{card.name[0]}</span>
+                            }
+                          </div>
+                          {owned && owned.quantity > 1 && (
+                            <div style={{ position: 'absolute', top: 2, right: 2, background: '#0009', color: '#fff', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '1px 3px', lineHeight: 1 }}>
+                              ×{owned.quantity}
+                            </div>
+                          )}
+                          <div style={{ fontSize: 7, color: owned ? '#ccc' : '#555', textAlign: 'center', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>
+                            {card.name}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {inventoryCards.length === 0 && <div style={{ fontSize: 11, color: '#a8bfcf' }}>Aucune carte trouvée.</div>}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
       </div>
     </div>
   );

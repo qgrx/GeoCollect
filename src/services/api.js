@@ -98,8 +98,8 @@ export const apiAdminResetOnboarding    = (id)          => apiFetch(`/api/admin/
 export const apiAdminSetGold             = (id, gold)         => apiFetch(`/api/admin/players/${id}/gold`, { method: 'PATCH', body: { gold } })
 export const apiAdminSetForgePoints      = (id, forge_points) => apiFetch(`/api/admin/players/${id}/forge-points`, { method: 'PATCH', body: { forge_points } })
 export const apiAdminGetPlayerCollection = (id)               => apiFetch(`/api/admin/players/${id}/collection`)
-export const apiAdminGiveCard            = (id, card_id)      => apiFetch(`/api/admin/players/${id}/cards`, { method: 'POST', body: { card_id } })
-export const apiAdminTakeCard            = (id, card_id)      => apiFetch(`/api/admin/players/${id}/cards/${card_id}`, { method: 'DELETE' })
+export const apiAdminGiveCard            = (id, card_id, quantity = 1, is_shiny = false) => apiFetch(`/api/admin/players/${id}/cards`, { method: 'POST', body: { card_id, quantity, is_shiny } })
+export const apiAdminTakeCard            = (id, card_id, quantity = 1, is_shiny = false) => apiFetch(`/api/admin/players/${id}/cards/${card_id}`, { method: 'DELETE', body: { quantity, is_shiny } })
 
 // ─── Leaderboard ─────────────────────────────────────────────────────────────
 export const apiGetLeaderboard = (page = 0, q) => apiFetch(`/api/leaderboard?page=${page}${q ? '&q=' + encodeURIComponent(q) : ''}`)
