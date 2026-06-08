@@ -345,11 +345,17 @@ export default function MarketModal({
                           </div>
                         )}
 
-                        {msg && <div style={{ color: '#00b894', fontWeight: 800, fontSize: 11, marginTop: 4 }}>{msg}</div>}
+                        {msg && <div style={{ color: msg.startsWith('❌') ? '#e74c3c' : '#00b894', fontWeight: 800, fontSize: 11, marginTop: 4 }}>{msg}</div>}
 
                         <button
                           disabled={invalid}
-                          onClick={() => { onListCard(sellCard, +sellPrice); setMsg(''); setSellCard(null); setSellPrice(''); setTab('meslistes') }}
+                          onClick={async () => {
+                            setMsg('')
+                            const cardToList = sellCard
+                            const error = await onListCard(cardToList, +sellPrice, myPseudo)
+                            if (error) { setMsg('❌ ' + error); return }
+                            setSellCard(null); setSellPrice(''); setTab('meslistes')
+                          }}
                           style={{ width: '100%', marginTop: 4, background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', padding: '11px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: invalid ? 'not-allowed' : 'pointer', opacity: invalid ? 0.5 : 1 }}>
                           {t('market_list_btn')}
                         </button>
