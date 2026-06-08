@@ -404,7 +404,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   ))}
                 </div>
                 <div style={{display:"flex",gap:6}}>
-                  <input value={altInput} onChange={e=>setAltInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addAlt();}}} style={{...INP,flex:1,padding:"6px 10px"}} placeholder="Ex: 0, aucun… (Entrée pour ajouter)"/>
+                  <input value={altInput} onChange={e=>setAltInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addAlt();}}} style={{...INP,flex:1,padding:"6px 10px"}} placeholder="Ex: 0 — Entrée pour ajouter"/>
                   <button onClick={addAlt} style={{...BTN("#00b89433"),padding:"6px 12px",borderRadius:8,fontSize:11,border:"1px solid #00b89444",color:"#00b894"}}>+</button>
                 </div>
               </Fld>
