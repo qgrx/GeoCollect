@@ -57,6 +57,7 @@ export default function MarketModal({
   const [listPage, setListPage]           = useState(0)
   const [cancelConfirm, setCancelConfirm] = useState(null)
   const [buySearch, setBuySearch]         = useState('')  // index en attente de confirmation
+  const [buySort, setBuySort]             = useState('rarity')
   const LIST_PAGE_SIZE = 6
 
   const myCards = Object.entries(myCollection)
@@ -82,7 +83,24 @@ export default function MarketModal({
     return g
   }, [market])
 
-  const gArr = Object.values(ob).sort((a, b) => RC[a.card.rarity].order - RC[b.card.rarity].order)
+  const gArr = useMemo(() => {
+    const arr = Object.values(ob)
+    switch (buySort) {
+      case 'price_asc':
+        return arr.sort((a, b) => a.tiersArr[0].price - b.tiersArr[0].price)
+      case 'price_desc':
+        return arr.sort((a, b) => b.tiersArr[0].price - a.tiersArr[0].price)
+      case 'unowned':
+        return arr.sort((a, b) => {
+          const ao = (myCollection[a.card.id] || 0) > 0 ? 1 : 0
+          const bo = (myCollection[b.card.id] || 0) > 0 ? 1 : 0
+          if (ao !== bo) return ao - bo
+          return RC[a.card.rarity].order - RC[b.card.rarity].order
+        })
+      default:
+        return arr.sort((a, b) => RC[a.card.rarity].order - RC[b.card.rarity].order)
+    }
+  }, [ob, buySort, myCollection])
 
   const tabs = [
     { id: 'acheter',    label: t('market_buy') },
@@ -131,11 +149,18 @@ export default function MarketModal({
         {/* ── ACHETER ── */}
         {tab === 'acheter' && (
           <div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
               <input value={buySearch} onChange={e => setBuySearch(e.target.value)}
                 placeholder={t('collection_search')}
-                style={{ flex: 1, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none' }}/>
+                style={{ flex: 1, minWidth: 120, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none' }}/>
               {buySearch && <button onClick={() => setBuySearch('')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 16 }}>✕</button>}
+              <select value={buySort} onChange={e => setBuySort(e.target.value)}
+                style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none', cursor: 'pointer' }}>
+                <option value="rarity">{t('market_sort_label')}: {t('market_sort_rarity')}</option>
+                <option value="price_asc">{t('market_sort_label')}: {t('market_sort_price_asc')}</option>
+                <option value="price_desc">{t('market_sort_label')}: {t('market_sort_price_desc')}</option>
+                <option value="unowned">{t('market_sort_label')}: {t('market_sort_unowned')}</option>
+              </select>
             </div>
             {(() => {
               const q = buySearch.trim().toLowerCase()
