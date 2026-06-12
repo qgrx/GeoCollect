@@ -310,7 +310,7 @@ export default function MarketModal({
                   {/* Prix */}
                   {(() => {
                     const cap = priceCaps[sellCard.rarity]
-                    const maxPrice = cap?.max ?? null
+                    const maxPrice = cap?.max != null ? Math.max(cap.max, sellCard.minPrice || 0) : null
                     const overCap = maxPrice !== null && +sellPrice > maxPrice
                     const underMin = sellCard.minPrice && +sellPrice < sellCard.minPrice
                     const noFeeGold = gold < listingFee
