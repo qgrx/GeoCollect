@@ -11,6 +11,32 @@ const _rawApiUrl = (import.meta.env.VITE_API_URL || '').trim()
 const API_URL    = _rawApiUrl || 'http://localhost:3001'
 export const API_ENABLED = !!_rawApiUrl
 
+// ─── Limiteur de concurrence ────────────────────────────────────────────────────
+// Au chargement de l'app, une douzaine de requêtes sont déclenchées en parallèle
+// (collection, market, cards, quêtes, trésor, saison, ...). Au-delà d'une poignée
+// de connexions simultanées, le pool de connexions Supabase côté API sature et les
+// temps de réponse explosent en cascade (jusqu'à 15-20s sur les dernières requêtes).
+// On limite donc le nombre de requêtes API en vol en même temps ; les suivantes
+// attendent leur tour dans une file.
+const MAX_CONCURRENT_REQUESTS = 4
+let activeRequests = 0
+const requestQueue = []
+
+function runQueuedRequests() {
+  while (activeRequests < MAX_CONCURRENT_REQUESTS && requestQueue.length) {
+    const task = requestQueue.shift()
+    activeRequests++
+    task().finally(() => { activeRequests--; runQueuedRequests() })
+  }
+}
+
+function withConcurrencyLimit(task) {
+  return new Promise((resolve, reject) => {
+    requestQueue.push(() => task().then(resolve, reject))
+    runQueuedRequests()
+  })
+}
+
 // ─── Helper fetch ─────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
   if (!API_ENABLED) return { data: null, error: 'api_not_configured' }
@@ -22,24 +48,26 @@ async function apiFetch(path, options = {}) {
     token = session?.access_token || null
   }
 
-  try {
-    const res = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(options.headers || {}),
-      },
-      body: options.body ? JSON.stringify(options.body) : undefined,
-    })
+  return withConcurrencyLimit(async () => {
+    try {
+      const res = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(options.headers || {}),
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      })
 
-    const json = await res.json()
-    if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}`, status: res.status }
-    return { data: json, error: null, status: res.status }
-  } catch (err) {
-    if (import.meta.env.DEV) console.warn(`[API] ${path} failed:`, err.message)
-    return { data: null, error: err.message }
-  }
+      const json = await res.json()
+      if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}`, status: res.status }
+      return { data: json, error: null, status: res.status }
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn(`[API] ${path} failed:`, err.message)
+      return { data: null, error: err.message }
+    }
+  })
 }
 
 // ─── Cards ────────────────────────────────────────────────────────────────────
