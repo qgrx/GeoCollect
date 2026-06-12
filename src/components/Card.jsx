@@ -62,7 +62,12 @@ export default function Card({ card, count, onClick, selected, small, dimmed, is
   const rc = RC[card.rarity] || RC.commun
   const { c1, c2 } = cardCC(card.rarity)
   const isLeg = card.rarity === 'légendaire'
-  const hasImage = !!(card.image || card.image_url)
+  // Préférer la miniature : le visuel pleine résolution (image/image_url) est bien
+  // plus lourd que nécessaire pour ces cartes affichées en 100-148px de large —
+  // c'est ce qui rend la grille de collection du joueur beaucoup plus lente à
+  // charger que l'inventaire admin, qui lui utilise déjà les thumbnails.
+  const src = card.thumbnail || card.image_url_thumb || card.image || card.image_url
+  const hasImage = !!src
   const w = small ? 100 : 148
   const h = small ? 130 : 190
 
@@ -91,7 +96,7 @@ export default function Card({ card, count, onClick, selected, small, dimmed, is
 
       <div style={{position:'absolute',inset:0,display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop: small ? 4 : 6}}>
         {hasImage ? (
-          <img src={card.image||card.image_url} alt={card.name} style={{
+          <img src={src} alt={card.name} style={{
             width:'100%', height:'88%', objectFit:'contain', display:'block',
             animation: 'none',
           }}/>
