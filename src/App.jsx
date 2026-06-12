@@ -1304,7 +1304,7 @@ export default function App() {
 
               {/* Market inline */}
               {auth.profile && activeTab === 'market' && (
-                <MarketModal inline loading={gs.loadingData}
+                <MarketModal inline loading={gs.loadingData || !gs.marketLoaded}
                   myCollection={gs.collection} market={gs.market} gold={gs.gold} cardPool={gs.cardPool}
                   myListings={gs.myListings} transactions={gs.transactions}
                   onClose={() => setActiveTab('collection')}

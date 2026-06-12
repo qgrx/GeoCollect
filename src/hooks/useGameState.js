@@ -24,6 +24,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [loadingData, setLoadingData] = useState(false)
   const [configLoaded, setConfigLoaded] = useState(false)
   const [collectionLoaded, setCollectionLoaded] = useState(false)
+  const [marketLoaded, setMarketLoaded] = useState(false)
 
   // ── Player state ───────────────────────────────────────────────────────────
   const [gold,         setGold]        = useState(profile?.gold ?? 0)
@@ -121,7 +122,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   useEffect(() => {
     if (!profile) {
       // Logout — réinitialiser tout l'état joueur
-      setGold(0); setCollection({}); setShinyCollection({}); setMarket([]); setMyListings([])
+      setGold(0); setCollection({}); setShinyCollection({}); setMarket([]); setMyListings([]); setMarketLoaded(false)
       setTransactions([]); setTotalBuys(0); setTotalSells(0); setStreak(0)
       _setUnreadSales(0); setSaleNotifs([]); setUnlockedAch([]); setPendingAch([])
       return
@@ -149,7 +150,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       }).catch(() => { if (mounted.current) setCollectionLoaded(true) })
 
       apiGetMarket().then(({ data: mktData }) => {
-        if (!mktData?.market || !mounted.current) return
+        if (!mounted.current) return
+        setMarketLoaded(true)
+        if (!mktData?.market) return
         const flat = []
         mktData.market.forEach(({ card, tiers }) => {
           tiers.forEach(tier => {
@@ -159,7 +162,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           })
         })
         setMarket(flat)
-      }).catch(() => {})
+      }).catch(() => { if (mounted.current) setMarketLoaded(true) })
 
       apiGetMyListings().then(({ data: listData }) => {
         if (!listData?.listings || !mounted.current) return
@@ -681,7 +684,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   return {
     // World
     cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs,
-    limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded, collectionLoaded,
+    limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded, collectionLoaded, marketLoaded,
     // Player
     gold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, myListings, totalBuys, totalSells,
     streak, setStreak, transactions, setTransactions, unlockedAch, pendingAch, setPendingAch,
