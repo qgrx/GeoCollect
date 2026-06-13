@@ -38,6 +38,8 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
     });
   }, [player.id]);
 
+  const normalCards = col ? Object.values(col).filter(n => n > 0).length : null;
+  const shinyCards  = shinyCol ? Object.values(shinyCol).filter(n => n > 0).length : null;
   const uniqueCards = col
     ? new Set([
         ...Object.keys(col).filter(k => (col[k] || 0) > 0),
@@ -114,10 +116,17 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
 
               {/* Stats */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
+                <div style={{ background: theme.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 12 }}>🃏</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
+                    <span style={{ fontWeight: 900, fontSize: 12, color: theme.textPrimary, lineHeight: 1.2 }}>{normalCards ?? '—'}</span>
+                    {shinyCards > 0 && <span style={{ fontWeight: 800, fontSize: 9, color: '#f9ca24', lineHeight: 1.2 }}>✨{shinyCards}</span>}
+                  </div>
+                  <div style={{ fontSize: 7, color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .2 }}>{t('stat_geocoins')}</div>
+                </div>
                 {[
-                  { icon: '🃏', value: uniqueCards ?? '—', label: t('stat_geocoins') },
-                  { icon: '💰', value: gold,               label: t('stat_gold') },
-                  { icon: '🔨', value: forgePoints,         label: t('stat_forge') },
+                  { icon: '💰', value: gold,        label: t('stat_gold') },
+                  { icon: '🔨', value: forgePoints, label: t('stat_forge') },
                 ].map(({ icon, value, label }) => (
                   <div key={label} style={{ background: theme.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
                     <div style={{ fontSize: 12 }}>{icon}</div>

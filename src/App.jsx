@@ -1074,6 +1074,8 @@ export default function App() {
                 const nextRank = scoreReady ? sortedRanks.find(r => r.min > userScore) : null
                 const prevMin  = scoreReady ? ([...sortedRanks].reverse().find(r => r.min <= userScore)?.min || 0) : 0
                 const pct      = scoreReady ? (nextRank ? Math.round(((userScore - prevMin) / (nextRank.min - prevMin)) * 100) : 100) : 0
+                const normalCards = gs.collectionLoaded ? Object.values(gs.collection).filter(n => n > 0).length : null
+                const shinyCards  = gs.collectionLoaded ? Object.values(gs.shinyCollection || {}).filter(n => n > 0).length : null
                 const uniqueCards = gs.collectionLoaded
                   ? new Set([
                       ...Object.keys(gs.collection).filter(k => (gs.collection[k] || 0) > 0),
@@ -1102,8 +1104,20 @@ export default function App() {
                       </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
+                      <div style={{ background: dk.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 12 }}>🃏</div>
+                        {uniqueCards === null
+                          ? <div style={shimCell} />
+                          : (
+                            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
+                              <span style={{ fontWeight: 900, fontSize: 12, color: dk.textPrimary, lineHeight: 1.2 }}>{normalCards}</span>
+                              {shinyCards > 0 && <span style={{ fontWeight: 800, fontSize: 9, color: '#f9ca24', lineHeight: 1.2 }}>✨{shinyCards}</span>}
+                            </div>
+                          )
+                        }
+                        <div style={{ fontSize: 7, color: dk.textSecondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .2 }}>{t('stat_geocoins')}</div>
+                      </div>
                       {[
-                        { icon: '🃏', value: uniqueCards,    label: t('stat_geocoins') },
                         { icon: '💰', value: gs.gold,        label: t('stat_gold') },
                         { icon: '🔨', value: gs.forgePoints, label: t('stat_forge') },
                       ].map(({ icon, value, label }) => (
