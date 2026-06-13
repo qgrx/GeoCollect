@@ -58,12 +58,27 @@ export default function MarketModal({
   const [cancelConfirm, setCancelConfirm] = useState(null)
   const [buySearch, setBuySearch]         = useState('')  // index en attente de confirmation
   const [buySort, setBuySort]             = useState('rarity')
+  const [sellSearch, setSellSearch]       = useState('')
+  const [sellSort, setSellSort]           = useState('rarity')
   const LIST_PAGE_SIZE = 6
 
   const myCards = Object.entries(myCollection)
     .filter(([, v]) => v > 1)
     .map(([id, cnt]) => ({ card: cardPool.find(c => c.id === +id), cnt }))
     .filter(x => x.card && x.card.sellable !== false)
+
+  const myCardsFiltered = useMemo(() => {
+    const q = sellSearch.trim().toLowerCase()
+    const arr = q ? myCards.filter(({ card }) => card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q)) : [...myCards]
+    switch (sellSort) {
+      case 'price_asc':
+        return arr.sort((a, b) => (a.card.minPrice || 0) - (b.card.minPrice || 0))
+      case 'price_desc':
+        return arr.sort((a, b) => (b.card.minPrice || 0) - (a.card.minPrice || 0))
+      default:
+        return arr.sort((a, b) => RC[a.card.rarity].order - RC[b.card.rarity].order)
+    }
+  }, [myCards, sellSearch, sellSort])
 
   const ob = useMemo(() => {
     const g = {}
@@ -293,12 +308,26 @@ export default function MarketModal({
                   {t('market_no_duplicates')}
                 </div>
               ) : (
+                <>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+                  <input value={sellSearch} onChange={e => setSellSearch(e.target.value)}
+                    placeholder={t('collection_search')}
+                    style={{ flex: 1, minWidth: 120, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none' }}/>
+                  {sellSearch && <button onClick={() => setSellSearch('')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 16 }}>✕</button>}
+                  <select value={sellSort} onChange={e => setSellSort(e.target.value)}
+                    style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none', cursor: 'pointer' }}>
+                    <option value="rarity">{t('market_sort_label')}: {t('market_sort_rarity')}</option>
+                    <option value="price_asc">{t('market_sort_label')}: {t('market_sort_price_asc')}</option>
+                    <option value="price_desc">{t('market_sort_label')}: {t('market_sort_price_desc')}</option>
+                  </select>
+                </div>
                 <div style={{ display: 'flex',flexWrap: 'wrap',columnGap: 7,rowGap: 12,padding: '4px' }}>
-                  {myCards.map(({ card, cnt }) => (
+                  {myCardsFiltered.map(({ card, cnt }) => (
                     <Card key={card.id} card={card} count={cnt} small selected={sellCard?.id === card.id}
                       onClick={() => { setSellCard(sellCard?.id === card.id ? null : card); setSellPrice(''); setMsg('') }} />
                   ))}
                 </div>
+                </>
               )}
             </div>
             <div style={{ flex: 1, minWidth: 180, order: isMobile ? -1 : 0 }}>
