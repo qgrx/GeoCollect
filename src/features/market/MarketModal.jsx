@@ -303,7 +303,8 @@ export default function MarketModal({
             </div>
             <div style={{ flex: 1, minWidth: 180, order: isMobile ? -1 : 0 }}>
               {sellCard ? (
-                <div style={{ background: theme.overlay, border: `1.5px solid ${theme.border}`, borderRadius: 15, padding: 18, display: 'flex', flexDirection: 'column', gap: 12, position: isMobile ? 'static' : 'sticky', top: 16 }}>
+                <div style={{ position: isMobile ? 'static' : 'sticky', top: 0, paddingTop: isMobile ? 0 : 16 }}>
+                <div style={{ background: theme.overlay, border: `1.5px solid ${theme.border}`, borderRadius: 15, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {/* Carte sélectionnée */}
                   <div style={{ display: 'flex', justifyContent: 'center' }}><Card card={sellCard} /></div>
 
@@ -387,6 +388,7 @@ export default function MarketModal({
                       </div>
                     )
                   })()}
+                </div>
                 </div>
               ) : (
                 <div style={{ background: theme.overlay,border: `1.5px dashed ${theme.border}`,borderRadius: 15,padding: 22,textAlign: 'center',color: theme.textMuted }}>
