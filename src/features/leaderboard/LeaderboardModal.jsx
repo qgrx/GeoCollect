@@ -179,14 +179,20 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
   const [search, setSearch] = useState('');
   const PG = 15;
 
+  // Même calcul que ProfileView : nb de cartes uniques (normales + brillantes).
+  const myCardCount = new Set([
+    ...Object.keys(myCollection || {}).filter(k => (myCollection[k] || 0) > 0),
+    ...Object.keys(myShinyCollection || {}).filter(k => (myShinyCollection[k] || 0) > 0),
+  ]).size;
+
   useEffect(() => {
     setLoading(true);
     apiGetLeaderboard(page, search || undefined).then(({ data }) => {
       if (data?.players) {
         // Injecter le joueur courant s'il n'est pas dans la page
-        let list = data.players.map(p => p.id === myId ? { ...p, isMe: true, score: myScore ?? p.score } : p);
+        let list = data.players.map(p => p.id === myId ? { ...p, isMe: true, score: myScore ?? p.score, card_count: myCardCount } : p);
         if (myId && !list.find(p => p.isMe)) {
-          const me = { id: myId, pseudo: myPseudo || 'Moi', isMe: true, isMeSeparate: true, score: myScore ?? 0, col: myCollection, shinyCol: myShinyCollection };
+          const me = { id: myId, pseudo: myPseudo || 'Moi', isMe: true, isMeSeparate: true, score: myScore ?? 0, card_count: myCardCount, col: myCollection, shinyCol: myShinyCollection };
           list = [...list, me];
         }
         setPlayers(list);
