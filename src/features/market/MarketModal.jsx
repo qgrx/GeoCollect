@@ -305,7 +305,7 @@ export default function MarketModal({
               {sellCard ? (
                 // top tient compte du header sticky de l'app (position: sticky, top: 0,
                 // ~50-56px de haut) pour ne pas passer derriere lui une fois collé.
-                <div style={{ position: isMobile ? 'static' : 'sticky', top: isMobile ? 0 : 64, marginTop: isMobile ? 12 : 0 }}>
+                <div style={{ position: isMobile ? 'static' : 'sticky', top: isMobile ? 0 : 64, marginTop: isMobile ? 24 : 8 }}>
                 <div style={{ background: theme.overlay, border: `1.5px solid ${theme.border}`, borderRadius: 15, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {/* Carte sélectionnée */}
                   <div style={{ display: 'flex', justifyContent: 'center' }}><Card card={sellCard} /></div>
