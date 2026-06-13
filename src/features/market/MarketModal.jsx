@@ -67,19 +67,6 @@ export default function MarketModal({
     .map(([id, cnt]) => ({ card: cardPool.find(c => c.id === +id), cnt }))
     .filter(x => x.card && x.card.sellable !== false)
 
-  const myCardsFiltered = useMemo(() => {
-    const q = sellSearch.trim().toLowerCase()
-    const arr = q ? myCards.filter(({ card }) => card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q)) : [...myCards]
-    switch (sellSort) {
-      case 'price_asc':
-        return arr.sort((a, b) => (priceCaps[a.card.rarity]?.max || 0) - (priceCaps[b.card.rarity]?.max || 0))
-      case 'price_desc':
-        return arr.sort((a, b) => (priceCaps[b.card.rarity]?.max || 0) - (priceCaps[a.card.rarity]?.max || 0))
-      default:
-        return arr.sort((a, b) => RC[a.card.rarity].order - RC[b.card.rarity].order)
-    }
-  }, [myCards, sellSearch, sellSort, priceCaps])
-
   const ob = useMemo(() => {
     const g = {}
     market.forEach((l, i) => {
@@ -97,6 +84,20 @@ export default function MarketModal({
     })
     return g
   }, [market])
+
+  const myCardsFiltered = useMemo(() => {
+    const q = sellSearch.trim().toLowerCase()
+    const arr = q ? myCards.filter(({ card }) => card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q)) : [...myCards]
+    const refPrice = (card) => ob[card.id]?.tiersArr?.[0]?.price ?? priceCaps[card.rarity]?.max ?? 0
+    switch (sellSort) {
+      case 'price_asc':
+        return arr.sort((a, b) => refPrice(a.card) - refPrice(b.card))
+      case 'price_desc':
+        return arr.sort((a, b) => refPrice(b.card) - refPrice(a.card))
+      default:
+        return arr.sort((a, b) => RC[a.card.rarity].order - RC[b.card.rarity].order)
+    }
+  }, [myCards, sellSearch, sellSort, priceCaps, ob])
 
   const gArr = useMemo(() => {
     const arr = Object.values(ob)
