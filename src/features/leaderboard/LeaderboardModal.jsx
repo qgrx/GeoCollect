@@ -190,7 +190,7 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
     apiGetLeaderboard(page, search || undefined).then(({ data }) => {
       if (data?.players) {
         // Injecter le joueur courant s'il n'est pas dans la page
-        let list = data.players.map(p => p.id === myId ? { ...p, isMe: true, score: myScore ?? p.score, card_count: myCardCount, gold: myGold ?? p.gold, forge_points: myForgePoints ?? p.forge_points } : p);
+        let list = data.players.map(p => p.id === myId ? { ...p, isMe: true, score: myScore ?? p.score, card_count: myCardCount, gold: myGold ?? p.gold, forge_points: myForgePoints ?? p.forge_points, col: myCollection, shinyCol: myShinyCollection } : p);
         if (myId && !list.find(p => p.isMe)) {
           const me = { id: myId, pseudo: myPseudo || 'Moi', isMe: true, isMeSeparate: true, score: myScore ?? 0, card_count: myCardCount, gold: myGold ?? 0, forge_points: myForgePoints ?? 0, col: myCollection, shinyCol: myShinyCollection };
           list = [...list, me];
