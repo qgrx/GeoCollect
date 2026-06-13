@@ -72,13 +72,13 @@ export default function MarketModal({
     const arr = q ? myCards.filter(({ card }) => card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q)) : [...myCards]
     switch (sellSort) {
       case 'price_asc':
-        return arr.sort((a, b) => (a.card.minPrice || 0) - (b.card.minPrice || 0))
+        return arr.sort((a, b) => (priceCaps[a.card.rarity]?.max || 0) - (priceCaps[b.card.rarity]?.max || 0))
       case 'price_desc':
-        return arr.sort((a, b) => (b.card.minPrice || 0) - (a.card.minPrice || 0))
+        return arr.sort((a, b) => (priceCaps[b.card.rarity]?.max || 0) - (priceCaps[a.card.rarity]?.max || 0))
       default:
         return arr.sort((a, b) => RC[a.card.rarity].order - RC[b.card.rarity].order)
     }
-  }, [myCards, sellSearch, sellSort])
+  }, [myCards, sellSearch, sellSort, priceCaps])
 
   const ob = useMemo(() => {
     const g = {}
