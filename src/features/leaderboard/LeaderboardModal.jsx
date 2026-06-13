@@ -38,7 +38,6 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
     });
   }, [player.id]);
 
-  const normalCards = col ? Object.values(col).filter(n => n > 0).length : null;
   const shinyCards  = shinyCol ? Object.values(shinyCol).filter(n => n > 0).length : null;
   const uniqueCards = col
     ? new Set([
@@ -119,7 +118,7 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
                 <div style={{ background: theme.overlayMd, borderRadius: 8, padding: '6px 2px', textAlign: 'center' }}>
                   <div style={{ fontSize: 12 }}>🃏</div>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
-                    <span style={{ fontWeight: 900, fontSize: 12, color: theme.textPrimary, lineHeight: 1.2 }}>{normalCards ?? '—'}</span>
+                    <span style={{ fontWeight: 900, fontSize: 12, color: theme.textPrimary, lineHeight: 1.2 }}>{uniqueCards ?? '—'}</span>
                     {shinyCards > 0 && <span style={{ fontWeight: 800, fontSize: 9, color: '#f9ca24', lineHeight: 1.2 }}>✨{shinyCards}</span>}
                   </div>
                   <div style={{ fontSize: 7, color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .2 }}>{t('stat_geocoins')}</div>

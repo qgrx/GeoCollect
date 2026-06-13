@@ -1074,7 +1074,6 @@ export default function App() {
                 const nextRank = scoreReady ? sortedRanks.find(r => r.min > userScore) : null
                 const prevMin  = scoreReady ? ([...sortedRanks].reverse().find(r => r.min <= userScore)?.min || 0) : 0
                 const pct      = scoreReady ? (nextRank ? Math.round(((userScore - prevMin) / (nextRank.min - prevMin)) * 100) : 100) : 0
-                const normalCards = gs.collectionLoaded ? Object.values(gs.collection).filter(n => n > 0).length : null
                 const shinyCards  = gs.collectionLoaded ? Object.values(gs.shinyCollection || {}).filter(n => n > 0).length : null
                 const uniqueCards = gs.collectionLoaded
                   ? new Set([
@@ -1110,7 +1109,7 @@ export default function App() {
                           ? <div style={shimCell} />
                           : (
                             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
-                              <span style={{ fontWeight: 900, fontSize: 12, color: dk.textPrimary, lineHeight: 1.2 }}>{normalCards}</span>
+                              <span style={{ fontWeight: 900, fontSize: 12, color: dk.textPrimary, lineHeight: 1.2 }}>{uniqueCards}</span>
                               {shinyCards > 0 && <span style={{ fontWeight: 800, fontSize: 9, color: '#f9ca24', lineHeight: 1.2 }}>✨{shinyCards}</span>}
                             </div>
                           )
