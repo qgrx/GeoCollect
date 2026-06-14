@@ -42,13 +42,13 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [saleNotifs,          setSaleNotifs]         = useState([])
   const [unreadSales,         _setUnreadSales]       = useState(0)
   const [initialQuests,       setInitialQuests]     = useState(null)
-  const [forgePoints,         setForgePoints]       = useState(profile?.forge_points ?? 0)
+  const [forgePoints,         setForgePoints]       = useState(Number(profile?.forge_points ?? 0))
   const [forgePointsSignal,   setForgePointsSignal]  = useState(0)
   const [questActivitySignal, setQuestActivitySignal] = useState(0)
 
   // Sync forgePoints si le profil auth change (connexion/rechargement)
   useEffect(() => {
-    if (profile?.forge_points !== undefined) setForgePoints(profile.forge_points)
+    if (profile?.forge_points !== undefined) setForgePoints(Number(profile.forge_points))
   }, [profile?.forge_points])
 
   const mounted = useRef(true)
@@ -108,6 +108,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           quizConsolationForge:cfg.quiz_consolation_forge !== undefined ? +cfg.quiz_consolation_forge : prev.quizConsolationForge,
           quizDailyForgeCap:   cfg.quiz_daily_forge_cap   !== undefined ? +cfg.quiz_daily_forge_cap   : prev.quizDailyForgeCap,
           forgeCostByRarity:   cfg.forge_cost_by_rarity  ?? prev.forgeCostByRarity,
+          meltPointsByRarity:  cfg.melt_points_by_rarity ?? prev.meltPointsByRarity,
+          meltPointsByRarityShiny: cfg.melt_points_by_rarity_shiny ?? prev.meltPointsByRarityShiny,
           marketPriceCaps:     cfg.market_price_caps      ?? prev.marketPriceCaps,
           dailyOfferGold:      cfg.daily_offer_gold    !== undefined ? +cfg.daily_offer_gold    : prev.dailyOfferGold,
           featureTresor:       cfg.feature_tresor      !== undefined ? cfg.feature_tresor      !== false : prev.featureTresor,
@@ -235,6 +237,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             quizConsolationForge:cfg.quiz_consolation_forge !== undefined ? +cfg.quiz_consolation_forge : prev.quizConsolationForge,
             quizDailyForgeCap:   cfg.quiz_daily_forge_cap   !== undefined ? +cfg.quiz_daily_forge_cap   : prev.quizDailyForgeCap,
             forgeCostByRarity:   cfg.forge_cost_by_rarity  ?? prev.forgeCostByRarity,
+          meltPointsByRarity:  cfg.melt_points_by_rarity ?? prev.meltPointsByRarity,
+          meltPointsByRarityShiny: cfg.melt_points_by_rarity_shiny ?? prev.meltPointsByRarityShiny,
             marketPriceCaps:     cfg.market_price_caps      ?? prev.marketPriceCaps,
             dailyOfferGold:      cfg.daily_offer_gold    !== undefined ? +cfg.daily_offer_gold    : prev.dailyOfferGold,
             featureTresor:       cfg.feature_tresor      !== undefined ? cfg.feature_tresor      !== false : prev.featureTresor,

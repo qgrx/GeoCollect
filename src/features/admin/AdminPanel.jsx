@@ -3,6 +3,7 @@ import { useState, useRef, useMemo, useEffect } from 'react';
 import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC, RARITY_CONFIG, ACHIEVEMENT_DEF } from '../../data/cards.js';
+import { MeltAllPreview } from '../forge/ForgeModal.jsx';
 import { PAGE_SIZE } from '../../data/constants.js';
 import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTriggerShinyQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache, apiAdminRecalculateScores, apiAdminResetOnboarding,
   apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminReactivate,
@@ -62,6 +63,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [qSearch,setQSearch]=useState("");
   const [qFilterReported,setQFilterReported]=useState(false);
   const [resetReports]=useState(()=>new Set()); // conservé pour compatibilité badge
+  const [showMeltPreview,setShowMeltPreview]=useState(false);
   const [liveQuestions,setLiveQuestions]=useState(null); // null = utilise le prop
 
   useEffect(()=>{
@@ -716,6 +718,76 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>
             )
           })()}
+
+          {/* ── TABLE 2bis : Fonte des doublons ── */}
+          {(()=>{
+            const RARITIES=[['commun','#78909c'],['rare','#1565c0'],['épique','#6a1b9a'],['légendaire','#e65100']]
+            const mp=limEdit.meltPointsByRarity??{}
+            return(
+              <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
+                <div style={{fontWeight:800,color:"#f9ca24",marginBottom:12,fontSize:13}}>🔥 Fonte des doublons</div>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{color:"#8daacc",textAlign:"left"}}>
+                    {["Rareté","PF par doublon fondu"].map(h=><th key={h} style={{padding:"5px 8px",borderBottom:"1px solid #ffffff14",fontWeight:700}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {RARITIES.map(([r,color],i)=>(
+                      <tr key={r} style={{background:i%2===0?"transparent":"#ffffff04"}}>
+                        <td style={{padding:"7px 8px",color,fontWeight:800,textTransform:"capitalize"}}>{r}</td>
+                        <td style={{padding:"7px 8px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:5}}>
+                            <input type="number" min={0} max={9999} step={0.1} value={mp[r]??''} placeholder="—"
+                              onChange={e=>setLimEdit({...limEdit,meltPointsByRarity:{...mp,[r]:Math.max(0,+e.target.value)}})}
+                              style={{...INP,width:75}}/>
+                            <span style={{color:"#aaa"}}>PF</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })()}
+
+          {/* ── TABLE 2ter : Fonte des doublons brillants ── */}
+          {(()=>{
+            const RARITIES=[['commun','#78909c'],['rare','#1565c0'],['épique','#6a1b9a'],['légendaire','#e65100']]
+            const mp=limEdit.meltPointsByRarityShiny??{}
+            return(
+              <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
+                <div style={{fontWeight:800,color:"#f9ca24",marginBottom:12,fontSize:13}}>✨ Fonte des doublons brillants</div>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{color:"#8daacc",textAlign:"left"}}>
+                    {["Rareté","PF par doublon brillant fondu"].map(h=><th key={h} style={{padding:"5px 8px",borderBottom:"1px solid #ffffff14",fontWeight:700}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {RARITIES.map(([r,color],i)=>(
+                      <tr key={r} style={{background:i%2===0?"transparent":"#ffffff04"}}>
+                        <td style={{padding:"7px 8px",color,fontWeight:800,textTransform:"capitalize"}}>{r}</td>
+                        <td style={{padding:"7px 8px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:5}}>
+                            <input type="number" min={0} max={9999} step={0.1} value={mp[r]??''} placeholder="—"
+                              onChange={e=>setLimEdit({...limEdit,meltPointsByRarityShiny:{...mp,[r]:Math.max(0,+e.target.value)}})}
+                              style={{...INP,width:75}}/>
+                            <span style={{color:"#aaa"}}>PF</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button onClick={()=>setShowMeltPreview(true)}
+                  style={{...BTN,marginTop:12,background:"linear-gradient(135deg,#e17055,#f9ca24)",color:"#1e3045"}}>
+                  🧪 Prévisualiser l'animation "Tout fondre"
+                </button>
+              </div>
+            )
+          })()}
+
+          {showMeltPreview && (
+            <MeltAllPreview cardPool={cardPool} onClose={()=>setShowMeltPreview(false)} />
+          )}
 
           {/* ── TABLE 3 : Marché ── */}
           {(()=>{

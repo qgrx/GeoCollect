@@ -1398,6 +1398,8 @@ export default function App() {
                   forgePoints={gs.forgePoints}
                   shinyForgeCostByRarity={gs.limits.shinyForgeCostByRarity ?? {}}
                   forgeCostByRarity={gs.limits.forgeCostByRarity ?? {}}
+                  meltPointsByRarity={gs.limits.meltPointsByRarity ?? {}}
+                  meltPointsByRarityShiny={gs.limits.meltPointsByRarityShiny ?? {}}
                   onClose={() => setActiveTab('collection')}
                   onForged={(data) => {
                     if (data?.forge_points_remaining !== undefined) {
@@ -1408,6 +1410,46 @@ export default function App() {
                     }
                     if (data?.shiny_card_id) {
                       gs.setShinyCollection(prev => ({ ...prev, [data.shiny_card_id]: (prev[data.shiny_card_id] || 0) + 1 }))
+                    }
+                  }}
+                  onMelted={(data) => {
+                    if (data?.forge_points_remaining !== undefined) {
+                      gs.addForgePoints(data.forge_points_remaining - gs.forgePoints)
+                    }
+                    if (data?.card) {
+                      gs.setCollection(prev => ({ ...prev, [data.card.id]: Math.max(0, (prev[data.card.id] || 0) - 1) }))
+                    }
+                  }}
+                  onMeltedShiny={(data) => {
+                    if (data?.forge_points_remaining !== undefined) {
+                      gs.addForgePoints(data.forge_points_remaining - gs.forgePoints)
+                    }
+                    if (data?.card) {
+                      gs.setShinyCollection(prev => ({ ...prev, [data.card.id]: Math.max(0, (prev[data.card.id] || 0) - 1) }))
+                    }
+                  }}
+                  onMeltedAll={(data) => {
+                    if (data?.forge_points_remaining !== undefined) {
+                      gs.addForgePoints(data.forge_points_remaining - gs.forgePoints)
+                    }
+                    if (data?.melted) {
+                      gs.setCollection(prev => {
+                        const next = { ...prev }
+                        for (const m of data.melted) next[m.card_id] = 1
+                        return next
+                      })
+                    }
+                  }}
+                  onMeltedAllShiny={(data) => {
+                    if (data?.forge_points_remaining !== undefined) {
+                      gs.addForgePoints(data.forge_points_remaining - gs.forgePoints)
+                    }
+                    if (data?.melted) {
+                      gs.setShinyCollection(prev => {
+                        const next = { ...prev }
+                        for (const m of data.melted) next[m.card_id] = 1
+                        return next
+                      })
                     }
                   }}
                 />
@@ -1758,6 +1800,8 @@ export default function App() {
                 apiSetConfig('quiz_consolation_forge', limEdit.quizConsolationForge ?? 1),
                 apiSetConfig('quiz_daily_forge_cap',   limEdit.quizDailyForgeCap    ?? 0),
                 apiSetConfig('forge_cost_by_rarity',   limEdit.forgeCostByRarity   ?? { commun:60,rare:180,épique:600,légendaire:1800 }),
+                apiSetConfig('melt_points_by_rarity',  limEdit.meltPointsByRarity  ?? {}),
+                apiSetConfig('melt_points_by_rarity_shiny', limEdit.meltPointsByRarityShiny ?? {}),
                 apiSetConfig('market_price_caps',      limEdit.marketPriceCaps      ?? { commun:{floor:5,k:2},rare:{floor:25,k:2.5},épique:{floor:150,k:3},légendaire:{floor:1000,k:4} }),
                 apiSetConfig('feature_tresor',       limEdit.featureTresor      ?? true),
                 apiSetConfig('feature_market',       limEdit.featureMarket      ?? true),
