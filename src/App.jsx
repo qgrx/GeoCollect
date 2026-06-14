@@ -496,6 +496,16 @@ export default function App() {
   const [toast,           setToast]           = useState(null);
   const [socketOnline,    setSocketOnline]    = useState(true);
   const [goldFlash,       setGoldFlash]       = useState(null);
+  const [showDiscordBanner, setShowDiscordBanner] = useState(() => {
+    try {
+      const until = parseInt(localStorage.getItem('geocoins_discord_banner_dismissed_until') || '0', 10);
+      return Date.now() > until;
+    } catch { return true; }
+  });
+  const dismissDiscordBanner = () => {
+    try { localStorage.setItem('geocoins_discord_banner_dismissed_until', String(Date.now() + 60 * 60 * 1000)); } catch { /* ignore */ }
+    setShowDiscordBanner(false);
+  };
 
   const [questions, setQuestions] = useState([]);
 
@@ -958,6 +968,27 @@ export default function App() {
         @keyframes cardSort { 0%{opacity:0;transform:scale(.88) translateY(6px)} 60%{transform:scale(1.03) translateY(-2px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
         @keyframes fadeLeft { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
       `}</style>
+
+      {/* ── Toast hors-ligne ── */}
+      {!socketOnline && import.meta.env.VITE_API_URL && (
+        <div style={{ flexShrink: 0, background: '#d63031', color: '#fff', textAlign: 'center', padding: '7px 16px', fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif" }}>
+          {t('server_offline')}
+        </div>
+      )}
+
+      {/* ── Bannière Discord ── */}
+      {showDiscordBanner && (
+        <div style={{ position: 'relative', flexShrink: 0, background: '#5865F2', color: '#fff', textAlign: 'center', padding: '7px 36px', fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <span>🎮</span>
+          <a href="https://discord.gg/QE5fM6H6n" target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'underline' }}>
+            Join us on Discord - https://discord.gg/QE5fM6H6n
+          </a>
+          <button onClick={dismissDiscordBanner} aria-label="Fermer"
+            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#fff', fontSize: 16, fontWeight: 900, cursor: 'pointer', lineHeight: 1, padding: 4 }}>
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* ACCENT BAR */}
       <div style={{ height: 3, background: 'linear-gradient(90deg,#58a6ff,#bc8cff,#f9ca24,#f85149)', flexShrink: 0 }} />
@@ -1450,11 +1481,6 @@ export default function App() {
       )}
 
       {/* ── Toast ── */}
-      {!socketOnline && import.meta.env.VITE_API_URL && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#d63031', color: '#fff', textAlign: 'center', padding: '7px 16px', fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif" }}>
-          {t('server_offline')}
-        </div>
-      )}
       {toast && (
         <div style={{ position: 'fixed',bottom: 28,right: 28,zIndex: 3000,background: toast.type === 'error' ? '#d63031' : '#00b894',color: '#fff',padding: '11px 18px',borderRadius: 12,fontWeight: 800,fontSize: 13,boxShadow: '0 8px 32px #0006',animation: 'toastIn .4s cubic-bezier(.34,1.56,.64,1) both' }}>
           {toast.msg}
