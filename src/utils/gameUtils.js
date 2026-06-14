@@ -5,6 +5,16 @@ export const normA = (s) =>
 
 export const wordCount = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 
+// Date du jour (YYYY-MM-DD) à Paris — même fuseau que le reset des limites quotidiennes côté API.
+export function todayParis(date = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
 export const DEFAULT_SHINY_SCORE_RULES = { commun: 2, rare: 6, épique: 14, légendaire: 40 }
 
 export function collScore(col, pool, shinyCol = {}, rules = { commun: 1, rare: 3, épique: 7, légendaire: 20 }, shinyRules = DEFAULT_SHINY_SCORE_RULES) {
