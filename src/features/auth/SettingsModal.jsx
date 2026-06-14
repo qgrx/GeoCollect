@@ -6,6 +6,7 @@ import { RC, ACHIEVEMENT_DEF } from '../../data/cards.js'
 import { rankCC, getRankLabel } from '../../utils/rankUtils.js'
 import { PSEUDO_CHANGE_DAYS } from '../../data/constants.js'
 import { apiDeleteAccount } from '../../services/api.js'
+import { todayParis } from '../../utils/gameUtils.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
 
 import { DEFAULT_RANKS } from '../../data/constants.js'
@@ -37,7 +38,7 @@ function memberSince(dateStr) {
 }
 
 // ─── SettingsModal ────────────────────────────────────────────────────────────
-export default function SettingsModal({ auth, collection = {}, cardPool = [], unlockedAch = [], ranks = [], score: scoreProp, onClose, onStartTour }) {
+export default function SettingsModal({ auth, collection = {}, cardPool = [], unlockedAch = [], ranks = [], limits = {}, score: scoreProp, onClose, onStartTour }) {
   const { t, lang } = useT()
   const { theme } = useTheme()
   const { profile } = auth
@@ -58,6 +59,28 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const { c1, c2 } = rankCC(rank)
   const uniqueCards = Object.values(collection).filter(n => n > 0).length
   const memberStr   = memberSince(profile.joined_at)
+
+  // Debug limites quotidiennes — réservé aux admins, pour diagnostiquer
+  // les remontées de joueurs sur des limites de gold/cartes incorrectes.
+  let limitsDebug = null
+  if (profile.role === 'admin') {
+    const today = todayParis()
+    const isNewDay = !profile.daily_reset_at || profile.daily_reset_at < today
+    const lastHourReset = profile.cards_hour_reset_at ? new Date(profile.cards_hour_reset_at).getTime() : null
+    const hourlyReset = !lastHourReset || (Date.now() - lastHourReset) >= 60 * 60 * 1000
+    limitsDebug = {
+      dailyGold:        isNewDay ? 0 : (profile.daily_gold || 0),
+      dailyGoldCap:     limits.connected?.dailyGold || 0,
+      dailyGoldJoin:    isNewDay ? 0 : (profile.daily_gold_join || 0),
+      dailyGoldJoinCap: limits.quizJoinGoldCap || 0,
+      dailyCards:       isNewDay ? 0 : (profile.daily_cards || 0),
+      dailyCardsCap:    limits.quizDailyCardCap || 0,
+      hourlyCards:      hourlyReset ? 0 : (profile.hourly_cards || 0),
+      hourlyCardsCap:   limits.quizHourlyCardCap || 0,
+      resetDate:        profile.daily_reset_at || '—',
+      hourResetAt:      profile.cards_hour_reset_at || null,
+    }
+  }
 
   async function doChange() {
     if (!newP.trim())      { setMsg({ text: t('settings_pseudo_empty'), ok: false }); return }
@@ -178,6 +201,39 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
             </div>
           )
         })()}
+
+        {/* ── Debug limites quotidiennes (admin) ── */}
+        {limitsDebug && (
+          <div style={{ padding: '12px 24px', borderBottom: `1px solid ${theme.borderLight}` }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: .3, marginBottom: 6 }}>🐞 Limites du jour (debug admin)</div>
+            {[
+              { label: 'Or quotidien',     value: limitsDebug.dailyGold,     cap: limitsDebug.dailyGoldCap },
+              { label: 'Or de connexion',  value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap },
+              { label: 'Geocoins du jour', value: limitsDebug.dailyCards,    cap: limitsDebug.dailyCardsCap },
+              { label: 'Geocoins/heure',   value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap },
+            ].map(({ label, value, cap }) => {
+              const unlimited = !cap || cap <= 0
+              const pct = unlimited ? 0 : Math.min(100, Math.round((value / cap) * 100))
+              return (
+                <div key={label} style={{ marginBottom: 5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: theme.textMuted }}>
+                    <span>{label}</span>
+                    <span style={{ fontWeight: 700, color: theme.textSecondary }}>{value} / {unlimited ? '∞' : cap}</span>
+                  </div>
+                  {!unlimited && (
+                    <div style={{ background: theme.overlay, borderRadius: 50, height: 5, overflow: 'hidden', marginTop: 2 }}>
+                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: pct >= 100 ? '#eb4d4b' : `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4 }}>
+              Reset quotidien : {limitsDebug.resetDate} (Europe/Paris, aujourd'hui {todayParis()})
+              {limitsDebug.hourResetAt && <> · Reset horaire : {new Date(limitsDebug.hourResetAt).toLocaleTimeString('fr-FR')}</>}
+            </div>
+          </div>
+        )}
 
         {/* ── Onglets ── */}
         <div style={{ display: 'flex', borderBottom: `1px solid ${theme.borderLight}` }}>

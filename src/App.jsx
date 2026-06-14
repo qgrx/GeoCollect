@@ -10,7 +10,7 @@ import Logo from './components/Logo.jsx';
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
-import { collScore, todayParis } from './utils/gameUtils.js';
+import { collScore } from './utils/gameUtils.js';
 
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
@@ -1083,28 +1083,6 @@ export default function App() {
                   : null
                 const dk = THEMES.dark
                 const shimCell = { height: 12, borderRadius: 4, background: 'linear-gradient(90deg,#ffffff08,#ffffff18,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite', margin: '2px auto', width: '55%' }
-
-                // Debug limites quotidiennes — réservé aux admins, pour diagnostiquer
-                // les remontées de joueurs sur des limites de gold/cartes incorrectes.
-                let limitsDebug = null
-                if (auth.profile?.role === 'admin' && gs.collectionLoaded) {
-                  const today = todayParis()
-                  const isNewDay = !auth.profile.daily_reset_at || auth.profile.daily_reset_at < today
-                  const lastHourReset = auth.profile.cards_hour_reset_at ? new Date(auth.profile.cards_hour_reset_at).getTime() : null
-                  const hourlyReset = !lastHourReset || (Date.now() - lastHourReset) >= 60 * 60 * 1000
-                  limitsDebug = {
-                    dailyGold:        isNewDay ? 0 : (auth.profile.daily_gold || 0),
-                    dailyGoldCap:     gs.limits.connected?.dailyGold || 0,
-                    dailyGoldJoin:    isNewDay ? 0 : (auth.profile.daily_gold_join || 0),
-                    dailyGoldJoinCap: gs.limits.quizJoinGoldCap || 0,
-                    dailyCards:       isNewDay ? 0 : (auth.profile.daily_cards || 0),
-                    dailyCardsCap:    gs.limits.quizDailyCardCap || 0,
-                    hourlyCards:      hourlyReset ? 0 : (auth.profile.hourly_cards || 0),
-                    hourlyCardsCap:   gs.limits.quizHourlyCardCap || 0,
-                    resetDate:        auth.profile.daily_reset_at || '—',
-                    hourResetAt:      auth.profile.cards_hour_reset_at || null,
-                  }
-                }
                 return (
                   <div data-tour="profile" style={{ background: dk.bgSurface, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden', animation: 'fadeUp .4s .05s ease-out both', transition: 'border-color .4s' }}>
                     <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none', transition: 'background .4s' }} />
@@ -1168,38 +1146,6 @@ export default function App() {
                       )
                     ) : (
                       <div style={{ height: 8, borderRadius: 50, background: 'linear-gradient(90deg,#ffffff05,#ffffff12,#ffffff05)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s .1s infinite' }} />
-                    )}
-
-                    {limitsDebug && (
-                      <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px dashed ${dk.overlayMd}` }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, color: dk.textSecondary, textTransform: 'uppercase', letterSpacing: .3, marginBottom: 4 }}>🐞 Limites du jour (debug admin)</div>
-                        {[
-                          { label: 'Or quotidien',  value: limitsDebug.dailyGold,     cap: limitsDebug.dailyGoldCap },
-                          { label: 'Or de connexion', value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap },
-                          { label: 'Geocoins du jour', value: limitsDebug.dailyCards,   cap: limitsDebug.dailyCardsCap },
-                          { label: 'Geocoins/heure', value: limitsDebug.hourlyCards,    cap: limitsDebug.hourlyCardsCap },
-                        ].map(({ label, value, cap }) => {
-                          const unlimited = !cap || cap <= 0
-                          const pct = unlimited ? 0 : Math.min(100, Math.round((value / cap) * 100))
-                          return (
-                            <div key={label} style={{ marginBottom: 4 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: dk.textSecondary }}>
-                                <span>{label}</span>
-                                <span style={{ fontWeight: 700, color: dk.textPrimary }}>{value} / {unlimited ? '∞' : cap}</span>
-                              </div>
-                              {!unlimited && (
-                                <div style={{ background: dk.overlayMd, borderRadius: 50, height: 4, overflow: 'hidden', marginTop: 2 }}>
-                                  <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: pct >= 100 ? '#eb4d4b' : `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                        <div style={{ fontSize: 9, color: dk.textSecondary, marginTop: 4 }}>
-                          Reset quotidien : {limitsDebug.resetDate} (Europe/Paris, aujourd'hui {todayParis()})
-                          {limitsDebug.hourResetAt && <> · Reset horaire : {new Date(limitsDebug.hourResetAt).toLocaleTimeString('fr-FR')}</>}
-                        </div>
-                      </div>
                     )}
                   </div>
                 )
@@ -1714,7 +1660,7 @@ export default function App() {
         )
       })()}
 
-      {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
+      {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} limits={gs.limits} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
       {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0); setRevealPayment('') }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} initialPaymentLabel={revealPayment} />}
       {/* CGV désactivée temporairement */}
       {showAdmin && auth.profile?.role === 'admin' && (
