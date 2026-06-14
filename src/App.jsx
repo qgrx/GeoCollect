@@ -696,7 +696,15 @@ export default function App() {
       setShowRegisterPrompt(true)
       return false
     }
-    return handleQuizAnswer(_userAnswer, _turnstileToken)
+    const result = await handleQuizAnswer(_userAnswer, _turnstileToken)
+    // Resynchroniser le profil (gold, daily_*, forge_points...) après la réponse
+    if (import.meta.env.VITE_API_URL) {
+      const { apiGetProfile } = await import('./services/api.js').catch(() => ({}))
+      apiGetProfile?.().then(({ data }) => {
+        if (data?.profile) auth.setProfile(data.profile)
+      }).catch(() => {})
+    }
+    return result
   }
 
   async function handlePurchase(cards, gold = 0) {
@@ -1710,6 +1718,7 @@ export default function App() {
                 apiSetConfig('quiz_hourly_card_cap',   limEdit.quizHourlyCardCap   ?? 0),
                 apiSetConfig('quiz_consolation_gold',  limEdit.quizConsolationGold  ?? 5),
                 apiSetConfig('quiz_consolation_forge', limEdit.quizConsolationForge ?? 1),
+                apiSetConfig('quiz_daily_forge_cap',   limEdit.quizDailyForgeCap    ?? 0),
                 apiSetConfig('forge_cost_by_rarity',   limEdit.forgeCostByRarity   ?? { commun:60,rare:180,épique:600,légendaire:1800 }),
                 apiSetConfig('market_price_caps',      limEdit.marketPriceCaps      ?? { commun:{floor:5,k:2},rare:{floor:25,k:2.5},épique:{floor:150,k:3},légendaire:{floor:1000,k:4} }),
                 apiSetConfig('feature_tresor',       limEdit.featureTresor      ?? true),

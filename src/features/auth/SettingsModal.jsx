@@ -61,10 +61,10 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const uniqueCards = Object.values(collection).filter(n => n > 0).length
   const memberStr   = memberSince(profile.joined_at)
 
-  // Debug limites quotidiennes — réservé aux admins, pour diagnostiquer
-  // les remontées de joueurs sur des limites de gold/cartes incorrectes.
+  // Limites quotidiennes — affichées à tous les joueurs pour comprendre
+  // leur progression vis-à-vis des limites de gold/cartes/forge.
   let limitsDebug = null
-  if (profile.role === 'admin') {
+  {
     const today = todayParis()
     const isNewDay = !profile.daily_reset_at || profile.daily_reset_at < today
     const lastHourReset = profile.cards_hour_reset_at ? new Date(profile.cards_hour_reset_at).getTime() : null
@@ -78,6 +78,8 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
       dailyCardsCap:    limits.quizDailyCardCap || 0,
       hourlyCards:      hourlyReset ? 0 : (profile.hourly_cards || 0),
       hourlyCardsCap:   limits.quizHourlyCardCap || 0,
+      dailyForgeConsolation:    isNewDay ? 0 : (profile.daily_forge_consolation || 0),
+      dailyForgeConsolationCap: limits.quizDailyForgeCap || 0,
       isNewDay,
       lastActivityDate: profile.daily_reset_at || null,
       hourlyResetInMin: hourlyReset ? null : Math.ceil((60 * 60 * 1000 - (Date.now() - lastHourReset)) / 60000),
@@ -204,7 +206,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           )
         })()}
 
-        {/* ── Debug limites quotidiennes (admin) ── */}
+        {/* ── Limites quotidiennes ── */}
         {limitsDebug && (
           <div style={{ padding: '12px 24px', borderBottom: `1px solid ${theme.borderLight}` }}>
             <div style={{ fontSize: 10, fontWeight: 800, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: .3, marginBottom: 6 }}>Limites du jour</div>
@@ -213,6 +215,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
               ...(limits.quizJoinGold > 0 ? [{ label: 'Or de participation', value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap }] : []),
               { label: 'Geocoins du jour',   value: limitsDebug.dailyCards,    cap: limitsDebug.dailyCardsCap, info: true },
               { label: 'Geocoins/heure',     value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap },
+              ...(limits.quizConsolationForge > 0 ? [{ label: 'Forge de compensation', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
             ].map(({ label, value, cap, info }) => {
               const unlimited = !cap || cap <= 0
               const pct = unlimited ? 0 : Math.min(100, Math.round((value / cap) * 100))
@@ -241,11 +244,8 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
               )
             })}
             <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4 }}>
-              {limitsDebug.isNewDay
-                ? <>✅ Compteurs quotidiens réinitialisés (dernière activité : {limitsDebug.lastActivityDate ?? 'jamais'}, aujourd'hui {todayParis()})</>
-                : <>Compteurs quotidiens à jour pour aujourd'hui ({todayParis()})</>
-              }
-              {' · '}Prochain reset horaire dans {limitsDebug.hourlyResetInMin != null ? `${limitsDebug.hourlyResetInMin}min` : '—'}
+              {limitsDebug.isNewDay && <>✅ Compteurs quotidiens réinitialisés (dernière activité : {limitsDebug.lastActivityDate ?? 'jamais'}, aujourd'hui {todayParis()}) · </>}
+              Prochain reset horaire dans {limitsDebug.hourlyResetInMin != null ? `${limitsDebug.hourlyResetInMin}min` : '—'}
             </div>
           </div>
         )}
