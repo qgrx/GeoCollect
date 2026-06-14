@@ -3,7 +3,7 @@ import { RC, cardCC, rarityLabel, cardName } from '../data/cards.js'
 import { useT } from '../i18n/translations.js'
 import { ShinyEffect } from './Card.jsx'
 
-export default function CardDetailModal({ card, count, onClose, onSell, isShiny = false }) {
+export default function CardDetailModal({ card, count, owned, onClose, onSell, isShiny = false }) {
   const { t, lang } = useT()
 
   const imgRef = useRef()
@@ -39,7 +39,7 @@ export default function CardDetailModal({ card, count, onClose, onSell, isShiny 
           animation: isShiny
             ? 'shinyBorder 2.4s linear infinite, cardPop .3s cubic-bezier(.34,1.56,.64,1) both'
             : 'cardPop .3s cubic-bezier(.34,1.56,.64,1) both',
-          filter: count <= 0 ? 'grayscale(1)' : 'none',
+          filter: (owned ?? count > 0) ? 'none' : 'grayscale(1)',
           fontFamily: "'Nunito',sans-serif",
         }}>
         <style>{`

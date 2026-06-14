@@ -981,7 +981,7 @@ export default function App() {
         <div style={{ position: 'relative', flexShrink: 0, background: '#5865F2', color: '#fff', textAlign: 'center', padding: '7px 36px', fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <span>🎮</span>
           <a href="https://discord.gg/QE5fM6H6n" target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'underline' }}>
-            Join us on Discord - https://discord.gg/QE5fM6H6n
+            {t('discord_banner')}
           </a>
           <button onClick={dismissDiscordBanner} aria-label="Fermer"
             style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#fff', fontSize: 16, fontWeight: 900, cursor: 'pointer', lineHeight: 1, padding: 4 }}>
@@ -1624,6 +1624,7 @@ export default function App() {
         <CardDetailModal
           card={selectedCard}
           count={selectedCardFromHistory ? 0 : selectedCardIsShiny ? (gs.shinyCollection?.[selectedCard.id] || 0) : (gs.collection[selectedCard.id] || 0)}
+          owned={selectedCardIsShiny ? (gs.shinyCollection?.[selectedCard.id] || 0) > 0 : (gs.collection[selectedCard.id] || 0) > 0}
           isShiny={selectedCardIsShiny}
           onClose={() => { setSelectedCard(null); setSelectedCardIsShiny(false); setSelectedCardFromHistory(false); }}
           onSell={() => { setMarketSellCard(selectedCard); setSelectedCard(null); setSelectedCardIsShiny(false); setSelectedCardFromHistory(false); setMarketTab('vendre'); setActiveTab('market'); }}
