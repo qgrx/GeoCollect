@@ -39,6 +39,7 @@ export default function CardDetailModal({ card, count, onClose, onSell, isShiny 
           animation: isShiny
             ? 'shinyBorder 2.4s linear infinite, cardPop .3s cubic-bezier(.34,1.56,.64,1) both'
             : 'cardPop .3s cubic-bezier(.34,1.56,.64,1) both',
+          filter: count <= 0 ? 'grayscale(1)' : 'none',
           fontFamily: "'Nunito',sans-serif",
         }}>
         <style>{`
@@ -125,6 +126,21 @@ export default function CardDetailModal({ card, count, onClose, onSell, isShiny 
               "{card.desc}"
             </div>
           )}
+          {card.progressInfo && card.progressInfo.threshold > 0 && (() => {
+            const { progress, threshold } = card.progressInfo
+            const pct = Math.min(100, Math.round((progress / threshold) * 100))
+            return (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 4 }}>
+                  <span>Progression</span>
+                  <span style={{ color: '#f9ca24' }}>{Math.min(progress, threshold)} / {threshold}</span>
+                </div>
+                <div style={{ background: '#ffffff14', borderRadius: 50, height: 6, overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .5s' }}/>
+                </div>
+              </div>
+            )
+          })()}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <div style={{ background: '#ffffff0a', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#888', fontWeight: 700 }}>
               Type : <span style={{ color: '#ccc' }}>{card.type}</span>

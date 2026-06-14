@@ -7,7 +7,7 @@ import {
   apiBuyCard, apiListCard, apiCancelListing, apiGetTransactions,
   apiPingProfile, apiSetConfig, apiGetAdminConfig, apiGetPublicConfig,
   apiAdminAddCard, apiAdminEditCard, apiAdminDeleteCard, apiAdminDeleteType, apiAdminRenameType,
-  apiGetDailyQuests, apiQuestCheckin,
+  apiGetDailyQuests, apiQuestCheckin, apiGetAchievements,
 } from '../services/api.js'
 
 
@@ -37,6 +37,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [streak,       setStreak]      = useState(0)
   const [transactions, setTransactions]= useState([])
   const [unlockedAch,         setUnlockedAch]        = useState([])
+  const [achievementProgress, setAchievementProgress] = useState({})
   const [pendingAch,          setPendingAch]         = useState([])
   const [saleNotifs,          setSaleNotifs]         = useState([])
   const [unreadSales,         _setUnreadSales]       = useState(0)
@@ -164,6 +165,13 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         })
         setMarket(flat)
       }).catch(() => { if (mounted.current) setMarketLoaded(true) })
+
+      apiGetAchievements().then(({ data: achData }) => {
+        if (!achData?.achievements || !mounted.current) return
+        setAchievementProgress(Object.fromEntries(
+          achData.achievements.filter(a => a.card_id).map(a => [a.card_id, { progress: a.progress, threshold: a.threshold, type: a.type }])
+        ))
+      }).catch(() => {})
 
       apiGetMyListings().then(({ data: listData }) => {
         if (!listData?.listings || !mounted.current) return
@@ -689,7 +697,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded, collectionLoaded, marketLoaded,
     // Player
     gold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, myListings, totalBuys, totalSells,
-    streak, setStreak, transactions, setTransactions, unlockedAch, pendingAch, setPendingAch,
+    streak, setStreak, transactions, setTransactions, unlockedAch, achievementProgress, pendingAch, setPendingAch,
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,
     // Derived
     isGuest, uniqueCards, totalUnique, myScore,

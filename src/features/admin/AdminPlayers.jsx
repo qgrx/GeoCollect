@@ -19,6 +19,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
   const [playerForgeEdit, setPlayerForgeEdit]   = useState('');
   const [playerCollection, setPlayerCollection] = useState(null);
   const [playerShinyCollection, setPlayerShinyCollection] = useState(null);
+  const [playerAchievements, setPlayerAchievements] = useState(null);
   const [playerScore, setPlayerScore]           = useState(null);
   const [cardSearch, setCardSearch]             = useState('');
   const [shinyMode, setShinyMode]               = useState(false);
@@ -58,13 +59,17 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
 
   // ── Auto-chargement collection quand on ouvre un joueur ────────────────────
   useEffect(() => {
-    if (!playerView) { setPlayerCollection(null); setPlayerShinyCollection(null); setPlayerScore(null); return; }
+    if (!playerView) { setPlayerCollection(null); setPlayerShinyCollection(null); setPlayerAchievements(null); setPlayerScore(null); return; }
     setPlayerScore(playerView.score ?? null);
     setPlayerCollection(null);
     setPlayerShinyCollection(null);
+    setPlayerAchievements(null);
     apiAdminGetPlayerCollection(playerView.id).then(({ data }) => {
       setPlayerCollection(data?.collection || []);
       setPlayerShinyCollection(data?.shiny_collection || []);
+      setPlayerAchievements(Object.fromEntries(
+        (data?.achievements || []).map(a => [a.card_id, a])
+      ));
     });
   }, [playerView?.id]);
 
@@ -78,6 +83,12 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
     const q = cardSearch.toLowerCase();
     return base.filter(c => c.name.toLowerCase().includes(q));
   }, [cardPool, cardSearch]);
+
+  // ── Geocoins de type achievement, avec leur progression pour le joueur ──────
+  const achievementCards = useMemo(
+    () => cardPool.filter(c => c.type?.toLowerCase().includes('achievement')),
+    [cardPool]
+  );
 
   // Ajoute (sign > 0) ou retire (sign < 0) `cardQty` exemplaires d'une carte (normale ou shiny selon shinyMode)
   async function handleAdjustCard(card, sign) {
@@ -309,6 +320,44 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
             </>
           );
         })()}
+      </div>
+
+      {/* Achievements */}
+      <div style={{ marginTop: 12, background: '#ffffff08', borderRadius: 10, padding: '12px 14px', border: '1px solid #ffffff10' }}>
+        <div style={{ fontWeight: 800, color: '#a29bfe', fontSize: 12, marginBottom: 8 }}>
+          🏆 Achievements
+        </div>
+        {!playerAchievements ? (
+          <div style={{ color: '#8daacc', fontSize: 11, textAlign: 'center', padding: '14px 0' }}>Chargement…</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {achievementCards.map(card => {
+              const prog = playerAchievements[card.id];
+              const threshold = prog?.threshold || 0;
+              const progress = Math.min(prog?.progress || 0, threshold);
+              const done = !!prog?.completed_at;
+              const pct = threshold > 0 ? Math.round((progress / threshold) * 100) : 0;
+              const { c1 } = cardCC(card.rarity);
+              return (
+                <div key={card.id} style={{ padding: '8px 10px', borderRadius: 8, background: '#ffffff05', border: `1px solid ${done ? '#00b89466' : '#ffffff10'}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: done ? '#00b894' : '#fff' }}>
+                      {done && '✅ '}{card.name}
+                    </span>
+                    {threshold > 0 && <span style={{ fontSize: 11, color: '#f9ca24', fontWeight: 700, whiteSpace: 'nowrap' }}>{progress} / {threshold}</span>}
+                  </div>
+                  {card.desc && <div style={{ fontSize: 11, color: '#8daacc', fontStyle: 'italic', marginBottom: threshold > 0 ? 6 : 0 }}>{card.desc}</div>}
+                  {threshold > 0 && (
+                    <div style={{ background: '#ffffff14', borderRadius: 50, height: 6, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: done ? 'linear-gradient(90deg,#00b894,#00cec9)' : `linear-gradient(90deg,${c1},#f9ca24)`, transition: 'width .5s' }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {achievementCards.length === 0 && <div style={{ fontSize: 11, color: '#a8bfcf' }}>Aucun achievement.</div>}
+          </div>
+        )}
       </div>
     </div>
   );

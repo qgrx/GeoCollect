@@ -869,6 +869,16 @@ export default function App() {
         .filter(([, v]) => v > 0)
         .map(([id, cnt]) => ({ card: gs.cardPool.find(c => c.id === +id), cnt, missing: false }))
         .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
+
+      // Sur l'onglet "Achievements" uniquement, afficher aussi les manquants
+      // même sans le toggle "Manquants" (pas dans "Tous" ni les autres onglets)
+      if (filter?.toLowerCase().startsWith('achievement')) {
+        const missingAch = gs.cardPool
+          .filter(c => c.type === filter && !(gs.collection[c.id] > 0))
+          .filter(matchSearch)
+          .map(c => ({ card: c, cnt: 0, missing: true }))
+        normalList = [...normalList, ...missingAch]
+      }
     }
     return normalList.sort(sortFn)
   }, [showMissing, showShiny, sortBy, filter, cardSearch, gs.collection, gs.cardPool, gs.shinyCollection]);
@@ -1304,12 +1314,13 @@ export default function App() {
                         <div key={gridAnimKey} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14, marginBottom: 16 }}>
                           {slice.map(({ card, count, cnt, missing, isShiny }, idx) => {
                             const c = count || cnt || 0;
+                            const isAchievement = card.type?.toLowerCase().startsWith('achievement')
                             const anim = gridAnimKey > 0
                               ? `cardSort .4s ${Math.min(idx * 0.03, 0.5)}s cubic-bezier(.34,1.56,.64,1) both`
                               : 'slideIn .35s ease both'
                             return (
                               <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
-                                <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={missing ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '' }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
+                                <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
                               </div>
                             );
                           })}
