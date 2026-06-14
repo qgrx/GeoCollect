@@ -47,6 +47,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const [msg,     setMsg]     = useState({ text: '', ok: false })
   const [loading, setLoading] = useState(false)
   const [changed, setChanged] = useState(false)
+  const [showCardsInfo, setShowCardsInfo] = useState(false)
 
   if (!profile) return null
 
@@ -77,8 +78,9 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
       dailyCardsCap:    limits.quizDailyCardCap || 0,
       hourlyCards:      hourlyReset ? 0 : (profile.hourly_cards || 0),
       hourlyCardsCap:   limits.quizHourlyCardCap || 0,
-      resetDate:        profile.daily_reset_at || '—',
-      hourResetAt:      profile.cards_hour_reset_at || null,
+      isNewDay,
+      lastActivityDate: profile.daily_reset_at || null,
+      hourlyResetInMin: hourlyReset ? null : Math.ceil((60 * 60 * 1000 - (Date.now() - lastHourReset)) / 60000),
     }
   }
 
@@ -205,19 +207,24 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
         {/* ── Debug limites quotidiennes (admin) ── */}
         {limitsDebug && (
           <div style={{ padding: '12px 24px', borderBottom: `1px solid ${theme.borderLight}` }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: .3, marginBottom: 6 }}>🐞 Limites du jour (debug admin)</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: .3, marginBottom: 6 }}>Limites du jour</div>
             {[
-              { label: 'Or quotidien',     value: limitsDebug.dailyGold,     cap: limitsDebug.dailyGoldCap },
-              { label: 'Or de connexion',  value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap },
-              { label: 'Geocoins du jour', value: limitsDebug.dailyCards,    cap: limitsDebug.dailyCardsCap },
-              { label: 'Geocoins/heure',   value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap },
-            ].map(({ label, value, cap }) => {
+              { label: 'Or quotidien',       value: limitsDebug.dailyGold,     cap: limitsDebug.dailyGoldCap },
+              ...(limits.quizJoinGold > 0 ? [{ label: 'Or de participation', value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap }] : []),
+              { label: 'Geocoins du jour',   value: limitsDebug.dailyCards,    cap: limitsDebug.dailyCardsCap, info: true },
+              { label: 'Geocoins/heure',     value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap },
+            ].map(({ label, value, cap, info }) => {
               const unlimited = !cap || cap <= 0
               const pct = unlimited ? 0 : Math.min(100, Math.round((value / cap) * 100))
               return (
                 <div key={label} style={{ marginBottom: 5 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: theme.textMuted }}>
-                    <span>{label}</span>
+                    <span>
+                      {label}
+                      {info && (
+                        <span onClick={() => setShowCardsInfo(v => !v)} style={{ cursor: 'pointer', marginLeft: 4, fontWeight: 800 }}>ⓘ</span>
+                      )}
+                    </span>
                     <span style={{ fontWeight: 700, color: theme.textSecondary }}>{value} / {unlimited ? '∞' : cap}</span>
                   </div>
                   {!unlimited && (
@@ -225,12 +232,20 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
                       <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: pct >= 100 ? '#eb4d4b' : `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
                     </div>
                   )}
+                  {info && showCardsInfo && (
+                    <div style={{ marginTop: 4, padding: 8, borderRadius: 8, background: theme.overlay, fontSize: 10, color: theme.textSecondary, lineHeight: 1.4 }}>
+                      Pas de panique, si un geocoin vous intéresse alors que vous avez atteint la limite, il y a le dépôt d'attente. Un point de forge est également offert en compensation pour chaque quiz gagné.
+                    </div>
+                  )}
                 </div>
               )
             })}
             <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4 }}>
-              Reset quotidien : {limitsDebug.resetDate} (Europe/Paris, aujourd'hui {todayParis()})
-              {limitsDebug.hourResetAt && <> · Reset horaire : {new Date(limitsDebug.hourResetAt).toLocaleTimeString('fr-FR')}</>}
+              {limitsDebug.isNewDay
+                ? <>✅ Compteurs quotidiens réinitialisés (dernière activité : {limitsDebug.lastActivityDate ?? 'jamais'}, aujourd'hui {todayParis()})</>
+                : <>Compteurs quotidiens à jour pour aujourd'hui ({todayParis()})</>
+              }
+              {' · '}Prochain reset horaire dans {limitsDebug.hourlyResetInMin != null ? `${limitsDebug.hourlyResetInMin}min` : '—'}
             </div>
           </div>
         )}
