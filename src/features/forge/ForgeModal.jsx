@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { cardCC } from '../../data/cards.js'
+import { cardCC, RC } from '../../data/cards.js'
 import { apiForgeCard, apiForgeShiny, apiMeltCard, apiMeltShinyCard, apiMeltAllCards, apiMeltAllShinyCards } from '../../services/api.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
@@ -487,8 +487,9 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
 
   const forgeableCards = (cardPool || []).filter(c => c.forgeable)
   const ownedCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 0 && c.type !== 'Achievement')
-  const duplicateCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 1 && c.type !== 'Achievement')
-  const duplicateShinyCards = (cardPool || []).filter(c => (shinyCollection[c.id] || 0) > 1 && c.type !== 'Achievement')
+  const byRarityDesc = (a, b) => (RC[a.rarity]?.order ?? 99) - (RC[b.rarity]?.order ?? 99)
+  const duplicateCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 1 && c.type !== 'Achievement').sort(byRarityDesc)
+  const duplicateShinyCards = (cardPool || []).filter(c => (shinyCollection[c.id] || 0) > 1 && c.type !== 'Achievement').sort(byRarityDesc)
   const totalMeltPoints = Math.round(duplicateCards.reduce((sum, card) => {
     const points = card.melt_points ?? meltPointsByRarity[card.rarity] ?? null
     if (points == null) return sum
