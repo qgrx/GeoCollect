@@ -113,7 +113,7 @@ export function SaleNotif({ notif, onClose, ranks, buyerScore }) {
 }
 
 // ─── Transaction History Modal ────────────────────────────────────────────────
-export function TxHistoryModal({ transactions = [], onClose, embedded = false, onRead, cardPool = [] }) {
+export function TxHistoryModal({ transactions = [], onClose, embedded = false, onRead, cardPool = [], saleTax = 0.12 }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [page, setPage] = useState(0)
@@ -125,8 +125,10 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
   const totalPages = Math.ceil(transactions.length / PAGE_SIZE)
   const pageItems = transactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
+  const netOf = price => Math.floor(price * (1 - saleTax))
+
   const totalSpent  = transactions.filter(tx => tx.type === 'achat').reduce((s, tx) => s + tx.price, 0)
-  const totalEarned = transactions.filter(tx => tx.type === 'vente').reduce((s, tx) => s + tx.price, 0)
+  const totalEarned = transactions.filter(tx => tx.type === 'vente').reduce((s, tx) => s + netOf(tx.price), 0)
 
   const content = (
     <>
@@ -184,9 +186,14 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
                   <span style={{ fontSize: 11, background: isAchat ? '#e74c3c22' : '#00b89422', color: isAchat ? '#e74c3c' : '#00b894', border: `1px solid ${isAchat ? '#e74c3c44' : '#00b89444'}`, borderRadius: 50, padding: '3px 10px', fontWeight: 800 }}>
                     {isAchat ? t('tx_buy_label') : t('tx_sell_label')}
                   </span>
-                  <span style={{ fontWeight: 900,fontSize: 15,color: isAchat ? '#e74c3c' : theme.gold }}>
-                    {isAchat ? '-' : '+'}{tx.price}G
-                  </span>
+                  <div style={{ display: 'flex',flexDirection: 'column',alignItems: 'flex-end' }}>
+                    <span style={{ fontWeight: 900,fontSize: 15,color: isAchat ? '#e74c3c' : theme.gold }}>
+                      {isAchat ? '-' : '+'}{isAchat ? tx.price : netOf(tx.price)}G
+                    </span>
+                    {!isAchat && (
+                      <span style={{ fontSize: 9,color: theme.textMuted }}>{tx.price}G {t('tx_fee_deducted')}</span>
+                    )}
+                  </div>
                 </div>
               </div>
             )
