@@ -117,7 +117,9 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
 
       apiJoinQuiz(quiz.id).then(({ data }) => {
         // Si le backend refuse finalement l'or (limite atteinte) et que c'était une nouvelle participation
-        if (data && data.gold_earned === 0 && data.already_joined === false) {
+        // (uniquement si l'or de participation est activé — sinon gold_earned=0 est normal)
+        const joinGold = cbRef.current.limits?.quizJoinGold ?? 1
+        if (joinGold > 0 && data && data.gold_earned === 0 && data.already_joined === false) {
           cbRef.current.showToast(cbRef.current.t('toast_gold_limit'), 'error')
         }
       }).catch(() => {})
