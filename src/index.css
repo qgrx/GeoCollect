@@ -98,3 +98,11 @@ button:hover:not(:disabled) {
   .menu-buttons   { display: none; }
   .menu-hamburger { display: flex; }
 }
+
+/* iOS Safari zoome la page si un champ a une taille de police < 16px au focus
+   (et ce zoom reste bloqué en mode PWA standalone) */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
