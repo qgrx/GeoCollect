@@ -1123,12 +1123,10 @@ export default function App() {
                 const nextRank = scoreReady ? sortedRanks.find(r => r.min > userScore) : null
                 const prevMin  = scoreReady ? ([...sortedRanks].reverse().find(r => r.min <= userScore)?.min || 0) : 0
                 const pct      = scoreReady ? (nextRank ? Math.round(((userScore - prevMin) / (nextRank.min - prevMin)) * 100) : 100) : 0
-                const shinyCards  = gs.collectionLoaded ? Object.values(gs.shinyCollection || {}).filter(n => n > 0).length : null
+                const nonAchievementIds = new Set(gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement').map(c => String(c.id)))
+                const shinyCards  = gs.collectionLoaded ? Object.keys(gs.shinyCollection || {}).filter(k => (gs.shinyCollection[k] || 0) > 0 && nonAchievementIds.has(k)).length : null
                 const uniqueCards = gs.collectionLoaded
-                  ? new Set([
-                      ...Object.keys(gs.collection).filter(k => (gs.collection[k] || 0) > 0),
-                      ...Object.keys(gs.shinyCollection || {}).filter(k => (gs.shinyCollection[k] || 0) > 0),
-                    ]).size
+                  ? Object.keys(gs.collection).filter(k => (gs.collection[k] || 0) > 0 && nonAchievementIds.has(k)).length
                   : null
                 const dk = THEMES.dark
                 const shimCell = { height: 12, borderRadius: 4, background: 'linear-gradient(90deg,#ffffff08,#ffffff18,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite', margin: '2px auto', width: '55%' }
