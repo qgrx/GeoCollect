@@ -1131,7 +1131,7 @@ export default function App() {
                 const dk = THEMES.dark
                 const shimCell = { height: 12, borderRadius: 4, background: 'linear-gradient(90deg,#ffffff08,#ffffff18,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite', margin: '2px auto', width: '55%' }
                 return (
-                  <div data-tour="profile" style={{ background: dk.bgSurface, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden', animation: 'fadeUp .4s .05s ease-out both', transition: 'border-color .4s' }}>
+                  <div data-tour="profile" style={{ background: dk.bgSurface, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden', flexShrink: 0, animation: 'fadeUp .4s .05s ease-out both', transition: 'border-color .4s' }}>
                     <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none', transition: 'background .4s' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                       <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 14px ${c1}44`, border: `2px solid ${c1}44`, transition: 'background .4s, box-shadow .4s' }}>
