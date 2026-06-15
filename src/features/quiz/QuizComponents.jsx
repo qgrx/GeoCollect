@@ -117,6 +117,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
   const [isSubmitting,setIsSubmitting]=useState(false);
   const [submitError,setSubmitError]=useState(null);
   const ref=useRef(); const doneRef=useRef(false); const submittingRef=useRef(false);
+  // Figer l'état "brillant" au montage : un événement quiz:solved (annonçant le prochain
+  // quiz) peut mettre à jour isShiny pendant que cette modale affiche encore le résultat.
+  const isShinyFrozen=useRef(isShiny).current;
   const rc=RC[quiz.card.rarity]; const {c1,c2}=cardCC(quiz.card.rarity);
   const wc=wordCount(quiz.a);
 
@@ -174,7 +177,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
   return (
     <div style={{position:"fixed",inset:0,zIndex:800,background:"#000000bb",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <style>{`@keyframes shakeIt{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}} @keyframes winGlow{0%,100%{box-shadow:0 0 0 0 #00b89400}50%{box-shadow:0 0 32px 8px #00b89466}} @keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.5)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}`}</style>
-      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(calc(100vw - 40px),520px)",boxSizing:"border-box",border:isShiny?"2px solid #f9ca24aa":"2px solid #f9ca2444",boxShadow:isShiny?"0 24px 60px #000c,0 0 40px #f9ca2433":"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
+      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(calc(100vw - 40px),520px)",boxSizing:"border-box",border:isShinyFrozen?"2px solid #f9ca24aa":"2px solid #f9ca2444",boxShadow:isShinyFrozen?"0 24px 60px #000c,0 0 40px #f9ca2433":"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:17,color:"#f9ca24"}}>{t("quiz_title")}</div>
@@ -187,7 +190,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
         </div>
         <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
           <div style={{flexShrink:0,pointerEvents:"none"}}>
-            <Card card={quiz.card} small isShiny={isShiny} />
+            <Card card={quiz.card} small isShiny={isShinyFrozen} />
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1.5,marginBottom:5}}>{quiz.q}</div>
