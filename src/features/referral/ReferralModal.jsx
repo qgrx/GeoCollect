@@ -69,7 +69,7 @@ export function ReferralPanel({ showTitle = true, theme }) {
 
       <div style={{ fontSize: 10, color: c.label, fontWeight: 800, textTransform: 'uppercase',
         letterSpacing: .5, marginBottom: 8 }}>
-        {t('referral_godchildren')} ({ref.qualified_count}/{ref.required_count})
+        {t('referral_godchildren')}
       </div>
 
       {filleuls.length === 0 ? (
