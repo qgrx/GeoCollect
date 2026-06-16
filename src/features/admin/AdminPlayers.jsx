@@ -385,6 +385,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
                       {p.score != null && (() => { const ranks = limEdit.playerRanks || []; const rank = [...ranks].sort((a, b) => b.min - a.min).find(r => p.score >= r.min) || ranks[0]; return rank ? <span style={{ fontSize: 9, color: rank.color, fontWeight: 800 }}>{getRankLabel(rank, lang)} · {p.score}pts</span> : null; })()}
                       {p.gold != null && <span style={{ fontSize: 9, color: '#f9ca24', fontWeight: 700 }}>{p.gold}G</span>}
                       {p.can_sell === false && <span style={{ fontSize: 9, background: '#e74c3c22', color: '#e74c3c', borderRadius: 50, padding: '1px 6px', fontWeight: 700 }}>vente interdite</span>}
+                      {p.email_confirmed === false && <span style={{ fontSize: 9, background: '#e17055aa', color: '#fff', borderRadius: 50, padding: '1px 6px', fontWeight: 700 }}>✉️ non vérifié</span>}
                     </div>
                     <div style={{ fontSize: 9, color: '#fff', fontFamily: 'monospace', marginTop: 1 }}>{p.ip} · {p.lastSeen}</div>
                   </div>
