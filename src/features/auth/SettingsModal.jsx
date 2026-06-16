@@ -279,7 +279,8 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
               placeholder={t('settings_new_pseudo')}
               disabled={!canChange || changed || loading}
               maxLength={20}
-              style={{ ...INP, marginBottom: 10, opacity: (!canChange || changed) ? 0.5 : 1 }}/>
+              style={{ ...INP, background: theme.bgInput, border: `1px solid ${theme.border}`, color: theme.textPrimary,
+                marginBottom: 10, opacity: (!canChange || changed) ? 0.5 : 1 }}/>
             {msg.text && (
               <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, padding: '7px 12px',
                 borderRadius: 9, background: msg.ok ? '#00b89422' : '#e74c3c22',
