@@ -31,6 +31,7 @@ import MaintenanceScreen from './components/MaintenanceScreen.jsx';
 // ─── Features ────────────────────────────────────────────────────────────────
 import AuthModal from './features/auth/AuthModal.jsx';
 import SettingsModal from './features/auth/SettingsModal.jsx';
+import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
 import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
@@ -459,6 +460,7 @@ export default function App() {
   const [showAuth,        setShowAuth]        = useState(false);
   const [showChoosePseudo, setShowChoosePseudo] = useState(false);
   const [showSettings,    setShowSettings]    = useState(false);
+  const [showReferral,    setShowReferral]    = useState(false);
   const [showShop,        setShowShop]        = useState(false);
   const [shopPackId,      setShopPackId]       = useState(null);
   const [revealCards,     setRevealCards]      = useState(null);
@@ -648,13 +650,13 @@ export default function App() {
 
   // ── Bloquer le scroll du fond quand un modal est ouvert (mobile) ────────────
   useEffect(() => {
-    const anyOpen = showAuth || showSettings || showAdmin || showMarket || showForge ||
+    const anyOpen = showAuth || showSettings || showReferral || showAdmin || showMarket || showForge ||
       showLeaderboard || showShop || showTxHistory || showDocs || !!selectedCard ||
       showScoreDetail || !!seasonPopup || !!activeQuiz
     document.body.style.overflow = anyOpen ? 'hidden' : ''
     document.body.style.touchAction = anyOpen ? 'none' : ''
     return () => { document.body.style.overflow = ''; document.body.style.touchAction = '' }
-  }, [showAuth, showSettings, showAdmin, showMarket, showForge, showLeaderboard,
+  }, [showAuth, showSettings, showReferral, showAdmin, showMarket, showForge, showLeaderboard,
       showShop, showTxHistory, showDocs, selectedCard, showScoreDetail, seasonPopup, activeQuiz])
 
   // ── Market actions with toasts ─────────────────────────────────────────────
@@ -799,6 +801,7 @@ export default function App() {
         if (selectedCard)       { setSelectedCard(null); return }
         if (['market','forge','top'].includes(activeTab)) { setActiveTab('collection'); return }
         if (showSettings)       { setShowSettings(false); return }
+        if (showReferral)       { setShowReferral(false); return }
         if (showAuth)           { setShowAuth(false); return }
         if (showTxHistory)      { setShowTxHistory(false); return }
         if (showAdmin)          { setShowAdmin(false); window.history.pushState({}, '', '/'); return }
@@ -810,7 +813,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedCard, activeTab, showSettings, showAuth,
+  }, [selectedCard, activeTab, showSettings, showReferral, showAuth,
       showTxHistory, showAdmin, showShop, menuOpen, pendingQuiz, activeQuiz])
 
 
@@ -1071,6 +1074,7 @@ export default function App() {
                 </div>
                 {[
                   { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
+                  { icon: '🤝', label: t('referral_title'), fn: () => { setShowReferral(true); setAvatarMenu(false) } },
                   { icon: '💬', label: 'Support', notif: hasReleaseNotif, fn: () => { clearReleaseNotif(); setDocsPage('release-notes'); setShowDocs(true); setAvatarMenu(false); window.history.pushState({}, '', '/release-notes') } },
                   ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false); window.history.pushState({}, '', '/admin') } }] : []),
                   null,
@@ -1746,6 +1750,7 @@ export default function App() {
       })()}
 
       {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} limits={gs.limits} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
+      {showReferral && auth.profile && <ReferralModal onClose={() => setShowReferral(false)} />}
       {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0); setRevealPayment('') }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} initialPaymentLabel={revealPayment} />}
       {/* CGV désactivée temporairement */}
       {showAdmin && auth.profile?.role === 'admin' && (

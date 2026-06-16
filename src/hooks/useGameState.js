@@ -190,7 +190,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       apiGetAchievements().then(({ data: achData }) => {
         if (!achData?.achievements || !mounted.current) return
         setAchievementProgress(Object.fromEntries(
-          achData.achievements.filter(a => a.card_id).map(a => [a.card_id, { progress: a.progress, threshold: a.threshold, type: a.type, referral: a.referral }])
+          achData.achievements.filter(a => a.card_id).map(a => [a.card_id, { progress: a.progress, threshold: a.threshold, type: a.type }])
         ))
       }).catch(() => {})
 

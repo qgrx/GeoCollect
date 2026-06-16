@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { BTN, INP } from '../../utils/styles.js'
 import { RC, ACHIEVEMENT_DEF } from '../../data/cards.js'
 import { rankCC, getRankLabel } from '../../utils/rankUtils.js'
 import { PSEUDO_CHANGE_DAYS } from '../../data/constants.js'
-import { apiDeleteAccount, apiGetReferral } from '../../services/api.js'
+import { apiDeleteAccount } from '../../services/api.js'
+import { ReferralPanel } from '../referral/ReferralModal.jsx'
 import { todayParis } from '../../utils/gameUtils.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
 
@@ -48,14 +49,6 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const [loading, setLoading] = useState(false)
   const [changed, setChanged] = useState(false)
   const [showCardsInfo, setShowCardsInfo] = useState(false)
-  const [referral, setReferral] = useState(null)
-  const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    let alive = true
-    apiGetReferral().then(({ data }) => { if (alive && data) setReferral(data) }).catch(() => {})
-    return () => { alive = false }
-  }, [])
 
   if (!profile) return null
 
@@ -310,66 +303,9 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
         </div>
 
         {/* ── Lien de parrainage ── */}
-        {referral?.url && (
-          <div style={{ padding: '0 24px 20px' }}>
-            <div style={{ fontWeight: 900, fontSize: 14, color: theme.gold, marginBottom: 6 }}>
-              🤝 {t('referral_title')}
-            </div>
-            <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 10, lineHeight: 1.5 }}>
-              {t('referral_desc').replace('{m}', referral.min_geocoins)}
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-              <input readOnly value={referral.url}
-                onFocus={e => e.target.select()}
-                style={{ ...INP, flex: 1, fontSize: 12 }}/>
-              <button onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(referral.url)
-                  setCopied(true); setTimeout(() => setCopied(false), 2000)
-                } catch { /* clipboard indispo */ }
-              }} style={{ ...BTN('linear-gradient(135deg,#00b894,#55efc4)'), padding: '0 16px', borderRadius: 11,
-                whiteSpace: 'nowrap', cursor: 'pointer' }}>
-                {copied ? '✅' : '📋'} {copied ? t('referral_copied') : t('referral_copy')}
-              </button>
-            </div>
-
-            {/* Filleuls */}
-            {referral.filleuls?.length > 0 ? (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ fontSize: 10, color: theme.textMuted, fontWeight: 800, textTransform: 'uppercase',
-                  letterSpacing: .5, marginBottom: 6 }}>
-                  {t('referral_godchildren')} ({referral.qualified_count}/{referral.required_count})
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {referral.filleuls.map((f, i) => {
-                    const pct = Math.min(100, Math.round((f.geocoins / referral.min_geocoins) * 100))
-                    return (
-                      <div key={i}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 2 }}>
-                          <span style={{ color: theme.textSecondary, fontWeight: 700 }}>
-                            {f.qualified ? '✅ ' : ''}{f.pseudo}
-                          </span>
-                          <span style={{ color: f.qualified ? '#00b894' : theme.textMuted, fontWeight: 700 }}>
-                            {Math.min(f.geocoins, referral.min_geocoins)} / {referral.min_geocoins}
-                          </span>
-                        </div>
-                        <div style={{ background: theme.overlay, borderRadius: 50, height: 5, overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50,
-                            background: f.qualified ? '#00b894' : 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .5s' }}/>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div style={{ fontSize: 11, color: theme.textMuted, fontStyle: 'italic' }}>
-                {t('referral_no_godchildren')}
-              </div>
-            )}
-          </div>
-        )}
+        <div style={{ padding: '0 24px 20px' }}>
+          <ReferralPanel />
+        </div>
 
         {/* ── Historique pseudos ── */}
         {history.length > 1 && (
