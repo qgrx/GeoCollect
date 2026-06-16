@@ -1128,8 +1128,10 @@ export default function App() {
                 const pct      = scoreReady ? (nextRank ? Math.min(100, Math.round((userScore / nextRank.min) * 100)) : 100) : 0
                 const nonAchievementIds = new Set(gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement').map(c => String(c.id)))
                 const shinyCards  = gs.collectionLoaded ? Object.keys(gs.shinyCollection || {}).filter(k => (gs.shinyCollection[k] || 0) > 0 && nonAchievementIds.has(k)).length : null
+                // Total de geocoins possédés (cartes achievement incluses) —
+                // cohérent avec le card_count affiché dans le classement.
                 const uniqueCards = gs.collectionLoaded
-                  ? Object.keys(gs.collection).filter(k => (gs.collection[k] || 0) > 0 && nonAchievementIds.has(k)).length
+                  ? Object.values(gs.collection).filter(n => n > 0).length
                   : null
                 const dk = THEMES.dark
                 const shimCell = { height: 12, borderRadius: 4, background: 'linear-gradient(90deg,#ffffff08,#ffffff18,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite', margin: '2px auto', width: '55%' }
