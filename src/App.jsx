@@ -1121,8 +1121,7 @@ export default function App() {
                 const { c1, c2 } = rank ? rankCC(rank) : { c1: '#6b7280', c2: '#9ca3af' }
                 const sortedRanks = scoreReady ? [...(gs.limits.playerRanks || DEFAULT_RANKS)].sort((a, b) => a.min - b.min) : []
                 const nextRank = scoreReady ? sortedRanks.find(r => r.min > userScore) : null
-                const prevMin  = scoreReady ? ([...sortedRanks].reverse().find(r => r.min <= userScore)?.min || 0) : 0
-                const pct      = scoreReady ? (nextRank ? Math.round(((userScore - prevMin) / (nextRank.min - prevMin)) * 100) : 100) : 0
+                const pct      = scoreReady ? (nextRank ? Math.min(100, Math.round((userScore / nextRank.min) * 100)) : 100) : 0
                 const nonAchievementIds = new Set(gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement').map(c => String(c.id)))
                 const shinyCards  = gs.collectionLoaded ? Object.keys(gs.shinyCollection || {}).filter(k => (gs.shinyCollection[k] || 0) > 0 && nonAchievementIds.has(k)).length : null
                 const uniqueCards = gs.collectionLoaded

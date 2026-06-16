@@ -54,8 +54,7 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
   const rank     = getRank(score, ranks);
   const { c1, c2 } = rankCC(rank);
   const nextRank = sortedRanks.find(r => r.min > score);
-  const prevMin  = [...sortedRanks].reverse().find(r => r.min <= score)?.min || 0;
-  const pct      = nextRank ? Math.round(((score - prevMin) / (nextRank.min - prevMin)) * 100) : 100;
+  const pct      = nextRank ? Math.min(100, Math.round((score / nextRank.min) * 100)) : 100;
 
   const cards = [];
   if (col) {

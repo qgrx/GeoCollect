@@ -190,8 +190,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
               {t('rank_max')}
             </div>
           )
-          const prevMin = [...activeRanks].reverse().find(r => r.min <= score)?.min || 0
-          const pct = Math.round(((score - prevMin) / (nextRank.min - prevMin)) * 100)
+          const pct = Math.min(100, Math.round((score / nextRank.min) * 100))
           return (
             <div style={{ padding: '12px 24px', borderBottom: `1px solid ${theme.borderLight}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, color: theme.textMuted }}>
