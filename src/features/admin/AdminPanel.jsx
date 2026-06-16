@@ -46,6 +46,22 @@ import AdminPlayers from './AdminPlayers.jsx';
 import AdminSeasons from './AdminSeasons.jsx';
 import AdminShop    from './AdminShop.jsx';
 
+// ─── Méta des déclencheurs d'achievement (création guidée par type) ──────────
+// label : intitulé lisible · unit : ce que compte le seuil · help : explication
+const TRIGGER_META = {
+  new_card:        { label:"Nouveaux geocoins",        unit:"geocoins",            help:"Nombre de geocoins uniques obtenus pour la première fois." },
+  collection_size: { label:"Taille de collection",     unit:"geocoins uniques",    help:"Nombre de geocoins uniques possédés (les cartes achievement ne comptent pas)." },
+  buy_count:       { label:"Achats au marché",         unit:"achats",              help:"Nombre total d'achats réalisés au marché." },
+  sell_count:      { label:"Mises en vente",           unit:"mises en vente",      help:"Nombre total de mises en vente au marché." },
+  quiz_win:        { label:"Quiz gagnés",              unit:"victoires",           help:"Nombre total de quiz gagnés (cumulé)." },
+  win_streak:      { label:"Quiz gagnés d'affilée",    unit:"victoires d'affilée", help:"Victoires consécutives dans la journée, remises à zéro en cas de défaite." },
+  streak:          { label:"Série de connexion",       unit:"jours",               help:"Jours de connexion consécutifs." },
+  rank_reached:    { label:"Rang atteint",             unit:"points de score",     help:"Score de rang minimum à atteindre." },
+  referral:        { label:"Parrainage « Le parrain »", unit:"filleuls qualifiés", help:"Nombre de filleuls devant chacun récolter assez de geocoins. Le seuil de geocoins par filleul et le max à l'inscription se règlent dans Limites & Prix → Parrainage." },
+};
+const TRIGGER_KEYS = Object.keys(TRIGGER_META);
+const triggerLabel = t => TRIGGER_META[t]?.label || t;
+
 // ─── Composants utilitaires (hors du composant pour éviter remounts) ─────────
 function Fld({lbl,children}){
   return <div style={{marginBottom:10}}><div style={{fontSize:10,color:"#aaa",fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:.8}}>{lbl}</div>{children}</div>;
@@ -53,10 +69,21 @@ function Fld({lbl,children}){
 function Tb({id,lbl,tab,setTab,setMsg}){
   return <button onClick={()=>{setTab(id);setMsg("");}} style={{background:tab===id?"#e74c3c":"#ffffff18",border:"none",color:"#fff",padding:"6px 13px",borderRadius:7,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{lbl}</button>;
 }
+// Sélecteur de geocoin achievement à débloquer — renvoie l'id (number) ou null.
+function CardSelect({value,cards,onChange,style}){
+  return (
+    <select value={value??''} onChange={e=>onChange(e.target.value?+e.target.value:null)} style={style}>
+      <option value="">— Aucune —</option>
+      {cards.map(c=><option key={c.id} value={c.id}>#{c.id} · {c.name} ({c.rarity})</option>)}
+    </select>
+  );
+}
 
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
 export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool,onTestAchievement,onShopPacksSaved,onShopTestModeChange}){
   const {t}=useT();
+  // Geocoins de type achievement, proposés pour lier une condition à une carte.
+  const achievementCards=(cardPool||[]).filter(c=>c.type?.toLowerCase().startsWith('achievement'));
   const [tab,setTab]=useState(()=>window.location.hash.slice(1)||"cards");
   const [editQ,setEditQ]=useState(null);
   const [qPage,setQPage]=useState(0);
@@ -1314,11 +1341,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <Fld lbl="Nom affiché"><input value={newDef.name} onChange={e=>setNewDef({...newDef,name:e.target.value})} placeholder="ex: Méga acheteur" style={INP}/></Fld>
                   <Fld lbl="Type de déclencheur">
                     <select value={newDef.type} onChange={e=>setNewDef({...newDef,type:e.target.value})} style={SEL}>
-                      {['buy_count','sell_count','quiz_win','new_card','streak','collection_size','rank_reached'].map(t=><option key={t} value={t}>{t}</option>)}
+                      {TRIGGER_KEYS.map(t=><option key={t} value={t}>{triggerLabel(t)}</option>)}
                     </select>
                   </Fld>
-                  <Fld lbl="Seuil"><input type="number" value={newDef.threshold} onChange={e=>setNewDef({...newDef,threshold:+e.target.value})} min={1} style={INP}/></Fld>
-                  <Fld lbl="card_id (carte à débloquer)"><input type="number" value={newDef.card_id} onChange={e=>setNewDef({...newDef,card_id:+e.target.value||''})} placeholder="ex: 901" style={INP}/></Fld>
+                  <Fld lbl={`Seuil (${TRIGGER_META[newDef.type]?.unit||'à atteindre'})`}><input type="number" value={newDef.threshold} onChange={e=>setNewDef({...newDef,threshold:+e.target.value})} min={1} style={INP}/></Fld>
+                  <Fld lbl="Geocoin à débloquer"><CardSelect value={newDef.card_id} cards={achievementCards} onChange={v=>setNewDef({...newDef,card_id:v})} style={SEL}/></Fld>
                   <Fld lbl="Points bonus"><input type="number" value={newDef.points} onChange={e=>setNewDef({...newDef,points:+e.target.value})} min={0} style={INP}/></Fld>
                   <Fld lbl="Catégorie">
                     <select value={newDef.category} onChange={e=>setNewDef({...newDef,category:e.target.value})} style={SEL}>
@@ -1328,6 +1355,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   </Fld>
                   <Fld lbl="Description"><input value={newDef.description} onChange={e=>setNewDef({...newDef,description:e.target.value})} style={INP}/></Fld>
                 </div>
+                {TRIGGER_META[newDef.type]?.help && (
+                  <div style={{margin:"2px 0 8px",fontSize:10,color:"#8daacc",lineHeight:1.4,background:"#ffffff08",borderRadius:8,padding:"7px 10px"}}>
+                    ℹ️ <b>{triggerLabel(newDef.type)}</b> — {TRIGGER_META[newDef.type].help}
+                  </div>
+                )}
                 <div style={{display:"flex",gap:8,marginTop:8}}>
                   <button onClick={async()=>{
                     if(!newDef.key.trim()||!newDef.name.trim()){setMsg("❌ Clé et nom requis.");return;}
@@ -1362,11 +1394,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                               <Fld lbl="Nom"><input value={editDef.name} onChange={e=>setEditDef({...editDef,name:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
                               <Fld lbl="Trigger">
                                 <select value={editDef.type} onChange={e=>setEditDef({...editDef,type:e.target.value})} style={{...SEL,fontSize:11}}>
-                                  {['buy_count','sell_count','quiz_win','new_card','streak','collection_size','rank_reached'].map(t=><option key={t} value={t}>{t}</option>)}
+                                  {TRIGGER_KEYS.map(t=><option key={t} value={t}>{triggerLabel(t)}</option>)}
                                 </select>
                               </Fld>
-                              <Fld lbl="Seuil"><input type="number" value={editDef.threshold} onChange={e=>setEditDef({...editDef,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
-                              <Fld lbl="card_id"><input type="number" value={editDef.card_id??''} onChange={e=>setEditDef({...editDef,card_id:+e.target.value||null})} style={{...INP,fontSize:11}}/></Fld>
+                              <Fld lbl={`Seuil (${TRIGGER_META[editDef.type]?.unit||'à atteindre'})`}><input type="number" value={editDef.threshold} onChange={e=>setEditDef({...editDef,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                              <Fld lbl="Geocoin à débloquer"><CardSelect value={editDef.card_id} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id:v})} style={{...SEL,fontSize:11}}/></Fld>
                               <Fld lbl="Points"><input type="number" value={editDef.points} onChange={e=>setEditDef({...editDef,points:+e.target.value})} min={0} style={{...INP,fontSize:11}}/></Fld>
                               <Fld lbl="Catégorie">
                                 <select value={editDef.category} onChange={e=>setEditDef({...editDef,category:e.target.value})} style={{...SEL,fontSize:11}}>
@@ -1405,7 +1437,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         <>
                           <td style={{padding:"5px 8px",color:"#aaa",fontFamily:"monospace"}}>{def.key}</td>
                           <td style={{padding:"5px 8px"}}>
-                            <span style={{background:"#ffffff12",borderRadius:5,padding:"2px 7px",fontSize:10}}>{def.type}</span>
+                            <span title={def.type} style={{background:"#ffffff12",borderRadius:5,padding:"2px 7px",fontSize:10}}>{triggerLabel(def.type)}</span>
                           </td>
                           <td style={{padding:"5px 8px",color:"#f9ca24",fontWeight:700}}>{def.threshold}</td>
                           <td style={{padding:"5px 8px",color:"#aaa"}}>{def.cards ? `#${def.card_id} ${def.cards.name}` : def.card_id ? `#${def.card_id}` : '—'}</td>
