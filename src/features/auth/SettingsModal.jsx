@@ -43,7 +43,6 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const { t, lang } = useT()
   const { theme } = useTheme()
   const { profile } = auth
-  const [tab,     setTab]     = useState('profil')   // profil | achievements
   const [newP,    setNewP]    = useState('')
   const [msg,     setMsg]     = useState({ text: '', ok: false })
   const [loading, setLoading] = useState(false)
@@ -101,6 +100,11 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
     setChanged(true)
     setMsg({ text: `✅ Pseudo changé en « ${newP.trim()} » !`, ok: true })
   }
+
+  // Styles de cartes — sections homogènes et lisibles
+  const card      = { background: theme.bgCard, border: `1px solid ${theme.borderLight}`, borderRadius: 14, padding: 16, marginBottom: 12 }
+  const cardHi    = { ...card, background: `${theme.gold}14`, border: `1.5px solid ${theme.gold}66` }
+  const cardTitle = { fontWeight: 900, fontSize: 13, color: theme.gold, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center',
@@ -181,183 +185,161 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           </div>
         </div>
 
-        {/* ── Barre de progression vers le rang suivant ── */}
-        {(() => {
-          const activeRanks = ranks?.length ? [...ranks].sort((a,b) => a.min - b.min) : DEFAULT_RANKS
-          const nextRank = activeRanks.find(r => r.min > score)
-          if (!nextRank) return (
-            <div style={{ padding: '12px 24px', background: '#f9ca2412', textAlign: 'center',
-              fontSize: 12, fontWeight: 800, color: theme.gold, borderBottom: `1px solid ${theme.borderLight}` }}>
-              {t('rank_max')}
-            </div>
-          )
-          const pct = Math.min(100, Math.round((score / nextRank.min) * 100))
-          return (
-            <div style={{ padding: '12px 24px', borderBottom: `1px solid ${theme.borderLight}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, color: theme.textMuted }}>
-                <span>{t('rank_next')} <span style={{ color: nextRank.color, fontWeight: 800 }}>{nextRank.icon} {getRankLabel(nextRank, lang)}</span></span>
-                <span style={{ fontWeight: 700 }}>{t('rank_progress').replace('{score}',score).replace('{max}',nextRank.min)}</span>
-              </div>
-              <div style={{ background: theme.overlay, borderRadius: 50, height: 6, overflow: 'hidden' }}>
-                <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50,
-                  background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
-              </div>
-            </div>
-          )
-        })()}
+        {/* ── Contenu (cartes homogènes) ── */}
+        <div style={{ padding: 16 }}>
 
-        {/* ── Limites quotidiennes ── */}
-        {limitsDebug && (
-          <div style={{ padding: '12px 24px', borderBottom: `1px solid ${theme.borderLight}` }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: .3, marginBottom: 6 }}>Limites du jour</div>
-            {[
-              { label: 'Or quotidien',       value: limitsDebug.dailyGold,     cap: limitsDebug.dailyGoldCap },
-              ...(limits.quizJoinGold > 0 ? [{ label: 'Or de participation', value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap }] : []),
-              { label: 'Geocoins du jour',   value: limitsDebug.dailyCards,    cap: limitsDebug.dailyCardsCap, info: true },
-              { label: 'Geocoins/heure',     value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap },
-              ...(limits.quizConsolationForge > 0 ? [{ label: 'Forge de compensation', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
-            ].map(({ label, value, cap, info }) => {
-              const unlimited = !cap || cap <= 0
-              const pct = unlimited ? 0 : Math.min(100, Math.round((value / cap) * 100))
-              return (
-                <div key={label} style={{ marginBottom: 5 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: theme.textMuted }}>
-                    <span>
-                      {label}
-                      {info && (
-                        <span onClick={() => setShowCardsInfo(v => !v)} style={{ cursor: 'pointer', marginLeft: 4, fontWeight: 800 }}>ⓘ</span>
-                      )}
-                    </span>
-                    <span style={{ fontWeight: 700, color: theme.textSecondary }}>{value} / {unlimited ? '∞' : cap}</span>
+          {/* Parrainage — mis en avant */}
+          <div style={cardHi}>
+            <ReferralPanel theme={theme} />
+          </div>
+
+          {/* Progression de rang */}
+          {(() => {
+            const activeRanks = ranks?.length ? [...ranks].sort((a,b) => a.min - b.min) : DEFAULT_RANKS
+            const nextRank = activeRanks.find(r => r.min > score)
+            return (
+              <div style={card}>
+                <div style={cardTitle}>🎖️ {t('rank_next')}</div>
+                {!nextRank ? (
+                  <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 800, color: theme.gold }}>{t('rank_max')}</div>
+                ) : (() => {
+                  const pct = Math.min(100, Math.round((score / nextRank.min) * 100))
+                  return (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, color: theme.textMuted }}>
+                        <span style={{ color: nextRank.color, fontWeight: 800 }}>{nextRank.icon} {getRankLabel(nextRank, lang)}</span>
+                        <span style={{ fontWeight: 700, color: theme.textSecondary }}>{t('rank_progress').replace('{score}',score).replace('{max}',nextRank.min)}</span>
+                      </div>
+                      <div style={{ background: theme.overlayMd, borderRadius: 50, height: 6, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50,
+                          background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+            )
+          })()}
+
+          {/* Limites du jour */}
+          {limitsDebug && (
+            <div style={card}>
+              <div style={cardTitle}>📊 Limites du jour</div>
+              {[
+                { label: 'Or quotidien',       value: limitsDebug.dailyGold,     cap: limitsDebug.dailyGoldCap },
+                ...(limits.quizJoinGold > 0 ? [{ label: 'Or de participation', value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap }] : []),
+                { label: 'Geocoins du jour',   value: limitsDebug.dailyCards,    cap: limitsDebug.dailyCardsCap, info: true },
+                { label: 'Geocoins/heure',     value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap },
+                ...(limits.quizConsolationForge > 0 ? [{ label: 'Forge de compensation', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
+              ].map(({ label, value, cap, info }) => {
+                const unlimited = !cap || cap <= 0
+                const pct = unlimited ? 0 : Math.min(100, Math.round((value / cap) * 100))
+                return (
+                  <div key={label} style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: theme.textMuted }}>
+                      <span>
+                        {label}
+                        {info && (
+                          <span onClick={() => setShowCardsInfo(v => !v)} style={{ cursor: 'pointer', marginLeft: 4, fontWeight: 800 }}>ⓘ</span>
+                        )}
+                      </span>
+                      <span style={{ fontWeight: 700, color: theme.textSecondary }}>{value} / {unlimited ? '∞' : cap}</span>
+                    </div>
+                    {!unlimited && (
+                      <div style={{ background: theme.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden', marginTop: 3 }}>
+                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: pct >= 100 ? '#eb4d4b' : `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
+                      </div>
+                    )}
+                    {info && showCardsInfo && (
+                      <div style={{ marginTop: 4, padding: 8, borderRadius: 8, background: theme.overlayMd, fontSize: 10, color: theme.textSecondary, lineHeight: 1.4 }}>
+                        Pas de panique, si un geocoin vous intéresse alors que vous avez atteint la limite, il y a le dépôt d'attente. Un point de forge est également offert en compensation pour chaque quiz gagné.
+                      </div>
+                    )}
                   </div>
-                  {!unlimited && (
-                    <div style={{ background: theme.overlay, borderRadius: 50, height: 5, overflow: 'hidden', marginTop: 2 }}>
-                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: pct >= 100 ? '#eb4d4b' : `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
-                    </div>
-                  )}
-                  {info && showCardsInfo && (
-                    <div style={{ marginTop: 4, padding: 8, borderRadius: 8, background: theme.overlay, fontSize: 10, color: theme.textSecondary, lineHeight: 1.4 }}>
-                      Pas de panique, si un geocoin vous intéresse alors que vous avez atteint la limite, il y a le dépôt d'attente. Un point de forge est également offert en compensation pour chaque quiz gagné.
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-            <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4 }}>
-              {limitsDebug.isNewDay && <>✅ Compteurs quotidiens réinitialisés (dernière activité : {limitsDebug.lastActivityDate ?? 'jamais'}, aujourd'hui {todayParis()}) · </>}
-              Prochain reset horaire dans {limitsDebug.hourlyResetInMin != null ? `${limitsDebug.hourlyResetInMin}min` : '—'}
-            </div>
-          </div>
-        )}
-
-        {/* ── Onglets ── */}
-        <div style={{ display: 'flex', borderBottom: `1px solid ${theme.borderLight}` }}>
-          {[['profil','👤 Profil']].map(([id, lbl]) => (
-            <button key={id} onClick={() => setTab(id)}
-              style={{ flex: 1, background: 'none', border: 'none', borderBottom: `2px solid ${tab===id?'#f9ca24':'transparent'}`,
-                color: tab===id?'#f9ca24':theme.textMuted, padding: '11px 0', fontFamily: "'Nunito',sans-serif",
-                fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all .2s' }}>
-              {lbl}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Onglet PROFIL ── */}
-        {tab === 'profil' && <>
-
-        {/* ── Changer le pseudo ── */}
-        <div style={{ padding: '20px 24px' }}>
-          <div style={{ fontWeight: 900, fontSize: 14, color: theme.gold, marginBottom: 14 }}>
-            ✏️ {t('settings_title')}
-          </div>
-
-          <div style={{ fontSize: 12, color: canChange ? '#00b894' : '#f39c12',
-            background: canChange ? '#00b89412' : '#f39c1212',
-            border: `1px solid ${canChange ? '#00b89433' : '#f39c1233'}`,
-            borderRadius: 9, padding: '7px 12px', marginBottom: 14, fontWeight: 700 }}>
-            {canChange ? '✅ Tu peux changer ton pseudo.' : `⏳ ${t('settings_wait').replace('{n}', PSEUDO_CHANGE_DAYS - daysSince)}`}
-          </div>
-
-          <input value={newP} onChange={e => setNewP(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && doChange()}
-            placeholder={t('settings_new_pseudo')}
-            disabled={!canChange || changed || loading}
-            maxLength={20}
-            style={{ ...INP, marginBottom: 10, opacity: (!canChange || changed) ? 0.5 : 1 }}/>
-
-          {msg.text && (
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, padding: '7px 12px',
-              borderRadius: 9, background: msg.ok ? '#00b89422' : '#e74c3c22',
-              color: msg.ok ? '#00b894' : '#e74c3c',
-              border: `1px solid ${msg.ok ? '#00b89444' : '#e74c3c44'}` }}>
-              {msg.text}
+                )
+              })}
+              <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 6, lineHeight: 1.4 }}>
+                {limitsDebug.isNewDay && <>✅ Compteurs quotidiens réinitialisés (dernière activité : {limitsDebug.lastActivityDate ?? 'jamais'}, aujourd'hui {todayParis()}) · </>}
+                Prochain reset horaire dans {limitsDebug.hourlyResetInMin != null ? `${limitsDebug.hourlyResetInMin}min` : '—'}
+              </div>
             </div>
           )}
 
-          <button onClick={doChange} disabled={!canChange || changed || loading}
-            style={{ ...BTN(canChange && !changed ? 'linear-gradient(135deg,#6c5ce7,#a29bfe)' : '#333'),
-              padding: '11px', borderRadius: 11, width: '100%', textAlign: 'center',
-              cursor: canChange && !changed ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}>
-            {loading ? '⏳' : t('settings_change_btn')}
-          </button>
-        </div>
-
-        {/* ── Lien de parrainage ── */}
-        <div style={{ padding: '0 24px 20px' }}>
-          <ReferralPanel />
-        </div>
-
-        {/* ── Historique pseudos ── */}
-        {history.length > 1 && (
-          <div style={{ padding: '0 24px 20px' }}>
-            <div style={{ fontSize: 10, color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase',
-              letterSpacing: .8, marginBottom: 8 }}>
-              {t('settings_pseudo_history')}
+          {/* Changer le pseudo */}
+          <div style={card}>
+            <div style={cardTitle}>✏️ {t('settings_title')}</div>
+            <div style={{ fontSize: 12, color: canChange ? '#00b894' : '#f39c12',
+              background: canChange ? '#00b89412' : '#f39c1212',
+              border: `1px solid ${canChange ? '#00b89433' : '#f39c1233'}`,
+              borderRadius: 9, padding: '7px 12px', marginBottom: 12, fontWeight: 700 }}>
+              {canChange ? '✅ Tu peux changer ton pseudo.' : `⏳ ${t('settings_wait').replace('{n}', PSEUDO_CHANGE_DAYS - daysSince)}`}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {history.slice().reverse().map((h, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between',
-                  fontSize: 11, color: theme.textMuted, padding: '3px 0',
-                  borderBottom: `1px solid ${theme.borderLight}` }}>
-                  <span style={{ color: theme.textSecondary, fontWeight: 700 }}>{h.pseudo}</span>
-                  <span style={{ color: theme.textMuted }}>{h.date}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {onStartTour && (
-          <div style={{ padding: '0 24px 12px' }}>
-            <button onClick={onStartTour} style={{ background: '#6c5ce722', border: '1px solid #6c5ce744', color: '#a29bfe', padding: '8px 16px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', width: '100%' }}>
-              🎓 Revoir le tutoriel
+            <input value={newP} onChange={e => setNewP(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && doChange()}
+              placeholder={t('settings_new_pseudo')}
+              disabled={!canChange || changed || loading}
+              maxLength={20}
+              style={{ ...INP, marginBottom: 10, opacity: (!canChange || changed) ? 0.5 : 1 }}/>
+            {msg.text && (
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, padding: '7px 12px',
+                borderRadius: 9, background: msg.ok ? '#00b89422' : '#e74c3c22',
+                color: msg.ok ? '#00b894' : '#e74c3c',
+                border: `1px solid ${msg.ok ? '#00b89444' : '#e74c3c44'}` }}>
+                {msg.text}
+              </div>
+            )}
+            <button onClick={doChange} disabled={!canChange || changed || loading}
+              style={{ ...BTN(canChange && !changed ? 'linear-gradient(135deg,#6c5ce7,#a29bfe)' : '#333'),
+                padding: '11px', borderRadius: 11, width: '100%', textAlign: 'center',
+                cursor: canChange && !changed ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}>
+              {loading ? '⏳' : t('settings_change_btn')}
             </button>
           </div>
-        )}
 
-        {/* ── Désactivation compte ── */}
-        {tab === 'profil' && (
-          <div style={{ padding: '0 24px 20px', borderTop: `1px solid ${theme.borderLight}`, paddingTop: 16, marginTop: 4 }}>
-            <details>
-              <summary style={{ fontSize: 11, color: theme.textMuted, cursor: 'pointer', fontWeight: 700, userSelect: 'none' }}>
-                {t('account_danger_zone')}
-              </summary>
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 10, lineHeight: 1.5 }}
-                  dangerouslySetInnerHTML={{ __html: t('account_deactivate_warning').replace('permanente', '<strong style="color:#e74c3c">permanente</strong>').replace('définitive', '<strong style="color:#e74c3c">définitive</strong>').replace('endgültig', '<strong style="color:#e74c3c">endgültig</strong>') }}/>
-                <button onClick={async () => {
-                  if (!window.confirm(t('account_deactivate_confirm'))) return
-                  const { error } = await auth.deactivateAccount()
-                  if (error) alert('Erreur : ' + error.message)
-                  else onClose()
-                }} style={{ background: '#e74c3c22', border: '1px solid #e74c3c44', color: '#e74c3c', padding: '9px 18px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
-                  {t('account_deactivate_btn')}
-                </button>
+          {/* Historique pseudos */}
+          {history.length > 1 && (
+            <div style={card}>
+              <div style={{ ...cardTitle, color: theme.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: .8 }}>
+                {t('settings_pseudo_history')}
               </div>
-            </details>
-          </div>
-        )}
-        </>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {history.slice().reverse().map((h, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between',
+                    fontSize: 11, padding: '3px 0', borderBottom: `1px solid ${theme.borderLight}` }}>
+                    <span style={{ color: theme.textSecondary, fontWeight: 700 }}>{h.pseudo}</span>
+                    <span style={{ color: theme.textMuted }}>{h.date}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
+          {onStartTour && (
+            <button onClick={onStartTour} style={{ background: '#6c5ce722', border: '1px solid #6c5ce744', color: '#a29bfe', padding: '10px 16px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', width: '100%', marginBottom: 12 }}>
+              🎓 Revoir le tutoriel
+            </button>
+          )}
+
+          {/* Désactivation compte */}
+          <details style={{ marginTop: 4 }}>
+            <summary style={{ fontSize: 11, color: theme.textMuted, cursor: 'pointer', fontWeight: 700, userSelect: 'none' }}>
+              {t('account_danger_zone')}
+            </summary>
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 10, lineHeight: 1.5 }}
+                dangerouslySetInnerHTML={{ __html: t('account_deactivate_warning').replace('permanente', '<strong style="color:#e74c3c">permanente</strong>').replace('définitive', '<strong style="color:#e74c3c">définitive</strong>').replace('endgültig', '<strong style="color:#e74c3c">endgültig</strong>') }}/>
+              <button onClick={async () => {
+                if (!window.confirm(t('account_deactivate_confirm'))) return
+                const { error } = await auth.deactivateAccount()
+                if (error) alert('Erreur : ' + error.message)
+                else onClose()
+              }} style={{ background: '#e74c3c22', border: '1px solid #e74c3c44', color: '#e74c3c', padding: '9px 18px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+                {t('account_deactivate_btn')}
+              </button>
+            </div>
+          </details>
+
+        </div>
 
       </div>
     </div>
