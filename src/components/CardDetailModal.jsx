@@ -31,7 +31,7 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
       zIndex: 1500, backdropFilter: 'blur(12px)', padding: 20 }}>
       <div onClick={e => e.stopPropagation()}
         style={{
-          width: 'min(92vw,360px)', borderRadius: 24, overflow: 'hidden',
+          width: 'min(92vw,360px)', borderRadius: 24, maxHeight: '92vh', overflowY: 'auto', overflowX: 'hidden',
           background: `linear-gradient(145deg,${c1}22,${c2}33,#0f0f1e)`,
           border: isShiny ? '2px solid #f9ca24' : `2px solid ${c1}88`,
           boxShadow: isShiny
