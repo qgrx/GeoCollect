@@ -7,7 +7,7 @@ import {
   apiBuyCard, apiListCard, apiCancelListing, apiGetTransactions,
   apiPingProfile, apiSetConfig, apiGetAdminConfig, apiGetPublicConfig,
   apiAdminAddCard, apiAdminEditCard, apiAdminDeleteCard, apiAdminDeleteType, apiAdminRenameType,
-  apiGetDailyQuests, apiQuestCheckin, apiGetAchievements,
+  apiGetDailyQuests, apiQuestCheckin, apiGetAchievements, apiClaimReferral,
 } from '../services/api.js'
 
 
@@ -112,6 +112,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           meltPointsByRarityShiny: cfg.melt_points_by_rarity_shiny ?? prev.meltPointsByRarityShiny,
           marketPriceCaps:     cfg.market_price_caps      ?? prev.marketPriceCaps,
           dailyOfferGold:      cfg.daily_offer_gold    !== undefined ? +cfg.daily_offer_gold    : prev.dailyOfferGold,
+          referralRequiredCount: cfg.referral_required_count !== undefined ? +cfg.referral_required_count : prev.referralRequiredCount,
+          referralMinGeocoins:   cfg.referral_min_geocoins   !== undefined ? +cfg.referral_min_geocoins   : prev.referralMinGeocoins,
+          referralMaxJoinGeocoins: cfg.referral_max_join_geocoins !== undefined ? +cfg.referral_max_join_geocoins : prev.referralMaxJoinGeocoins,
           featureTresor:       cfg.feature_tresor      !== undefined ? cfg.feature_tresor      !== false : prev.featureTresor,
           featureMarket:       cfg.feature_market      !== undefined ? cfg.feature_market      !== false : prev.featureMarket,
           featureForge:        cfg.feature_forge       !== undefined ? cfg.feature_forge       !== false : prev.featureForge,
@@ -136,6 +139,22 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
     async function loadAll() {
       setLoadingData(true)
+
+      // ── Parrainage : réclamer le code suivi via un lien ?ref= ──────────────
+      // Source 1 : localStorage (même navigateur que le clic).
+      // Source 2 : user_metadata.ref attaché au compte au signUp — survit à une
+      //            validation d'email depuis un autre appareil.
+      // Fire-and-forget, une seule fois (set-once + garde côté serveur).
+      try {
+        let lsRef = null
+        try { lsRef = localStorage.getItem('geocoins_ref') } catch { /* ignore */ }
+        const refCode = lsRef || auth?.user?.user_metadata?.ref || null
+        if (refCode && !profile.referred_by) {
+          apiClaimReferral(refCode)
+            .then(() => { try { localStorage.removeItem('geocoins_ref') } catch { /* ignore */ } })
+            .catch(() => {})
+        }
+      } catch { /* ignore */ }
 
       // ── Requêtes lentes (user-specific ou cache froid) — fire-and-forget ────
       // Chacune met à jour l'état dès qu'elle arrive, sans bloquer le rendu.
@@ -171,7 +190,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       apiGetAchievements().then(({ data: achData }) => {
         if (!achData?.achievements || !mounted.current) return
         setAchievementProgress(Object.fromEntries(
-          achData.achievements.filter(a => a.card_id).map(a => [a.card_id, { progress: a.progress, threshold: a.threshold, type: a.type }])
+          achData.achievements.filter(a => a.card_id).map(a => [a.card_id, { progress: a.progress, threshold: a.threshold, type: a.type, referral: a.referral }])
         ))
       }).catch(() => {})
 
@@ -241,6 +260,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           meltPointsByRarityShiny: cfg.melt_points_by_rarity_shiny ?? prev.meltPointsByRarityShiny,
             marketPriceCaps:     cfg.market_price_caps      ?? prev.marketPriceCaps,
             dailyOfferGold:      cfg.daily_offer_gold    !== undefined ? +cfg.daily_offer_gold    : prev.dailyOfferGold,
+          referralRequiredCount: cfg.referral_required_count !== undefined ? +cfg.referral_required_count : prev.referralRequiredCount,
+          referralMinGeocoins:   cfg.referral_min_geocoins   !== undefined ? +cfg.referral_min_geocoins   : prev.referralMinGeocoins,
+          referralMaxJoinGeocoins: cfg.referral_max_join_geocoins !== undefined ? +cfg.referral_max_join_geocoins : prev.referralMaxJoinGeocoins,
             featureTresor:       cfg.feature_tresor      !== undefined ? cfg.feature_tresor      !== false : prev.featureTresor,
             featureMarket:       cfg.feature_market      !== undefined ? cfg.feature_market      !== false : prev.featureMarket,
             featureForge:        cfg.feature_forge       !== undefined ? cfg.feature_forge       !== false : prev.featureForge,

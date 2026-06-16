@@ -176,6 +176,8 @@ export const apiAdminSetCanSell       = (userId, can_sell) => apiFetch(`/api/adm
 export const apiAdminRenameType       = (oldType, newType) => apiFetch('/api/admin/cards/type/rename', { method: 'PATCH', body: { oldType, newType } })
 export const apiAdminDeleteType       = (type) => apiFetch(`/api/admin/cards/type/${encodeURIComponent(type)}`, { method: 'DELETE' })
 export const apiAdminDeleteCard       = (id)   => apiFetch(`/api/cards/${id}`, { method: 'DELETE' })
+export const apiGetReferral            = ()       => apiFetch('/api/referral/me')
+export const apiClaimReferral          = (code)   => apiFetch('/api/referral/claim', { method: 'POST', body: { code } })
 export const apiGetAchievements        = ()       => apiFetch('/api/achievements')
 export const apiGetDailyAchievements   = ()       => apiFetch('/api/achievements/daily')
 export const apiGetDailyQuests         = ()       => apiFetch('/api/quests/daily')

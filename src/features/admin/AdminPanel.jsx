@@ -924,6 +924,38 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
             </div>
           </div>
 
+          {/* Parrainage */}
+          <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:12}}>
+            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:10,fontSize:13}}>🤝 Parrainage (« Le parrain »)</div>
+            <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Filleuls requis</div>
+                <input type="number" min={1} max={100}
+                  value={limEdit.referralRequiredCount ?? 1}
+                  onChange={e=>setLimEdit({...limEdit,referralRequiredCount:Math.max(1,+e.target.value)})}
+                  style={{...INP,width:80}}/>
+                <div style={{fontSize:10,color:"#a8bfcf",marginTop:4}}>Nombre de filleuls qualifiés pour débloquer l'achievement</div>
+              </div>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Geocoins par filleul</div>
+                <input type="number" min={1} max={500}
+                  value={limEdit.referralMinGeocoins ?? 50}
+                  onChange={e=>setLimEdit({...limEdit,referralMinGeocoins:Math.max(1,+e.target.value)})}
+                  style={{...INP,width:80}}/>
+                <div style={{fontSize:10,color:"#a8bfcf",marginTop:4}}>Geocoins uniques qu'un filleul doit récolter pour compter</div>
+              </div>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{fontSize:11,color:"#aaa",marginBottom:5}}>Max geocoins à l'inscription</div>
+                <input type="number" min={1} max={500}
+                  value={limEdit.referralMaxJoinGeocoins ?? 10}
+                  onChange={e=>setLimEdit({...limEdit,referralMaxJoinGeocoins:Math.max(1,+e.target.value)})}
+                  style={{...INP,width:80}}/>
+                <div style={{fontSize:10,color:"#a8bfcf",marginTop:4}}>Un compte ayant déjà ce nombre de geocoins (ou plus) ne peut pas être attaché comme filleul</div>
+              </div>
+            </div>
+            <div style={{fontSize:10,color:"#a8bfcf",marginTop:8}}>⚠️ Pense à créer le geocoin « Le parrain », à le lier à la définition d'achievement <code>le_parrain</code> et à l'activer.</div>
+          </div>
+
           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
             <button onClick={async ()=>{
               await onSetLimits(limEdit);

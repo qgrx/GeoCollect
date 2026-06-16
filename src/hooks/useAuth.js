@@ -126,11 +126,14 @@ export function useAuth() {
     const locale = (() => { try { return localStorage.getItem('geocards_lang') || 'fr' } catch { return 'fr' } })()
     // Pseudo temporaire — remplacé lors de l'onboarding (trigger DB requiert une valeur non nulle)
     const tempPseudo = `user_${Math.random().toString(36).slice(2, 8)}`
+    // Parrainage : on attache le code au compte lui-même pour que l'attribution
+    // survive même si l'email est validé depuis un autre appareil/navigateur.
+    const ref = (() => { try { return localStorage.getItem('geocoins_ref') || '' } catch { return '' } })()
 
     return supabase.auth.signUp({
       email, password,
       options: {
-        data: { pseudo: tempPseudo, locale },
+        data: { pseudo: tempPseudo, locale, ...(ref ? { ref } : {}) },
         emailRedirectTo: APP_URL,
       },
     })

@@ -141,6 +141,38 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
               </div>
             )
           })()}
+
+          {/* Filleuls (achievement de parrainage) */}
+          {card.progressInfo?.type === 'referral' && card.progressInfo.referral && (() => {
+            const { min_geocoins, filleuls = [] } = card.progressInfo.referral
+            return (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 6 }}>
+                  {t('referral_godchildren')}
+                </div>
+                {filleuls.length === 0 ? (
+                  <div style={{ fontSize: 11, color: '#777', fontStyle: 'italic' }}>{t('referral_no_godchildren')}</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {filleuls.map((f, i) => {
+                      const p = Math.min(100, Math.round((f.geocoins / min_geocoins) * 100))
+                      return (
+                        <div key={i}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 2 }}>
+                            <span style={{ color: '#ccc', fontWeight: 700 }}>{f.qualified ? '✅ ' : ''}{f.pseudo}</span>
+                            <span style={{ color: f.qualified ? '#00b894' : '#888', fontWeight: 700 }}>{Math.min(f.geocoins, min_geocoins)} / {min_geocoins}</span>
+                          </div>
+                          <div style={{ background: '#ffffff14', borderRadius: 50, height: 5, overflow: 'hidden' }}>
+                            <div style={{ width: `${p}%`, height: '100%', borderRadius: 50, background: f.qualified ? '#00b894' : 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .5s' }}/>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <div style={{ background: '#ffffff0a', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#888', fontWeight: 700 }}>
               Type : <span style={{ color: '#ccc' }}>{card.type}</span>

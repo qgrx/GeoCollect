@@ -1824,6 +1824,9 @@ export default function App() {
                 apiSetConfig('shiny_forge_open',  limEdit.shinyForgeOpen   ?? true),
                 apiSetConfig('score_rules',       limEdit.scoreRules       ?? { commun:1, rare:3, épique:7, légendaire:20 }),
                 apiSetConfig('shiny_score_rules',  limEdit.shinyScoreRules  ?? { commun:2, rare:6, épique:14, légendaire:40 }),
+                apiSetConfig('referral_required_count',    limEdit.referralRequiredCount   ?? 1),
+                apiSetConfig('referral_min_geocoins',      limEdit.referralMinGeocoins     ?? 50),
+                apiSetConfig('referral_max_join_geocoins', limEdit.referralMaxJoinGeocoins ?? 10),
                 ...(limEdit.shinyForgeCostByRarity != null ? [apiSetConfig('shiny_forge_cost_by_rarity', limEdit.shinyForgeCostByRarity)] : []),
               ])
             } catch (err) {
