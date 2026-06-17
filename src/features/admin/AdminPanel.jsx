@@ -697,14 +697,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         <span style={{color:"#aaa",fontSize:10}}>s</span>
                       </span>
                     ))}
-                    <span style={{display:"inline-flex",alignItems:"center",gap:3}}>
-                      <span style={{color:"#aaa",fontSize:10}}>fenêtre</span>
-                      <input type="number" min={1} max={120} value={(limEdit.quizIntervalTiers??{}).window_min??''}
-                        onChange={e=>setLimEdit(p=>({...p,quizIntervalTiers:{...(p.quizIntervalTiers??{}),window_min:Math.max(1,+e.target.value)}}))}
-                        style={{...INP,width:50}}/>
-                      <span style={{color:"#aaa",fontSize:10}}>min</span>
-                    </span>
-                  </div>, "Délai avant le prochain quiz selon le nb de joueurs actifs récents (IP distinctes ; comptes <24h & <5 geocoins ignorés)"],
+                  </div>, "Délai avant le prochain quiz selon le nb de joueurs en ligne (même compteur que « X en ligne »)"],
                   ["Or / participation", <><input type="number" min={0} max={100} value={limEdit.quizJoinGold??1} onChange={e=>setLimEdit({...limEdit,quizJoinGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or</span></>, "0 = accès gratuit sans animation"],
                   ["Or / victoire (sous limite)", <><input type="number" min={0} max={1000} value={limEdit.quizWinGold??5} onChange={e=>setLimEdit({...limEdit,quizWinGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or + 1 Geocoin</span></>, "Récompense standard du gagnant"],
                   ["Or / victoire (hors limite)", <><input type="number" min={0} max={1000} value={limEdit.quizConsolationGold??5} onChange={e=>setLimEdit({...limEdit,quizConsolationGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or +</span> <input type="number" min={0} max={100} value={limEdit.quizConsolationForge??1} onChange={e=>setLimEdit({...limEdit,quizConsolationForge:Math.max(0,+e.target.value)})} style={{...INP,width:55,marginLeft:4}}/> <span style={{color:"#aaa"}}>PF</span></>, "Zéro inflation — boost Forge"],

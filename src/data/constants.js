@@ -42,7 +42,7 @@ export const INIT_LIMITS = {
   quizConsolationGold:  5,
   quizConsolationForge: 1,
   quizDailyForgeCap:    0,
-  quizIntervalTiers:    { window_min: 10, 1: 300, 2: 90, 3: 60, 4: 30 },
+  quizIntervalTiers:    { 1: 300, 2: 90, 3: 60, 4: 30 },
   forgeCostByRarity:    { commun: 60, rare: 180, épique: 600, légendaire: 1800 },
   meltPointsByRarity:   {},
   meltPointsByRarityShiny: {},
