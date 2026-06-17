@@ -81,6 +81,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         setLimits(prev => ({
           ...prev,
           quizInterval:      cfg.quiz_interval       ?? prev.quizInterval,
+          quizIntervalTiers: cfg.quiz_interval_tiers ?? prev.quizIntervalTiers,
           quizRarityRates:   cfg.quiz_rarity_rates   ?? prev.quizRarityRates,
           playerRanks:       cfg.player_ranks        ?? prev.playerRanks,
           marketSalesOpen:   cfg.market_sales_open !== undefined ? (cfg.market_sales_open === 'true' || cfg.market_sales_open === true) : prev.marketSalesOpen,
@@ -231,6 +232,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           setLimits(prev => ({
             ...prev,
             quizInterval:      cfg.quiz_interval       ?? prev.quizInterval,
+            quizIntervalTiers: cfg.quiz_interval_tiers ?? prev.quizIntervalTiers,
             quizDuration:      cfg.quiz_duration       ?? prev.quizDuration,
             quizRarityRates:   cfg.quiz_rarity_rates   ?? prev.quizRarityRates,
             playerRanks:       cfg.player_ranks        ?? prev.playerRanks,
@@ -282,6 +284,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
               registrationWhitelist: cfg.registration_whitelist    ?? prev.registrationWhitelist ?? null,
               playerRanks:           cfg.player_ranks              ?? prev.playerRanks,
               quizInterval:          cfg.quiz_interval             ?? prev.quizInterval,
+              quizIntervalTiers:     cfg.quiz_interval_tiers       ?? prev.quizIntervalTiers,
               quizRarityRates:       cfg.quiz_rarity_rates         ?? prev.quizRarityRates,
               marketSalesOpen:       cfg.market_sales_open !== undefined ? (cfg.market_sales_open === 'true' || cfg.market_sales_open === true) : prev.marketSalesOpen,
               maxActiveListings:     cfg.max_active_listings       ?? prev.maxActiveListings,

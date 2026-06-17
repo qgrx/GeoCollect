@@ -1803,7 +1803,7 @@ export default function App() {
             try {
               await Promise.all([
                 apiSetConfig('limits_connected', limEdit.connected),
-                apiSetConfig('quiz_interval',    limEdit.quizInterval  ?? 60),
+                apiSetConfig('quiz_interval_tiers', limEdit.quizIntervalTiers ?? { window_min: 10, 1: 300, 2: 90, 3: 60, 4: 30 }),
                 apiSetConfig('quiz_join_gold',       limEdit.quizJoinGold      ?? 1),
                 apiSetConfig('quiz_win_gold',        limEdit.quizWinGold       ?? 5),
                 apiSetConfig('quiz_daily_card_cap',    limEdit.quizDailyCardCap    ?? 20),
