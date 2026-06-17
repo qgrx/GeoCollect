@@ -406,6 +406,9 @@ export default function App() {
         showToast(message, type === 'error' ? 'error' : 'success')
       })
 
+      // Présence — nombre d'utilisateurs en ligne
+      s.on('presence', (data) => setOnlineCount(data?.online ?? 0))
+
       s.on('connect',    () => {
         setSocketOnline(true)
       })
@@ -419,6 +422,7 @@ export default function App() {
       socket?.off('quiz:expired')
       socket?.off('market:sold')
       socket?.off('maintenance')
+      socket?.off('presence')
       socket?.off('connect')
       socket?.off('disconnect')
       socket?.off('connect_error')
@@ -497,6 +501,7 @@ export default function App() {
   const [marketUnlockBanner, setMarketUnlockBanner] = useState(false);
   const [toast,           setToast]           = useState(null);
   const [socketOnline,    setSocketOnline]    = useState(true);
+  const [onlineCount,     setOnlineCount]     = useState(0);
   const [goldFlash,       setGoldFlash]       = useState(null);
   const [showDiscordBanner, setShowDiscordBanner] = useState(() => {
     try {
@@ -1240,6 +1245,14 @@ export default function App() {
                     })}
                   </div>
                   </div>
+                </div>
+              )}
+
+              {/* Nombre d'utilisateurs en ligne — centré */}
+              {socketOnline && onlineCount > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10, fontSize: 11, fontWeight: 700, color: theme.textSecondary }}>
+                  <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#3fb950', boxShadow: '0 0 6px #3fb95099' }} />
+                  {t('online_users').replace('{n}', onlineCount)}
                 </div>
               )}
             </aside>
