@@ -1131,7 +1131,7 @@ export default function App() {
               {/* Countdown hero (mobile only — en haut) */}
               {!isWide && !activeQuiz && auth.profile?.status !== 'banni' && (
                 <div data-tour="countdown">
-                  <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
+                  <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} />
                 </div>
               )}
 
@@ -1274,7 +1274,7 @@ export default function App() {
               {/* New geocoin available — above type filter */}
               {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
                 <div data-tour="countdown" style={{ marginBottom: 14 }}>
-                  <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={quizIsShiny} />
+                  <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} />
                 </div>
               )}
 
@@ -1598,7 +1598,7 @@ export default function App() {
 
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
-      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={quizIsShiny} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
+      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
 
       {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
 
