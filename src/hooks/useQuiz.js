@@ -17,12 +17,38 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
   const [history,       setHistory]      = useState([])
   const [lostToWinner,  setLostToWinner] = useState(null)
   const [quizKey,       setQuizKey]      = useState(0)
+  // Durée du cycle (s) pour la barre de progression — suit l'intervalle dynamique serveur
+  const [cycleSec,      setCycleSec]     = useState(limits?.quizInterval ?? QUIZ_INTERVAL)
   const activeQuizRef   = useRef(null)
   const snoozedUntilRef = useRef(0)
   const pendingQuizRef  = useRef(null)
   const nextQuizTimeRef = useRef(nextQuizTime)
   const isFetchingRef   = useRef(false)
   const joinedQuizzesRef = useRef(new Set())
+  // Horaire exact du prochain quiz fourni par le serveur (next_quiz_at, ms) et
+  // dernier intervalle dynamique connu (s) — font autorité sur le calcul local.
+  const serverNextQuizAtRef = useRef(0)
+  const dynIntervalRef      = useRef(null)
+
+  // Appliqué par les events socket (quiz:solved / quiz:expired) : enregistre
+  // l'horaire et l'intervalle réels du serveur, qui priment sur quizInterval.
+  const applyServerSchedule = useCallback((nextAtMs, intervalSec) => {
+    serverNextQuizAtRef.current = nextAtMs
+    if (intervalSec && intervalSec > 0) {
+      dynIntervalRef.current = intervalSec
+      setCycleSec(intervalSec)
+    }
+    setNextQuizTime(nextAtMs)
+  }, [])
+
+  // Prochain horaire : privilégie l'horaire serveur (si encore à venir), sinon
+  // repli sur le dernier intervalle dynamique connu, puis quizInterval.
+  function resolveNextQuizTime(solvedAt) {
+    const s = serverNextQuizAtRef.current
+    if (s && s > Date.now() + 1500) return s
+    const sec = dynIntervalRef.current ?? limits?.quizInterval ?? QUIZ_INTERVAL
+    return (solvedAt || Date.now()) + sec * 1000
+  }
 
   useEffect(() => { nextQuizTimeRef.current = nextQuizTime }, [nextQuizTime])
 
@@ -76,8 +102,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
 
   function advanceQuiz(solvedAt) {
     cbRef.current.onQuizEnd?.();
-    const refTime = solvedAt || Date.now()
-    setNextQuizTime(refTime + (limits?.quizInterval ?? QUIZ_INTERVAL) * 1000)
+    setNextQuizTime(resolveNextQuizTime(solvedAt))
     setActiveQuiz(null)
     activeQuizRef.current = null
   }
@@ -193,7 +218,6 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
 
   const handleQuizExpire = useCallback((npc, isBot = false) => {
     const solvedAt = Date.now()
-    const nextTime = solvedAt + (limits?.quizInterval ?? QUIZ_INTERVAL) * 1000
 
     if (!activeQuizRef.current) {
       const pending = pendingQuizRef.current
@@ -203,14 +227,14 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
           setLostToWinner(null)
           setPendingQuiz(currentPending => {
             if (currentPending && currentPending.id === pending.id) {
-              setNextQuizTime(nextTime)
+              setNextQuizTime(resolveNextQuizTime(solvedAt))
               return null
             }
             return currentPending
           })
         }, 8000)
       } else {
-        setNextQuizTime(nextTime)
+        setNextQuizTime(resolveNextQuizTime(solvedAt))
       }
       return
     }
@@ -224,6 +248,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
 
   return {
     countdown, setNextQuizTime,
+    cycleSec, applyServerSchedule,
     pendingQuiz, setPendingQuiz,
     activeQuiz, setActiveQuiz,
     nextCard, setNextCard,
