@@ -10,12 +10,12 @@ import Logo from './components/Logo.jsx';
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
-import { collScore } from './utils/gameUtils.js';
+import { collScore, computeCardLimitStatus } from './utils/gameUtils.js';
 
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -1557,19 +1557,26 @@ export default function App() {
       {holdOffer && (
         <HoldModal
           holdCard={holdOffer}
-          hasExisting={!!hold}
+          existingHold={hold}
+          forgeCapped={computeCardLimitStatus(auth.profile, gs.limits).forgeCapped}
           onStored={(card) => {
             setHold({ card, is_shiny: card.is_shiny || false, held_at: new Date().toISOString(), claimable: false })
             setHoldOffer(null)
             showToast(t('toast_hold_stored').replace('{card}', card.name))
           }}
-          onIgnore={() => setHoldOffer(null)}
+          onTakeForgePoint={async () => {
+            const { data } = await apiTakeForgeInsteadOfHold()
+            const fp = data?.forge_points_earned || 0
+            if (fp > 0) gs.addForgePoints(fp)
+            setHoldOffer(null)
+            showToast(fp > 0 ? t('toast_quiz_forge_taken').replace('{n}', fp) : t('toast_forge_limit'), fp > 0 ? 'success' : 'error')
+          }}
         />
       )}
 
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
-      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={quizIsShiny} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
+      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={quizIsShiny} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
 
       {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
 

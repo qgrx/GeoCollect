@@ -157,29 +157,28 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
       if (data.gold_earned) earnGoldWithFx(data.gold_earned)
       if (data.streak != null) cbRef.current.onStreakUpdate?.(data.streak)
       setHistory(h => [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false }, ...h].slice(0, 10))
+
+      // Déterminer l'issue pour piloter le visuel de résultat de la modale
+      let outcome = 'card'
+      let forge = 0
       if (data.card_earned) {
+        outcome = 'card'
         showToast(t('toast_quiz_won').replace('{card}', card.name))
       } else if (data.hold_eligible) {
-        // server still gave consolation gold/forge — update client state silently
-        if (data.consolation_gold  > 0) earnGoldWithFx(data.consolation_gold)
-        if (data.consolation_forge > 0) cbRef.current.onForgePointsEarned?.(data.consolation_forge)
+        // Carte précieuse hors-limite : le joueur choisit (dépôt OU 1 PF) dans la HoldModal.
+        // On ne crédite rien ici — le choix s'en charge.
+        outcome = 'hold'
         setHoldOffer(data.hold_card)
-      } else if (data.consolation) {
-        const gold  = data.consolation_gold  ?? 0
-        const forge = data.consolation_forge ?? 0
-        const parts = []
-        if (gold  > 0) parts.push(`+${gold}G`)
-        if (forge > 0) parts.push(`+${forge} PF`)
-        showToast(parts.length
-          ? `🏅 ${t('toast_quiz_consolation_prefix')} ${parts.join(` ${t('toast_and')} `)} !`
-          : `🏅 ${t('toast_quiz_consolation_prefix')} !`
-        )
       } else {
-        showToast(t('toast_quiz_limit'), 'error')
+        // Consolation simple (commun/rare hors-limite) : conversion automatique en PF.
+        outcome = 'consolation'
+        forge = data.consolation_forge ?? 0
+        if (forge > 0) cbRef.current.onForgePointsEarned?.(forge)
       }
+
       const solvedAt = Date.now()
-      setTimeout(() => advanceQuiz(solvedAt), 2200)
-      return true
+      setTimeout(() => advanceQuiz(solvedAt), outcome === 'hold' ? 600 : 2200)
+      return { ok: true, outcome, forge, forgeCapped: !!data.forge_capped, card }
     }
     return false
   }, [activeQuiz, profile])

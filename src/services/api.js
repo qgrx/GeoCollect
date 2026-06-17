@@ -162,6 +162,7 @@ export const apiClaimDailyTreasure = () => apiFetch('/api/treasures/daily/claim'
 export const apiGetHold   = ()                    => apiFetch('/api/hold')
 export const apiStoreHold = (card_id, is_shiny)   => apiFetch('/api/hold', { method: 'POST', body: { card_id, is_shiny } })
 export const apiClaimHold = ()                    => apiFetch('/api/hold/claim', { method: 'POST' })
+export const apiTakeForgeInsteadOfHold = ()       => apiFetch('/api/hold/forge-point', { method: 'POST' })
 export const apiAdminGetStats         = () => apiFetch('/api/admin/stats')
 export const apiAdminGetBots          = () => apiFetch('/api/admin/bots')
 export const apiAdminCreateBot        = (body) => apiFetch('/api/admin/bots', { method: 'POST', body })

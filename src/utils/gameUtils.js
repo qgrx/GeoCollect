@@ -15,6 +15,46 @@ export function todayParis(date = new Date()) {
   }).format(date);
 }
 
+// ─── Statut des limites de geocoins (horaire / quotidienne) ───────────────────
+// Détermine si le joueur a atteint une limite l'empêchant d'obtenir le prochain
+// geocoin, et laquelle. Le quotidien prime (reset le plus lointain).
+//   profile : { daily_cards, daily_reset_at, hourly_cards, cards_hour_reset_at }
+//   limits  : { quizDailyCardCap, quizHourlyCardCap }
+// Retourne { over, type: 'daily'|'hourly'|null, resetAt: Date|null, forgeCapped }
+//   - daily  : resetAt = null (réinitialisation à minuit, géré à l'affichage)
+//   - hourly : resetAt = Date de fin de la fenêtre horaire courante
+//   - forgeCapped : le cap quotidien de PF de consolation est atteint
+//     (hors-limite → plus aucun PF ni geocoin à gagner)
+export function computeCardLimitStatus(profile, limits) {
+  if (!profile) return { over: false, type: null, resetAt: null, forgeCapped: false }
+
+  const today     = todayParis()
+  const isNewDay  = !profile.daily_reset_at || profile.daily_reset_at < today
+  const dailyCap  = Number(limits?.quizDailyCardCap)  || 0
+  const hourlyCap = Number(limits?.quizHourlyCardCap) || 0
+
+  // Cap quotidien de PF de consolation
+  const forgeCap      = Number(limits?.quizDailyForgeCap) || 0
+  const forgeConsumed = isNewDay ? 0 : (profile.daily_forge_consolation || 0)
+  const forgeCapped   = forgeCap > 0 && forgeConsumed >= forgeCap
+
+  // Limite quotidienne (prioritaire)
+  const dailyCards = isNewDay ? 0 : (profile.daily_cards || 0)
+  if (dailyCap > 0 && dailyCards >= dailyCap) {
+    return { over: true, type: 'daily', resetAt: null, forgeCapped }
+  }
+
+  // Limite horaire (fenêtre glissante d'une heure)
+  const lastHourReset = profile.cards_hour_reset_at ? new Date(profile.cards_hour_reset_at).getTime() : null
+  const hourlyReset   = !lastHourReset || (Date.now() - lastHourReset) >= 3600_000
+  const hourlyCards   = hourlyReset ? 0 : (profile.hourly_cards || 0)
+  if (hourlyCap > 0 && !hourlyReset && hourlyCards >= hourlyCap) {
+    return { over: true, type: 'hourly', resetAt: new Date(lastHourReset + 3600_000), forgeCapped }
+  }
+
+  return { over: false, type: null, resetAt: null, forgeCapped }
+}
+
 export const DEFAULT_SHINY_SCORE_RULES = { commun: 2, rare: 6, épique: 14, légendaire: 40 }
 
 export function collScore(col, pool, shinyCol = {}, rules = { commun: 1, rare: 3, épique: 7, légendaire: 20 }, shinyRules = DEFAULT_SHINY_SCORE_RULES) {

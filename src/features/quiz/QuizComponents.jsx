@@ -100,9 +100,11 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
 }
 
 // ─── Quiz Modal ───────────────────────────────────────────────────────────────
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
+  const [outcome,setOutcome]=useState("card");  // 'card' | 'consolation' | 'hold'
+  const [resultForge,setResultForge]=useState(0);  // PF réellement gagnés (0 = cap PF atteint)
   const [reportStatus,setReportStatus]=useState(()=>{
     if(!quiz.question_id) return 'idle';
     try { const r=JSON.parse(localStorage.getItem('gc_qreported')||'[]'); return r.includes(quiz.question_id)?'done':'idle'; } catch{return 'idle';}
@@ -161,11 +163,24 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
     if (elapsed < 600) await new Promise(r => setTimeout(r, 600 - elapsed))
     submittingRef.current = false
     setIsSubmitting(false)
-    if (result === true) { doneRef.current=true; setStatus("won"); soundCorrect(); }
+    if (result && result.ok) { doneRef.current=true; setOutcome(result.outcome||'card'); setResultForge(result.forge||0); setStatus("won"); soundCorrect(); }
     else if (result === 'fast') { setSubmitError("⏱️ Réponse trop rapide ! Lis bien la question."); setIsSubmitting(false); submittingRef.current=false; return; }
     else if (result === 'late') { finish(null); }
     else { soundWrong(); setShake(true); setInp(""); setTimeout(()=>setShake(false),480); }
   }
+
+  // Texte "jusqu'à quand" pour la bannière de limite atteinte
+  const limitWhen = useMemo(()=>{
+    if(!limitStatus?.over) return null;
+    if(limitStatus.type==='daily') return t('limit_reset_midnight');
+    if(limitStatus.type==='hourly' && limitStatus.resetAt){
+      const min=Math.max(1,Math.ceil((new Date(limitStatus.resetAt).getTime()-Date.now())/60000));
+      return t('limit_reset_in_min').replace('{n}',min);
+    }
+    return null;
+  },[limitStatus,t]);
+  // La carte ira-t-elle au dépôt (choix) ou sera convertie en PF (auto) ?
+  const cardHoldable = limitStatus?.over && (quiz.card.rarity==='légendaire' || quiz.card.rarity==='épique' || isShinyFrozen);
 
   // Indice progressif : structure puis premières lettres réelles
   const maskedHint=useMemo(()=>{
@@ -197,6 +212,23 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
             {maskedHint&&<div style={{fontSize:10,color:"#f39c12",fontFamily:"monospace",letterSpacing:2,animation:"pulse 1s infinite"}}>🔤 {maskedHint}</div>}
           </div>
         </div>
+        {/* Bannière d'avertissement : limite atteinte AVANT de répondre */}
+        {status==="open" && limitStatus?.over && (
+          <div style={{background:"linear-gradient(135deg,#3a2a0e,#2a1f0a)",border:"1.5px solid #f9ca2466",borderRadius:12,padding:"10px 13px",marginBottom:12,display:"flex",gap:10,alignItems:"flex-start"}}>
+            <span style={{fontSize:20,lineHeight:1.2,flexShrink:0}}>⚠️</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12.5,fontWeight:900,color:"#f9ca24",marginBottom:2}}>
+                {(limitStatus.type==='hourly' ? t('quiz_limit_hourly_title') : t('quiz_limit_daily_title'))}
+                {limitWhen ? <span style={{color:"#ffd97a",fontWeight:700}}> · {limitWhen}</span> : null}
+              </div>
+              <div style={{fontSize:11.5,color:"#e9d7a8",lineHeight:1.45}}>
+                {limitStatus.forgeCapped
+                  ? (cardHoldable ? t('quiz_limit_banner_hold_capped') : t('quiz_limit_banner_forge_capped'))
+                  : (cardHoldable ? t('quiz_limit_banner_hold')        : t('quiz_limit_banner_forge'))}
+              </div>
+            </div>
+          </div>
+        )}
         {status==="open"&&<>
           {isSubmitting && (
             <div style={{
@@ -221,7 +253,35 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false}){ const
           <style>{`@keyframes spin{to{transform:rotate(360deg)} } @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}`}</style>
         </>}
         {/* Turnstile invisible — aucune UI visible */}
-        {status==="won"&&<div style={{textAlign:"center",padding:"14px 0",background:"#00b89420",borderRadius:13,border:"1.5px solid #00b89444",animation:"winGlow 1.5s infinite"}}><div style={{fontSize:38}}>🎉</div><div style={{color:"#00b894",fontWeight:900,fontSize:19,marginTop:7}}>{t("quiz_won").replace("{card}",cardName(quiz.card, getLang()))}</div></div>}
+        {/* Résultat : geocoin gagné */}
+        {status==="won"&&outcome==="card"&&<div style={{textAlign:"center",padding:"14px 0",background:"#00b89420",borderRadius:13,border:"1.5px solid #00b89444",animation:"winGlow 1.5s infinite"}}><div style={{fontSize:38}}>🎉</div><div style={{color:"#00b894",fontWeight:900,fontSize:19,marginTop:7}}>{t("quiz_won").replace("{card}",cardName(quiz.card, getLang()))}</div></div>}
+        {/* Résultat : limite atteinte → PF au lieu du geocoin (ou rien si cap PF atteint) */}
+        {status==="won"&&outcome==="consolation"&&(resultForge>0 ? (
+          <div style={{textAlign:"center",padding:"16px 12px",background:"linear-gradient(135deg,#3a2a0e,#241a08)",borderRadius:13,border:"1.5px solid #f9ca2466"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14,marginBottom:8}}>
+              <span style={{position:"relative",fontSize:34,opacity:0.7,filter:"grayscale(0.4)"}}>
+                🪙
+                <span style={{position:"absolute",left:"-6%",top:"46%",width:"112%",height:3,background:"#e74c3c",borderRadius:2,transform:"rotate(-18deg)",boxShadow:"0 0 6px #e74c3c"}}/>
+              </span>
+              <span style={{fontSize:24,color:"#f9ca24",fontWeight:900}}>→</span>
+              <span style={{fontSize:34,filter:"drop-shadow(0 0 8px #f9ca2488)"}}>⚒️</span>
+            </div>
+            <div style={{color:"#f9ca24",fontWeight:900,fontSize:18}}>+{resultForge} {t('forge_point_short')||'PF'}</div>
+            <div style={{color:"#e9d7a8",fontWeight:700,fontSize:12,marginTop:4}}>{t('quiz_result_forge_instead')}</div>
+          </div>
+        ) : (
+          <div style={{textAlign:"center",padding:"16px 12px",background:"#e74c3c14",borderRadius:13,border:"1.5px solid #e74c3c44"}}>
+            <div style={{fontSize:32,marginBottom:6,opacity:0.85}}>🚫</div>
+            <div style={{color:"#e74c3c",fontWeight:900,fontSize:15}}>{t('quiz_result_nothing')}</div>
+          </div>
+        ))}
+        {/* Résultat : carte précieuse hors-limite → la HoldModal prend le relais */}
+        {status==="won"&&outcome==="hold"&&(
+          <div style={{textAlign:"center",padding:"14px 0",background:"#6c5ce71f",borderRadius:13,border:"1.5px solid #6c5ce755"}}>
+            <div style={{fontSize:34}}>🗄️</div>
+            <div style={{color:"#a29bfe",fontWeight:900,fontSize:15,marginTop:6}}>{t('quiz_limit_reached')||'Limite atteinte'}</div>
+          </div>
+        )}
         {status==="lost"&&<div style={{textAlign:"center",padding:"14px 0",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}><div style={{fontSize:36}}>😤</div><div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div></div>}
         {/* Signalement */}
         <div style={{textAlign:"right",marginTop:8}}>
@@ -405,15 +465,17 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
   )
 }
 
-// ── HoldModal — popup "Mettre en Dépôt" après quiz hors-limite ────────────────
-export function HoldModal({ holdCard, hasExisting, onStored, onIgnore }) {
+// ── HoldModal — choix après quiz hors-limite : Dépôt OU 1 Point de Forge ──────
+export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, forgeCapped = false }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [loading, setLoading] = useState(false)
+  const [confirmReplace, setConfirmReplace] = useState(false)  // étape de confirmation si dépôt occupé
   const { c1, c2 } = holdCard ? cardCC(holdCard.rarity) : { c1: '#6c5ce7', c2: '#a29bfe' }
   const rc = holdCard ? RC[holdCard.rarity] : null
+  const hasExisting = !!existingHold?.card
 
-  const handleStore = useCallback(async () => {
+  const doStore = useCallback(async () => {
     if (!holdCard || loading) return
     setLoading(true)
     await apiStoreHold(holdCard.id, holdCard.is_shiny || false)
@@ -421,11 +483,26 @@ export function HoldModal({ holdCard, hasExisting, onStored, onIgnore }) {
     onStored(holdCard)
   }, [holdCard, loading, onStored])
 
+  // Clic sur "Mettre au dépôt" : si un objet est déjà déposé, demander confirmation.
+  const handleStoreClick = useCallback(() => {
+    if (hasExisting && !confirmReplace) { setConfirmReplace(true); return }
+    doStore()
+  }, [hasExisting, confirmReplace, doStore])
+
+  const handleTakeForge = useCallback(async () => {
+    if (loading) return
+    setLoading(true)
+    await onTakeForgePoint()
+    setLoading(false)
+  }, [loading, onTakeForgePoint])
+
   if (!holdCard) return null
+
+  const existCard = existingHold?.card
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000a', padding: 20 }}>
-      <div style={{ background: 'linear-gradient(145deg,#0f1923,#1a2736)', border: `1.5px solid ${c1}55`, borderRadius: 20, padding: '24px 22px', maxWidth: 360, width: '100%', boxShadow: `0 0 40px ${c1}33, 0 12px 40px #0008`, fontFamily: "'Nunito',sans-serif" }}>
+      <div style={{ background: 'linear-gradient(145deg,#0f1923,#1a2736)', border: `1.5px solid ${c1}55`, borderRadius: 20, padding: '24px 22px', maxWidth: 380, width: '100%', boxShadow: `0 0 40px ${c1}33, 0 12px 40px #0008`, fontFamily: "'Nunito',sans-serif" }}>
 
         {/* Titre */}
         <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 17, color: '#f9ca24', marginBottom: 4 }}>
@@ -435,7 +512,7 @@ export function HoldModal({ holdCard, hasExisting, onStored, onIgnore }) {
           {t('hold_popup_body').replace('{rarity}', rarityLabel(holdCard.rarity, t))}
         </div>
 
-        {/* Carte */}
+        {/* Carte gagnée */}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', background: `linear-gradient(135deg,${c1}18,${c2}12)`, border: `1px solid ${c1}44`, borderRadius: 14, padding: '12px 14px', marginBottom: 14 }}>
           <div style={{ width: 52, height: 52, borderRadius: 9, overflow: 'hidden', flexShrink: 0, border: `2px solid ${c1}`, background: '#1e3045', boxShadow: `0 0 12px ${c1}44` }}>
             {holdCard.image_url
@@ -449,30 +526,59 @@ export function HoldModal({ holdCard, hasExisting, onStored, onIgnore }) {
           </div>
         </div>
 
-        {/* Avertissement remplacement */}
-        {hasExisting && (
-          <div style={{ fontSize: 11, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2433', borderRadius: 9, padding: '7px 11px', marginBottom: 12 }}>
-            {t('hold_popup_replace_warning')}
-          </div>
+        {/* Étape de confirmation de remplacement — rappelle le geocoin déjà déposé */}
+        {confirmReplace && hasExisting ? (
+          <>
+            <div style={{ fontSize: 12, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2444', borderRadius: 9, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
+              {t('hold_popup_replace_named')
+                .replace('{card}', cardName(existCard, getLang()) + (existingHold.is_shiny ? ' ✨' : ''))}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={doStore} disabled={loading}
+                style={{ ...BTN('linear-gradient(135deg,#e74c3c,#c0392b)'), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, opacity: loading ? 0.7 : 1 }}>
+                {loading ? '…' : t('hold_popup_replace_confirm')}
+              </button>
+              <button onClick={() => setConfirmReplace(false)} disabled={loading}
+                style={{ ...BTN('#ffffff18'), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, color: theme.textSecondary }}>
+                {t('cancel') || 'Annuler'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Avertissement remplacement (avant confirmation) */}
+            {hasExisting && (
+              <div style={{ fontSize: 11, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2433', borderRadius: 9, padding: '7px 11px', marginBottom: 12 }}>
+                {t('hold_popup_replace_named')
+                  .replace('{card}', cardName(existCard, getLang()) + (existingHold.is_shiny ? ' ✨' : ''))}
+              </div>
+            )}
+
+            {/* Note */}
+            <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 16, display: 'flex', gap: 6 }}>
+              <span>🕛</span>
+              <span>{t('hold_popup_note')}</span>
+            </div>
+
+            {/* Boutons : Dépôt OU 1 Point de Forge (PF désactivé si cap PF atteint) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+              <button onClick={handleStoreClick} disabled={loading}
+                style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: loading ? 0.7 : 1 }}>
+                🗄️ {t('hold_popup_store')}
+              </button>
+              {forgeCapped ? (
+                <div style={{ textAlign: 'center', fontSize: 11, color: theme.textMuted, padding: '8px 0', fontWeight: 700 }}>
+                  ⚒️ {t('hold_forge_capped_note')}
+                </div>
+              ) : (
+                <button onClick={handleTakeForge} disabled={loading}
+                  style={{ ...BTN('#ffffff14'), padding: '11px 0', borderRadius: 11, fontSize: 12.5, color: theme.textSecondary }}>
+                  ⚒️ {t('hold_popup_take_forge')}
+                </button>
+              )}
+            </div>
+          </>
         )}
-
-        {/* Note */}
-        <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 18, display: 'flex', gap: 6 }}>
-          <span>🕛</span>
-          <span>{t('hold_popup_note')}</span>
-        </div>
-
-        {/* Boutons */}
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={handleStore} disabled={loading}
-            style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, opacity: loading ? 0.7 : 1 }}>
-            {loading ? '…' : t('hold_popup_store')}
-          </button>
-          <button onClick={onIgnore}
-            style={{ ...BTN('#ffffff18'), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, color: theme.textSecondary }}>
-            {t('hold_popup_ignore')}
-          </button>
-        </div>
       </div>
     </div>
   )
