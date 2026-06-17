@@ -1,4 +1,18 @@
 export const QUIZ_INTERVAL      = 60;   // seconds between each quiz
+
+// Normalise les paliers de cadence en liste [{ players, seconds }] triée.
+// Tolère l'ancien format objet { "1":300, ... } et toute valeur invalide.
+export function normalizeIntervalTiers(v) {
+  const DEFAULT = [{ players: 1, seconds: 300 }, { players: 2, seconds: 90 }, { players: 3, seconds: 60 }, { players: 4, seconds: 30 }];
+  let arr = null;
+  if (Array.isArray(v)) {
+    arr = v.filter(t => t && t.players != null && t.seconds != null).map(t => ({ players: +t.players, seconds: +t.seconds }));
+  } else if (v && typeof v === 'object') {
+    arr = Object.entries(v).filter(([k]) => /^\d+$/.test(k)).map(([k, s]) => ({ players: +k, seconds: +s }));
+  }
+  arr = (arr || []).filter(t => t.players >= 1 && t.seconds >= 1);
+  return arr.length ? arr.sort((a, b) => a.players - b.players) : DEFAULT;
+}
 export const PAGE_SIZE          = 10;   // items per admin page
 export const PSEUDO_CHANGE_DAYS = 30;   // days between pseudo changes
 export const PSEUDO_NOTIF_DAYS  = 15;   // days to show "new pseudo" badge
@@ -42,7 +56,7 @@ export const INIT_LIMITS = {
   quizConsolationGold:  5,
   quizConsolationForge: 1,
   quizDailyForgeCap:    0,
-  quizIntervalTiers:    { 1: 300, 2: 90, 3: 60, 4: 30 },
+  quizIntervalTiers:    [{ players: 1, seconds: 300 }, { players: 2, seconds: 90 }, { players: 3, seconds: 60 }, { players: 4, seconds: 30 }],
   forgeCostByRarity:    { commun: 60, rare: 180, épique: 600, légendaire: 1800 },
   meltPointsByRarity:   {},
   meltPointsByRarityShiny: {},

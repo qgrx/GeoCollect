@@ -687,17 +687,21 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </tr></thead>
               <tbody>
                 {[
-                  ["Cadence dynamique", <div key="cadence-dyn" style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8}}>
-                    {[["1","1 j."],["2","2 j."],["3","3 j."],["4","4+ j."]].map(([k,lbl])=>(
-                      <span key={k} style={{display:"inline-flex",alignItems:"center",gap:3}}>
-                        <span style={{color:"#aaa",fontSize:10}}>{lbl}</span>
-                        <input type="number" min={10} max={3600} value={(limEdit.quizIntervalTiers??{})[k]??''}
-                          onChange={e=>setLimEdit(p=>({...p,quizIntervalTiers:{...(p.quizIntervalTiers??{}),[k]:Math.max(10,+e.target.value)}}))}
-                          style={{...INP,width:56}}/>
+                  ["Cadence dynamique", <div key="cadence-dyn" style={{display:"flex",flexDirection:"column",gap:5}}>
+                    {(Array.isArray(limEdit.quizIntervalTiers)?limEdit.quizIntervalTiers:[]).map((tier,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{color:"#aaa",fontSize:10}}>≥</span>
+                        <input type="number" min={1} max={999} value={tier.players??''}
+                          onChange={e=>setLimEdit(p=>{const arr=[...(p.quizIntervalTiers||[])];arr[i]={...arr[i],players:Math.max(1,+e.target.value)};return{...p,quizIntervalTiers:arr}})}
+                          style={{...INP,width:40,padding:"4px 6px"}}/>
+                        <span style={{color:"#aaa",fontSize:10}}>j. →</span>
+                        <input type="number" min={10} max={3600} value={tier.seconds??''}
+                          onChange={e=>setLimEdit(p=>{const arr=[...(p.quizIntervalTiers||[])];arr[i]={...arr[i],seconds:Math.max(10,+e.target.value)};return{...p,quizIntervalTiers:arr}})}
+                          style={{...INP,width:46,padding:"4px 6px"}}/>
                         <span style={{color:"#aaa",fontSize:10}}>s</span>
-                      </span>
+                      </div>
                     ))}
-                  </div>, "Délai avant le prochain quiz selon le nb de joueurs en ligne (même compteur que « X en ligne »)"],
+                  </div>, "Délai avant le prochain quiz selon le nb de joueurs en ligne. Le palier le plus élevé atteint (≥ N joueurs) s'applique."],
                   ["Or / participation", <><input type="number" min={0} max={100} value={limEdit.quizJoinGold??1} onChange={e=>setLimEdit({...limEdit,quizJoinGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or</span></>, "0 = accès gratuit sans animation"],
                   ["Or / victoire (sous limite)", <><input type="number" min={0} max={1000} value={limEdit.quizWinGold??5} onChange={e=>setLimEdit({...limEdit,quizWinGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or + 1 Geocoin</span></>, "Récompense standard du gagnant"],
                   ["Or / victoire (hors limite)", <><input type="number" min={0} max={1000} value={limEdit.quizConsolationGold??5} onChange={e=>setLimEdit({...limEdit,quizConsolationGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or +</span> <input type="number" min={0} max={100} value={limEdit.quizConsolationForge??1} onChange={e=>setLimEdit({...limEdit,quizConsolationForge:Math.max(0,+e.target.value)})} style={{...INP,width:55,marginLeft:4}}/> <span style={{color:"#aaa"}}>PF</span></>, "Zéro inflation — boost Forge"],
