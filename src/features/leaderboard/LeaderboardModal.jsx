@@ -39,11 +39,10 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
   }, [player.id]);
 
   const shinyCards  = shinyCol ? Object.values(shinyCol).filter(n => n > 0).length : null;
+  // Geocoins = collection normale uniquement (achievements inclus), shinies comptés
+  // à part — cohérent avec card_count du classement et le compteur du profil.
   const uniqueCards = col
-    ? new Set([
-        ...Object.keys(col).filter(k => (col[k] || 0) > 0),
-        ...Object.keys(shinyCol || {}).filter(k => ((shinyCol || {})[k] || 0) > 0),
-      ]).size
+    ? Object.keys(col).filter(k => (col[k] || 0) > 0).length
     : null;
 
   const score       = player.isMe ? (myScore ?? player.score ?? 0) : (player.score ?? 0);
