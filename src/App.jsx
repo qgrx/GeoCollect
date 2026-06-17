@@ -15,7 +15,7 @@ import { collScore, computeCardLimitStatus } from './utils/gameUtils.js';
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -406,9 +406,6 @@ export default function App() {
         showToast(message, type === 'error' ? 'error' : 'success')
       })
 
-      // Présence — nombre d'utilisateurs en ligne
-      s.on('presence', (data) => setOnlineCount(data?.online ?? 0))
-
       s.on('connect',    () => {
         setSocketOnline(true)
       })
@@ -422,11 +419,24 @@ export default function App() {
       socket?.off('quiz:expired')
       socket?.off('market:sold')
       socket?.off('maintenance')
-      socket?.off('presence')
       socket?.off('connect')
       socket?.off('disconnect')
       socket?.off('connect_error')
     }
+  }, [auth.profile?.id])
+
+  // ── Présence : ping périodique (token frais via apiFetch) qui rafraîchit
+  // last_seen_at et renvoie le nombre d'utilisateurs en ligne ─────────────────
+  useEffect(() => {
+    if (!auth.profile?.id || !import.meta.env.VITE_API_URL) return
+    let active = true
+    const ping = async () => {
+      const { data } = await apiPingProfile().catch(() => ({ data: null }))
+      if (active && data && typeof data.online === 'number') setOnlineCount(data.online)
+    }
+    ping()
+    const iv = setInterval(ping, 60_000)
+    return () => { active = false; clearInterval(iv) }
   }, [auth.profile?.id])
 
   // ── Écran de chargement initial : minimum 3s + fondu sortant ───────────────
@@ -1249,7 +1259,7 @@ export default function App() {
               )}
 
               {/* Nombre d'utilisateurs en ligne — centré */}
-              {socketOnline && onlineCount > 0 && (
+              {onlineCount > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10, fontSize: 11, fontWeight: 700, color: theme.textSecondary }}>
                   <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#3fb950', boxShadow: '0 0 6px #3fb95099' }} />
                   {t('online_users').replace('{n}', onlineCount)}
