@@ -1228,7 +1228,15 @@ export default function App() {
               {/* Last 8 geocoins — 4×2 */}
               {history.filter(h => !h.skipped).length > 0 && (
                 <div style={{ animation: 'fadeUp .4s .2s ease-out both' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: theme.textMuted, marginBottom: 4 }}>{t('last_cards')}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: theme.textMuted }}>{t('last_cards')}</span>
+                    {onlineCount > 0 && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, color: theme.textSecondary }}>
+                        <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#3fb950', boxShadow: '0 0 6px #3fb95099' }} />
+                        {t('online_users').replace('{n}', onlineCount)}
+                      </span>
+                    )}
+                  </div>
                   <div style={{ background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '8px' }}>
                   <div style={isWide
                     ? { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }
@@ -1256,14 +1264,6 @@ export default function App() {
                     })}
                   </div>
                   </div>
-                </div>
-              )}
-
-              {/* Nombre d'utilisateurs en ligne — centré */}
-              {onlineCount > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10, fontSize: 11, fontWeight: 700, color: theme.textSecondary }}>
-                  <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#3fb950', boxShadow: '0 0 6px #3fb95099' }} />
-                  {t('online_users').replace('{n}', onlineCount)}
                 </div>
               )}
             </aside>
