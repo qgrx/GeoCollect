@@ -413,7 +413,9 @@ export default function MarketModal({
                             const cardToList = sellCard
                             const error = await onListCard(cardToList, +sellPrice, myPseudo)
                             if (error) { setMsg('❌ ' + error); return }
-                            setSellCard(null); setSellPrice(''); setTab('meslistes')
+                            // Rester sur l'onglet « Vendre » pour enchaîner plusieurs mises en
+                            // vente sans clic supplémentaire ; le toast confirme la mise en vente.
+                            setSellCard(null); setSellPrice('')
                           }}
                           style={{ width: '100%', marginTop: 4, background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', padding: '11px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: invalid ? 'not-allowed' : 'pointer', opacity: invalid ? 0.5 : 1 }}>
                           {t('market_list_btn')}
