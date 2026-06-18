@@ -1506,6 +1506,7 @@ export default function App() {
                   myPseudo={auth.profile?.pseudo} myId={auth.profile?.id}
                   myScore={userScore} myGold={gs.gold} myForgePoints={gs.forgePoints}
                   cardPool={gs.cardPool} ranks={gs.limits.playerRanks}
+                  scoreRules={gs.limits.scoreRules} shinyScoreRules={gs.limits.shinyScoreRules}
                   onClose={() => setActiveTab('collection')}
                 />
               )}

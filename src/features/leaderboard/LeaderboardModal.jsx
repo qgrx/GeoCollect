@@ -9,13 +9,14 @@ import { getRank, rankCC } from '../../utils/rankUtils.js';
 import { DEFAULT_RANKS } from '../../data/constants.js';
 
 // ─── Fiche joueur ─────────────────────────────────────────────────────────────
-function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, onBack }) {
+function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, scoreRules, shinyScoreRules, onBack }) {
   const { t } = useT();
   const { theme } = useTheme();
   const [col,      setCol]      = useState(null);  // { cardId: qty }
   const [shinyCol, setShinyCol] = useState(null);  // { cardId: qty }
   const [loading, setLoading] = useState(true);
   const [showCol, setShowCol] = useState(false);
+  const [showScoreDetail, setShowScoreDetail] = useState(false);
 
   useEffect(() => {
     if (player.isMe) {
@@ -73,6 +74,17 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
     if (idDiff !== 0) return idDiff;
     return a.isShiny ? 1 : -1;             // normal avant shiny
   });
+
+  // Détail des points par rareté (même logique que le détail de son propre profil)
+  const W  = scoreRules      || { commun: 1, rare: 3, épique: 7, légendaire: 20 };
+  const SW = shinyScoreRules || { commun: 2, rare: 6, épique: 14, légendaire: 40 };
+  const RARITIES = ['légendaire', 'épique', 'rare', 'commun'];
+  const scoreRows = RARITIES.map(r => {
+    const normal = Object.entries(col || {}).filter(([id, n]) => n > 0 && cardPool.find(c => c.id === +id)?.rarity === r).length;
+    const sh     = Object.entries(shinyCol || {}).filter(([id, n]) => n > 0 && cardPool.find(c => c.id === +id)?.rarity === r).length;
+    return { r, normal, shiny: sh, pts: W[r], shinyPts: SW[r] ?? W[r] * 2 };
+  }).filter(row => row.normal > 0 || row.shiny > 0);
+  const rarityLabels = { commun: t('rarity_commun'), rare: t('rarity_rare'), épique: t('rarity_epique'), légendaire: t('rarity_legendaire') };
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
@@ -138,14 +150,43 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 10, color: theme.textMuted }}>
                     <span>{t('rank_next')} <span style={{ background: nextRank.color, color: '#fff', fontWeight: 800, padding: '1px 6px', borderRadius: 4, fontSize: 9, textShadow: '0 1px 2px #0004' }}>{nextRank.label}</span></span>
-                    <span style={{ fontWeight: 700 }}>{score}/{nextRank.min}</span>
+                    <span onClick={() => setShowScoreDetail(v => !v)} style={{ fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{score}/{nextRank.min}</span>
                   </div>
                   <div style={{ background: theme.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }} />
                   </div>
                 </>
               ) : (
-                <div style={{ fontSize: 11, fontWeight: 800, color: c1, textAlign: 'center' }}>{t('rank_max')}</div>
+                <div onClick={() => setShowScoreDetail(v => !v)} style={{ fontSize: 11, fontWeight: 800, color: c1, textAlign: 'center', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{t('rank_max')} · {score} pts</div>
+              )}
+
+              {/* Détail des points par rareté */}
+              {showScoreDetail && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${theme.border}` }}>
+                  <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: theme.textMuted, marginBottom: 8 }}>{t('score_detail_title')}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {scoreRows.map(({ r, normal, shiny, pts, shinyPts }) => (
+                      <div key={r}>
+                        {normal > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: theme.overlayMd, borderRadius: 8 }}>
+                            <span style={{ fontSize: 13, color: theme.textPrimary, fontWeight: 700 }}>{normal} × {rarityLabels[r]}</span>
+                            <span style={{ fontSize: 13, color: theme.gold, fontWeight: 900 }}>+{normal * pts} pts</span>
+                          </div>
+                        )}
+                        {shiny > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: theme.overlayMd, borderRadius: 8, marginTop: normal > 0 ? 4 : 0 }}>
+                            <span style={{ fontSize: 13, color: theme.textPrimary, fontWeight: 700 }}>{shiny} × {rarityLabels[r]} ✨</span>
+                            <span style={{ fontSize: 13, color: theme.gold, fontWeight: 900 }}>+{shiny * shinyPts} pts</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: theme.textPrimary }}>{t('score_detail_total')}</span>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: c1 }}>{score} pts</span>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -174,7 +215,7 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
 }
 
 // ─── Leaderboard Modal ────────────────────────────────────────────────────────
-export default function LeaderboardModal({ myCollection, myShinyCollection, myPseudo, myId, myScore, myGold, myForgePoints, cardPool, ranks, onClose, inline = false }) {
+export default function LeaderboardModal({ myCollection, myShinyCollection, myPseudo, myId, myScore, myGold, myForgePoints, cardPool, ranks, scoreRules, shinyScoreRules, onClose, inline = false }) {
   const { t } = useT();
   const { theme } = useTheme();
   const [players, setPlayers] = useState([]);
@@ -222,7 +263,7 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
   )
 
   if (viewing) {
-    return <ProfileView player={viewing} cardPool={cardPool} myScore={myScore} myGold={myGold} myForgePoints={myForgePoints} ranks={ranks} onBack={() => setViewing(null)} />;
+    return <ProfileView player={viewing} cardPool={cardPool} myScore={myScore} myGold={myGold} myForgePoints={myForgePoints} ranks={ranks} scoreRules={scoreRules} shinyScoreRules={shinyScoreRules} onBack={() => setViewing(null)} />;
   }
 
   return (
