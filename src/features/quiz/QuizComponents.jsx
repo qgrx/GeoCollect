@@ -204,7 +204,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           {status==="open"&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:26,height:26,borderRadius:"50%",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
         </div>
         {/* Signalement — en haut, loin du bouton Répondre pour éviter les clics par erreur */}
-        <div style={{flexShrink:0,textAlign:"right",marginBottom:8}}>
+        <div style={{flexShrink:0,textAlign:"left",marginBottom:8}}>
           {reportStatus==='done'
             ? <span style={{fontSize:10,color:"#00b894",fontWeight:700}}>✓ {t('quiz_report_thanks')}</span>
             : <button onClick={handleReport} disabled={reportStatus==='loading'}
