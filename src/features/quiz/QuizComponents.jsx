@@ -192,8 +192,8 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   return (
     <div style={{position:"fixed",inset:0,zIndex:800,background:"#000000bb",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <style>{`@keyframes shakeIt{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}} @keyframes winGlow{0%,100%{box-shadow:0 0 0 0 #00b89400}50%{box-shadow:0 0 32px 8px #00b89466}} @keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.5)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}`}</style>
-      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(calc(100vw - 40px),520px)",boxSizing:"border-box",border:isShinyFrozen?"2px solid #f9ca24aa":"2px solid #f9ca2444",boxShadow:isShinyFrozen?"0 24px 60px #000c,0 0 40px #f9ca2433":"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(calc(100vw - 40px),520px)",maxHeight:"calc(100dvh - 40px)",display:"flex",flexDirection:"column",boxSizing:"border-box",border:isShinyFrozen?"2px solid #f9ca24aa":"2px solid #f9ca2444",boxShadow:isShinyFrozen?"0 24px 60px #000c,0 0 40px #f9ca2433":"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:17,color:"#f9ca24"}}>{t("quiz_title")}</div>
             {status==="open" && <div style={{display:"flex",alignItems:"center",gap:4,color:"#00b894",fontSize:10,fontWeight:800}}>
@@ -203,6 +203,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           </div>
           {status==="open"&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:26,height:26,borderRadius:"50%",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
         </div>
+        {/* Zone scrollable : carte + question + bannière (évite que le contenu déborde
+            et que la question soit rognée sur mobile / longues questions) */}
+        <div style={{flex:1,minHeight:0,overflowY:"auto",overflowX:"hidden"}}>
         <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
           <div style={{flexShrink:0,pointerEvents:"none"}}>
             <Card card={quiz.card} small isShiny={isShinyFrozen} />
@@ -229,6 +232,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             </div>
           </div>
         )}
+        </div>
+        {/* Pied épinglé : saisie / résultat / signalement (toujours visible) */}
+        <div style={{flexShrink:0}}>
         {status==="open"&&<>
           {isSubmitting && (
             <div style={{
@@ -292,6 +298,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
                 ⚠ {t('quiz_report_btn')}
               </button>
           }
+        </div>
         </div>
       </div>
     </div>
