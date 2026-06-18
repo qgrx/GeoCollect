@@ -10,7 +10,7 @@ import Logo from './components/Logo.jsx';
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
-import { collScore, computeCardLimitStatus } from './utils/gameUtils.js';
+import { collScore, computeCardLimitStatus, countOwnedUnique } from './utils/gameUtils.js';
 
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
@@ -1148,7 +1148,7 @@ export default function App() {
                 // Total de geocoins possédés (cartes achievement incluses) —
                 // cohérent avec le card_count affiché dans le classement.
                 const uniqueCards = gs.collectionLoaded
-                  ? Object.values(gs.collection).filter(n => n > 0).length
+                  ? countOwnedUnique(gs.collection)
                   : null
                 const dk = THEMES.dark
                 const shimCell = { height: 12, borderRadius: 4, background: 'linear-gradient(90deg,#ffffff08,#ffffff18,#ffffff08)', backgroundSize: '400px 100%', animation: 'shimmer 1.4s infinite', margin: '2px auto', width: '55%' }

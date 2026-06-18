@@ -5,6 +5,12 @@ export const normA = (s) =>
 
 export const wordCount = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 
+// Nombre de geocoins uniques possédés = entrées de collection avec quantité > 0.
+// Règle unique (cohérente profil / classement) : achievements inclus, brillants
+// comptés séparément (via une autre collection). NE compte PAS les quantités.
+export const countOwnedUnique = (col = {}) =>
+  Object.values(col).filter(n => (n || 0) > 0).length;
+
 // Date du jour (YYYY-MM-DD) à Paris — même fuseau que le reset des limites quotidiennes côté API.
 export function todayParis(date = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {

@@ -7,7 +7,7 @@ import { rankCC, getRankLabel } from '../../utils/rankUtils.js'
 import { PSEUDO_CHANGE_DAYS } from '../../data/constants.js'
 import { apiDeleteAccount } from '../../services/api.js'
 import { ReferralPanel } from '../referral/ReferralModal.jsx'
-import { todayParis } from '../../utils/gameUtils.js'
+import { todayParis, countOwnedUnique } from '../../utils/gameUtils.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
 
 import { DEFAULT_RANKS } from '../../data/constants.js'
@@ -58,7 +58,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const score = scoreProp ?? 0
   const rank = getrank(score, ranks)
   const { c1, c2 } = rankCC(rank)
-  const uniqueCards = Object.values(collection).filter(n => n > 0).length
+  const uniqueCards = countOwnedUnique(collection)
   const memberStr   = memberSince(profile.joined_at)
 
   // Limites quotidiennes — affichées à tous les joueurs pour comprendre

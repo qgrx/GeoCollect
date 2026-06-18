@@ -6,6 +6,7 @@ import { apiGetLeaderboard, apiGetUserCollection } from '../../services/api.js';
 import Card from '../../components/Card.jsx';
 import PseudoDisplay from '../../components/PseudoDisplay.jsx';
 import { getRank, rankCC } from '../../utils/rankUtils.js';
+import { countOwnedUnique } from '../../utils/gameUtils.js';
 import { DEFAULT_RANKS } from '../../data/constants.js';
 
 // ─── Fiche joueur ─────────────────────────────────────────────────────────────
@@ -39,12 +40,10 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
     });
   }, [player.id]);
 
-  const shinyCards  = shinyCol ? Object.values(shinyCol).filter(n => n > 0).length : null;
+  const shinyCards  = shinyCol ? countOwnedUnique(shinyCol) : null;
   // Geocoins = collection normale uniquement (achievements inclus), shinies comptés
   // à part — cohérent avec card_count du classement et le compteur du profil.
-  const uniqueCards = col
-    ? Object.keys(col).filter(k => (col[k] || 0) > 0).length
-    : null;
+  const uniqueCards = col ? countOwnedUnique(col) : null;
 
   const score       = player.isMe ? (myScore ?? player.score ?? 0) : (player.score ?? 0);
   const gold        = player.isMe ? (myGold  ?? player.gold  ?? 0) : (player.gold  ?? 0);
