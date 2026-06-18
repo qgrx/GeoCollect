@@ -20,8 +20,9 @@ function SellerIdentity() {
 
 const S = {
   page:    { position: 'fixed', inset: 0, zIndex: 2500, overflowY: 'auto', background: '#f8fafc', fontFamily: "'Georgia', serif", color: '#1a2d3d', lineHeight: 1.7 },
-  header:  { background: '#1e2d3d', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 14, position: 'sticky', top: 0, zIndex: 10 },
+  header:  { background: '#1e2d3d', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, position: 'sticky', top: 0, zIndex: 10 },
   back:    { background: 'none', border: '1px solid #ffffff44', color: '#fff', padding: '6px 14px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13, cursor: 'pointer' },
+  close:   { background: '#ffffff18', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, fontWeight: 900, cursor: 'pointer', flexShrink: 0 },
   wrap:    { maxWidth: 800, margin: '0 auto', padding: '40px 24px 80px' },
   title:   { fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#1e2d3d', marginBottom: 4 },
   date:    { fontSize: 13, color: '#6b7d92', marginBottom: 36, fontFamily: "'Nunito',sans-serif" },
@@ -200,8 +201,8 @@ export default function CgvPage({ onClose }) {
     return (
       <div style={{ ...S.page, display: 'flex', flexDirection: 'column' }}>
         <div style={S.header}>
-          <button onClick={onClose} style={S.back}>← Retour</button>
           <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: '#f9ca24' }}>🗺️ Geocoins</span>
+          <button onClick={onClose} style={S.close} aria-label={isEN ? 'Close' : 'Fermer'}>✕</button>
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <div style={{ fontSize: 40 }}>🔒</div>
@@ -220,8 +221,8 @@ export default function CgvPage({ onClose }) {
   return (
     <div style={S.page}>
       <div style={S.header}>
-        <button onClick={onClose} style={S.back}>← {isEN ? 'Back' : 'Retour'}</button>
         <span style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: '#f9ca24' }}>🗺️ Geocoins</span>
+        <button onClick={onClose} style={S.close} aria-label={isEN ? 'Close' : 'Fermer'}>✕</button>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
           {['fr','en'].map(l => (
             <button key={l} onClick={() => setIsEN(l === 'en')}

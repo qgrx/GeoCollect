@@ -252,13 +252,16 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
       justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(10px)' }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}`}</style>
       <div style={{ background: 'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius: 24,
-        padding: '32px 28px', width: 'min(94vw,420px)', border: '1.5px solid #ffffff18',
+        width: 'min(94vw,420px)', maxHeight: 'calc(100dvh - 100px)', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        border: '1.5px solid #ffffff18',
         boxShadow: '0 32px 80px #000b', fontFamily: "'Nunito',sans-serif", position: 'relative',
         animation: 'fadeIn .3s ease' }}>
 
-        <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14,
+        {/* Croix épinglée hors du contenu scrollable (toujours visible, clavier ouvert) */}
+        <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, zIndex: 5,
           background: '#ffffff18', border: 'none', color: '#fff', width: 30, height: 30,
           borderRadius: '50%', fontSize: 15, cursor: 'pointer', fontWeight: 900 }}>✕</button>
+        <div style={{ overflowY: 'auto', minHeight: 0, WebkitOverflowScrolling: 'touch', padding: '32px 28px' }}>
 
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#f9ca24' }}>Geocoins</div>
@@ -451,6 +454,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
           </div>
         )}
 
+        </div>
       </div>
     </div>
   )

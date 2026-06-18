@@ -109,9 +109,10 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(8px)', padding: 16 }}>
+      justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(8px)',
+      padding: 'max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom))' }}>
       <div style={{ background: `linear-gradient(145deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 24,
-        width: 'min(94vw,440px)', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        width: 'min(94vw,440px)', maxHeight: 'calc(100dvh - 100px)', overflow: 'hidden', display: 'flex', flexDirection: 'column',
         border: `1.5px solid ${theme.borderLight}`, boxShadow: '0 32px 80px #000b',
         fontFamily: "'Nunito',sans-serif", position: 'relative' }}>
 

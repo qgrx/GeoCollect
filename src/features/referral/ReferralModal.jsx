@@ -108,13 +108,17 @@ export default function ReferralModal({ onClose }) {
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex',
       alignItems: 'center', justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(8px)', padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'linear-gradient(145deg,#16213a,#0f172a)',
-        borderRadius: 22, width: 'min(94vw,440px)', maxHeight: '90vh', overflowY: 'auto',
-        border: '1.5px solid #ffffff1f', boxShadow: '0 32px 80px #000b', padding: 22,
+        borderRadius: 22, width: 'min(94vw,440px)', maxHeight: 'calc(100dvh - 100px)', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column',
+        border: '1.5px solid #ffffff1f', boxShadow: '0 32px 80px #000b',
         fontFamily: "'Nunito',sans-serif", position: 'relative' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: '#00000044',
-          border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', fontSize: 15,
+        {/* Croix épinglée hors du contenu scrollable (toujours visible sur mobile) */}
+        <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, zIndex: 5, background: '#000000aa',
+          border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15,
           cursor: 'pointer', fontWeight: 900 }}>✕</button>
-        <ReferralPanel />
+        <div style={{ overflowY: 'auto', minHeight: 0, WebkitOverflowScrolling: 'touch', padding: 22 }}>
+          <ReferralPanel />
+        </div>
       </div>
     </div>
   )

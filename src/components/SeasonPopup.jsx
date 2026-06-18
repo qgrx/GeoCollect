@@ -32,9 +32,12 @@ export default function SeasonPopup({ season, cards, onClose }) {
           fontFamily: "'Nunito',sans-serif",
           overflow: 'hidden',
           position: 'relative',
+          maxHeight: 'calc(100dvh - 100px)',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        {/* Bouton fermer */}
+        {/* Bouton fermer — épinglé hors du contenu scrollable */}
         <button
           onClick={onClose}
           style={{
@@ -43,10 +46,11 @@ export default function SeasonPopup({ season, cards, onClose }) {
             width: 28, height: 28, borderRadius: '50%',
             fontSize: 16, fontWeight: 900, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            lineHeight: 1, zIndex: 1,
+            lineHeight: 1, zIndex: 5,
           }}
           aria-label="Fermer"
         >×</button>
+        <div style={{ overflowY: 'auto', minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
 
         {/* En-tête */}
         <div style={{
@@ -143,6 +147,7 @@ export default function SeasonPopup({ season, cards, onClose }) {
           >
             {t('season_start')}
           </button>
+        </div>
         </div>
       </div>
     </div>

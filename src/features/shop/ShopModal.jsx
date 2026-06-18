@@ -123,9 +123,9 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000d', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(10px)' }}>
-      <div style={{ background: 'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius: 24, width: 'min(96vw,640px)', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 32px 80px #000c', border: '2px solid #f9ca2444', fontFamily: "'Nunito',sans-serif" }}>
+      <div style={{ background: 'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius: 24, width: 'min(96vw,640px)', maxHeight: 'calc(100dvh - 100px)', overflowY: 'auto', boxShadow: '0 32px 80px #000c', border: '2px solid #f9ca2444', fontFamily: "'Nunito',sans-serif" }}>
 
-        {/* Header */}
+        {/* Header — sticky pour que la croix reste visible au scroll (mobile) */}
         <div style={{
           background: (step === 'reveal' || step === 'done') && initialPaymentLabel
             ? 'linear-gradient(90deg,#00b894,#00cec9)'
@@ -134,6 +134,7 @@ export default function ShopModal({ onClose, cardPool, onPurchase, shopPacksConf
           animation: 'shimmer 3s linear infinite',
           padding: '14px 20px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          position: 'sticky', top: 0, zIndex: 5,
         }}>
           <div>
             {(step === 'reveal' || step === 'done') && initialPaymentLabel ? (

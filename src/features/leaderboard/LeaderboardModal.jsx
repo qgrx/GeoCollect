@@ -89,8 +89,10 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
       <style>{`@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}`}</style>
-      <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: showCol ? 'min(96vw,860px)' : 'min(96vw,360px)', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif", transition: 'width .3s' }}>
-        <button onClick={onBack} style={{ background: theme.overlay, border: `1px solid ${theme.border}`, color: theme.textPrimary, width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer', marginBottom: 16 }}>←</button>
+      <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, width: showCol ? 'min(96vw,860px)' : 'min(96vw,360px)', maxHeight: 'calc(100dvh - 100px)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif", transition: 'width .3s', position: 'relative' }}>
+        {/* Croix épinglée (revient à la liste du classement), toujours visible au scroll */}
+        <button onClick={onBack} style={{ position: 'absolute', top: 14, right: 14, zIndex: 5, background: '#000000aa', border: `1px solid ${theme.border}`, color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer', fontWeight: 900 }}>✕</button>
+        <div style={{ overflowY: 'auto', minHeight: 0, WebkitOverflowScrolling: 'touch', padding: 22 }}>
 
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -209,6 +211,7 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   );
@@ -256,7 +259,7 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
     <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
   ) : (
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: 'min(96vw,500px)', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif" }}>
+      <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: 'min(96vw,500px)', maxHeight: 'calc(100dvh - 100px)', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif" }}>
         {children}
       </div>
     </div>

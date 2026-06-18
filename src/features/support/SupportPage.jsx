@@ -40,7 +40,8 @@ export default function SupportPage({ onClose }) {
             <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>geocoins.fr</div>
           </div>
           {onClose && (
-            <button onClick={onClose} style={{ background: '#ffffff18', border: 'none', color: theme.textSecondary, width: 36, height: 36, borderRadius: '50%', fontSize: 18, cursor: 'pointer', fontWeight: 900 }}>✕</button>
+            // Croix fixe : la page scrolle entièrement, on garde la fermeture toujours visible
+            <button onClick={onClose} style={{ position: 'fixed', top: 'max(14px, env(safe-area-inset-top))', right: 14, zIndex: 10, background: '#000000aa', border: `1px solid ${theme.border}`, color: '#fff', width: 36, height: 36, borderRadius: '50%', fontSize: 18, cursor: 'pointer', fontWeight: 900 }}>✕</button>
           )}
         </div>
 

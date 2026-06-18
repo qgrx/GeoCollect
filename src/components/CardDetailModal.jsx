@@ -31,7 +31,7 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
       zIndex: 1500, backdropFilter: 'blur(12px)', padding: 20 }}>
       <div onClick={e => e.stopPropagation()}
         style={{
-          width: 'min(92vw,360px)', borderRadius: 24, maxHeight: '92vh', overflowY: 'auto', overflowX: 'hidden',
+          width: 'min(92vw,360px)', borderRadius: 24, maxHeight: 'calc(100dvh - 100px)', overflowY: 'auto', overflowX: 'hidden',
           background: `linear-gradient(145deg,${c1}22,${c2}33,#0f0f1e)`,
           border: isShiny ? '2px solid #f9ca24' : `2px solid ${c1}88`,
           boxShadow: isShiny
@@ -49,10 +49,10 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
           @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
         `}</style>
 
-        {/* Header */}
+        {/* Header — sticky pour que la croix reste visible au scroll (mobile) */}
         <div style={{ background: isShiny ? 'linear-gradient(90deg,#b8860b,#f9ca24,#e6a817)' : `linear-gradient(90deg,${c1},${c2})`, padding: '12px 16px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          position: 'relative', overflow: 'hidden' }}>
+          position: 'sticky', top: 0, zIndex: 5, overflow: 'hidden' }}>
           {(isLeg || isShiny) && <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none',
             background: 'linear-gradient(90deg,transparent 40%,#ffffff22 50%,transparent 60%)',
             backgroundSize: '400px 100%', animation: 'shimmer 2s linear infinite' }}/>}
