@@ -22,6 +22,11 @@ export function computeStreakHandicap(streak, cfg = {}) {
   return Math.min(max, (streak - threshold + 1) * step);
 }
 
+// Cartes exemptées de handicap (course équitable) : légendaire ou épique brillante.
+export function isHandicapExemptCard(rarity, isShiny) {
+  return rarity === 'légendaire' || (rarity === 'épique' && !!isShiny);
+}
+
 // Date du jour (YYYY-MM-DD) à Paris — même fuseau que le reset des limites quotidiennes côté API.
 export function todayParis(date = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {

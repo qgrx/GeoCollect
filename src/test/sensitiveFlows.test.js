@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { countOwnedUnique, computeCardLimitStatus, computeStreakHandicap, todayParis } from '../utils/gameUtils.js'
+import { countOwnedUnique, computeCardLimitStatus, computeStreakHandicap, isHandicapExemptCard, todayParis } from '../utils/gameUtils.js'
 import { normalizeIntervalTiers } from '../data/constants.js'
 
 // ─── Comptage geocoins uniques ────────────────────────────────────────────────
@@ -47,6 +47,18 @@ describe('computeStreakHandicap', () => {
   })
   it('désactivé → 0', () => {
     expect(computeStreakHandicap(10, { enabled: false })).toBe(0)
+  })
+})
+
+describe('isHandicapExemptCard', () => {
+  it('légendaire (toujours) et épique brillante exemptées', () => {
+    expect(isHandicapExemptCard('légendaire', false)).toBe(true)
+    expect(isHandicapExemptCard('épique', true)).toBe(true)
+  })
+  it('épique non brillante / commun / rare non exemptées', () => {
+    expect(isHandicapExemptCard('épique', false)).toBe(false)
+    expect(isHandicapExemptCard('commun', true)).toBe(false)
+    expect(isHandicapExemptCard('rare', false)).toBe(false)
   })
 })
 
