@@ -362,8 +362,9 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
   const {c1,c2}    = (colorRarity && showColors) ? cardCC(colorRarity) : {c1:'#6c7c93',c2:'#48576b'}
   const shinyActive = isShiny && (hasPendingQuiz || urgent)
 
-  // ── Annonce « en feu » (série de victoires) — en grand pendant 5 s ─────────
-  if (streakHype) {
+  // ── Annonce « en feu » (série de victoires) — en grand, mais JAMAIS quand un
+  // quiz est joignable (le bouton « Participer » reste prioritaire) ───────────
+  if (streakHype && !hasPendingQuiz && !lostTo) {
     return (
       <>
         <style>{CW_STYLES}</style>

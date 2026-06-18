@@ -327,6 +327,9 @@ export default function App() {
         setQuizIsShiny(data.is_shiny || false)
         setLostToWinner(null)
         setStreakLeader(data.streak_leader || null)
+        // Un quiz devient joignable → couper l'annonce « en feu » pour ne pas masquer « Participer »
+        if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
+        setStreakHype(null)
 
         // Activation immédiate — synchronisation serveur.
         // server_time corrige le décalage d'horloge client/serveur.
