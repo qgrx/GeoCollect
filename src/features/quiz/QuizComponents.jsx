@@ -334,6 +334,7 @@ const CW_STYLES = `
   @keyframes joinPulse    { 0%,100%{box-shadow:0 0 0 0 #f9ca2466,0 4px 14px #f9ca2433} 50%{box-shadow:0 0 0 6px #f9ca2400,0 4px 20px #f9ca2455} }
   @keyframes barSp    { 0%,100%{opacity:0;transform:scale(0) rotate(0deg)} 50%{opacity:1;transform:scale(1) rotate(180deg)} }
   @keyframes shinyGlow { 0%,100%{box-shadow:0 0 15px #f9ca2433} 50%{box-shadow:0 0 36px #f9ca2477, 0 0 70px #f9ca2422} }
+  @keyframes cgFadeOut { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-8px) scale(.97)} }
 `;
 
 const BAR_SPARKLES = [
@@ -366,7 +367,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
     return (
       <>
         <style>{CW_STYLES}</style>
-        <div style={{position:'relative',overflow:'hidden',display:'flex',alignItems:'center',gap:12,background:'linear-gradient(135deg,#3a1a0e,#7a2a10,#3a1a0e)',border:'1.5px solid #ff7043aa',borderRadius:13,padding:'12px 16px',boxShadow:'0 0 30px #ff704344',animation:'cgSlide .4s cubic-bezier(.34,1.56,.64,1) both'}}>
+        <div style={{position:'relative',overflow:'hidden',display:'flex',alignItems:'center',gap:12,background:'linear-gradient(135deg,#3a1a0e,#7a2a10,#3a1a0e)',border:'1.5px solid #ff7043aa',borderRadius:13,padding:'12px 16px',boxShadow:'0 0 30px #ff704344',animation:streakHype.fading?'cgFadeOut .4s ease forwards':'cgSlide .4s cubic-bezier(.34,1.56,.64,1) both'}}>
           <div style={{fontSize:34,flexShrink:0,animation:'cdShake .5s ease-out'}}>🔥</div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:15,fontWeight:900,color:'#ffd28a',lineHeight:1.2}}>

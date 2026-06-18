@@ -10,7 +10,7 @@ import Logo from './components/Logo.jsx';
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
-import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap } from './utils/gameUtils.js';
+import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard } from './utils/gameUtils.js';
 
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
@@ -362,14 +362,20 @@ export default function App() {
         setQuizIsShiny(data.next_is_shiny || false)
         if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
 
-        // Série de victoires → annonce « en feu » en grand pendant 5 s (handicap bienveillant)
+        // Série de victoires → annonce « en feu » en grand pendant 10 s (handicap bienveillant)
         const hCfg = gs.limits?.quizStreakHandicap
         const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
         if (data.winner_streak >= threshold && hCfg?.enabled !== false) {
           const handicap = computeStreakHandicap(data.winner_streak, hCfg)
-          setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap })
+          // Prochaine carte exemptée (légendaire / épique brillante) → pas de « cadeau » annoncé
+          const nextExempt = isHandicapExemptCard(data.next_card_rarity, data.next_is_shiny)
+          setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: nextExempt })
           if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
-          streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 5000)
+          // 10 s d'affichage, puis fondu sortant (~400 ms) avant démontage
+          streakHypeTimerRef.current = setTimeout(() => {
+            setStreakHype(h => h ? { ...h, fading: true } : h)
+            streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 420)
+          }, 10000)
         } else {
           setStreakLeader(null) // série cassée (gagnant sous le seuil)
         }
