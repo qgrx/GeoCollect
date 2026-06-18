@@ -329,7 +329,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false,owned=false}){
   const {t}=useT(); const {theme}=useTheme();
   const pct        = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
   const urgent     = !hasPendingQuiz && !lostTo && secondsLeft <= 10
@@ -442,6 +442,12 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
               {hasCard
                 ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}</>
                 : <span style={{color:theme.textMuted,fontStyle:'italic'}}>{t('quiz_mystery_card')}</span>}
+            </div>
+          )}
+          {/* Déjà possédé — indiqué quand le geocoin précis apparaît */}
+          {!urgent&&hasCard&&owned&&(
+            <div style={{fontSize:9.5,fontWeight:800,color:'#3fb950',marginTop:2,display:'flex',alignItems:'center',gap:4}}>
+              <span>✓</span>{t('quiz_already_owned')}
             </div>
           )}
         </div>
