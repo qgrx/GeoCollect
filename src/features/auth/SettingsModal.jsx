@@ -111,14 +111,17 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
     <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center',
       justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(8px)', padding: 16 }}>
       <div style={{ background: `linear-gradient(145deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 24,
-        width: 'min(94vw,440px)', maxHeight: '92vh', overflowY: 'auto',
+        width: 'min(94vw,440px)', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
         border: `1.5px solid ${theme.borderLight}`, boxShadow: '0 32px 80px #000b',
         fontFamily: "'Nunito',sans-serif", position: 'relative' }}>
 
-        {/* ── Bouton fermer ── */}
-        <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, zIndex: 1,
-          background: '#00000044', border: 'none', color: '#fff', width: 30, height: 30,
+        {/* ── Bouton fermer (épinglé hors du contenu scrollable pour rester visible) ── */}
+        <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, zIndex: 5,
+          background: '#000000aa', border: 'none', color: '#fff', width: 32, height: 32,
           borderRadius: '50%', fontSize: 15, cursor: 'pointer', fontWeight: 900 }}>✕</button>
+
+        {/* ── Contenu scrollable ── */}
+        <div style={{ overflowY: 'auto', minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
 
         {/* ── Hero card ── */}
         <div style={{ background: `linear-gradient(135deg,${c1}cc,${c2}88,#1a4a7a)`,
@@ -341,6 +344,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
             </div>
           </details>
 
+        </div>
         </div>
 
       </div>
