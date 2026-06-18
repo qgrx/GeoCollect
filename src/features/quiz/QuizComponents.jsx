@@ -203,21 +203,20 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           </div>
           {status==="open"&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:26,height:26,borderRadius:"50%",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
         </div>
-        {/* Zone scrollable : carte + question + bannière (évite que le contenu déborde
-            et que la question soit rognée sur mobile / longues questions) */}
-        <div style={{flex:1,minHeight:0,overflowY:"auto",overflowX:"hidden"}}>
-        <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
-          <div style={{flexShrink:0,pointerEvents:"none"}}>
-            <Card card={quiz.card} small isShiny={isShinyFrozen} />
-          </div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1.5,marginBottom:5}}>{quiz.q}</div>
-            {maskedHint&&<div style={{fontSize:10,color:"#f39c12",fontFamily:"monospace",letterSpacing:2,animation:"pulse 1s infinite"}}>🔤 {maskedHint}</div>}
-          </div>
+        {/* Signalement — en haut, loin du bouton Répondre pour éviter les clics par erreur */}
+        <div style={{flexShrink:0,textAlign:"right",marginBottom:8}}>
+          {reportStatus==='done'
+            ? <span style={{fontSize:10,color:"#00b894",fontWeight:700}}>✓ {t('quiz_report_thanks')}</span>
+            : <button onClick={handleReport} disabled={reportStatus==='loading'}
+                style={{background:"none",border:"none",color:"#f39c12",fontSize:10,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:700,padding:0,textDecoration:"underline",opacity:reportStatus==='loading'?0.5:1}}>
+                ⚠ {t('quiz_report_btn')}
+              </button>
+          }
         </div>
-        {/* Bannière d'avertissement : limite atteinte AVANT de répondre */}
+        {/* Bannière d'avertissement : limite atteinte — placée au-dessus du quiz (zone
+            fixe) pour que la question reste collée au champ et lisible clavier ouvert */}
         {status==="open" && limitStatus?.over && (
-          <div style={{background:"linear-gradient(135deg,#3a2a0e,#2a1f0a)",border:"1.5px solid #f9ca2466",borderRadius:12,padding:"10px 13px",marginBottom:12,display:"flex",gap:10,alignItems:"flex-start"}}>
+          <div style={{flexShrink:0,background:"linear-gradient(135deg,#3a2a0e,#2a1f0a)",border:"1.5px solid #f9ca2466",borderRadius:12,padding:"10px 13px",marginBottom:12,display:"flex",gap:10,alignItems:"flex-start"}}>
             <span style={{fontSize:20,lineHeight:1.2,flexShrink:0}}>⚠️</span>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:12.5,fontWeight:900,color:"#f9ca24",marginBottom:2}}>
@@ -232,6 +231,17 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             </div>
           </div>
         )}
+        {/* Zone scrollable : carte + question (collée au champ de réponse en bas) */}
+        <div style={{flex:1,minHeight:0,overflowY:"auto",overflowX:"hidden"}}>
+        <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
+          <div style={{flexShrink:0,pointerEvents:"none"}}>
+            <Card card={quiz.card} small isShiny={isShinyFrozen} />
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1.5,marginBottom:5}}>{quiz.q}</div>
+            {maskedHint&&<div style={{fontSize:10,color:"#f39c12",fontFamily:"monospace",letterSpacing:2,animation:"pulse 1s infinite"}}>🔤 {maskedHint}</div>}
+          </div>
+        </div>
         </div>
         {/* Pied épinglé : saisie / résultat / signalement (toujours visible) */}
         <div style={{flexShrink:0}}>
@@ -289,16 +299,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           </div>
         )}
         {status==="lost"&&<div style={{textAlign:"center",padding:"14px 0",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}><div style={{fontSize:36}}>😤</div><div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div></div>}
-        {/* Signalement */}
-        <div style={{textAlign:"right",marginTop:8}}>
-          {reportStatus==='done'
-            ? <span style={{fontSize:10,color:"#00b894",fontWeight:700}}>✓ {t('quiz_report_thanks')}</span>
-            : <button onClick={handleReport} disabled={reportStatus==='loading'}
-                style={{background:"none",border:"none",color:"#f39c12",fontSize:10,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:700,padding:0,textDecoration:"underline",opacity:reportStatus==='loading'?0.5:1}}>
-                ⚠ {t('quiz_report_btn')}
-              </button>
-          }
-        </div>
         </div>
       </div>
     </div>
