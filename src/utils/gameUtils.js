@@ -44,9 +44,9 @@ export function computeCardLimitStatus(profile, limits) {
     return { over: true, type: 'daily', resetAt: null, forgeCapped }
   }
 
-  // Limite horaire (fenêtre glissante d'une heure)
+  // Limite horaire (fenêtre glissante d'une heure ; un nouveau jour la réinitialise)
   const lastHourReset = profile.cards_hour_reset_at ? new Date(profile.cards_hour_reset_at).getTime() : null
-  const hourlyReset   = !lastHourReset || (Date.now() - lastHourReset) >= 3600_000
+  const hourlyReset   = isNewDay || !lastHourReset || (Date.now() - lastHourReset) >= 3600_000
   const hourlyCards   = hourlyReset ? 0 : (profile.hourly_cards || 0)
   if (hourlyCap > 0 && !hourlyReset && hourlyCards >= hourlyCap) {
     return { over: true, type: 'hourly', resetAt: new Date(lastHourReset + 3600_000), forgeCapped }

@@ -68,7 +68,8 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
     const today = todayParis()
     const isNewDay = !profile.daily_reset_at || profile.daily_reset_at < today
     const lastHourReset = profile.cards_hour_reset_at ? new Date(profile.cards_hour_reset_at).getTime() : null
-    const hourlyReset = !lastHourReset || (Date.now() - lastHourReset) >= 60 * 60 * 1000
+    // Un nouveau jour réinitialise aussi la fenêtre horaire (cohérent avec le backend)
+    const hourlyReset = isNewDay || !lastHourReset || (Date.now() - lastHourReset) >= 60 * 60 * 1000
     limitsDebug = {
       dailyGold:        isNewDay ? 0 : (profile.daily_gold || 0),
       dailyGoldCap:     limits.connected?.dailyGold || 0,
