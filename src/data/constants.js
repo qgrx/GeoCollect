@@ -57,6 +57,7 @@ export const INIT_LIMITS = {
   quizConsolationForge: 1,
   quizDailyForgeCap:    0,
   quizIntervalTiers:    [{ players: 1, seconds: 300 }, { players: 2, seconds: 90 }, { players: 3, seconds: 60 }, { players: 4, seconds: 30 }],
+  quizStreakHandicap:   { enabled: true, threshold: 3, step_seconds: 1.5, max_seconds: 8, min_players: 2 },
   forgeCostByRarity:    { commun: 60, rare: 180, épique: 600, légendaire: 1800 },
   meltPointsByRarity:   {},
   meltPointsByRarityShiny: {},

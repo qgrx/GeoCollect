@@ -702,6 +702,17 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       </div>
                     ))}
                   </div>, "Délai avant le prochain quiz selon le nb de joueurs en ligne. Le palier le plus élevé atteint (≥ N joueurs) s'applique."],
+                  ["Anti-domination (série)", (()=>{const h=limEdit.quizStreakHandicap||{};const set=(k,v)=>setLimEdit(p=>({...p,quizStreakHandicap:{...(p.quizStreakHandicap||{}),[k]:v}}));return <div key="anti-dom" style={{display:"flex",flexDirection:"column",gap:4}}>
+                    <label style={{display:"flex",alignItems:"center",gap:6,color:"#ddd",fontSize:11}}>
+                      <input type="checkbox" checked={h.enabled!==false} onChange={e=>set('enabled',e.target.checked)} style={{width:14,height:14}}/> Activer
+                    </label>
+                    <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:6,fontSize:10,color:"#aaa"}}>
+                      <span>seuil</span><input type="number" min={1} max={99} value={h.threshold??3} onChange={e=>set('threshold',Math.max(1,+e.target.value))} style={{...INP,width:42,padding:"4px 6px"}}/>
+                      <span>pas</span><input type="number" min={0} max={60} step={0.5} value={h.step_seconds??1.5} onChange={e=>set('step_seconds',Math.max(0,+e.target.value))} style={{...INP,width:46,padding:"4px 6px"}}/><span>s</span>
+                      <span>max</span><input type="number" min={0} max={60} value={h.max_seconds??8} onChange={e=>set('max_seconds',Math.max(0,+e.target.value))} style={{...INP,width:42,padding:"4px 6px"}}/><span>s</span>
+                      <span>min j.</span><input type="number" min={1} max={99} value={h.min_players??2} onChange={e=>set('min_players',Math.max(1,+e.target.value))} style={{...INP,width:42,padding:"4px 6px"}}/>
+                    </div>
+                  </div>})(), "Délai de réponse croissant pour un joueur en série (cadeau aux autres). handicap = min(max, (série−seuil+1)×pas), si ≥ min joueurs en ligne."],
                   ["Or / participation", <><input type="number" min={0} max={100} value={limEdit.quizJoinGold??1} onChange={e=>setLimEdit({...limEdit,quizJoinGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or</span></>, "0 = accès gratuit sans animation"],
                   ["Or / victoire (sous limite)", <><input type="number" min={0} max={1000} value={limEdit.quizWinGold??5} onChange={e=>setLimEdit({...limEdit,quizWinGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or + 1 Geocoin</span></>, "Récompense standard du gagnant"],
                   ["Or / victoire (hors limite)", <><input type="number" min={0} max={1000} value={limEdit.quizConsolationGold??5} onChange={e=>setLimEdit({...limEdit,quizConsolationGold:Math.max(0,+e.target.value)})} style={{...INP,width:60}}/> <span style={{color:"#aaa"}}>Or +</span> <input type="number" min={0} max={100} value={limEdit.quizConsolationForge??1} onChange={e=>setLimEdit({...limEdit,quizConsolationForge:Math.max(0,+e.target.value)})} style={{...INP,width:55,marginLeft:4}}/> <span style={{color:"#aaa"}}>PF</span></>, "Zéro inflation — boost Forge"],

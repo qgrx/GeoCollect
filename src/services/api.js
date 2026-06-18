@@ -61,7 +61,7 @@ async function apiFetch(path, options = {}) {
       })
 
       const json = await res.json()
-      if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}`, status: res.status }
+      if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}`, status: res.status, body: json }
       return { data: json, error: null, status: res.status }
     } catch (err) {
       if (import.meta.env.DEV) console.warn(`[API] ${path} failed:`, err.message)

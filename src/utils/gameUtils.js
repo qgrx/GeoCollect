@@ -11,6 +11,17 @@ export const wordCount = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 export const countOwnedUnique = (col = {}) =>
   Object.values(col).filter(n => (n || 0) > 0).length;
 
+// Handicap (s) du joueur en série — miroir du backend (utils/streakHandicap.js).
+// handicap = min(max, (série − seuil + 1) × pas), nul sous le seuil / si désactivé.
+export function computeStreakHandicap(streak, cfg = {}) {
+  const enabled  = cfg.enabled !== false;
+  const threshold = Math.max(1, Number(cfg.threshold) || 3);
+  const step      = Math.max(0, Number(cfg.step_seconds) || 1.5);
+  const max       = Math.max(0, Number(cfg.max_seconds) || 8);
+  if (!enabled || streak < threshold) return 0;
+  return Math.min(max, (streak - threshold + 1) * step);
+}
+
 // Date du jour (YYYY-MM-DD) à Paris — même fuseau que le reset des limites quotidiennes côté API.
 export function todayParis(date = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {

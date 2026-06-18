@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { countOwnedUnique, computeCardLimitStatus, todayParis } from '../utils/gameUtils.js'
+import { countOwnedUnique, computeCardLimitStatus, computeStreakHandicap, todayParis } from '../utils/gameUtils.js'
 import { normalizeIntervalTiers } from '../data/constants.js'
 
 // ─── Comptage geocoins uniques ────────────────────────────────────────────────
@@ -33,6 +33,20 @@ describe('normalizeIntervalTiers', () => {
   it('valeur invalide → défaut', () => {
     expect(normalizeIntervalTiers(null)).toEqual(DEFAULT)
     expect(normalizeIntervalTiers([])).toEqual(DEFAULT)
+  })
+})
+
+// ─── Handicap anti-domination (miroir du backend) ──────────────────────────────
+describe('computeStreakHandicap', () => {
+  it('nul sous le seuil, progression puis plafond (défauts 3/1.5/8)', () => {
+    expect(computeStreakHandicap(2)).toBe(0)
+    expect(computeStreakHandicap(3)).toBe(1.5)
+    expect(computeStreakHandicap(4)).toBe(3)
+    expect(computeStreakHandicap(8)).toBe(8)
+    expect(computeStreakHandicap(99)).toBe(8)
+  })
+  it('désactivé → 0', () => {
+    expect(computeStreakHandicap(10, { enabled: false })).toBe(0)
   })
 })
 

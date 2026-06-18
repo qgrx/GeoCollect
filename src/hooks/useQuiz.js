@@ -3,9 +3,9 @@ import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetCurrentQuiz, apiJoinQuiz, apiAnswerQuiz } from '../services/api.js'
 import { getLang } from '../i18n/translations.js'
 
-export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned }) {
+export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned, limits }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned, limits }
 
   const [nextQuizTime,  setNextQuizTime] = useState(Date.now() + QUIZ_INTERVAL * 1000)
   const [countdown,     setCountdown]    = useState(QUIZ_INTERVAL)
@@ -68,6 +68,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
           // Utilisateur connecté : on interroge l'API pour récupérer le quiz prêt
           isFetchingRef.current = true
           apiGetCurrentQuiz().then(({ data }) => {
+            if (data) cbRef.current.onStreakLeader?.(data.streak_leader ?? null)
             if (data?.quiz) {
               const wc = data.quiz.answer_word_count || 1
               const poolCard = cbRef.current.cardPool?.find(c => c.id === data.quiz.card?.id) || {}
@@ -164,8 +165,9 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
     const card = activeQuiz.card
     const { earnCard, earnGoldWithFx, showToast, t } = cbRef.current
     if (profile && activeQuiz.id) {
-      const { data, error, status } = await apiAnswerQuiz(activeQuiz.id, userAnswer)
+      const { data, error, status, body } = await apiAnswerQuiz(activeQuiz.id, userAnswer)
       if (error) {
+        if (status === 425) return { handicap: true, wait_ms: body?.wait_ms || 0 } // série : délai cadeau
         if (status === 429) return 'fast'    // trop rapide
         if (status === 409) return 'late'    // quelqu'un d'autre a gagné en même temps
         if (status === 404) return 'late'    // quiz expiré avant la soumission

@@ -100,7 +100,7 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
 }
 
 // ─── Quiz Modal ───────────────────────────────────────────────────────────────
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
   const [outcome,setOutcome]=useState("card");  // 'card' | 'consolation' | 'hold'
@@ -154,6 +154,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   function finish(n){if(doneRef.current)return;doneRef.current=true;setNpc(n || 'Un autre joueur');setStatus("lost");onExpire(n || 'Un autre joueur');}
     async function submit(){
     if(status!=="open") return;
+    if(handicapLeft>0) return;  // série : cadeau aux autres, envoi bloqué côté client
     if(submittingRef.current) return
     submittingRef.current = true
     setIsSubmitting(true)
@@ -164,6 +165,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     submittingRef.current = false
     setIsSubmitting(false)
     if (result && result.ok) { doneRef.current=true; setOutcome(result.outcome||'card'); setResultForge(result.forge||0); setStatus("won"); soundCorrect(); }
+    else if (result && result.handicap) { setSubmitError(t('streak_handicap_wait')); } // série : délai cadeau pas encore écoulé
     else if (result === 'fast') { setSubmitError("⏱️ Réponse trop rapide ! Lis bien la question."); setIsSubmitting(false); submittingRef.current=false; return; }
     else if (result === 'late') { finish(null); }
     else { soundWrong(); setShake(true); setInp(""); setTimeout(()=>setShake(false),480); }
@@ -181,6 +183,10 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   },[limitStatus,t]);
   // La carte ira-t-elle au dépôt (choix) ou sera convertie en PF (auto) ?
   const cardHoldable = limitStatus?.over && (quiz.card.rarity==='légendaire' || quiz.card.rarity==='épique' || isShinyFrozen);
+  // Handicap anti-domination : si je suis le joueur en série, mon bouton est bloqué le temps du cadeau
+  const isStreakLeader = !!(streakLeader && myId && streakLeader.id === myId);
+  const myHandicap     = isStreakLeader ? (streakLeader.handicap_seconds || 0) : 0;
+  const handicapLeft   = Math.max(0, Math.ceil(myHandicap - elapsed));
 
   // Indice progressif : structure puis premières lettres réelles
   const maskedHint=useMemo(()=>{
@@ -246,6 +252,18 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
         {/* Pied épinglé : saisie / résultat / signalement (toujours visible) */}
         <div style={{flexShrink:0}}>
         {status==="open"&&<>
+          {/* Bandeau série : leader retardé (visible par les autres) */}
+          {streakLeader && !isStreakLeader && (streakLeader.handicap_seconds>0) && (
+            <div style={{fontSize:11.5,fontWeight:800,color:"#ff8a5c",background:"#ff70431a",border:"1px solid #ff704344",borderRadius:10,padding:"7px 11px",marginBottom:10}}>
+              🔥 {t('streak_handicap_others').replace('{pseudo}',streakLeader.pseudo).replace('{x}',streakLeader.handicap_seconds)}
+            </div>
+          )}
+          {/* Bandeau série : c'est moi le leader (cadeau aux autres) */}
+          {isStreakLeader && handicapLeft>0 && (
+            <div style={{fontSize:11.5,fontWeight:800,color:"#ffd28a",background:"#ff70431a",border:"1px solid #ff7043aa",borderRadius:10,padding:"7px 11px",marginBottom:10}}>
+              🎁 {t('streak_handicap_self').replace('{x}',handicapLeft)}
+            </div>
+          )}
           {isSubmitting && (
             <div style={{
               background:"linear-gradient(90deg,#f9ca24,#e17055)",
@@ -260,10 +278,10 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           )}
           <div style={{display:"flex",gap:9}}>
             {submitError&&<div style={{fontSize:12,color:"#f39c12",fontWeight:700,padding:"7px 10px",background:"#f39c1218",borderRadius:9,marginBottom:6,border:"1px solid #f39c1233"}}>{submitError}</div>}
-            <input ref={ref} value={inp} disabled={isSubmitting} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc)}
+            <input ref={ref} value={inp} disabled={isSubmitting} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0)submit()}} placeholder={wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc)}
               style={{flex:1,background:isSubmitting?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":isSubmitting?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:isSubmitting?0.6:1}}/>
-          <button onClick={submit} disabled={isSubmitting||!inp.trim()} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 16px",borderRadius:11,opacity:(isSubmitting||!inp.trim())?0.5:1,cursor:(isSubmitting||!inp.trim())?"not-allowed":"pointer",minWidth:90,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-              {isSubmitting ? (<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #1e3045",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.6s linear infinite"}}/>{t("quiz_validating") || "Validation…"}</>) : t("quiz_submit")}
+          <button onClick={submit} disabled={isSubmitting||!inp.trim()||handicapLeft>0} style={{...BTN(handicapLeft>0?"linear-gradient(135deg,#ff7043,#e17055)":"linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 16px",borderRadius:11,opacity:(isSubmitting||!inp.trim()||handicapLeft>0)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0)?"not-allowed":"pointer",minWidth:90,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              {handicapLeft>0 ? `🎁 ${handicapLeft}s` : isSubmitting ? (<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #1e3045",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.6s linear infinite"}}/>{t("quiz_validating") || "Validation…"}</>) : t("quiz_submit")}
             </button>
           </div>
           <style>{`@keyframes spin{to{transform:rotate(360deg)} } @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}`}</style>
@@ -329,7 +347,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false,owned=false}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null}){
   const {t}=useT(); const {theme}=useTheme();
   const pct        = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
   const urgent     = !hasPendingQuiz && !lostTo && secondsLeft <= 10
@@ -341,6 +359,26 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
   const colorRarity = hasPendingQuiz ? nextCard?.rarity : (urgent ? nextQuizRarity : null)
   const {c1,c2}    = (colorRarity && showColors) ? cardCC(colorRarity) : {c1:'#6c7c93',c2:'#48576b'}
   const shinyActive = isShiny && (hasPendingQuiz || urgent)
+
+  // ── Annonce « en feu » (série de victoires) — en grand pendant 5 s ─────────
+  if (streakHype) {
+    return (
+      <>
+        <style>{CW_STYLES}</style>
+        <div style={{position:'relative',overflow:'hidden',display:'flex',alignItems:'center',gap:12,background:'linear-gradient(135deg,#3a1a0e,#7a2a10,#3a1a0e)',border:'1.5px solid #ff7043aa',borderRadius:13,padding:'12px 16px',boxShadow:'0 0 30px #ff704344',animation:'cgSlide .4s cubic-bezier(.34,1.56,.64,1) both'}}>
+          <div style={{fontSize:34,flexShrink:0,animation:'cdShake .5s ease-out'}}>🔥</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:15,fontWeight:900,color:'#ffd28a',lineHeight:1.2}}>
+              {t('streak_hype_big').replace('{pseudo}', streakHype.pseudo).replace('{n}', streakHype.streak)}
+            </div>
+            <div style={{fontSize:11,color:'#ffb07a',fontWeight:800,marginTop:3}}>
+              {t('streak_hype_gift').replace('{x}', streakHype.handicap)}
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
 
   // ── État "Félicitations" — quelqu'un vient de gagner ──────────────────────
   if (lostTo) {
@@ -448,6 +486,12 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
           {!urgent&&hasCard&&owned&&(
             <div style={{fontSize:9.5,fontWeight:800,color:'#3fb950',marginTop:2,display:'flex',alignItems:'center',gap:4}}>
               <span>✓</span>{t('quiz_already_owned')}
+            </div>
+          )}
+          {/* Petit message : joueur en série (handicap bienveillant) */}
+          {!urgent&&streakLeader&&(streakLeader.handicap_seconds>0)&&(
+            <div style={{fontSize:9.5,fontWeight:800,color:'#ff8a5c',marginTop:2,display:'flex',alignItems:'center',gap:4}}>
+              <span>🔥</span>{t('streak_bar_small').replace('{pseudo}',streakLeader.pseudo).replace('{n}',streakLeader.streak).replace('{x}',streakLeader.handicap_seconds)}
             </div>
           )}
         </div>

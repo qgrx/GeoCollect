@@ -10,7 +10,7 @@ import Logo from './components/Logo.jsx';
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
-import { collScore, computeCardLimitStatus, countOwnedUnique } from './utils/gameUtils.js';
+import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap } from './utils/gameUtils.js';
 
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
@@ -326,6 +326,7 @@ export default function App() {
         setNextCard(card)
         setQuizIsShiny(data.is_shiny || false)
         setLostToWinner(null)
+        setStreakLeader(data.streak_leader || null)
 
         // Activation immédiate — synchronisation serveur.
         // server_time corrige le décalage d'horloge client/serveur.
@@ -360,6 +361,18 @@ export default function App() {
         }
         setQuizIsShiny(data.next_is_shiny || false)
         if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
+
+        // Série de victoires → annonce « en feu » en grand pendant 5 s (handicap bienveillant)
+        const hCfg = gs.limits?.quizStreakHandicap
+        const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
+        if (data.winner_streak >= threshold && hCfg?.enabled !== false) {
+          const handicap = computeStreakHandicap(data.winner_streak, hCfg)
+          setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap })
+          if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
+          streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 5000)
+        } else {
+          setStreakLeader(null) // série cassée (gagnant sous le seuil)
+        }
 
         const iSelf = data.winner && data.winner === auth.profile?.pseudo
 
@@ -513,6 +526,8 @@ export default function App() {
   const [toast,           setToast]           = useState(null);
   const [socketOnline,    setSocketOnline]    = useState(true);
   const [onlineCount,     setOnlineCount]     = useState(0);
+  const [streakLeader,    setStreakLeader]    = useState(null);   // { id, pseudo, streak, handicap_seconds }
+  const [streakHype,      setStreakHype]      = useState(null);   // annonce 5s { pseudo, streak, handicap }
   const [goldFlash,       setGoldFlash]       = useState(null);
   const [showDiscordBanner, setShowDiscordBanner] = useState(() => {
     try {
@@ -631,6 +646,7 @@ export default function App() {
     showGoldFlash,
     t,
     onStreakUpdate: gs.setStreak,
+    onStreakLeader: setStreakLeader,
     onQuizEnd: () => setQuizSessionActive(false),
     cardPool: gs.cardPool,
     checkAchievements: gs.checkAchievements,
@@ -643,6 +659,7 @@ export default function App() {
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
 
+  const streakHypeTimerRef = useRef(null)
   // Ref pour éviter la capture stale de handleQuizExpire dans les handlers socket
   const handleQuizExpireRef = useRef(handleQuizExpire)
   useEffect(() => { handleQuizExpireRef.current = handleQuizExpire }, [handleQuizExpire])
@@ -1131,7 +1148,7 @@ export default function App() {
               {/* Countdown hero (mobile only — en haut) */}
               {!isWide && !activeQuiz && auth.profile?.status !== 'banni' && (
                 <div data-tour="countdown">
-                  <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} />
+                  <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
                 </div>
               )}
 
@@ -1274,7 +1291,7 @@ export default function App() {
               {/* New geocoin available — above type filter */}
               {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
                 <div data-tour="countdown" style={{ marginBottom: 14 }}>
-                  <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} />
+                  <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
                 </div>
               )}
 
@@ -1599,7 +1616,7 @@ export default function App() {
 
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
-      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
+      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
 
       {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
 
@@ -1827,6 +1844,7 @@ export default function App() {
               await Promise.all([
                 apiSetConfig('limits_connected', limEdit.connected),
                 apiSetConfig('quiz_interval_tiers', limEdit.quizIntervalTiers ?? [{ players: 1, seconds: 300 }, { players: 2, seconds: 90 }, { players: 3, seconds: 60 }, { players: 4, seconds: 30 }]),
+                apiSetConfig('quiz_streak_handicap', limEdit.quizStreakHandicap ?? { enabled: true, threshold: 3, step_seconds: 1.5, max_seconds: 8, min_players: 2 }),
                 apiSetConfig('quiz_join_gold',       limEdit.quizJoinGold      ?? 1),
                 apiSetConfig('quiz_win_gold',        limEdit.quizWinGold       ?? 5),
                 apiSetConfig('quiz_daily_card_cap',    limEdit.quizDailyCardCap    ?? 20),
