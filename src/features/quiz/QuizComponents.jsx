@@ -3,7 +3,7 @@ import { soundCorrect, soundWrong } from '../../utils/sounds.js';
 import { useT } from '../../i18n/translations.js';
 import { useTheme } from '../../ThemeContext.jsx';
 import { apiReportQuestion, apiStoreHold } from '../../services/api.js';
-import { normA, wordCount } from '../../utils/gameUtils.js';
+import { normA, wordCount, isHandicapExemptCard } from '../../utils/gameUtils.js';
 import { RC, cardCC, rarityLabel, cardName } from '../../data/cards.js';
 import { getLang } from '../../i18n/translations.js';
 import { QUIZ_INTERVAL } from '../../data/constants.js';
@@ -183,8 +183,10 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   },[limitStatus,t]);
   // La carte ira-t-elle au dépôt (choix) ou sera convertie en PF (auto) ?
   const cardHoldable = limitStatus?.over && (quiz.card.rarity==='légendaire' || quiz.card.rarity==='épique' || isShinyFrozen);
-  // Handicap anti-domination : si je suis le joueur en série, mon bouton est bloqué le temps du cadeau
-  const isStreakLeader = !!(streakLeader && myId && streakLeader.id === myId);
+  // Handicap anti-domination : si je suis le joueur en série, mon bouton est bloqué le temps du cadeau.
+  // Exemption : pas de pénalité sur une carte rare (légendaire / épique brillante) → course équitable.
+  const cardExempt     = isHandicapExemptCard(quiz.card.rarity, isShinyFrozen);
+  const isStreakLeader = !!(streakLeader && myId && streakLeader.id === myId) && !cardExempt;
   const myHandicap     = isStreakLeader ? (streakLeader.handicap_seconds || 0) : 0;
   const handicapLeft   = Math.max(0, Math.ceil(myHandicap - elapsed));
 
@@ -237,6 +239,17 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             </div>
           </div>
         )}
+        {/* Bandeau série (handicap) — au-dessus de la question pour rester lisible mobile */}
+        {status==="open" && streakLeader && !cardExempt && (!myId || streakLeader.id !== myId) && (streakLeader.handicap_seconds>0) && (
+          <div style={{flexShrink:0,fontSize:11.5,fontWeight:800,color:"#ff8a5c",background:"#ff70431a",border:"1px solid #ff704344",borderRadius:10,padding:"7px 11px",marginBottom:10}}>
+            🔥 {t('streak_handicap_others').replace('{pseudo}',streakLeader.pseudo).replace('{x}',streakLeader.handicap_seconds)}
+          </div>
+        )}
+        {status==="open" && isStreakLeader && handicapLeft>0 && (
+          <div style={{flexShrink:0,fontSize:11.5,fontWeight:800,color:"#ffd28a",background:"#ff70431a",border:"1px solid #ff7043aa",borderRadius:10,padding:"7px 11px",marginBottom:10}}>
+            🎁 {t('streak_handicap_self').replace('{x}',handicapLeft)}
+          </div>
+        )}
         {/* Zone scrollable : carte + question (collée au champ de réponse en bas) */}
         <div style={{flex:1,minHeight:0,overflowY:"auto",overflowX:"hidden"}}>
         <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
@@ -252,18 +265,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
         {/* Pied épinglé : saisie / résultat / signalement (toujours visible) */}
         <div style={{flexShrink:0}}>
         {status==="open"&&<>
-          {/* Bandeau série : leader retardé (visible par les autres) */}
-          {streakLeader && !isStreakLeader && (streakLeader.handicap_seconds>0) && (
-            <div style={{fontSize:11.5,fontWeight:800,color:"#ff8a5c",background:"#ff70431a",border:"1px solid #ff704344",borderRadius:10,padding:"7px 11px",marginBottom:10}}>
-              🔥 {t('streak_handicap_others').replace('{pseudo}',streakLeader.pseudo).replace('{x}',streakLeader.handicap_seconds)}
-            </div>
-          )}
-          {/* Bandeau série : c'est moi le leader (cadeau aux autres) */}
-          {isStreakLeader && handicapLeft>0 && (
-            <div style={{fontSize:11.5,fontWeight:800,color:"#ffd28a",background:"#ff70431a",border:"1px solid #ff7043aa",borderRadius:10,padding:"7px 11px",marginBottom:10}}>
-              🎁 {t('streak_handicap_self').replace('{x}',handicapLeft)}
-            </div>
-          )}
           {isSubmitting && (
             <div style={{
               background:"linear-gradient(90deg,#f9ca24,#e17055)",
@@ -371,9 +372,11 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
             <div style={{fontSize:15,fontWeight:900,color:'#ffd28a',lineHeight:1.2}}>
               {t('streak_hype_big').replace('{pseudo}', streakHype.pseudo).replace('{n}', streakHype.streak)}
             </div>
-            <div style={{fontSize:11,color:'#ffb07a',fontWeight:800,marginTop:3}}>
-              {t('streak_hype_gift').replace('{x}', streakHype.handicap)}
-            </div>
+            {!streakHype.exempt && streakHype.handicap > 0 && (
+              <div style={{fontSize:11,color:'#ffb07a',fontWeight:800,marginTop:3}}>
+                {t('streak_hype_gift').replace('{x}', streakHype.handicap)}
+              </div>
+            )}
           </div>
         </div>
       </>
@@ -488,8 +491,8 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
               <span>✓</span>{t('quiz_already_owned')}
             </div>
           )}
-          {/* Petit message : joueur en série (handicap bienveillant) */}
-          {!urgent&&streakLeader&&(streakLeader.handicap_seconds>0)&&(
+          {/* Petit message : joueur en série (handicap bienveillant) — sauf carte exemptée */}
+          {!urgent&&streakLeader&&(streakLeader.handicap_seconds>0)&&!isHandicapExemptCard(nextCard?.rarity,isShiny)&&(
             <div style={{fontSize:9.5,fontWeight:800,color:'#ff8a5c',marginTop:2,display:'flex',alignItems:'center',gap:4}}>
               <span>🔥</span>{t('streak_bar_small').replace('{pseudo}',streakLeader.pseudo).replace('{n}',streakLeader.streak).replace('{x}',streakLeader.handicap_seconds)}
             </div>
