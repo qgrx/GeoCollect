@@ -16,7 +16,7 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
   const [shinyCol, setShinyCol] = useState(null);  // { cardId: qty }
   const [loading, setLoading] = useState(true);
   const [showCol, setShowCol] = useState(false);
-  const [showScoreDetail, setShowScoreDetail] = useState(false);
+  const [showScoreDetail, setShowScoreDetail] = useState(true);
 
   useEffect(() => {
     if (player.isMe) {
