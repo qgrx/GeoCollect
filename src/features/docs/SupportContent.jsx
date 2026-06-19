@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import EditableText from './EditableText.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
+import RichContent from './RichContent.jsx'
 import { useDocsContent } from './useDocsContent.js'
-import { sanitizeHtml } from '../../utils/sanitize.js'
 
 function EmailImage({ email, color }) {
   const canvasRef = useRef(null)
@@ -81,7 +81,7 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
             <EditableText value={s.title} editing={editMode} placeholder="Titre de la section…" onChange={v => changeSection(i, { ...s, title: v })} tag="div" style={{ fontWeight: 800, fontSize: 14, marginBottom: 4, color: textColor }} />
             {editMode
               ? <RichTextEditor value={s.desc} onChange={v => changeSection(i, { ...s, desc: v })} placeholder="Description…" mode={mode} />
-              : <div style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(s.desc) }} />
+              : <RichContent html={s.desc} style={{ fontSize: 13, color: textColor }} />
             }
           </div>
           {editMode && (
