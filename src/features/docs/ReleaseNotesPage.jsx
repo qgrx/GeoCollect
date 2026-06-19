@@ -8,7 +8,7 @@ import { apiPublishReleaseNote } from '../../services/api.js'
 const TYPE_OPTIONS = ['✨', '🔧', '🐛', '📋']
 
 export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, editMode }) {
-  const { content: releases, update, save, reset, saving, dirty } = useDocsContent('release-notes')
+  const { content: releases, update, save, saving, dirty, loading, error, saveError, uid } = useDocsContent('release-notes')
   const [publishedVersion, setPublishedVersion] = useState(null)
 
   async function handlePublish(version) {
@@ -30,16 +30,16 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
     updateRelease(ri, { ...releases[ri], items: releases[ri].items.filter((_, i) => i !== ii) })
   }
   function addItem(ri) {
-    updateRelease(ri, { ...releases[ri], items: [...releases[ri].items, { type: '✨', text: 'Nouvelle entrée' }] })
+    updateRelease(ri, { ...releases[ri], items: [...releases[ri].items, { id: uid(), type: '✨', text: '' }] })
   }
   function removeRelease(ri) { update(releases.filter((_, i) => i !== ri)) }
-  function addRelease() { update([{ version: 'vX.X — Mois XXXX', items: [{ type: '✨', text: 'Nouvelle entrée' }] }, ...releases]) }
+  function addRelease() { update([{ id: uid(), version: '', items: [{ id: uid(), type: '✨', text: '' }] }, ...releases]) }
 
   return (
     <div style={{ padding: '32px 28px', maxWidth: 680, margin: '0 auto', color: textColor }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold }}>📋 Release Notes</div>
-        {editMode && (
+        {editMode && !error && (
           <button onClick={addRelease} style={{ background: '#ffffff15', border: '1px dashed #ffffff44', color: mutedColor, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11 }}>
             + Version
           </button>
@@ -47,11 +47,29 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
       </div>
       <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>Historique des mises à jour</div>
 
-      {releases.map((rel, ri) => (
-        <div key={ri} style={{ marginBottom: 24 }}>
+      {/* Chargement : on n'affiche rien de statique tant que la base n'a pas répondu */}
+      {loading && (
+        <div style={{ color: mutedColor, fontSize: 13, padding: '20px 0' }}>Chargement…</div>
+      )}
+
+      {/* Erreur réseau : aucun texte périmé, message neutre */}
+      {!loading && error && (
+        <div style={{ color: mutedColor, fontSize: 13, padding: '16px 18px', background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 12 }}>
+          ⚠️ Contenu momentanément indisponible. Réessaie plus tard.
+        </div>
+      )}
+
+      {!loading && !error && releases.length === 0 && (
+        <div style={{ color: mutedColor, fontSize: 13, padding: '12px 0' }}>
+          {editMode ? 'Aucune note. Clique sur « + Version » pour en ajouter une.' : 'Aucune note pour le moment.'}
+        </div>
+      )}
+
+      {!loading && !error && releases.map((rel, ri) => (
+        <div key={rel.id} style={{ marginBottom: 24 }}>
           <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: theme.gold, flexShrink: 0 }} />
-            <EditableText value={rel.version} editing={editMode} onChange={v => updateRelease(ri, { ...rel, version: v })} style={{ fontWeight: 900, fontSize: 16 }} />
+            <EditableText value={rel.version} editing={editMode} placeholder="Titre de la version…" onChange={v => updateRelease(ri, { ...rel, version: v })} style={{ fontWeight: 900, fontSize: 16 }} />
             {editMode && (<>
               {ri > 0 && <button onClick={() => { const a=[...releases];[a[ri-1],a[ri]]=[a[ri],a[ri-1]];update(a) }} style={{ background:'#ffffff15',border:'none',color:mutedColor,borderRadius:4,width:22,height:22,cursor:'pointer',fontSize:11 }}>↑</button>}
               {ri < releases.length-1 && <button onClick={() => { const a=[...releases];[a[ri],a[ri+1]]=[a[ri+1],a[ri]];update(a) }} style={{ background:'#ffffff15',border:'none',color:mutedColor,borderRadius:4,width:22,height:22,cursor:'pointer',fontSize:11 }}>↓</button>}
@@ -64,15 +82,17 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
           </div>
           <div style={{ background: cardBg, border: `1px solid ${editMode ? '#f9ca2433' : borderCol}`, borderRadius: 12, padding: '14px 18px' }}>
             {rel.items.map((item, ii) => (
-              <div key={ii} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 0', borderBottom: ii < rel.items.length - 1 ? `1px solid ${borderCol}` : 'none' }}>
+              <div key={item.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 0', borderBottom: ii < rel.items.length - 1 ? `1px solid ${borderCol}` : 'none' }}>
                 {editMode ? (
                   <select value={item.type} onChange={e => updateItem(ri, ii, { ...item, type: e.target.value })}
                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 15, padding: 0, flexShrink: 0 }}>
                     {TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
-                ) : null}
+                ) : (
+                  <span style={{ fontSize: 15, flexShrink: 0 }}>{item.type}</span>
+                )}
                 {editMode
-                  ? <div style={{ flex: 1 }}><RichTextEditor value={item.text} onChange={t => updateItem(ri, ii, { ...item, text: t })} mode={mode} /></div>
+                  ? <div style={{ flex: 1 }}><RichTextEditor value={item.text} onChange={t => updateItem(ri, ii, { ...item, text: t })} placeholder="Décris le changement…" mode={mode} /></div>
                   : <span style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6, flex: 1 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.text) }} />
                 }
                 {editMode && (<>
@@ -91,16 +111,18 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
         </div>
       ))}
 
-      {editMode && (
-        <>
-          <button onClick={() => { if (window.confirm('Restaurer le contenu par défaut ?')) reset() }} style={{ background: '#ffffff10', border: '1px solid #ffffff22', color: mutedColor, padding: '10px 14px', borderRadius: 9, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, marginTop: 8, marginRight: 8 }}>
-            ↺ Restaurer défauts
-          </button>
+      {editMode && !loading && !error && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
           <button onClick={save} disabled={!dirty || saving}
-            style={{ background: dirty ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18', border: 'none', color: dirty ? '#1e3045' : '#666', padding: '10px 22px', borderRadius: 9, cursor: dirty ? 'pointer' : 'default', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, marginTop: 8 }}>
+            style={{ background: dirty ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18', border: 'none', color: dirty ? '#1e3045' : '#666', padding: '10px 22px', borderRadius: 9, cursor: dirty ? 'pointer' : 'default', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13 }}>
             {saving ? 'Enregistrement…' : dirty ? '💾 Enregistrer les Release Notes' : '✓ Enregistré'}
           </button>
-        </>
+          {saveError && (
+            <span style={{ color: '#e74c3c', fontSize: 12, fontWeight: 700 }}>
+              ⚠️ Échec de l'enregistrement — réessaie.
+            </span>
+          )}
+        </div>
       )}
     </div>
   )

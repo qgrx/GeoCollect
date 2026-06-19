@@ -1,16 +1,40 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import Underline from '@tiptap/extension-underline'
+import { TextStyle } from '@tiptap/extension-text-style'
+import Color from '@tiptap/extension-color'
+import TextAlign from '@tiptap/extension-text-align'
+import Placeholder from '@tiptap/extension-placeholder'
 
 const COLORS = ['#f9ca24', '#e17055', '#00b894', '#74b9ff', '#a29bfe', '#fd79a8', '#e74c3c', '#636e72', '#2d3436', '#ffffff']
 
-const SIZES = [
-  { label: 'Normal', tag: 'p' },
-  { label: 'Titre',  tag: 'h2' },
-  { label: 'Sous-titre', tag: 'h3' },
-]
+// Le projet n'utilise que des styles inline : on injecte une fois le minimum CSS que
+// l'inline ne permet pas (pseudo-élément du placeholder, marges internes de ProseMirror).
+const STYLE_ID = 'rte-prosemirror-styles'
+if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
+  const el = document.createElement('style')
+  el.id = STYLE_ID
+  el.textContent = `
+    .rte-content .ProseMirror { min-height: 78px; outline: none; }
+    .rte-content .ProseMirror > * { margin: 0 0 6px; }
+    .rte-content .ProseMirror > *:last-child { margin-bottom: 0; }
+    .rte-content .ProseMirror ul { padding-left: 20px; }
+    .rte-content .ProseMirror h2 { font-size: 1.25em; font-weight: 800; }
+    .rte-content .ProseMirror h3 { font-size: 1.1em; font-weight: 700; }
+    .rte-content .ProseMirror p.is-editor-empty:first-child::before {
+      content: attr(data-placeholder);
+      color: #8a96a3; opacity: .65;
+      float: left; height: 0; pointer-events: none;
+    }
+  `
+  document.head.appendChild(el)
+}
 
 function ToolBtn({ label, title, active, onClick, style = {} }) {
   return (
     <button
+      type="button"
       onMouseDown={e => { e.preventDefault(); onClick() }}
       title={title}
       style={{
@@ -34,43 +58,35 @@ function ToolBtn({ label, title, active, onClick, style = {} }) {
 }
 
 export default function RichTextEditor({ value, onChange, placeholder = '', mode = 'dark' }) {
-  const ref = useRef()
-  const selRef      = useRef(null)
-  const initialVal  = useRef(value)   // capture de la valeur initiale pour éviter une dépendance stale
-
-  // Initialise le DOM uniquement au montage
-  useEffect(() => {
-    if (ref.current) ref.current.innerHTML = initialVal.current || ''
-  }, [])
-
-  // Sauvegarde la sélection avant que le toolbar ne vole le focus
-  function saveSelection() {
-    const sel = window.getSelection()
-    if (sel && sel.rangeCount > 0) selRef.current = sel.getRangeAt(0).cloneRange()
-  }
-
-  function restoreSelection() {
-    const sel = window.getSelection()
-    if (sel && selRef.current) {
-      sel.removeAllRanges()
-      sel.addRange(selRef.current)
-    }
-    ref.current?.focus()
-  }
-
-  const exec = useCallback((cmd, val) => {
-    restoreSelection()
-    document.execCommand(cmd, false, val ?? null)
-    if (ref.current) onChange?.(ref.current.innerHTML)
-  }, [onChange])
-
-  function queryState(cmd) {
-    try { return document.queryCommandState(cmd) } catch { return false }
-  }
-
   const bg     = mode === 'light' ? '#f8f9fa' : '#0f1923'
   const border = mode === 'light' ? '#d0d7de' : '#ffffff22'
   const text   = mode === 'light' ? '#1e2d3d' : '#d4e8f8'
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({ heading: { levels: [2, 3] }, underline: false }),
+      Underline,
+      TextStyle,
+      Color,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Placeholder.configure({ placeholder }),
+    ],
+    content: value || '',
+    onUpdate: ({ editor }) => {
+      onChange?.(editor.isEmpty ? '' : editor.getHTML())
+    },
+  })
+
+  // Re-synchronise l'éditeur quand `value` change DE L'EXTÉRIEUR (réorganisation ↑/↓,
+  // insertion en tête…). On compare au HTML courant pour ne jamais perturber la frappe.
+  useEffect(() => {
+    if (!editor) return
+    const current = editor.isEmpty ? '' : editor.getHTML()
+    const next = value || ''
+    if (next !== current) {
+      editor.commands.setContent(next, false)
+    }
+  }, [value, editor])
 
   return (
     <div style={{ borderRadius: 10, border: `1.5px solid #f9ca2466`, overflow: 'visible' }}>
@@ -80,30 +96,36 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
 
         {/* Format de bloc */}
         <select
-          onMouseDown={e => saveSelection()}
-          onChange={e => exec('formatBlock', e.target.value)}
-          defaultValue="p"
+          value={editor?.isActive('heading', { level: 2 }) ? 'h2' : editor?.isActive('heading', { level: 3 }) ? 'h3' : 'p'}
+          onMouseDown={e => e.stopPropagation()}
+          onChange={e => {
+            const v = e.target.value
+            if (v === 'p') editor?.chain().focus().setParagraph().run()
+            else editor?.chain().focus().toggleHeading({ level: v === 'h2' ? 2 : 3 }).run()
+          }}
           style={{ background: mode === 'light' ? '#fff' : '#0f1923', border: `1px solid ${border}`, color: text, borderRadius: 5, padding: '3px 6px', fontSize: 12, cursor: 'pointer', marginRight: 4 }}
         >
-          {SIZES.map(s => <option key={s.tag} value={s.tag}>{s.label}</option>)}
+          <option value="p">Normal</option>
+          <option value="h2">Titre</option>
+          <option value="h3">Sous-titre</option>
         </select>
 
         <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
 
-        <ToolBtn label={<b>G</b>}  title="Gras (Ctrl+B)"       onClick={() => exec('bold')}          active={queryState('bold')} />
-        <ToolBtn label={<i>I</i>}  title="Italique (Ctrl+I)"   onClick={() => exec('italic')}        active={queryState('italic')} />
-        <ToolBtn label={<u>S</u>}  title="Souligné"             onClick={() => exec('underline')}     active={queryState('underline')} style={{ textDecoration: 'underline' }} />
-        <ToolBtn label={<s>B</s>}  title="Barré"                onClick={() => exec('strikeThrough')} active={queryState('strikeThrough')} />
+        <ToolBtn label={<b>G</b>}  title="Gras (Ctrl+B)"     onClick={() => editor?.chain().focus().toggleBold().run()}          active={editor?.isActive('bold')} />
+        <ToolBtn label={<i>I</i>}  title="Italique (Ctrl+I)" onClick={() => editor?.chain().focus().toggleItalic().run()}        active={editor?.isActive('italic')} />
+        <ToolBtn label={<u>S</u>}  title="Souligné (Ctrl+U)" onClick={() => editor?.chain().focus().toggleUnderline().run()}     active={editor?.isActive('underline')} style={{ textDecoration: 'underline' }} />
+        <ToolBtn label={<s>B</s>}  title="Barré"             onClick={() => editor?.chain().focus().toggleStrike().run()}        active={editor?.isActive('strike')} />
 
         <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
 
-        <ToolBtn label="A−" title="Réduire la taille" onClick={() => exec('decreaseFontSize')} />
-        <ToolBtn label="A+" title="Agrandir la taille" onClick={() => exec('increaseFontSize')} />
+        <ToolBtn label="≡" title="Aligner à gauche" onClick={() => editor?.chain().focus().setTextAlign('left').run()}   active={editor?.isActive({ textAlign: 'left' })} />
+        <ToolBtn label="≡" title="Centrer"          onClick={() => editor?.chain().focus().setTextAlign('center').run()} active={editor?.isActive({ textAlign: 'center' })} style={{ letterSpacing: 1 }} />
 
         <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
 
-        <ToolBtn label="≡" title="Aligner à gauche"   onClick={() => exec('justifyLeft')}   active={queryState('justifyLeft')} />
-        <ToolBtn label="≡" title="Centrer"             onClick={() => exec('justifyCenter')} active={queryState('justifyCenter')} style={{ letterSpacing: 1 }} />
+        {/* Liste à puces */}
+        <ToolBtn label="•" title="Liste à puces" onClick={() => editor?.chain().focus().toggleBulletList().run()} active={editor?.isActive('bulletList')} />
 
         <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
 
@@ -112,7 +134,8 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
           {COLORS.map(c => (
             <button
               key={c}
-              onMouseDown={e => { e.preventDefault(); exec('foreColor', c) }}
+              type="button"
+              onMouseDown={e => { e.preventDefault(); editor?.chain().focus().setColor(c).run() }}
               title={c}
               style={{ width: 16, height: 16, borderRadius: '50%', background: c, border: '1.5px solid #ffffff33', cursor: 'pointer', padding: 0, flexShrink: 0 }}
             />
@@ -121,26 +144,19 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
 
         <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
 
-        <ToolBtn label="✕" title="Effacer la mise en forme" onClick={() => exec('removeFormat')} style={{ color: '#e74c3c88' }} />
+        <ToolBtn label="✕" title="Effacer la mise en forme" onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()} style={{ color: '#e74c3c88' }} />
       </div>
 
       {/* ── Zone de texte ── */}
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        onSelect={saveSelection}
-        onKeyUp={saveSelection}
-        onInput={e => onChange?.(e.currentTarget.innerHTML)}
-        data-placeholder={placeholder}
+      <EditorContent
+        editor={editor}
+        className="rte-content"
         style={{
-          minHeight: 80,
           padding: '10px 14px',
           background: bg,
           color: text,
           fontSize: 14,
           lineHeight: 1.7,
-          outline: 'none',
           borderRadius: '0 0 8px 8px',
           wordBreak: 'break-word',
         }}
