@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -6,7 +6,7 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
-import Image from '@tiptap/extension-image'
+import ResizableImage from './ResizableImage.jsx'
 
 // Redimensionne/compresse une image côté client en data URI, pour l'intégrer
 // directement dans le contenu (pas d'endpoint d'upload requis). Cible ~720px.
@@ -89,9 +89,24 @@ function ToolBtn({ label, title, active, onClick, style = {} }) {
 
 export default function RichTextEditor({ value, onChange, placeholder = '', mode = 'dark' }) {
   const fileInput = useRef(null)
+  const editorRef = useRef(null)
   const bg     = mode === 'light' ? '#f8f9fa' : '#0f1923'
   const border = mode === 'light' ? '#d0d7de' : '#ffffff22'
   const text   = mode === 'light' ? '#1e2d3d' : '#d4e8f8'
+
+  // Compresse puis insère des images (bouton, collage, glisser-déposer). La
+  // compression évite des contenus énormes qui font échouer l'enregistrement.
+  const insertImages = useCallback(async (files) => {
+    const ed = editorRef.current
+    if (!ed) return
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue
+      try {
+        const dataUri = await fileToResizedDataUri(file)
+        ed.chain().focus().setImage({ src: dataUri }).run()
+      } catch { /* image illisible — ignorée */ }
+    }
+  }, [])
 
   const editor = useEditor({
     extensions: [
@@ -100,25 +115,31 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
       TextStyle,
       Color,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Image.configure({ inline: false, HTMLAttributes: { style: 'max-width:100%;height:auto;border-radius:8px;' } }),
+      ResizableImage.configure({ inline: false }),
       Placeholder.configure({ placeholder }),
     ],
     content: value || '',
+    editorProps: {
+      handlePaste: (_view, event) => {
+        const files = Array.from(event.clipboardData?.files || []).filter(f => f.type.startsWith('image/'))
+        if (!files.length) return false
+        event.preventDefault()
+        insertImages(files)
+        return true
+      },
+      handleDrop: (_view, event) => {
+        const files = Array.from(event.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'))
+        if (!files.length) return false
+        event.preventDefault()
+        insertImages(files)
+        return true
+      },
+    },
     onUpdate: ({ editor }) => {
       onChange?.(editor.isEmpty ? '' : editor.getHTML())
     },
   })
-
-  async function handleImageFiles(files) {
-    if (!editor) return
-    for (const file of files) {
-      if (!file.type.startsWith('image/')) continue
-      try {
-        const dataUri = await fileToResizedDataUri(file)
-        editor.chain().focus().setImage({ src: dataUri }).run()
-      } catch { /* image illisible — ignorée */ }
-    }
-  }
+  editorRef.current = editor
 
   // Re-synchronise l'éditeur quand `value` change DE L'EXTÉRIEUR (réorganisation ↑/↓,
   // insertion en tête…). On compare au HTML courant pour ne jamais perturber la frappe.
@@ -199,7 +220,7 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
           accept="image/*"
           multiple
           style={{ display: 'none' }}
-          onChange={e => { handleImageFiles(Array.from(e.target.files || [])); e.target.value = '' }}
+          onChange={e => { insertImages(Array.from(e.target.files || [])); e.target.value = '' }}
         />
       </div>
 
