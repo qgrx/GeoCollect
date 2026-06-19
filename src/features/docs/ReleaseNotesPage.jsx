@@ -5,8 +5,6 @@ import RichContent from './RichContent.jsx'
 import { useDocsContent } from './useDocsContent.js'
 import { apiPublishReleaseNote } from '../../services/api.js'
 
-const TYPE_OPTIONS = ['✨', '🔧', '🐛', '📋']
-
 // Signature de contenu d'une release, hors métadonnée d'enregistrement, pour détecter
 // les modifications non enregistrées indépendamment pour chaque release.
 const signature = r => JSON.stringify({ ...r, savedAt: undefined })
@@ -69,10 +67,10 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
     updateRelease(ri, { ...releases[ri], items: releases[ri].items.filter((_, i) => i !== ii) })
   }
   function addItem(ri) {
-    updateRelease(ri, { ...releases[ri], items: [{ id: uid(), type: '✨', text: '' }, ...releases[ri].items] })
+    updateRelease(ri, { ...releases[ri], items: [{ id: uid(), text: '' }, ...releases[ri].items] })
   }
   function removeRelease(ri) { update(releases.filter((_, i) => i !== ri)) }
-  function addRelease() { update([{ id: uid(), version: '', items: [{ id: uid(), type: '✨', text: '' }] }, ...releases]) }
+  function addRelease() { update([{ id: uid(), version: '', items: [{ id: uid(), text: '' }] }, ...releases]) }
 
   return (
     <div style={{ padding: '32px 28px', maxWidth: 680, margin: '0 auto', color: textColor }}>
@@ -134,14 +132,6 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
           <div style={{ background: cardBg, border: `1px solid ${editMode ? '#f9ca2433' : borderCol}`, borderRadius: 12, padding: '14px 18px' }}>
             {rel.items.map((item, ii) => (
               <div key={item.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 0', borderBottom: ii < rel.items.length - 1 ? `1px solid ${borderCol}` : 'none' }}>
-                {editMode ? (
-                  <select value={item.type} onChange={e => updateItem(ri, ii, { ...item, type: e.target.value })}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 15, padding: 0, flexShrink: 0 }}>
-                    {TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                ) : (
-                  <span style={{ fontSize: 15, flexShrink: 0 }}>{item.type}</span>
-                )}
                 {editMode
                   ? <div style={{ flex: 1 }}><RichTextEditor value={item.text} onChange={t => updateItem(ri, ii, { ...item, text: t })} placeholder="Décris le changement…" mode={mode} /></div>
                   : <RichContent html={item.text} style={{ fontSize: 14, color: textColor, flex: 1 }} />
