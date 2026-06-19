@@ -168,6 +168,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     else if (result && result.handicap) { setSubmitError(t('streak_handicap_wait')); } // série : délai cadeau pas encore écoulé
     else if (result === 'fast') { setSubmitError("⏱️ Réponse trop rapide ! Lis bien la question."); setIsSubmitting(false); submittingRef.current=false; return; }
     else if (result === 'late') { finish(null); }
+    else if (result === 'error') { setSubmitError(t('quiz_answer_retry')); } // réseau/serveur : ne pas traiter comme faux (la réponse a pu aboutir)
     else { soundWrong(); setShake(true); setInp(""); setTimeout(()=>setShake(false),480); }
   }
 

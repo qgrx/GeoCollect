@@ -169,9 +169,9 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
       if (error) {
         if (status === 425) return { handicap: true, wait_ms: body?.wait_ms || 0 } // série : délai cadeau
         if (status === 429) return 'fast'    // trop rapide
-        if (status === 409) return 'late'    // quelqu'un d'autre a gagné en même temps
-        if (status === 404) return 'late'    // quiz expiré avant la soumission
-        return false                          // mauvaise réponse (422)
+        if (status === 409 || status === 404) return 'late'  // déjà résolu / expiré
+        if (status === 422) return false     // vraie mauvaise réponse
+        return 'error'                        // réseau / 5xx / inconnu : la réponse a pu aboutir serveur
       }
       if (data.card_earned) {
         earnCard(card, data.is_shiny || false)

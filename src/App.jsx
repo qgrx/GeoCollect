@@ -390,6 +390,10 @@ export default function App() {
 
         if (!iSelf) {
           handleQuizExpireRef.current(data.winner, data.is_bot)
+        } else if (activeQuizRef.current && activeQuizRef.current.id === data.quiz_id) {
+          // J'ai gagné ce quiz côté serveur. Si la modale est encore ouverte (réponse
+          // HTTP perdue / erreur), la fermer proprement plutôt que de laisser re-répondre.
+          setTimeout(() => advanceQuizRef.current?.(Date.now()), 2200)
         }
 
         // Mettre à jour l'historique uniquement si ce n'est pas le joueur lui-même
@@ -675,6 +679,8 @@ export default function App() {
   // Ref pour éviter la capture stale de handleQuizExpire dans les handlers socket
   const handleQuizExpireRef = useRef(handleQuizExpire)
   useEffect(() => { handleQuizExpireRef.current = handleQuizExpire }, [handleQuizExpire])
+  const advanceQuizRef = useRef(advanceQuiz)
+  useEffect(() => { advanceQuizRef.current = advanceQuiz }, [advanceQuiz])
 
   // Notification release notes
   useEffect(() => {
