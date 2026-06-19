@@ -123,7 +123,9 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
       TextStyle,
       Color,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      ResizableImage.configure({ inline: false }),
+      // allowBase64 indispensable : sinon les images intégrées (data URI) sont
+      // bien insérées mais SUPPRIMÉES à la relecture/ouverture de l'éditeur.
+      ResizableImage.configure({ inline: false, allowBase64: true }),
       Placeholder.configure({ placeholder }),
     ],
     content: value || '',
