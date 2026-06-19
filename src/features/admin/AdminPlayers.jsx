@@ -6,7 +6,7 @@ import { cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
 import {
   apiAdminSetCanSell, apiAdminReactivate, apiAdminSetGold, apiAdminSetForgePoints,
-  apiAdminGetPlayerCollection, apiAdminGiveCard, apiAdminTakeCard,
+  apiAdminGetPlayerCollection, apiAdminGiveCard, apiAdminTakeCard, apiAdminSetPseudo,
 } from '../../services/api.js';
 
 export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMsg }) {
@@ -17,6 +17,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
   const [canSellOverrides, setCanSellOverrides] = useState({});
   const [playerGoldEdit, setPlayerGoldEdit]     = useState('');
   const [playerForgeEdit, setPlayerForgeEdit]   = useState('');
+  const [playerPseudoEdit, setPlayerPseudoEdit] = useState('');
   const [playerCollection, setPlayerCollection] = useState(null);
   const [playerShinyCollection, setPlayerShinyCollection] = useState(null);
   const [playerAchievements, setPlayerAchievements] = useState(null);
@@ -195,6 +196,22 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
           <span style={{ fontWeight: 800, color: '#f9ca24', fontSize: 12 }}>💰 Or : {playerView.gold ?? '—'}G</span>
           <span style={{ fontWeight: 800, color: '#a29bfe', fontSize: 12 }}>🔨 Forge : {playerView.forge_points ?? '—'} pts</span>
           {playerScore != null && <span style={{ fontWeight: 800, color: '#00b894', fontSize: 12 }}>⭐ Score : {playerScore}</span>}
+        </div>
+        {/* Renommer le pseudo */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+          <input type="text" placeholder="Nouveau pseudo" value={playerPseudoEdit}
+            onChange={e => setPlayerPseudoEdit(e.target.value)}
+            style={{ ...INP, width: 160, fontSize: 11 }} />
+          <button onClick={async () => {
+            const p = playerPseudoEdit.trim();
+            if (p.length < 2 || p.length > 20) { setMsg('❌ Pseudo : 2 à 20 caractères.'); return; }
+            const { error } = await apiAdminSetPseudo(playerView.id, p);
+            if (error) { setMsg('❌ ' + error); return; }
+            setPlayerView(v => ({ ...v, name: p, pseudo: p }));
+            setPlayersData(prev => ({ ...prev, players: prev.players.map(x => x.id === playerView.id ? { ...x, pseudo: p, name: p } : x) }));
+            setPlayerPseudoEdit('');
+            setMsg('✅ Pseudo renommé.');
+          }} style={{ ...BTN('linear-gradient(135deg,#6c5ce7,#a29bfe)'), padding: '7px 14px', borderRadius: 8, fontSize: 12 }}>Renommer</button>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <input type="text" inputMode="numeric" placeholder="Or" value={playerGoldEdit}
