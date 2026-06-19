@@ -541,9 +541,9 @@ export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, 
   const doStore = useCallback(async () => {
     if (!holdCard || loading) return
     setLoading(true)
-    await apiStoreHold(holdCard.id, holdCard.is_shiny || false)
+    const { data } = await apiStoreHold(holdCard.id, holdCard.is_shiny || false)
     setLoading(false)
-    onStored(holdCard)
+    onStored(holdCard, data?.forge_points_earned || 0)  // PF si un dépôt a été remplacé
   }, [holdCard, loading, onStored])
 
   // Clic sur "Mettre au dépôt" : si un objet est déjà déposé, demander confirmation.

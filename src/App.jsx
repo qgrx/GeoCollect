@@ -1617,10 +1617,13 @@ export default function App() {
           holdCard={holdOffer}
           existingHold={hold}
           forgeCapped={computeCardLimitStatus(auth.profile, gs.limits).forgeCapped}
-          onStored={(card) => {
+          onStored={(card, forgePoints = 0) => {
             setHold({ card, is_shiny: card.is_shiny || false, held_at: new Date().toISOString(), claimable: false })
             setHoldOffer(null)
-            showToast(t('toast_hold_stored').replace('{card}', card.name))
+            if (forgePoints > 0) gs.addForgePoints(forgePoints)
+            showToast(forgePoints > 0
+              ? `${t('toast_hold_stored').replace('{card}', card.name)} ${t('toast_hold_replaced_forge').replace('{n}', forgePoints)}`
+              : t('toast_hold_stored').replace('{card}', card.name))
           }}
           onTakeForgePoint={async () => {
             const { data } = await apiTakeForgeInsteadOfHold()
