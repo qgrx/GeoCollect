@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -6,6 +6,36 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
+import Image from '@tiptap/extension-image'
+
+// Redimensionne/compresse une image côté client en data URI, pour l'intégrer
+// directement dans le contenu (pas d'endpoint d'upload requis). Cible ~720px.
+function fileToResizedDataUri(file, maxPx = 720, targetKb = 220) {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image()
+    img.onload = () => {
+      const ratio = Math.min(maxPx / img.naturalWidth, maxPx / img.naturalHeight, 1)
+      const canvas = document.createElement('canvas')
+      canvas.width  = Math.round(img.naturalWidth  * ratio)
+      canvas.height = Math.round(img.naturalHeight * ratio)
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+      // PNG si petit, sinon WebP en réduisant la qualité jusqu'à la cible.
+      let out = canvas.toDataURL('image/png')
+      if ((out.length * 3) / 4 / 1024 > targetKb) {
+        let q = 0.85
+        out = canvas.toDataURL('image/webp', q)
+        while ((out.length * 3) / 4 / 1024 > targetKb && q > 0.3) {
+          q = Math.max(0.3, q - 0.1)
+          out = canvas.toDataURL('image/webp', q)
+        }
+      }
+      URL.revokeObjectURL(img.src)
+      resolve(out)
+    }
+    img.onerror = reject
+    img.src = URL.createObjectURL(file)
+  })
+}
 
 const COLORS = ['#f9ca24', '#e17055', '#00b894', '#74b9ff', '#a29bfe', '#fd79a8', '#e74c3c', '#636e72', '#2d3436', '#ffffff']
 
@@ -58,6 +88,7 @@ function ToolBtn({ label, title, active, onClick, style = {} }) {
 }
 
 export default function RichTextEditor({ value, onChange, placeholder = '', mode = 'dark' }) {
+  const fileInput = useRef(null)
   const bg     = mode === 'light' ? '#f8f9fa' : '#0f1923'
   const border = mode === 'light' ? '#d0d7de' : '#ffffff22'
   const text   = mode === 'light' ? '#1e2d3d' : '#d4e8f8'
@@ -69,6 +100,7 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
       TextStyle,
       Color,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Image.configure({ inline: false, HTMLAttributes: { style: 'max-width:100%;height:auto;border-radius:8px;' } }),
       Placeholder.configure({ placeholder }),
     ],
     content: value || '',
@@ -76,6 +108,17 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
       onChange?.(editor.isEmpty ? '' : editor.getHTML())
     },
   })
+
+  async function handleImageFiles(files) {
+    if (!editor) return
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue
+      try {
+        const dataUri = await fileToResizedDataUri(file)
+        editor.chain().focus().setImage({ src: dataUri }).run()
+      } catch { /* image illisible — ignorée */ }
+    }
+  }
 
   // Re-synchronise l'éditeur quand `value` change DE L'EXTÉRIEUR (réorganisation ↑/↓,
   // insertion en tête…). On compare au HTML courant pour ne jamais perturber la frappe.
@@ -144,7 +187,20 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
 
         <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
 
+        <ToolBtn label="🖼️" title="Insérer une image" onClick={() => fileInput.current?.click()} />
+
+        <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
+
         <ToolBtn label="✕" title="Effacer la mise en forme" onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()} style={{ color: '#e74c3c88' }} />
+
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={e => { handleImageFiles(Array.from(e.target.files || [])); e.target.value = '' }}
+        />
       </div>
 
       {/* ── Zone de texte ── */}
