@@ -10,6 +10,14 @@ import ResizableImage from './ResizableImage.jsx'
 
 // Redimensionne/compresse une image côté client en data URI, pour l'intégrer
 // directement dans le contenu (pas d'endpoint d'upload requis). Cible ~720px.
+// Sérialise le contenu de l'éditeur. Ne renvoie '' QUE pour un document réellement
+// vide (un paragraphe vide). NB : on n'utilise pas `editor.isEmpty`, qui considère à
+// tort comme « vide » un document ne contenant qu'une image → l'image serait perdue.
+function editorHtml(editor) {
+  const html = editor.getHTML()
+  return html === '' || html === '<p></p>' ? '' : html
+}
+
 function fileToResizedDataUri(file, maxPx = 720, targetKb = 220) {
   return new Promise((resolve, reject) => {
     const img = new window.Image()
@@ -136,7 +144,7 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
       },
     },
     onUpdate: ({ editor }) => {
-      onChange?.(editor.isEmpty ? '' : editor.getHTML())
+      onChange?.(editorHtml(editor))
     },
   })
   editorRef.current = editor
@@ -145,7 +153,7 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
   // insertion en tête…). On compare au HTML courant pour ne jamais perturber la frappe.
   useEffect(() => {
     if (!editor) return
-    const current = editor.isEmpty ? '' : editor.getHTML()
+    const current = editorHtml(editor)
     const next = value || ''
     if (next !== current) {
       editor.commands.setContent(next, false)
