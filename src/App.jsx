@@ -369,7 +369,8 @@ export default function App() {
         const hCfg = gs.limits?.quizStreakHandicap
         const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
         if (data.winner_streak >= threshold && hCfg?.enabled !== false) {
-          const handicap = computeStreakHandicap(data.winner_streak, hCfg)
+          // Délai fourni par le serveur (config fraîche) ; repli sur calcul client si absent
+          const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
           // Prochaine carte exemptée (légendaire / épique brillante) → pas de « cadeau » annoncé
           const nextExempt = isHandicapExemptCard(data.next_card_rarity, data.next_is_shiny)
           setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: nextExempt })
