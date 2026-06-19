@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import EditableText from './EditableText.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
 import { useDocsContent } from './useDocsContent.js'
@@ -7,9 +7,35 @@ import { apiPublishReleaseNote } from '../../services/api.js'
 
 const TYPE_OPTIONS = ['✨', '🔧', '🐛', '📋']
 
+// Signature de contenu d'une release, hors métadonnée d'enregistrement, pour détecter
+// les modifications non enregistrées indépendamment pour chaque release.
+const signature = r => JSON.stringify({ ...r, savedAt: undefined })
+
+function formatSavedAt(iso) {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (isNaN(d)) return null
+  return d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, editMode }) {
-  const { content: releases, update, save, saving, dirty, loading, error, saveError, uid } = useDocsContent('release-notes')
+  const { content: releases, update, save, loading, error, uid } = useDocsContent('release-notes')
   const [publishedVersion, setPublishedVersion] = useState(null)
+  const [savingId, setSavingId] = useState(null)   // id de la release en cours d'enregistrement
+  const [errorId,  setErrorId]  = useState(null)   // id de la release dont l'enregistrement a échoué
+
+  // Référence des signatures « telles qu'enregistrées », semée une fois que la base a
+  // répondu (directement au rendu pour éviter un flash « non enregistré » au chargement).
+  const baseline = useRef({})
+  const seeded   = useRef(false)
+  if (!seeded.current && !loading && !error) {
+    const b = {}
+    for (const r of releases) b[r.id] = signature(r)
+    baseline.current = b
+    seeded.current = true
+  }
+
+  const isDirty = r => baseline.current[r.id] === undefined || baseline.current[r.id] !== signature(r)
 
   async function handlePublish(version) {
     const { error } = await apiPublishReleaseNote(version)
@@ -17,6 +43,19 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
     setPublishedVersion(version)
     setTimeout(() => setPublishedVersion(null), 3000)
   }
+
+  async function saveRelease(ri) {
+    const rel = releases[ri]
+    setSavingId(rel.id)
+    setErrorId(null)
+    const stamped = releases.map((r, i) => i === ri ? { ...r, savedAt: new Date().toISOString() } : r)
+    update(stamped)
+    const okSaved = await save(stamped)
+    setSavingId(null)
+    if (okSaved) baseline.current[rel.id] = signature(stamped[ri])
+    else setErrorId(rel.id)
+  }
+
   const cardBg    = mode === 'light' ? '#ffffff' : '#1a2744'
   const borderCol = mode === 'light' ? '#e0e8f0' : '#ffffff18'
 
@@ -80,6 +119,18 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
               </button>
             </>)}
           </div>
+          {editMode && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 8px 20px' }}>
+              <button onClick={() => saveRelease(ri)} disabled={savingId === rel.id || !isDirty(rel)}
+                style={{ background: isDirty(rel) ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18', border: 'none', color: isDirty(rel) ? '#1e3045' : '#888', padding: '6px 14px', borderRadius: 8, cursor: (savingId === rel.id || !isDirty(rel)) ? 'default' : 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12 }}>
+                {savingId === rel.id ? 'Enregistrement…' : isDirty(rel) ? '💾 Enregistrer cette note' : '✓ Enregistré'}
+              </button>
+              {errorId === rel.id
+                ? <span style={{ color: '#e74c3c', fontSize: 11, fontWeight: 700 }}>⚠️ Échec — réessaie.</span>
+                : rel.savedAt && <span style={{ color: mutedColor, fontSize: 11 }}>Dernier enregistrement : {formatSavedAt(rel.savedAt)}</span>
+              }
+            </div>
+          )}
           <div style={{ background: cardBg, border: `1px solid ${editMode ? '#f9ca2433' : borderCol}`, borderRadius: 12, padding: '14px 18px' }}>
             {rel.items.map((item, ii) => (
               <div key={item.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 0', borderBottom: ii < rel.items.length - 1 ? `1px solid ${borderCol}` : 'none' }}>
@@ -110,20 +161,6 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
           </div>
         </div>
       ))}
-
-      {editMode && !loading && !error && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-          <button onClick={save} disabled={!dirty || saving}
-            style={{ background: dirty ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18', border: 'none', color: dirty ? '#1e3045' : '#666', padding: '10px 22px', borderRadius: 9, cursor: dirty ? 'pointer' : 'default', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13 }}>
-            {saving ? 'Enregistrement…' : dirty ? '💾 Enregistrer les Release Notes' : '✓ Enregistré'}
-          </button>
-          {saveError && (
-            <span style={{ color: '#e74c3c', fontSize: 12, fontWeight: 700 }}>
-              ⚠️ Échec de l'enregistrement — réessaie.
-            </span>
-          )}
-        </div>
-      )}
     </div>
   )
 }

@@ -79,10 +79,13 @@ export function useDocsContent(page) {
     setSaveError(false)
   }, [page])
 
-  const save = useCallback(async () => {
+  // `override` permet d'enregistrer un contenu précis (ex. après avoir tamponné une
+  // release) sans dépendre du state encore non propagé après un update().
+  const save = useCallback(async (override) => {
+    const toSave = override ?? content
     setSaving(true)
     setSaveError(false)
-    const { error } = await apiSaveDocsPage(page, content).catch(() => ({ error: 'network' }))
+    const { error } = await apiSaveDocsPage(page, toSave).catch(() => ({ error: 'network' }))
     setSaving(false)
     if (error) { setSaveError(true); return false }
     setDirty(false)
