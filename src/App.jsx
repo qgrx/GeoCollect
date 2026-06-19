@@ -374,6 +374,8 @@ export default function App() {
           // Prochaine carte exemptée (légendaire / épique brillante) → pas de « cadeau » annoncé
           const nextExempt = isHandicapExemptCard(data.next_card_rarity, data.next_is_shiny)
           setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: nextExempt })
+          // MAJ immédiate du leader (évite le décalage de 1 victoire pendant le teaser)
+          setStreakLeader({ id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
           if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
           // 10 s d'affichage, puis fondu sortant (~400 ms) avant démontage
           streakHypeTimerRef.current = setTimeout(() => {
