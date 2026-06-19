@@ -768,6 +768,9 @@ export default function App() {
         if (data?.profile) auth.setProfile(data.profile)
       }).catch(() => {})
     }
+    // Sur une victoire, rafraîchir la progression des achievements (ex. « Roi du
+    // savoir » qui s'incrémente à chaque quiz gagné) sans attendre un rechargement.
+    if (result?.ok) gs.refreshAchievements?.()
     return result
   }
 

@@ -54,6 +54,17 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const mounted = useRef(true)
   useEffect(() => () => { mounted.current = false }, [])
 
+  // Recharge la progression des achievements (compteurs comme « Roi du savoir »)
+  // — à appeler après un événement qui la fait évoluer (victoire de quiz, achat…).
+  const refreshAchievements = useCallback(() => {
+    apiGetAchievements().then(({ data: achData }) => {
+      if (!achData?.achievements || !mounted.current) return
+      setAchievementProgress(Object.fromEntries(
+        achData.achievements.filter(a => a.card_id).map(a => [a.card_id, { progress: a.progress, threshold: a.threshold, type: a.type }])
+      ))
+    }).catch(() => {})
+  }, [])
+
   // Verrou synchrone pour les achievements — évite les doublons en cas de double appel ou de StrictMode
   const unlockedAchRef = useRef(new Set())
 
@@ -741,6 +752,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       setForgePointsSignal(s => s + pts)
     },
     triggerQuestRefresh: () => setQuestActivitySignal(s => s + 1),
+    refreshAchievements,
     // Actions
     earnGold, earnCard, checkAchievements,
     handleBuy, handleListCard, handleCancelListing, handleCancelAllListings,
