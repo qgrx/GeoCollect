@@ -130,6 +130,11 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
             </div>
           )}
           <div style={{ background: cardBg, border: `1px solid ${editMode ? '#f9ca2433' : borderCol}`, borderRadius: 12, padding: '14px 18px' }}>
+            {editMode && (
+              <button onClick={() => addItem(ri)} style={{ background: 'none', border: 'none', color: mutedColor, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontSize: 11, fontWeight: 700, marginBottom: 8, padding: '4px 0' }}>
+                + Ajouter une entrée
+              </button>
+            )}
             {rel.items.map((item, ii) => (
               <div key={item.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '6px 0', borderBottom: ii < rel.items.length - 1 ? `1px solid ${borderCol}` : 'none' }}>
                 {editMode
@@ -143,11 +148,6 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
                 </>)}
               </div>
             ))}
-            {editMode && (
-              <button onClick={() => addItem(ri)} style={{ background: 'none', border: 'none', color: mutedColor, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontSize: 11, fontWeight: 700, marginTop: 8, padding: '4px 0' }}>
-                + Ajouter une entrée
-              </button>
-            )}
           </div>
         </div>
       ))}
