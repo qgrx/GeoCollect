@@ -23,17 +23,24 @@ function EmailImage({ email, color }) {
 }
 
 export default function SupportContent({ theme, mode, textColor, mutedColor, editMode }) {
-  const { content: sections, update, save, reset, saving, dirty } = useDocsContent('support')
+  const { content: sections, update, save, reset, saving, dirty, loading, error, saveError, uid } = useDocsContent('support')
   const cardBg    = mode === 'light' ? '#ffffff' : '#1a2744'
   const borderCol = mode === 'light' ? '#e0e8f0' : '#ffffff18'
 
   function changeSection(i, updated) { update(sections.map((s, j) => j === i ? updated : s)) }
   function removeSection(i) { update(sections.filter((_, j) => j !== i)) }
-  function addSection() { update([...sections, { icon: '💬', title: 'Nouvelle section', desc: 'Description…' }]) }
+  function addSection() { update([{ id: uid(), icon: '💬', title: '', desc: '' }, ...sections]) }
 
   return (
     <div style={{ padding: '32px 28px', maxWidth: 680, margin: '0 auto', color: textColor }}>
-      <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold, marginBottom: 6 }}>💬 Support</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold }}>💬 Support</div>
+        {editMode && !loading && !error && (
+          <button onClick={addSection} style={{ background: '#ffffff15', border: '1px dashed #ffffff44', color: mutedColor, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11 }}>
+            + Section
+          </button>
+        )}
+      </div>
       <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>Besoin d'aide ? On est là.</div>
 
       {/* Contact — non éditable (email protégé) */}
@@ -53,9 +60,17 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
         </div>
       </div>
 
+      {loading && <div style={{ color: mutedColor, fontSize: 13, padding: '10px 0' }}>Chargement…</div>}
+
+      {!loading && error && (
+        <div style={{ color: mutedColor, fontSize: 13, padding: '16px 18px', background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 12 }}>
+          ⚠️ Contenu momentanément indisponible. Réessaie plus tard.
+        </div>
+      )}
+
       {/* Sections éditables */}
-      {sections.map((s, i) => (
-        <div key={i} style={{ background: cardBg, border: `1px solid ${editMode ? '#f9ca2433' : borderCol}`, borderRadius: 12, padding: '16px 18px', marginBottom: 10, display: 'flex', gap: 14, alignItems: 'flex-start', position: 'relative' }}>
+      {!loading && !error && sections.map((s, i) => (
+        <div key={s.id} style={{ background: cardBg, border: `1px solid ${editMode ? '#f9ca2433' : borderCol}`, borderRadius: 12, padding: '16px 18px', marginBottom: 10, display: 'flex', gap: 14, alignItems: 'flex-start', position: 'relative' }}>
           {editMode ? (
             <input value={s.icon} onChange={e => changeSection(i, { ...s, icon: e.target.value })}
               style={{ fontSize: 22, width: 40, background: 'transparent', border: '1px solid #ffffff22', borderRadius: 6, textAlign: 'center', padding: '2px', cursor: 'text', flexShrink: 0 }} />
@@ -63,9 +78,9 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
             <span style={{ fontSize: 22, flexShrink: 0 }}>{s.icon}</span>
           )}
           <div style={{ flex: 1 }}>
-            <EditableText value={s.title} editing={editMode} onChange={v => changeSection(i, { ...s, title: v })} tag="div" style={{ fontWeight: 800, fontSize: 14, marginBottom: 4, color: textColor }} />
+            <EditableText value={s.title} editing={editMode} placeholder="Titre de la section…" onChange={v => changeSection(i, { ...s, title: v })} tag="div" style={{ fontWeight: 800, fontSize: 14, marginBottom: 4, color: textColor }} />
             {editMode
-              ? <RichTextEditor value={s.desc} onChange={v => changeSection(i, { ...s, desc: v })} mode={mode} />
+              ? <RichTextEditor value={s.desc} onChange={v => changeSection(i, { ...s, desc: v })} placeholder="Description…" mode={mode} />
               : <div style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(s.desc) }} />
             }
           </div>
@@ -79,16 +94,14 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
         </div>
       ))}
 
-      {editMode && (
+      {editMode && !loading && !error && (
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button onClick={addSection} style={{ background: '#ffffff15', border: '1px dashed #ffffff44', color: mutedColor, padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12 }}>
-            + Ajouter une section
-          </button>
           <button onClick={() => { if (window.confirm('Restaurer le contenu par défaut ?')) reset() }} style={{ background: '#ffffff10', border: '1px solid #ffffff22', color: mutedColor, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11 }}>↺ Défauts</button>
           <button onClick={save} disabled={!dirty || saving}
             style={{ background: dirty ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18', border: 'none', color: dirty ? '#1e3045' : '#666', padding: '8px 18px', borderRadius: 8, cursor: dirty ? 'pointer' : 'default', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12 }}>
             {saving ? 'Enregistrement…' : dirty ? '💾 Enregistrer' : '✓ Enregistré'}
           </button>
+          {saveError && <span style={{ color: '#e74c3c', fontSize: 12, fontWeight: 700, alignSelf: 'center' }}>⚠️ Échec — réessaie.</span>}
         </div>
       )}
 

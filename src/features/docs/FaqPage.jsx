@@ -17,6 +17,7 @@ function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMo
           <EditableText
             value={item.q}
             editing={editing}
+            placeholder="Nouvelle question…"
             onChange={q => onChange({ ...item, q })}
             style={{ fontWeight: 800, fontSize: 14, color: textColor, flex: 1 }}
           />
@@ -35,7 +36,7 @@ function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMo
       {(open || editing) && (
         <div style={{ padding: '4px 18px 16px', borderTop: `1px solid ${borderCol}` }}>
           {editing
-            ? <RichTextEditor value={item.a} onChange={a => onChange({ ...item, a })} mode={colors.mode} />
+            ? <RichTextEditor value={item.a} onChange={a => onChange({ ...item, a })} placeholder="Réponse…" mode={colors.mode} />
             : <div style={{ fontSize: 14, color: mutedColor, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.a) }} />
           }
         </div>
@@ -45,7 +46,7 @@ function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMo
 }
 
 export default function FaqPage({ theme, mode, textColor, mutedColor, isAdmin, editMode }) {
-  const { content: items, update, save, reset, saving, dirty } = useDocsContent('faq')
+  const { content: items, update, save, reset, saving, dirty, loading, error, saveError, uid } = useDocsContent('faq')
   const cardBg    = mode === 'light' ? '#ffffff' : '#1a2744'
   const borderCol = mode === 'light' ? '#e0e8f0' : '#ffffff18'
   const colors    = { cardBg, borderCol, textColor, mutedColor }
@@ -55,15 +56,30 @@ export default function FaqPage({ theme, mode, textColor, mutedColor, isAdmin, e
     update(next)
   }
   function removeItem(idx) { update(items.filter((_, i) => i !== idx)) }
-  function addItem() { update([...items, { q: 'Nouvelle question', a: 'Réponse…' }]) }
+  function addItem() { update([{ id: uid(), q: '', a: '' }, ...items]) }
 
   return (
     <div style={{ padding: '32px 28px', maxWidth: 680, margin: '0 auto', color: textColor }}>
-      <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold, marginBottom: 6 }}>❓ FAQ</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold }}>❓ FAQ</div>
+        {editMode && !loading && !error && (
+          <button onClick={addItem} style={{ background: '#ffffff15', border: '1px dashed #ffffff44', color: mutedColor, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11 }}>
+            + Question
+          </button>
+        )}
+      </div>
       <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>Questions fréquemment posées</div>
 
-      {items.map((item, i) => (
-        <FaqItem key={i} item={item} idx={i} total={items.length} editing={editMode} mode={mode}
+      {loading && <div style={{ color: mutedColor, fontSize: 13, padding: '20px 0' }}>Chargement…</div>}
+
+      {!loading && error && (
+        <div style={{ color: mutedColor, fontSize: 13, padding: '16px 18px', background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 12 }}>
+          ⚠️ Contenu momentanément indisponible. Réessaie plus tard.
+        </div>
+      )}
+
+      {!loading && !error && items.map((item, i) => (
+        <FaqItem key={item.id} item={item} idx={i} total={items.length} editing={editMode} mode={mode}
           onChange={u => changeItem(i, u)}
           onRemove={() => removeItem(i)}
           onMoveUp={() => { const a = [...items]; [a[i-1],a[i]]=[a[i],a[i-1]]; update(a) }}
@@ -71,16 +87,14 @@ export default function FaqPage({ theme, mode, textColor, mutedColor, isAdmin, e
           colors={colors} />
       ))}
 
-      {editMode && (
+      {editMode && !loading && !error && (
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button onClick={addItem} style={{ background: '#ffffff15', border: '1px dashed #ffffff44', color: mutedColor, padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12 }}>
-            + Ajouter une question
-          </button>
           <button onClick={() => { if (window.confirm('Restaurer le contenu par défaut ?')) reset() }} style={{ background: '#ffffff10', border: '1px solid #ffffff22', color: colors.mutedColor, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11 }}>↺ Défauts</button>
           <button onClick={save} disabled={!dirty || saving}
             style={{ background: dirty ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18', border: 'none', color: dirty ? '#1e3045' : '#666', padding: '8px 18px', borderRadius: 8, cursor: dirty ? 'pointer' : 'default', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12 }}>
             {saving ? 'Enregistrement…' : dirty ? '💾 Enregistrer' : '✓ Enregistré'}
           </button>
+          {saveError && <span style={{ color: '#e74c3c', fontSize: 12, fontWeight: 700, alignSelf: 'center' }}>⚠️ Échec — réessaie.</span>}
         </div>
       )}
     </div>

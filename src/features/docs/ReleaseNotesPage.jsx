@@ -30,7 +30,7 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
     updateRelease(ri, { ...releases[ri], items: releases[ri].items.filter((_, i) => i !== ii) })
   }
   function addItem(ri) {
-    updateRelease(ri, { ...releases[ri], items: [...releases[ri].items, { id: uid(), type: '✨', text: '' }] })
+    updateRelease(ri, { ...releases[ri], items: [{ id: uid(), type: '✨', text: '' }, ...releases[ri].items] })
   }
   function removeRelease(ri) { update(releases.filter((_, i) => i !== ri)) }
   function addRelease() { update([{ id: uid(), version: '', items: [{ id: uid(), type: '✨', text: '' }] }, ...releases]) }
