@@ -254,9 +254,22 @@ export default function MarketModal({
                                 </div>
                                 <div style={{ textAlign: 'right',fontWeight: 800,color: theme.textSecondary,fontSize: 11 }}>{tier.qty.toLocaleString()}</div>
                                 <div style={{ textAlign: 'right' }}>
-                                  {isOwn ? (
-                                    <span style={{ fontSize: 9,color: theme.gold,fontWeight: 700,opacity: .7 }}>Votre annonce</span>
-                                  ) : (
+                                  {isOwn ? (() => {
+                                    // Retirer directement SON annonce de ce palier (carte + prix) sans passer par « Mes annonces ».
+                                    const myIdx = myListings.findIndex(m => m.card?.id === card.id && m.price === tier.price)
+                                    if (myIdx < 0) return <span style={{ fontSize: 9,color: theme.gold,fontWeight: 700,opacity: .7 }}>Votre annonce</span>
+                                    return cancelConfirm === `buy_${myIdx}` ? (
+                                      <div style={{ display: 'flex',gap: 4,justifyContent: 'flex-end' }}>
+                                        <button onClick={() => { onCancelListing(myIdx); setCancelConfirm(null) }}
+                                          style={{ background: 'linear-gradient(135deg,#d63031,#e17055)',border: 'none',color: '#fff',padding: '5px 9px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 900,fontSize: 11,cursor: 'pointer' }}>✓</button>
+                                        <button onClick={() => setCancelConfirm(null)}
+                                          style={{ background: theme.bgElevated,border: `1px solid ${theme.border}`,color: theme.textMuted,padding: '5px 8px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 11,cursor: 'pointer' }}>✕</button>
+                                      </div>
+                                    ) : (
+                                      <button onClick={() => setCancelConfirm(`buy_${myIdx}`)}
+                                        style={{ background: '#e74c3c22',border: '1px solid #e74c3c44',color: '#e74c3c',padding: '5px 9px',borderRadius: 50,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 10,cursor: 'pointer',whiteSpace: 'nowrap' }}>{t('market_remove')}</button>
+                                    )
+                                  })() : (
                                     <button
                                       onClick={() => {
                                         if (owned && !window.confirm(t('market_duplicate_confirm').replace('{card}', card.name))) return
