@@ -91,8 +91,13 @@ export function useAuth() {
 
   // Mode démo : compte ANONYME Supabase (is_anonymous=true). Le joueur gagne 5
   // geocoins sans compte ; converti en compte définitif via convertAnonymous.
+  // On fournit un pseudo temporaire dans les métadonnées (comme signUpWithEmail) :
+  // le trigger handle_new_user en a besoin pour créer le profil (pseudo NOT NULL),
+  // sinon la création du user anonyme échoue (500).
   const signInAnonymously = useCallback(async () => {
-    return supabase.auth.signInAnonymously()
+    const tempPseudo = `Invité_${Math.random().toString(36).slice(2, 7)}`
+    const locale = (() => { try { return localStorage.getItem('geocards_lang') || 'fr' } catch { return 'fr' } })()
+    return supabase.auth.signInAnonymously({ options: { data: { pseudo: tempPseudo, locale } } })
   }, [])
 
   const signInWithGoogle = useCallback(async () => {
