@@ -406,7 +406,9 @@ export default function App() {
           setStreakLeader(null) // série cassée (gagnant sous le seuil)
         }
 
-        const iSelf = data.winner && data.winner === auth.profile?.pseudo
+        // winner_id (id exact) prioritaire ; repli pseudo. Via refs → jamais périmé.
+        const iSelf = (!!data.winner_id && data.winner_id === myIdRef.current)
+          || (!!data.winner && data.winner === myPseudoRef.current)
 
         if (!iSelf) {
           handleQuizExpireRef.current(data.winner, data.is_bot)
@@ -703,6 +705,13 @@ export default function App() {
   useEffect(() => { handleQuizExpireRef.current = handleQuizExpire }, [handleQuizExpire])
   const advanceQuizRef = useRef(advanceQuiz)
   useEffect(() => { advanceQuizRef.current = advanceQuiz }, [advanceQuiz])
+  // Identité courante (id + pseudo) pour les handlers socket : le handler quiz:solved
+  // est figé sur le render de setup (deps [profile.id]) → sans ref, auth.profile peut
+  // y être périmé et faire croire qu'un AUTRE a gagné (message « trop tard » + soi-même
+  // dans l'historique) alors qu'on a gagné. winner_id (id exact) est prioritaire.
+  const myIdRef = useRef(auth.profile?.id)
+  const myPseudoRef = useRef(auth.profile?.pseudo)
+  useEffect(() => { myIdRef.current = auth.profile?.id; myPseudoRef.current = auth.profile?.pseudo }, [auth.profile?.id, auth.profile?.pseudo])
 
   // Notification release notes
   useEffect(() => {
@@ -1410,6 +1419,9 @@ export default function App() {
                     : { display: 'flex', justifyContent: 'space-between' }}>
                     {history.filter(h => !h.skipped).slice(0, 8).map((h, i) => {
                       const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
+                      // « Gagné par moi » = drapeau won OU pseudo == le mien : évite de se voir
+                      // tantôt en ✓, tantôt sous son pseudo (selon la source de l'entrée).
+                      const mine = h.won || (!!h.winner && h.winner === auth.profile?.pseudo);
                       return (
                         <div key={i} title={h.card?.name} onClick={() => { if (!h.card) return; setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); setSelectedCardFromHistory(true); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
@@ -1423,8 +1435,8 @@ export default function App() {
                             </div>
                             {h.isShiny && <div style={{ position: 'absolute', top: -4, right: -4, fontSize: 10, lineHeight: 1, animation: 'shinySparkle 2s ease-in-out infinite', filter: 'drop-shadow(0 0 3px gold)', zIndex: 5 }}>✨</div>}
                           </div>
-                          <div style={{ fontSize: 8, fontWeight: 700, color: h.won ? '#3fb950' : theme.textSecondary, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {h.won ? '✓' : h.winner}
+                          <div style={{ fontSize: 8, fontWeight: 700, color: mine ? '#3fb950' : theme.textSecondary, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {mine ? '✓' : h.winner}
                           </div>
                         </div>
                       );
