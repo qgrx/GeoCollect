@@ -801,18 +801,25 @@ export default function App() {
   useEffect(() => {
     if (!auth.profile || !import.meta.env.VITE_API_URL) return
     if (auth.profile.welcome_given) {
-      // Utilisateur existant : juste vérifier le pseudo OAuth si besoin
+      // Utilisateur existant : proposer un pseudo propre si celui hérité du
+      // fournisseur OAuth contient espace/@/. — MAIS une seule fois. Dès que le
+      // joueur (ou un admin) a fait un choix délibéré (pseudo_changed_at posé),
+      // on n'invite plus jamais, sinon il ressaisit son pseudo à chaque connexion.
       const providers = auth.user?.app_metadata?.providers || []
       const isOAuth = providers.includes('google') || providers.includes('github')
-      if (isOAuth) {
+      const alreadyAsked = (() => { try { return localStorage.getItem(`geocoins_pseudo_prompt_done_${auth.profile.id}`) === '1' } catch { return false } })()
+      if (isOAuth && !auth.profile.pseudo_changed_at && !alreadyAsked) {
         const p = auth.profile.pseudo || ''
         if (p.includes(' ') || p.includes('@') || p.includes('.')) setShowChoosePseudo(true)
       }
       return
     }
-    // Nouvel utilisateur : toujours commencer par le choix du pseudo
+    // Nouvel utilisateur : commencer par le choix du pseudo — sauf s'il l'a déjà
+    // choisi (pseudo_changed_at posé) mais a quitté avant la fin du tuto : on
+    // reprend alors directement au cadeau, sinon il ressaisit son pseudo à chaque
+    // connexion tant que welcome_given (posé en fin de tuto) reste faux.
     if (onboardingStep !== null) return
-    setOnboardingStep('pseudo')
+    setOnboardingStep(auth.profile.pseudo_changed_at ? 'gift' : 'pseudo')
   }, [auth.profile?.id])
 
   // Étape 'gift' : récupérer la carte de bienvenue + horodatage d'entrée
@@ -822,7 +829,7 @@ export default function App() {
     giftEnteredAtRef.current = Date.now()
     let cancelled = false
     const run = async () => {
-      const { apiWelcomeCard } = await import('./services/api.js')
+      const { apiWelcomeCard, apiOnboardingDone } = await import('./services/api.js')
       const { data } = await apiWelcomeCard()
       if (cancelled) return
       const newCards = data?.cards || []
@@ -831,6 +838,11 @@ export default function App() {
         setWelcomeCards(newCards)
       }
       setOnboardingCardReady(true)
+      // Onboarding acquis dès le pseudo + la carte de bienvenue : on persiste
+      // welcome_given maintenant pour ne jamais rejouer tout le flux si le joueur
+      // quitte avant la fin du tuto (le tour reste affiché cette session).
+      apiOnboardingDone?.().catch(() => {})
+      auth.setProfile(p => p ? { ...p, welcome_given: true } : p)
     }
     run()
     return () => { cancelled = true }
@@ -1748,7 +1760,14 @@ export default function App() {
         />
       )}
       {showAuth        && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
-      {showChoosePseudo && <AuthModal auth={auth} initialMode="choose_pseudo" onClose={() => setShowChoosePseudo(false)} onSuccess={() => setShowChoosePseudo(false)} />}
+      {showChoosePseudo && <AuthModal auth={auth} initialMode="choose_pseudo"
+        onClose={() => {
+          // Fermée sans choisir : ne plus reproposer sur cet appareil (sinon
+          // l'invite réapparaît à chaque connexion pour un pseudo OAuth hérité).
+          try { if (auth.profile?.id) localStorage.setItem(`geocoins_pseudo_prompt_done_${auth.profile.id}`, '1') } catch { /* ignore */ }
+          setShowChoosePseudo(false)
+        }}
+        onSuccess={() => setShowChoosePseudo(false)} />}
       {showScoreDetail && (() => {
         const W = gs.limits.scoreRules || { commun: 1, rare: 3, épique: 7, légendaire: 20 }
         const SW = gs.limits.shinyScoreRules || { commun: 2, rare: 6, épique: 14, légendaire: 40 }
