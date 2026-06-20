@@ -121,7 +121,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // Question récupérée après le délai cadeau (protection anti-domination) : le
   // serveur ne l'envoie pas au leader tant que sa fenêtre n'est pas écoulée.
   const [revealed,setRevealed]=useState(null);
-  const ref=useRef(); const doneRef=useRef(false); const submittingRef=useRef(false); const revealReqRef=useRef(false);
+  const ref=useRef(); const doneRef=useRef(false); const submittingRef=useRef(false); const revealReqRef=useRef(false); const retryRef=useRef(0);
   // Figer l'état "brillant" au montage : un événement quiz:solved (annonçant le prochain
   // quiz) peut mettre à jour isShiny pendant que cette modale affiche encore le résultat.
   const isShinyFrozen=useRef(isShiny).current;
@@ -167,12 +167,24 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     if (elapsed < 600) await new Promise(r => setTimeout(r, 600 - elapsed))
     submittingRef.current = false
     setIsSubmitting(false)
-    if (result && result.ok) { doneRef.current=true; setOutcome(result.outcome||'card'); setResultForge(result.forge||0); setStatus("won"); soundCorrect(); }
+    if (result && result.ok) { doneRef.current=true; setOutcome(result.outcome||'card'); setResultForge(result.forge||0); setStatus("won"); soundCorrect(); retryRef.current=0; }
     else if (result && result.handicap) { setSubmitError(t('streak_handicap_wait')); } // série : délai cadeau pas encore écoulé
     else if (result === 'fast') { setSubmitError("⏱️ Réponse trop rapide ! Lis bien la question."); setIsSubmitting(false); submittingRef.current=false; return; }
     else if (result === 'late') { finish(null); }
-    else if (result === 'error') { setSubmitError(t('quiz_answer_retry')); } // réseau/serveur : ne pas traiter comme faux (la réponse a pu aboutir)
-    else { soundWrong(); setShake(true); setInp(""); setTimeout(()=>setShake(false),480); }
+    else if (result === 'error') {
+      // Réseau/5xx : la réponse a PEUT-ÊTRE abouti côté serveur (le serveur est
+      // idempotent → renvoie « déjà gagné »). On revalide AUTOMATIQUEMENT la même
+      // réponse, sans que le joueur la re-saisisse.
+      if (retryRef.current < 3) {
+        retryRef.current += 1;
+        setSubmitError(t('quiz_answer_checking'));
+        setIsSubmitting(true); submittingRef.current = true;
+        setTimeout(() => { submittingRef.current = false; submit(); }, 1500);
+        return;
+      }
+      retryRef.current = 0; setSubmitError(t('quiz_answer_retry'));
+    }
+    else { soundWrong(); setShake(true); setInp(""); setTimeout(()=>setShake(false),480); retryRef.current=0; }
   }
 
   // Texte "jusqu'à quand" pour la bannière de limite atteinte

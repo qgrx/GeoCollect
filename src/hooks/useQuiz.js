@@ -25,6 +25,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const nextQuizTimeRef = useRef(nextQuizTime)
   const isFetchingRef   = useRef(false)
   const joinedQuizzesRef = useRef(new Set())
+  // Quiz déjà résolus (gagné / perdu / 409) : fermer la modale ne doit PAS les
+  // remettre en attente (sinon on re-propose un quiz déjà gagné → re-réponse → 409).
+  const resolvedQuizIdsRef = useRef(new Set())
   // Horaire exact du prochain quiz fourni par le serveur (next_quiz_at, ms) et
   // dernier intervalle dynamique connu (s) — font autorité sur le calcul local.
   const serverNextQuizAtRef = useRef(0)
@@ -167,6 +170,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   }, [pendingQuiz, limits])
 
   const handleQuizAnswer = useCallback(async (userAnswer) => {
+    if (!activeQuiz) return 'error'  // fenêtre fermée entre-temps (ex. revalidation tardive)
     const card = activeQuiz.card
     const { earnCard, earnGoldWithFx, showToast, t } = cbRef.current
     if (profile && activeQuiz.id) {
@@ -174,9 +178,21 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       if (error) {
         if (status === 425) return { handicap: true, wait_ms: body?.wait_ms || 0 } // série : délai cadeau
         if (status === 429) return 'fast'    // trop rapide
-        if (status === 409 || status === 404) return 'late'  // déjà résolu / expiré
+        if (status === 409 || status === 404) { resolvedQuizIdsRef.current.add(activeQuiz.id); return 'late' }  // déjà résolu / expiré
         if (status === 422) return false     // vraie mauvaise réponse
         return 'error'                        // réseau / 5xx / inconnu : la réponse a pu aboutir serveur
+      }
+      resolvedQuizIdsRef.current.add(activeQuiz.id)  // gagné → ne plus jamais le re-pender
+
+      // Re-tentative après une réponse gagnante dont la réponse HTTP avait été perdue :
+      // le serveur confirme que CE joueur a déjà gagné → on referme en « gagné » et on
+      // synchronise la collection localement, sans toast/or/quête (déjà fait au 1er essai).
+      if (data.already_won) {
+        earnCard(card, data.is_shiny || false)
+        setHistory(h => h.some(e => e.won && e.card?.id === card.id) ? h
+          : [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false }, ...h].slice(0, 10))
+        setTimeout(() => advanceQuiz(Date.now()), 2200)
+        return { ok: true, outcome: 'card', forge: 0 }
       }
       if (data.card_earned) {
         earnCard(card, data.is_shiny || false)
@@ -217,7 +233,11 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
 
   const handleCloseActiveQuiz = useCallback(() => {
     if (activeQuizRef.current) {
-      setPendingQuiz(activeQuizRef.current)
+      // Ne re-mettre en attente QUE si le quiz n'est pas déjà résolu (sinon on
+      // re-propose un quiz gagné → re-réponse → « un autre joueur a répondu »).
+      if (!resolvedQuizIdsRef.current.has(activeQuizRef.current.id)) {
+        setPendingQuiz(activeQuizRef.current)
+      }
       setActiveQuiz(null)
       activeQuizRef.current = null
     }
@@ -245,6 +265,8 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       }
       return
     }
+    // Quiz actif résolu par un autre → marqué résolu (fermer ne le re-pend pas).
+    if (activeQuizRef.current?.id) resolvedQuizIdsRef.current.add(activeQuizRef.current.id)
     // N'ajouter que si quelqu'un a vraiment gagné (npc = nom du gagnant)
     if (npc) {
       // Histoire gérée par quiz:solved — ici on met juste à jour l'UI de la modale active
