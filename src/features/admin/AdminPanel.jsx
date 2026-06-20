@@ -104,6 +104,30 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
       })));
     });
   },[tab]);
+
+  // ── Mode démo (onboarding) : 5 paires geocoin + question ──────────────────────
+  const [demoPairs,setDemoPairs]=useState([]);          // [{card_id, question_id}]
+  const [demoQuestions,setDemoQuestions]=useState([]);  // [{id, q}]
+  const [demoLoaded,setDemoLoaded]=useState(false);
+  useEffect(()=>{
+    if(tab!=='demo'||demoLoaded) return;
+    setDemoLoaded(true);
+    import('../../services/api.js').then(async (api)=>{
+      const [{data:cfg},{data:qs}]=await Promise.all([api.apiGetAdminConfig(),api.apiAdminGetQuestions()]);
+      const arr=Array.isArray(cfg?.config?.demo_geocoins)?cfg.config.demo_geocoins:[];
+      setDemoPairs(arr.slice(0,5));
+      setDemoQuestions((qs?.questions||[]).map(q=>({id:q.id,q:q.question})));
+    }).catch(()=>{});
+  },[tab,demoLoaded]);
+  const setDemoPair=(i,key,val)=>setDemoPairs(prev=>{const next=[...prev];next[i]={...(next[i]||{}),[key]:val};return next;});
+  const saveDemo=async()=>{
+    const pairs=demoPairs.filter(p=>p&&p.card_id&&p.question_id).slice(0,5)
+      .map(p=>({card_id:Number(p.card_id),question_id:Number(p.question_id)}));
+    const {apiSetConfig}=await import('../../services/api.js');
+    const {error}=await apiSetConfig('demo_geocoins',pairs);
+    setMsg(error?`❌ ${error}`:`✅ Démo sauvegardée (${pairs.length} geocoin${pairs.length>1?'s':''}) !`);
+  };
+
   const [achCards,setAchCards]=useState([]);
   const [editAch,setEditAch]=useState(null);
   const [achDefs,setAchDefs]=useState([]);
@@ -270,7 +294,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
   const NAV=[
     {label:'Contenu',items:[{id:'cards',icon:'🃏',label:'Cartes'},{id:'types',icon:'🏷️',label:'Types'},{id:'seasons',icon:'🌸',label:'Saisons'}]},
-    {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'}]},
+    {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'},{id:'demo',icon:'🎮',label:'Démo'}]},
     {label:'Économie',items:[{id:'limits',icon:'💰',label:'Limites & Prix'},{id:'shop',icon:'🛍️',label:'Boutique'},{id:'ranks',icon:'🎖️',label:'Rangs'}]},
     {label:'Récompenses',items:[{id:'quests',icon:'🔨',label:'Quêtes'},{id:'achievements',icon:'🏆',label:'Achievements'}]},
     {label:'Communauté',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'bots',icon:'🤖',label:'Bots'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_history',icon:'💸',label:'Historique'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
@@ -2204,6 +2228,38 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
             </div>
           );
         })()}
+
+        {/* ── DÉMO (onboarding) ── */}
+        {tab==="demo"&&<div>
+          <div style={{fontWeight:900,color:"#e74c3c",marginBottom:6,fontSize:14}}>🎮 Mode démo — 5 premiers geocoins</div>
+          <div style={{fontSize:11,color:"#a8bfcf",marginBottom:14,lineHeight:1.5}}>
+            Les visiteurs non connectés jouent ces 5 geocoins (avec la question associée) avant de s'inscrire.
+            Laisse les lignes vides pour utiliser le repli automatique (5 communs).
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {Array.from({length:5}).map((_,i)=>{
+              const pair=demoPairs[i]||{};
+              return (
+                <div key={i} style={{display:"flex",gap:8,alignItems:"center",background:"#ffffff08",borderRadius:10,padding:"10px 12px",border:"1px solid #ffffff12"}}>
+                  <span style={{fontWeight:900,color:"#f9ca24",width:18,flexShrink:0}}>{i+1}</span>
+                  <select value={pair.card_id||''} onChange={e=>setDemoPair(i,'card_id',e.target.value?+e.target.value:null)} style={{...SEL,flex:1,minWidth:0}}>
+                    <option value="">— Geocoin —</option>
+                    {cardPool.filter(c=>!c.forgeable&&!(c.type||'').toLowerCase().startsWith('achievement')).map(c=>(
+                      <option key={c.id} value={c.id}>{c.name} ({c.rarity})</option>
+                    ))}
+                  </select>
+                  <select value={pair.question_id||''} onChange={e=>setDemoPair(i,'question_id',e.target.value?+e.target.value:null)} style={{...SEL,flex:1.4,minWidth:0}}>
+                    <option value="">— Question —</option>
+                    {demoQuestions.map(q=><option key={q.id} value={q.id}>{(q.q||'').slice(0,70)}</option>)}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+          <button onClick={saveDemo} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"10px 22px",borderRadius:9,marginTop:14}}>
+            Sauvegarder la démo
+          </button>
+        </div>}
 
         {tab==="seasons"&&<AdminSeasons setMsg={setMsg}/>}
 
