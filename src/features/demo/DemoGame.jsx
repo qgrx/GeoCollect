@@ -14,25 +14,22 @@ export function DemoComplete({ onSignup, t }) {
     { icon: '🎁', title: t('demo_done_feat3_t'), body: t('demo_done_feat3_b') },
   ]
   return (
-    <div style={{ background: 'linear-gradient(135deg,#6c5ce7,#5a4bd6)', borderRadius: 16, padding: '16px 16px 18px', color: '#fff', fontFamily: "'Nunito',sans-serif", boxShadow: '0 8px 28px #6c5ce744' }}>
-      <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, lineHeight: 1.25, marginBottom: 4 }}>
+    <div style={{ background: 'linear-gradient(135deg,#6c5ce7,#5a4bd6)', borderRadius: 12, padding: '10px 12px', color: '#fff', fontFamily: "'Nunito',sans-serif", boxShadow: '0 6px 20px #6c5ce744' }}>
+      <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 13.5, lineHeight: 1.2 }}>
         🎉 {t('demo_done_title')}
       </div>
-      <div style={{ fontSize: 12.5, color: '#e7e3ff', lineHeight: 1.45, marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: '#e7e3ff', lineHeight: 1.3, marginBottom: 8 }}>
         {t('demo_done_sub')}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
         {feats.map((f, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#ffffff14', borderRadius: 11, padding: '8px 11px' }}>
-            <div style={{ fontSize: 20, flexShrink: 0, width: 26, textAlign: 'center' }}>{f.icon}</div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 900, fontSize: 12.5 }}>{f.title}</div>
-              <div style={{ fontSize: 11, color: '#d8d2ff', lineHeight: 1.35 }}>{f.body}</div>
-            </div>
+          <div key={i} title={f.body} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 2, background: '#ffffff14', borderRadius: 9, padding: '7px 5px' }}>
+            <div style={{ fontSize: 17, lineHeight: 1 }}>{f.icon}</div>
+            <div style={{ fontWeight: 900, fontSize: 10.5, lineHeight: 1.1 }}>{f.title}</div>
           </div>
         ))}
       </div>
-      <button onClick={onSignup} style={{ width: '100%', background: '#fff', color: '#4a36c7', border: 'none', borderRadius: 12, padding: '12px', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 15, cursor: 'pointer' }}>
+      <button onClick={onSignup} style={{ width: '100%', background: '#fff', color: '#4a36c7', border: 'none', borderRadius: 10, padding: '9px', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>
         ✨ {t('demo_done_cta')}
       </button>
     </div>
