@@ -15,7 +15,7 @@ import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandi
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiDemoStart, apiDemoAnswer } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiDemoStart, apiDemoAnswer, apiDemoPromote } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -33,7 +33,7 @@ import AuthModal from './features/auth/AuthModal.jsx';
 import SettingsModal from './features/auth/SettingsModal.jsx';
 import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
-import { DemoSignupWall } from './features/demo/DemoGame.jsx';
+import { DemoComplete } from './features/demo/DemoGame.jsx';
 import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
@@ -676,6 +676,7 @@ export default function App() {
   // ── Quiz (logique extraite dans useQuiz) ────────────────────────────────────
   const quiz = useQuiz({
     profile: auth.profile,
+    isDemo: auth.isDemo,
     limits: gs.limits,
     earnGoldWithFx,
     earnCard: gs.earnCard,
@@ -780,10 +781,11 @@ export default function App() {
   // solo (5 geocoins). Réutilise l'état pendingQuiz/activeQuiz de useQuiz (les
   // objets démo n'ont pas d'id → handleJoin n'appelle aucune API quiz globale).
   const [demoSteps, setDemoSteps] = useState(null)
-  const [demoWall,  setDemoWall]  = useState(false)
   const [demoSocial, setDemoSocial] = useState(null)   // { pseudos, tribute } pour le faux feed
   const demoStartedRef = useRef(false)
   const demoDone  = demoSteps ? demoSteps.filter(s => s.earned).length : 0
+  // Démo terminée : les 5 geocoins gagnés → on remplace la barre par l'invitation à s'inscrire.
+  const demoComplete = !!(auth.isDemo && demoSteps && demoSteps.length > 0 && demoSteps.every(s => s.earned))
 
   const buildDemoQuiz = useCallback((step) => {
     if (!step) return null
@@ -797,7 +799,7 @@ export default function App() {
   const presentDemoStep = useCallback((steps) => {
     setActiveQuiz(null); activeQuizRef.current = null
     const next = (steps || []).find(s => !s.earned)
-    if (!next) { setDemoWall(true); setPendingQuiz(null); setNextCard(null); return }
+    if (!next) { setPendingQuiz(null); setNextCard(null); return }  // fini → DemoComplete (dérivé) remplace la barre
     const q = buildDemoQuiz(next)
     setPendingQuiz(q); setNextCard(q.card)
   }, [buildDemoQuiz, setActiveQuiz, activeQuizRef, setPendingQuiz, setNextCard])
@@ -848,6 +850,14 @@ export default function App() {
   useEffect(() => {
     if (auth.isDemo && ['market', 'forge', 'tresors', 'top'].includes(activeTab)) setActiveTab('collection')
   }, [auth.isDemo, activeTab])
+
+  // Conversion terminée (email ou Google) : le compte n'est plus anonyme → sortir
+  // du mode démo côté serveur (is_demo=false). Filet couvrant le retour OAuth.
+  useEffect(() => {
+    if (auth.user && !auth.user.is_anonymous && auth.profile?.is_demo) {
+      apiDemoPromote().then(() => auth.setProfile(p => (p ? { ...p, is_demo: false } : p))).catch(() => {})
+    }
+  }, [auth.user?.is_anonymous, auth.profile?.is_demo])
 
   // Démo : faux feed « derniers geocoins disputés », rotatif toutes les 60 s
   // (pseudos du top × geocoins hommage), alimente le VRAI strip d'historique.
@@ -1188,12 +1198,12 @@ export default function App() {
               ].map(tb => {
                 const active = activeTab === tb.id
                 return (
-                  <button key={tb.id} onClick={() => !tb.disabled && setActiveTab(tb.id)}
+                  <button key={tb.id} onClick={() => tb.disabled ? (auth.isDemo && setShowAuth(true)) : setActiveTab(tb.id)}
                     data-tour={tb.tour}
-                    style={{ position: 'relative', background: 'none', border: 'none', color: tb.disabled ? theme.textMuted : active ? '#f9ca24' : theme.headerMuted, padding: '6px 18px 8px', cursor: tb.disabled ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, fontFamily: "'Nunito',sans-serif", transition: 'color .15s', opacity: tb.disabled ? 0.45 : 1 }}>
+                    style={{ position: 'relative', background: 'none', border: 'none', color: tb.disabled ? theme.textMuted : active ? '#f9ca24' : theme.headerMuted, padding: '6px 18px 8px', cursor: (tb.disabled && !auth.isDemo) ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, fontFamily: "'Nunito',sans-serif", transition: 'color .15s', opacity: tb.disabled ? 0.45 : 1 }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>{tb.icon}</span>
                     <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{tb.label}</span>
-                    {tb.disabled && <span style={{ fontSize: 7, fontWeight: 800, color: '#e74c3c', letterSpacing: .2, whiteSpace: 'nowrap' }}>{t('coming_soon')}</span>}
+                    {tb.disabled && <span style={{ fontSize: 7, fontWeight: 800, color: '#e74c3c', letterSpacing: .2, whiteSpace: 'nowrap' }}>{auth.isDemo ? t('tab_signin') : t('coming_soon')}</span>}
                     {!tb.disabled && tb.badge > 0 && <span style={{ position: 'absolute', top: 4, left: '55%', background: '#e74c3c', color: '#fff', width: 14, height: 14, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${theme.badgeBorder}` }}>{tb.badge > 9 ? '9+' : tb.badge}</span>}
                     {!tb.disabled && active && <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '3px 3px 0 0' }} />}
                   </button>
@@ -1257,7 +1267,7 @@ export default function App() {
                   null,
                   // Invité (démo) : pas de déconnexion → inscription (conversion, garde les geocoins).
                   auth.isDemo
-                    ? { icon: '✨', label: t('demo_signup_now'), color: '#a29bfe', fn: () => { setDemoWall(true); setAvatarMenu(false); } }
+                    ? { icon: '✨', label: t('demo_signup_now'), color: '#a29bfe', fn: () => { setShowAuth(true); setAvatarMenu(false); } }
                     : { icon: '↩', label: t('btn_logout'), color: '#f85149', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
                 ].map((item, i) => item === null ? (
                   <div key={i} style={{ height: 1, background: theme.borderLight }}/>
@@ -1294,7 +1304,9 @@ export default function App() {
               {/* Countdown hero (mobile only — en haut) */}
               {!isWide && !activeQuiz && auth.profile?.status !== 'banni' && (
                 <div data-tour="countdown">
-                  <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
+                  {demoComplete
+                    ? <DemoComplete onSignup={() => setShowAuth(true)} t={t} />
+                    : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />}
                 </div>
               )}
 
@@ -1437,7 +1449,9 @@ export default function App() {
               {/* New geocoin available — above type filter */}
               {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
                 <div data-tour="countdown" style={{ marginBottom: 14 }}>
-                  <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
+                  {demoComplete
+                    ? <DemoComplete onSignup={() => setShowAuth(true)} t={t} />
+                    : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />}
                 </div>
               )}
 
@@ -1691,12 +1705,12 @@ export default function App() {
           ].map(item => {
             const active = activeTab === item.id
             return (
-              <button key={item.id} onClick={() => !item.disabled && setActiveTab(item.id)}
+              <button key={item.id} onClick={() => item.disabled ? (auth.isDemo && setShowAuth(true)) : setActiveTab(item.id)}
                 data-tour={item.tour}
-                style={{ flex: 1, background: 'none', border: 'none', color: item.disabled ? theme.textMuted : active ? '#f9ca24' : theme.textSecondary, padding: '9px 4px 11px', cursor: item.disabled ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s', opacity: item.disabled ? 0.45 : 1 }}>
+                style={{ flex: 1, background: 'none', border: 'none', color: item.disabled ? theme.textMuted : active ? '#f9ca24' : theme.textSecondary, padding: '9px 4px 11px', cursor: (item.disabled && !auth.isDemo) ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s', opacity: item.disabled ? 0.45 : 1 }}>
                 <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
                 <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: .3 }}>{item.label}</span>
-                {item.disabled && <span style={{ fontSize: 7, fontWeight: 800, color: '#e74c3c', letterSpacing: .2, whiteSpace: 'nowrap' }}>{t('coming_soon')}</span>}
+                {item.disabled && <span style={{ fontSize: 7, fontWeight: 800, color: '#e74c3c', letterSpacing: .2, whiteSpace: 'nowrap' }}>{auth.isDemo ? t('tab_signin') : t('coming_soon')}</span>}
                 {!item.disabled && item.badge > 0 && <span style={{ position: 'absolute', top: 7, left: '55%', background: '#e74c3c', color: '#fff', width: 15, height: 15, borderRadius: '50%', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${theme.badgeBorder}` }}>{item.badge > 9 ? '9+' : item.badge}</span>}
                 {!item.disabled && active && <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 20, height: 2, background: '#f9ca24', borderRadius: '0 0 3px 3px' }} />}
               </button>
@@ -1780,10 +1794,6 @@ export default function App() {
             a: tr?.answer ? Array((tr.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
           }
         }} />}
-
-      {auth.isDemo && demoWall && (
-        <DemoSignupWall auth={auth} onOpenAuth={() => setShowAuth(true)} onClose={() => setDemoWall(false)} earnedCount={demoDone} earned={(demoSteps || []).filter(s => s.earned).map(s => s.card)} t={t} />
-      )}
 
       {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
 
@@ -1890,7 +1900,7 @@ export default function App() {
           onSell={() => { setMarketSellCard(selectedCard); setSelectedCard(null); setSelectedCardIsShiny(false); setSelectedCardFromHistory(false); setMarketTab('vendre'); setActiveTab('market'); }}
         />
       )}
-      {showAuth        && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
+      {showAuth        && <AuthModal auth={auth} isDemo={auth.isDemo} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
       {showChoosePseudo && <AuthModal auth={auth} initialMode="choose_pseudo"
         onClose={() => {
           // Fermée sans choisir : ne plus reproposer sur cet appareil (sinon

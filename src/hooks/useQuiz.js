@@ -3,7 +3,7 @@ import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetCurrentQuiz, apiJoinQuiz, apiAnswerQuiz } from '../services/api.js'
 import { getLang } from '../i18n/translations.js'
 
-export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned }) {
+export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned }) {
   const cbRef = useRef({})
   cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned, limits }
 
@@ -60,7 +60,11 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
     const update = () => {
       let rem = Math.ceil((nextQuizTime - Date.now()) / 1000)
       if (rem <= 0) {
-        if (!profile) {
+        if (isDemo) {
+          // Démo : aucun quiz global. On ne fetch rien (le contrôleur démo pilote
+          // pendingQuiz/activeQuiz) — sinon le compte invité verrait les vrais geocoins.
+          rem = 0
+        } else if (!profile) {
           // Mode invité sans socket : on simule le cycle en boucle
           setNextQuizTime(Date.now() + (limits?.quizInterval ?? QUIZ_INTERVAL) * 1000)
           rem = limits?.quizInterval ?? QUIZ_INTERVAL
@@ -99,7 +103,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
     update()
     const timer = setInterval(update, 500)
     return () => clearInterval(timer)
-  }, [nextQuizTime, activeQuiz, pendingQuiz, profile, limits])
+  }, [nextQuizTime, activeQuiz, pendingQuiz, profile, isDemo, limits])
 
   function advanceQuiz(solvedAt) {
     cbRef.current.onQuizEnd?.();
@@ -111,6 +115,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
   const handleJoin = useCallback(async () => {
     let quiz = pendingQuiz
     if (quiz && quiz.winner) return // Ne pas rejoindre si déjà gagné
+    if (!quiz && isDemo) return     // démo : aucun quiz global à récupérer
     if (!quiz) {
       const { data } = await apiGetCurrentQuiz()
       if (!data?.quiz) return
@@ -150,7 +155,7 @@ export function useQuiz({ profile, limits, earnGoldWithFx, earnCard, showToast, 
         }
       }).catch(() => {})
     }
-  }, [pendingQuiz, profile])
+  }, [pendingQuiz, profile, isDemo])
 
   const handleSkip = useCallback((snoozeMs = 0) => {
     if (!pendingQuiz) return

@@ -199,6 +199,17 @@ export function useAuth() {
     return { error }
   }, [user, profile])
 
+  // Conversion via Google : lie une identité Google au compte anonyme (même id →
+  // geocoins conservés). Redirige vers Google ; au retour, l'utilisateur n'est plus
+  // anonyme et l'effet « promote » côté App pose is_demo=false.
+  // NB : nécessite GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true côté Supabase.
+  const convertWithGoogle = useCallback(async () => {
+    return supabase.auth.linkIdentity({
+      provider: 'google',
+      options: { redirectTo: APP_URL, queryParams: { prompt: 'select_account' } },
+    })
+  }, [])
+
   // Convertit le compte démo anonyme en compte définitif (même id → les geocoins
   // gagnés sont conservés) : email + mot de passe, pseudo, puis sortie du mode démo.
   const convertAnonymous = useCallback(async (email, password, newPseudo) => {
@@ -218,5 +229,5 @@ export function useAuth() {
   // backend ne pose is_demo). Sert à l'aiguillage de l'UI (démo vs jeu complet).
   const isDemo = !!user?.is_anonymous
 
-  return { user, profile, setProfile, loading, isDemo, signInAnonymously, convertAnonymous, signInWithGoogle, signInWithFacebook, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
+  return { user, profile, setProfile, loading, isDemo, signInAnonymously, convertAnonymous, convertWithGoogle, signInWithGoogle, signInWithFacebook, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
 }

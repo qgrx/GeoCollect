@@ -54,7 +54,7 @@ function PwInput({ value, onChange, placeholder, onEnter }) {
 }
 
 // ─── AuthModal ────────────────────────────────────────────────────────────────
-export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'choice' }) {
+export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'choice', isDemo = false }) {
   const { t } = useT()
   // modes: choice | login | register | forgot | forgot_sent | reset_pw | confirm_email | choose_pseudo
   const [mode,    setMode]    = useState(initialMode)
@@ -128,7 +128,8 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
   // ── Actions ──────────────────────────────────────────────────────────────────
   async function doGoogle() {
     setBusy(true); clear()
-    const { error } = await auth.signInWithGoogle()
+    // Démo : on LIE Google au compte anonyme (conversion, geocoins conservés).
+    const { error } = await (isDemo ? auth.convertWithGoogle() : auth.signInWithGoogle())
     setBusy(false)
     if (error) { err(errMsg(error.message)); return }
   }
@@ -178,14 +179,17 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
     if (!email.trim() || !pw) { err(t('auth_fill_fields')); return }
     if (pw !== pw2) { err('❌ Les mots de passe ne correspondent pas.'); return }
     if (passwordStrength(pw) < 2) { err('❌ Mot de passe trop faible.'); return }
-    // Vérification Turnstile si configuré
-    if (import.meta.env.VITE_TURNSTILE_SITE_KEY && !regTurnstileToken) {
+    // Vérification Turnstile si configuré (pas en démo : conversion d'un compte existant)
+    if (!isDemo && import.meta.env.VITE_TURNSTILE_SITE_KEY && !regTurnstileToken) {
       err('🤖 Validation anti-bot en cours, réessaie dans un instant.')
       if (regWidgetId.current && window.turnstile) window.turnstile.execute(regWidgetId.current)
       return
     }
     setBusy(true); clear()
-    const { error } = await auth.signUpWithEmail(email.trim(), pw)
+    // Démo : conversion du compte anonyme (email + mot de passe), pseudo choisi ensuite à l'onboarding.
+    const { error } = isDemo
+      ? await auth.convertAnonymous(email.trim(), pw)
+      : await auth.signUpWithEmail(email.trim(), pw)
     setBusy(false)
     if (error) {
       err(errMsg(error.message));
