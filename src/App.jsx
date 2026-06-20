@@ -15,7 +15,7 @@ import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandi
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiDemoStart, apiDemoAnswer } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -33,7 +33,7 @@ import AuthModal from './features/auth/AuthModal.jsx';
 import SettingsModal from './features/auth/SettingsModal.jsx';
 import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
-import DemoGame from './features/demo/DemoGame.jsx';
+import { DemoBanner, DemoSignupWall } from './features/demo/DemoGame.jsx';
 import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
@@ -260,6 +260,7 @@ export default function App() {
   // ── Socket.io — connexion temps réel ─────────────────────────────────────────
   useEffect(() => {
     if (!auth.profile) return  // pas de socket si non connecté
+    if (auth.isDemo) return    // démo : pas de quiz global (parcours solo injecté)
 
     let socket
     // Pull initial : récupérer le quiz en cours pour aligner le countdown
@@ -756,11 +757,77 @@ export default function App() {
   }
 
   // Wrapper — bloque la soumission pour les non-connectés et propose l'inscription
+  // ── Mode démo : alimente les VRAIS CountdownWidget/QuizModal avec un parcours
+  // solo (5 geocoins). Réutilise l'état pendingQuiz/activeQuiz de useQuiz (les
+  // objets démo n'ont pas d'id → handleJoin n'appelle aucune API quiz globale).
+  const [demoSteps, setDemoSteps] = useState(null)
+  const [demoWall,  setDemoWall]  = useState(false)
+  const demoStartedRef = useRef(false)
+  const demoDone  = demoSteps ? demoSteps.filter(s => s.earned).length : 0
+  const demoTotal = demoSteps?.length || 5
+
+  const buildDemoQuiz = useCallback((step) => {
+    if (!step) return null
+    const poolCard = gs.cardPool.find(c => c.id === step.card?.id) || {}
+    const card = { ...step.card, ...poolCard, sellable: false, minPrice: null, desc: '' }
+    const tr = step.translations?.[getLang()]
+    const wc = step.answer_word_count || 1
+    return { _demoStep: step.step, id: undefined, card, q: tr?.question || step.question, a: Array(wc).fill('x').join(' '), h: step.hint, is_shiny: false, started_at: new Date().toISOString() }
+  }, [gs.cardPool])
+
+  const presentDemoStep = useCallback((steps) => {
+    setActiveQuiz(null); activeQuizRef.current = null
+    const next = (steps || []).find(s => !s.earned)
+    if (!next) { setDemoWall(true); setPendingQuiz(null); setNextCard(null); return }
+    const q = buildDemoQuiz(next)
+    setPendingQuiz(q); setNextCard(q.card)
+  }, [buildDemoQuiz, setActiveQuiz, activeQuizRef, setPendingQuiz, setNextCard])
+
+  useEffect(() => {
+    if (!auth.isDemo || demoStartedRef.current || !gs.cardPool.length) return
+    demoStartedRef.current = true
+    apiDemoStart().then(({ data }) => {
+      const steps = data?.steps || []
+      setDemoSteps(steps)
+      presentDemoStep(steps)
+    }).catch(() => {})
+  }, [auth.isDemo, gs.cardPool.length, presentDemoStep])
+
+  // Fermeture du quiz démo (après victoire) → étape suivante ou mur d'inscription.
+  const demoAdvance = useCallback(() => {
+    setActiveQuiz(null); activeQuizRef.current = null
+    setDemoSteps(prev => { presentDemoStep(prev); return prev })
+  }, [presentDemoStep, setActiveQuiz, activeQuizRef])
+
+  // Réponse au quiz démo (branchée dans wrappedHandleQuizAnswer).
+  const demoAnswer = useCallback(async (userAnswer) => {
+    const stepIdx = activeQuizRef.current?._demoStep
+    if (stepIdx == null) return 'error'
+    const { data, status } = await apiDemoAnswer(stepIdx, userAnswer)
+    if (data?.correct) {
+      gs.earnCard(activeQuizRef.current.card, false)
+      setDemoSteps(prev => (prev || []).map((s, i) => (i === stepIdx ? { ...s, earned: true } : s)))
+      // Pas de socket en démo : on referme le résultat et on enchaîne nous-mêmes
+      // (le vrai jeu le fait via quiz:solved). Délai = temps de voir « Bonne réponse ».
+      setTimeout(() => demoAdvance(), 2200)
+      return { ok: true, outcome: 'card', forge: 0 }
+    }
+    if (status === 422) return false
+    return 'error'
+  }, [activeQuizRef, gs, demoAdvance])
+
+  // Démo : rester sur la collection (onglets marché/forge/trésor/top restreints).
+  useEffect(() => {
+    if (auth.isDemo && ['market', 'forge', 'tresors', 'top'].includes(activeTab)) setActiveTab('collection')
+  }, [auth.isDemo, activeTab])
+
   const wrappedHandleQuizAnswer = async (_userAnswer, _turnstileToken) => {
     if (!auth.profile) {
       setShowRegisterPrompt(true)
       return false
     }
+    // Démo : ne pas passer par le quiz global, valider via /api/demo/answer.
+    if (auth.isDemo) return demoAnswer(_userAnswer)
     const result = await handleQuizAnswer(_userAnswer, _turnstileToken)
     // Resynchroniser le profil (gold, daily_*, forge_points...) après la réponse
     if (import.meta.env.VITE_API_URL) {
@@ -1024,18 +1091,9 @@ export default function App() {
     </div>
   );
 
-  // ── Mode démo (visiteur anonyme) : instance de jeu solo, pas le jeu complet ──
-  if (auth.isDemo && import.meta.env.VITE_API_URL) {
-    return (
-      <>
-        <DemoGame auth={auth} onOpenAuth={() => setShowAuth(true)} />
-        {showAuth && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
-      </>
-    )
-  }
-
   return (
     <div style={{ minHeight: '100vh', fontFamily: "'Nunito', sans-serif", color: theme.textPrimary, background: theme.bgMain, display: 'flex', flexDirection: 'column', paddingBottom: (auth.profile && isMobile) ? 68 : 0 }}>
+      {auth.isDemo && <DemoBanner doneCount={demoDone} total={demoTotal} onSignup={() => setDemoWall(true)} t={t} />}
       {gs.loadingData && <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 3, zIndex: 9999, background: 'linear-gradient(90deg,#74c7ec,#f9ca24,#e17055,#74c7ec)', backgroundSize: '300% 100%', animation: 'shimmer 1.2s linear infinite' }} />}
       <style>{`
         @keyframes pulseBadge { 0%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,.7)}70%{transform:scale(1.15);box-shadow:0 0 0 5px rgba(231,76,60,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,0)} }
@@ -1051,15 +1109,15 @@ export default function App() {
         @keyframes fadeLeft { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
       `}</style>
 
-      {/* ── Toast hors-ligne ── */}
-      {!socketOnline && import.meta.env.VITE_API_URL && (
+      {/* ── Toast hors-ligne ── (pas en démo : aucun socket attendu) */}
+      {!socketOnline && import.meta.env.VITE_API_URL && !auth.isDemo && (
         <div style={{ flexShrink: 0, background: '#d63031', color: '#fff', textAlign: 'center', padding: '7px 16px', fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif" }}>
           {t('server_offline')}
         </div>
       )}
 
-      {/* ── Bannière Discord ── */}
-      {showDiscordBanner && (
+      {/* ── Bannière Discord ── (pas en démo) */}
+      {showDiscordBanner && !auth.isDemo && (
         <div style={{ position: 'relative', flexShrink: 0, background: '#5865F2', color: '#fff', textAlign: 'center', padding: '7px 36px', fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <span>🎮</span>
           <a href="https://discord.gg/QE5fM6H6n" target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'underline' }}>
@@ -1085,10 +1143,10 @@ export default function App() {
             <div style={{ flex: 1 }} />
             <nav style={{ display: 'flex' }}>
               {[
-                { id: 'tresors',    icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0, disabled: gs.limits.featureTresor === false, tour: 'nav-tresors' },
+                { id: 'tresors',    icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0, disabled: auth.isDemo || gs.limits.featureTresor === false, tour: 'nav-tresors' },
                 { id: 'collection', icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
-                { id: 'market',     icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market', disabled: gs.limits.featureMarket === false },
-                ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge', disabled: gs.limits.featureForge === false }] : []),
+                { id: 'market',     icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market', disabled: auth.isDemo || gs.limits.featureMarket === false},
+                ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge', disabled: auth.isDemo || gs.limits.featureForge === false }] : []),
                 { id: 'top',        icon: '🏆', label: t('nav_top'), tour: 'nav-top', disabled: gs.limits.featureLeaderboard === false },
               ].map(tb => {
                 const active = activeTab === tb.id
@@ -1152,8 +1210,11 @@ export default function App() {
                   </div>
                 </div>
                 {[
-                  { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
-                  { icon: '🤝', label: t('referral_title'), fn: () => { setShowReferral(true); setAvatarMenu(false) } },
+                  // Compte invité (démo) : pas de « Mon compte » ni de parrainage (pas de vrai compte).
+                  ...(auth.isDemo ? [] : [
+                    { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
+                    { icon: '🤝', label: t('referral_title'), fn: () => { setShowReferral(true); setAvatarMenu(false) } },
+                  ]),
                   { icon: '💬', label: 'Support', notif: hasReleaseNotif, fn: () => { clearReleaseNotif(); setDocsPage('release-notes'); setShowDocs(true); setAvatarMenu(false); window.history.pushState({}, '', '/release-notes') } },
                   ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false); window.history.pushState({}, '', '/admin') } }] : []),
                   null,
@@ -1582,10 +1643,10 @@ export default function App() {
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: theme.navBg, backdropFilter: 'blur(20px)', borderTop: `1px solid ${theme.border}`, display: 'flex' }}>
           {[
             { id: 'home',        icon: '🏠', label: t('nav_home') },
-            { id: 'tresors',     icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0, disabled: gs.limits.featureTresor === false, tour: 'nav-tresors' },
+            { id: 'tresors',     icon: '💎', label: t('nav_tresors'), badge: dailyOffer && !dailyOffer.claimed ? 1 : 0, disabled: auth.isDemo || gs.limits.featureTresor === false, tour: 'nav-tresors' },
             { id: 'collection',  icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
-            { id: 'market',      icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market', disabled: gs.limits.featureMarket === false },
-            ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge', disabled: gs.limits.featureForge === false }] : []),
+            { id: 'market',      icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market', disabled: auth.isDemo || gs.limits.featureMarket === false},
+            ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge', disabled: auth.isDemo || gs.limits.featureForge === false }] : []),
             { id: 'top',         icon: '🏆', label: t('nav_top'), tour: 'nav-top', disabled: gs.limits.featureLeaderboard === false },
           ].map(item => {
             const active = activeTab === item.id
@@ -1664,7 +1725,7 @@ export default function App() {
 
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
-      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz}
+      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {
           // Délai cadeau écoulé : le serveur autorise enfin la question au leader.
           const { data } = await apiGetCurrentQuiz().catch(() => ({ data: null }))
@@ -1679,6 +1740,10 @@ export default function App() {
             a: tr?.answer ? Array((tr.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
           }
         }} />}
+
+      {auth.isDemo && demoWall && (
+        <DemoSignupWall auth={auth} onOpenAuth={() => setShowAuth(true)} onClose={() => setDemoWall(false)} earnedCount={demoDone} earned={(demoSteps || []).filter(s => s.earned).map(s => s.card)} t={t} />
+      )}
 
       {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
 
