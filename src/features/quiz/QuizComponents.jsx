@@ -100,7 +100,7 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
 }
 
 // ─── Quiz Modal ───────────────────────────────────────────────────────────────
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
   const [outcome,setOutcome]=useState("card");  // 'card' | 'consolation' | 'hold'
@@ -118,12 +118,15 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   const [revealedLetters,setRevealedLetters]=useState(0);
   const [isSubmitting,setIsSubmitting]=useState(false);
   const [submitError,setSubmitError]=useState(null);
-  const ref=useRef(); const doneRef=useRef(false); const submittingRef=useRef(false);
+  // Question récupérée après le délai cadeau (protection anti-domination) : le
+  // serveur ne l'envoie pas au leader tant que sa fenêtre n'est pas écoulée.
+  const [revealed,setRevealed]=useState(null);
+  const ref=useRef(); const doneRef=useRef(false); const submittingRef=useRef(false); const revealReqRef=useRef(false);
   // Figer l'état "brillant" au montage : un événement quiz:solved (annonçant le prochain
   // quiz) peut mettre à jour isShiny pendant que cette modale affiche encore le résultat.
   const isShinyFrozen=useRef(isShiny).current;
   const rc=RC[quiz.card.rarity]; const {c1,c2}=cardCC(quiz.card.rarity);
-  const wc=wordCount(quiz.a);
+  const wc=wordCount(revealed?.a ?? quiz.a);
 
   useEffect(() => {
     if (quiz.winner && status === "open" && !doneRef.current) {
@@ -190,6 +193,22 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   const isStreakLeader = !!(streakLeader && myId && streakLeader.id === myId) && !cardExempt;
   const myHandicap     = isStreakLeader ? (streakLeader.handicap_seconds || 0) : 0;
   const handicapLeft   = Math.max(0, Math.ceil(myHandicap - elapsed));
+  // Pénalité du joueur en série : la question lui est retenue (côté serveur) ET la
+  // saisie/bouton bloqués pendant le délai cadeau → vraie longueur d'avance pour
+  // les autres. displayedQ = question révélée (récupérée après le délai) ou celle
+  // déjà reçue (non-leader / carte exemptée).
+  const displayedQ     = revealed?.q ?? quiz.q;
+  // Masqué tant qu'on est dans la fenêtre (défense en profondeur si la question a
+  // fuité dans le payload) ou que la question retenue n'a pas encore été récupérée.
+  const questionMasked = isStreakLeader && (handicapLeft > 0 || !displayedQ);
+
+  // Fin du délai cadeau → récupérer la question retenue par le serveur (via /current).
+  useEffect(()=>{
+    if(status!=="open"||!isStreakLeader) return;
+    if(handicapLeft>0||displayedQ||revealReqRef.current) return;
+    revealReqRef.current=true;
+    Promise.resolve(onNeedQuestion?.()).then(d=>{ if(d) setRevealed(d); }).catch(()=>{});
+  },[status,isStreakLeader,handicapLeft,displayedQ]);
 
   // Indice progressif : structure puis premières lettres réelles
   const maskedHint=useMemo(()=>{
@@ -258,8 +277,15 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             <Card card={quiz.card} small isShiny={isShinyFrozen} />
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1.5,marginBottom:5}}>{quiz.q}</div>
-            {maskedHint&&<div style={{fontSize:10,color:"#f39c12",fontFamily:"monospace",letterSpacing:2,animation:"pulse 1s infinite"}}>🔤 {maskedHint}</div>}
+            {questionMasked ? (
+              <div style={{fontSize:13,fontWeight:800,color:"#ffd28a",lineHeight:1.5,display:"flex",alignItems:"center",gap:8,minHeight:42}}>
+                <span style={{fontSize:22}}>🎁</span>
+                <span>{handicapLeft>0 ? t('streak_question_hidden').replace('{x}',handicapLeft) : `${t('quiz_validating')||'…'}`}</span>
+              </div>
+            ) : (<>
+              <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1.5,marginBottom:5}}>{displayedQ}</div>
+              {maskedHint&&<div style={{fontSize:10,color:"#f39c12",fontFamily:"monospace",letterSpacing:2,animation:"pulse 1s infinite"}}>🔤 {maskedHint}</div>}
+            </>)}
           </div>
         </div>
         </div>
@@ -280,9 +306,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           )}
           <div style={{display:"flex",gap:9}}>
             {submitError&&<div style={{fontSize:12,color:"#f39c12",fontWeight:700,padding:"7px 10px",background:"#f39c1218",borderRadius:9,marginBottom:6,border:"1px solid #f39c1233"}}>{submitError}</div>}
-            <input ref={ref} value={inp} disabled={isSubmitting} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0)submit()}} placeholder={wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc)}
-              style={{flex:1,background:isSubmitting?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":isSubmitting?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:isSubmitting?0.6:1}}/>
-          <button onClick={submit} disabled={isSubmitting||!inp.trim()||handicapLeft>0} style={{...BTN(handicapLeft>0?"linear-gradient(135deg,#ff7043,#e17055)":"linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 16px",borderRadius:11,opacity:(isSubmitting||!inp.trim()||handicapLeft>0)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0)?"not-allowed":"pointer",minWidth:90,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <input ref={ref} value={inp} disabled={isSubmitting||questionMasked} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0&&!questionMasked)submit()}} placeholder={questionMasked ? (handicapLeft>0?`🎁 ${handicapLeft}s`:"…") : (wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc))}
+              style={{flex:1,background:(isSubmitting||questionMasked)?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":(isSubmitting||questionMasked)?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:(isSubmitting||questionMasked)?0.6:1}}/>
+          <button onClick={submit} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked} style={{...BTN(handicapLeft>0?"linear-gradient(135deg,#ff7043,#e17055)":"linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 16px",borderRadius:11,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?"not-allowed":"pointer",minWidth:90,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {handicapLeft>0 ? `🎁 ${handicapLeft}s` : isSubmitting ? (<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #1e3045",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.6s linear infinite"}}/>{t("quiz_validating") || "Validation…"}</>) : t("quiz_submit")}
             </button>
           </div>

@@ -1652,7 +1652,21 @@ export default function App() {
 
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
-      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz} />}
+      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={handleQuizExpire} onClose={handleCloseActiveQuiz}
+        onNeedQuestion={async () => {
+          // Délai cadeau écoulé : le serveur autorise enfin la question au leader.
+          const { data } = await apiGetCurrentQuiz().catch(() => ({ data: null }))
+          if (!data?.quiz || data.quiz.question == null) return null
+          const lang = getLang()
+          const tr = data.quiz.translations?.[lang]
+          const wc = data.quiz.answer_word_count || 1
+          return {
+            q: tr?.question || data.quiz.question,
+            h: data.quiz.hint,
+            answer_length: data.quiz.answer_length,
+            a: tr?.answer ? Array((tr.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
+          }
+        }} />}
 
       {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
 
