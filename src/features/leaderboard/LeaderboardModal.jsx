@@ -274,7 +274,6 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
           <div style={{ color: theme.gold, fontWeight: 900, fontSize: 20 }}>{t('lb_title')}</div>
           {!inline && <button onClick={onClose} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>✕</button>}
         </div>
-        <div style={{ fontSize: 10, color: '#666', marginBottom: 12, fontStyle: 'italic' }}>🔄 {t('lb_score_refresh')}</div>
         <input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
           placeholder={t('lb_search')}
           style={{ width: '100%', boxSizing: 'border-box', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none', marginBottom: 14 }}/>
