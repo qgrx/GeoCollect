@@ -259,12 +259,8 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             </div>
           </div>
         )}
-        {/* Bandeau série (handicap) — au-dessus de la question pour rester lisible mobile */}
-        {status==="open" && streakLeader && !cardExempt && (!myId || streakLeader.id !== myId) && (streakLeader.handicap_seconds>0) && (
-          <div style={{flexShrink:0,fontSize:11.5,fontWeight:800,color:"#ff8a5c",background:"#ff70431a",border:"1px solid #ff704344",borderRadius:10,padding:"7px 11px",marginBottom:10}}>
-            🔥 {t('streak_handicap_others').replace('{pseudo}',streakLeader.pseudo).replace('{x}',streakLeader.handicap_seconds)}
-          </div>
-        )}
+        {/* Bandeau cadeau du leader uniquement — l'info aux autres joueurs a déjà
+            été annoncée dans la barre (countdown), inutile de la répéter ici. */}
         {status==="open" && isStreakLeader && handicapLeft>0 && (
           <div style={{flexShrink:0,fontSize:11.5,fontWeight:800,color:"#ffd28a",background:"#ff70431a",border:"1px solid #ff7043aa",borderRadius:10,padding:"7px 11px",marginBottom:10}}>
             🎁 {t('streak_handicap_self').replace('{x}',handicapLeft)}
