@@ -107,6 +107,11 @@ export const apiReportQuestion      = (questionId) =>
 export const apiResetQuestionReports = (questionId) =>
   apiFetch(`/api/admin/questions/${questionId}/reports`, { method: 'DELETE' })
 
+// ─── Démo / onboarding (compte anonyme) ───────────────────────────────────────
+export const apiDemoStart   = ()             => apiFetch('/api/demo/start',   { method: 'POST' })
+export const apiDemoAnswer  = (step, answer) => apiFetch('/api/demo/answer',  { method: 'POST', body: { step, answer } })
+export const apiDemoPromote = ()             => apiFetch('/api/demo/promote', { method: 'POST' })
+
 // ─── Transactions ─────────────────────────────────────────────────────────────
 export const apiGetTransactions = (params = {}) => {
   const qs = new URLSearchParams(params).toString()

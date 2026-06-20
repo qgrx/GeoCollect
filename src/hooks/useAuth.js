@@ -10,7 +10,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { apiDeleteAccount } from '../services/api.js'
+import { apiDeleteAccount, apiDemoPromote } from '../services/api.js'
 
 // ─── Hook unique — branch au runtime, pas au niveau hook ──────────────────────
 export function useAuth() {
@@ -88,6 +88,12 @@ export function useAuth() {
   // ── Actions ────────────────────────────────────────────────────────────────
 
   const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin
+
+  // Mode démo : compte ANONYME Supabase (is_anonymous=true). Le joueur gagne 5
+  // geocoins sans compte ; converti en compte définitif via convertAnonymous.
+  const signInAnonymously = useCallback(async () => {
+    return supabase.auth.signInAnonymously()
+  }, [])
 
   const signInWithGoogle = useCallback(async () => {
     return supabase.auth.signInWithOAuth({
@@ -188,5 +194,24 @@ export function useAuth() {
     return { error }
   }, [user, profile])
 
-  return { user, profile, setProfile, loading, signInWithGoogle, signInWithFacebook, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
+  // Convertit le compte démo anonyme en compte définitif (même id → les geocoins
+  // gagnés sont conservés) : email + mot de passe, pseudo, puis sortie du mode démo.
+  const convertAnonymous = useCallback(async (email, password, newPseudo) => {
+    if (!user) return { error: { message: 'not_authenticated' } }
+    const { error: upErr } = await supabase.auth.updateUser({ email, password })
+    if (upErr) return { error: upErr }
+    if (newPseudo) {
+      const { error: pErr } = await updatePseudo(newPseudo)
+      if (pErr) return { error: pErr }
+    }
+    await apiDemoPromote().catch(() => {})
+    await loadProfile(user)
+    return { error: null }
+  }, [user, updatePseudo, loadProfile])
+
+  // Mode démo = utilisateur anonyme (fiable dès la connexion, avant même que le
+  // backend ne pose is_demo). Sert à l'aiguillage de l'UI (démo vs jeu complet).
+  const isDemo = !!user?.is_anonymous
+
+  return { user, profile, setProfile, loading, isDemo, signInAnonymously, convertAnonymous, signInWithGoogle, signInWithFacebook, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
 }

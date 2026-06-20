@@ -48,7 +48,7 @@ function fmtRemains(s) {
   return `${m}:${String(sec).padStart(2, '0')}`
 }
 
-export default function LandingSection({ onOpenAuth }) {
+export default function LandingSection({ onOpenAuth, onStartDemo }) {
   const { t } = useT();
   const containerRef = useRef(null);
   const scrollY = useScrollY(containerRef);
@@ -141,8 +141,8 @@ export default function LandingSection({ onOpenAuth }) {
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', animation: 'fadeUp .6s .15s ease both', flexWrap: 'wrap', minHeight: 34 }}>
             {geocoin && (
-              <button onClick={onOpenAuth} style={{ background: 'linear-gradient(135deg,#e65100,#f9a825)', border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 20, fontFamily: "'Fredoka One',sans-serif", fontSize: 13, letterSpacing: .5, cursor: 'pointer', boxShadow: '0 4px 16px #e6510033', display: 'flex', alignItems: 'center', gap: 6 }}>
-                🪙 {t('landing_start_collection_cta')}
+              <button onClick={onStartDemo || onOpenAuth} style={{ background: 'linear-gradient(135deg,#e65100,#f9a825)', border: 'none', color: '#fff', padding: '10px 22px', borderRadius: 20, fontFamily: "'Fredoka One',sans-serif", fontSize: 14, letterSpacing: .5, cursor: 'pointer', boxShadow: '0 4px 16px #e6510033', display: 'flex', alignItems: 'center', gap: 6 }}>
+                🎮 {t('demo_intro_cta')}
               </button>
             )}
             {remainsFmt && (

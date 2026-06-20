@@ -33,6 +33,7 @@ import AuthModal from './features/auth/AuthModal.jsx';
 import SettingsModal from './features/auth/SettingsModal.jsx';
 import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
+import DemoGame from './features/demo/DemoGame.jsx';
 import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
@@ -800,6 +801,7 @@ export default function App() {
   // ── Onboarding (nouvel utilisateur) ─────────────────────────────────────────
   useEffect(() => {
     if (!auth.profile || !import.meta.env.VITE_API_URL) return
+    if (auth.isDemo) return  // démo : pas d'onboarding pseudo/cadeau (parcours dédié)
     if (auth.profile.welcome_given) {
       // Utilisateur existant : proposer un pseudo propre si celui hérité du
       // fournisseur OAuth contient espace/@/. — MAIS une seule fois. Dès que le
@@ -1022,6 +1024,16 @@ export default function App() {
     </div>
   );
 
+  // ── Mode démo (visiteur anonyme) : instance de jeu solo, pas le jeu complet ──
+  if (auth.isDemo && import.meta.env.VITE_API_URL) {
+    return (
+      <>
+        <DemoGame auth={auth} onOpenAuth={() => setShowAuth(true)} />
+        {showAuth && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
+      </>
+    )
+  }
+
   return (
     <div style={{ minHeight: '100vh', fontFamily: "'Nunito', sans-serif", color: theme.textPrimary, background: theme.bgMain, display: 'flex', flexDirection: 'column', paddingBottom: (auth.profile && isMobile) ? 68 : 0 }}>
       {gs.loadingData && <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 3, zIndex: 9999, background: 'linear-gradient(90deg,#74c7ec,#f9ca24,#e17055,#74c7ec)', backgroundSize: '300% 100%', animation: 'shimmer 1.2s linear infinite' }} />}
@@ -1169,7 +1181,7 @@ export default function App() {
 
       {/* ── MAIN CONTENT ── */}
       {!auth.profile && import.meta.env.VITE_API_URL ? (
-        <LandingSection onOpenAuth={() => setShowAuth(true)} />
+        <LandingSection onOpenAuth={() => setShowAuth(true)} onStartDemo={() => auth.signInAnonymously?.()} />
       ) : (
         <div style={{ flex: 1, display: isWide ? 'flex' : 'block', alignItems: 'flex-start' }}>
 
