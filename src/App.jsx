@@ -33,7 +33,7 @@ import AuthModal from './features/auth/AuthModal.jsx';
 import SettingsModal from './features/auth/SettingsModal.jsx';
 import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
-import { DemoBanner, DemoSignupWall } from './features/demo/DemoGame.jsx';
+import { DemoSignupWall } from './features/demo/DemoGame.jsx';
 import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
@@ -174,6 +174,23 @@ function OnboardingPseudoScreen({ auth, t, onDone }) {
   )
 }
 
+// ── Mode démo (invité) : données statiques réutilisant les vrais composants ──
+// 3 quêtes du jour factices (non incrémentables) + générateur de faux « derniers
+// geocoins disputés » (pseudos du top × geocoins hommage), pour un accueil crédible.
+const DEMO_QUESTS = [
+  { id: 'demo-q1', name: 'Gagne 3 geocoins',   progress: 0, threshold: 3, type: 'quiz_win', forge_points: 1, gold_reward: 0,  completed_at: null },
+  { id: 'demo-q2', name: 'Réponds à 5 quiz',   progress: 0, threshold: 5, type: 'quiz_win', forge_points: 0, gold_reward: 50, completed_at: null },
+  { id: 'demo-q3', name: 'Fais une série de 2', progress: 0, threshold: 2, type: 'streak',   forge_points: 2, gold_reward: 0,  completed_at: null },
+]
+const buildDemoHistory = (pseudos, tribute, n = 8) => {
+  if (!tribute?.length) return []
+  return Array.from({ length: n }, () => ({
+    card:   tribute[Math.floor(Math.random() * tribute.length)],
+    winner: pseudos?.length ? pseudos[Math.floor(Math.random() * pseudos.length)] : '—',
+    won: false, isShiny: false,
+  }))
+}
+
 export default function App() {
   const { t, lang } = useT();
   const { theme, mode, toggle } = useTheme();
@@ -230,6 +247,7 @@ export default function App() {
   // ── Charger l'historique des quiz depuis la DB ────────────────────────────────
   useEffect(() => {
     if (!auth.profile || !import.meta.env.VITE_API_URL) return
+    if (auth.isDemo) return  // démo : faux feed local, pas d'appel API
     apiGetQuizHistory(10).then(({ data }) => {
       if (data?.history?.length) {
         // Sécurité : filtrer d'éventuelles ventes qui se seraient glissées depuis l'API
@@ -461,6 +479,7 @@ export default function App() {
   // last_seen_at et renvoie le nombre d'utilisateurs en ligne ─────────────────
   useEffect(() => {
     if (!auth.profile?.id || !import.meta.env.VITE_API_URL) return
+    if (auth.isDemo) return  // démo : pas de présence (compteur en ligne masqué)
     let active = true
     const ping = async () => {
       const { data } = await apiPingProfile().catch(() => ({ data: null }))
@@ -613,14 +632,14 @@ export default function App() {
 
   // Fetch offre du jour + dépôt d'attente quand le profil est chargé ou quand on ouvre l'onglet Trésors
   useEffect(() => {
-    if (!auth.profile) return
+    if (!auth.profile || auth.isDemo) return  // démo : pas de trésor/dépôt (routes verrouillées)
     apiGetDailyTreasure().then(({ data }) => { if (data) setDailyOffer(data) })
     apiGetHold().then(({ data }) => { setHold(data?.hold ?? null) })
   }, [auth.profile?.id, activeTab === 'tresors'])
 
   // Vérifier la saison en cours à la connexion — afficher la popup si nouvelle saison
   useEffect(() => {
-    if (!auth.profile) return
+    if (!auth.profile || auth.isDemo) return
     apiGetCurrentSeason().then(({ data }) => {
       if (data?.season && data.is_new) setSeasonPopup({ season: data.season, cards: data.cards || [] })
     }).catch(() => {})
@@ -762,9 +781,9 @@ export default function App() {
   // objets démo n'ont pas d'id → handleJoin n'appelle aucune API quiz globale).
   const [demoSteps, setDemoSteps] = useState(null)
   const [demoWall,  setDemoWall]  = useState(false)
+  const [demoSocial, setDemoSocial] = useState(null)   // { pseudos, tribute } pour le faux feed
   const demoStartedRef = useRef(false)
   const demoDone  = demoSteps ? demoSteps.filter(s => s.earned).length : 0
-  const demoTotal = demoSteps?.length || 5
 
   const buildDemoQuiz = useCallback((step) => {
     if (!step) return null
@@ -784,14 +803,23 @@ export default function App() {
   }, [buildDemoQuiz, setActiveQuiz, activeQuizRef, setPendingQuiz, setNextCard])
 
   useEffect(() => {
-    if (!auth.isDemo || demoStartedRef.current || !gs.cardPool.length) return
+    if (!auth.isDemo || demoStartedRef.current) return
     demoStartedRef.current = true
     apiDemoStart().then(({ data }) => {
       const steps = data?.steps || []
+      // En démo, useGameState ne charge rien : on alimente nous-mêmes l'état réutilisé.
+      const stepCards = steps.map(s => s.card).filter(Boolean)
+      const seen = new Set()
+      gs.setCardPool(stepCards.filter(c => c && !seen.has(c.id) && seen.add(c.id)))
+      const earned = {}
+      for (const s of steps) if (s.earned && s.card) earned[s.card.id] = 1
+      gs.setCollection(earned)
+      gs.setInitialQuests(DEMO_QUESTS)
+      setDemoSocial({ pseudos: data?.social?.pseudos || [], tribute: data?.social?.tribute || [] })
       setDemoSteps(steps)
       presentDemoStep(steps)
     }).catch(() => {})
-  }, [auth.isDemo, gs.cardPool.length, presentDemoStep])
+  }, [auth.isDemo])
 
   // Fermeture du quiz démo (après victoire) → étape suivante ou mur d'inscription.
   const demoAdvance = useCallback(() => {
@@ -820,6 +848,16 @@ export default function App() {
   useEffect(() => {
     if (auth.isDemo && ['market', 'forge', 'tresors', 'top'].includes(activeTab)) setActiveTab('collection')
   }, [auth.isDemo, activeTab])
+
+  // Démo : faux feed « derniers geocoins disputés », rotatif toutes les 60 s
+  // (pseudos du top × geocoins hommage), alimente le VRAI strip d'historique.
+  useEffect(() => {
+    if (!auth.isDemo || !demoSocial) return
+    const refresh = () => setHistory(buildDemoHistory(demoSocial.pseudos, demoSocial.tribute))
+    refresh()
+    const id = setInterval(refresh, 60_000)
+    return () => clearInterval(id)
+  }, [auth.isDemo, demoSocial, setHistory])
 
   const wrappedHandleQuizAnswer = async (_userAnswer, _turnstileToken) => {
     if (!auth.profile) {
@@ -1093,7 +1131,6 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', fontFamily: "'Nunito', sans-serif", color: theme.textPrimary, background: theme.bgMain, display: 'flex', flexDirection: 'column', paddingBottom: (auth.profile && isMobile) ? 68 : 0 }}>
-      {auth.isDemo && <DemoBanner doneCount={demoDone} total={demoTotal} onSignup={() => setDemoWall(true)} t={t} />}
       {gs.loadingData && <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 3, zIndex: 9999, background: 'linear-gradient(90deg,#74c7ec,#f9ca24,#e17055,#74c7ec)', backgroundSize: '300% 100%', animation: 'shimmer 1.2s linear infinite' }} />}
       <style>{`
         @keyframes pulseBadge { 0%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,.7)}70%{transform:scale(1.15);box-shadow:0 0 0 5px rgba(231,76,60,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,0)} }
@@ -1147,7 +1184,7 @@ export default function App() {
                 { id: 'collection', icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
                 { id: 'market',     icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market', disabled: auth.isDemo || gs.limits.featureMarket === false},
                 ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge', disabled: auth.isDemo || gs.limits.featureForge === false }] : []),
-                { id: 'top',        icon: '🏆', label: t('nav_top'), tour: 'nav-top', disabled: gs.limits.featureLeaderboard === false },
+                { id: 'top',        icon: '🏆', label: t('nav_top'), tour: 'nav-top', disabled: auth.isDemo || gs.limits.featureLeaderboard === false },
               ].map(tb => {
                 const active = activeTab === tb.id
                 return (
@@ -1218,7 +1255,10 @@ export default function App() {
                   { icon: '💬', label: 'Support', notif: hasReleaseNotif, fn: () => { clearReleaseNotif(); setDocsPage('release-notes'); setShowDocs(true); setAvatarMenu(false); window.history.pushState({}, '', '/release-notes') } },
                   ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false); window.history.pushState({}, '', '/admin') } }] : []),
                   null,
-                  { icon: '↩', label: t('btn_logout'), color: '#f85149', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
+                  // Invité (démo) : pas de déconnexion → inscription (conversion, garde les geocoins).
+                  auth.isDemo
+                    ? { icon: '✨', label: t('demo_signup_now'), color: '#a29bfe', fn: () => { setDemoWall(true); setAvatarMenu(false); } }
+                    : { icon: '↩', label: t('btn_logout'), color: '#f85149', fn: () => { auth.signOut(); setAvatarMenu(false); setHistory([]); setPendingQuiz(null); setActiveQuiz(null); } },
                 ].map((item, i) => item === null ? (
                   <div key={i} style={{ height: 1, background: theme.borderLight }}/>
                 ) : (
@@ -1465,11 +1505,11 @@ export default function App() {
                       )}
                     </div>
 
-                    {/* Manquants */}
-                    <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
+                    {/* Manquants — masqué en démo (collection = uniquement les geocoins gagnés) */}
+                    {!auth.isDemo && <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
                       style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : theme.bgInput, border: `1px solid ${showMissing ? '#6c5ce7' : theme.border}`, color: showMissing ? '#fff' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       {showMissing ? t('filter_owned') : t('filter_missing')}
-                    </button>
+                    </button>}
                   </div>
 
                   {/* Card grid */}
@@ -1647,7 +1687,7 @@ export default function App() {
             { id: 'collection',  icon: '🃏', label: t('nav_collection'), tour: 'nav-collection' },
             { id: 'market',      icon: '🏪', label: t('nav_market'), badge: gs.unreadSales, tour: 'nav-market', disabled: auth.isDemo || gs.limits.featureMarket === false},
             ...(gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false ? [{ id: 'forge', icon: '🔨', label: t('nav_forge'), tour: 'nav-forge', disabled: auth.isDemo || gs.limits.featureForge === false }] : []),
-            { id: 'top',         icon: '🏆', label: t('nav_top'), tour: 'nav-top', disabled: gs.limits.featureLeaderboard === false },
+            { id: 'top',         icon: '🏆', label: t('nav_top'), tour: 'nav-top', disabled: auth.isDemo || gs.limits.featureLeaderboard === false },
           ].map(item => {
             const active = activeTab === item.id
             return (

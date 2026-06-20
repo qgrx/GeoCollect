@@ -150,6 +150,11 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     setGold(profile.gold ?? 0)
     setStreak(profile.streak ?? 0)
 
+    // Mode invité (démo) : AUCUN appel API large (le compte anonyme est verrouillé
+    // sur /api/demo côté serveur). L'état (collection, cardPool, quêtes) est alimenté
+    // par le contrôleur démo dans App. On évite ainsi tout 403 / DoS.
+    if (auth?.isDemo) { setCollectionLoaded(true); setMarketLoaded(true); setLoadingData(false); return }
+
     async function loadAll() {
       setLoadingData(true)
 
@@ -376,7 +381,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   }, [])
 
   useEffect(() => {
-    if (!profile) return
+    if (!profile || auth?.isDemo) return
     const interval = setInterval(refreshMarket, 30_000)
     return () => clearInterval(interval)
   }, [profile?.id, refreshMarket])
@@ -744,7 +749,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,
     // Derived
     isGuest, uniqueCards, totalUnique, myScore,
-    initialQuests, forgePoints, forgePointsSignal, questActivitySignal,
+    initialQuests, setInitialQuests, forgePoints, forgePointsSignal, questActivitySignal,
     addForgePoints: (pts) => {
       setQuestActivitySignal(s => s + 1)
       if (!pts) return

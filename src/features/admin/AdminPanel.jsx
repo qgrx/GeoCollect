@@ -108,6 +108,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   // ── Mode démo (onboarding) : 5 paires geocoin + question ──────────────────────
   const [demoPairs,setDemoPairs]=useState([]);          // [{card_id, question_id}]
   const [demoQuestions,setDemoQuestions]=useState([]);  // [{id, q}]
+  const [demoTribute,setDemoTribute]=useState([]);      // [card_id] geocoins « hommage » (faux feed)
   const [demoLoaded,setDemoLoaded]=useState(false);
   useEffect(()=>{
     if(tab!=='demo'||demoLoaded) return;
@@ -116,16 +117,20 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
       const [{data:cfg},{data:qs}]=await Promise.all([api.apiGetAdminConfig(),api.apiAdminGetQuestions()]);
       const arr=Array.isArray(cfg?.config?.demo_geocoins)?cfg.config.demo_geocoins:[];
       setDemoPairs(arr.slice(0,5));
+      setDemoTribute(Array.isArray(cfg?.config?.demo_tribute_geocoins)?cfg.config.demo_tribute_geocoins.map(Number):[]);
       setDemoQuestions((qs?.questions||[]).map(q=>({id:q.id,q:q.question})));
     }).catch(()=>{});
   },[tab,demoLoaded]);
   const setDemoPair=(i,key,val)=>setDemoPairs(prev=>{const next=[...prev];next[i]={...(next[i]||{}),[key]:val};return next;});
+  const addTribute=(id)=>{const n=Number(id);if(n&&!demoTribute.includes(n))setDemoTribute([...demoTribute,n]);};
+  const removeTribute=(id)=>setDemoTribute(demoTribute.filter(x=>x!==id));
   const saveDemo=async()=>{
     const pairs=demoPairs.filter(p=>p&&p.card_id&&p.question_id).slice(0,5)
       .map(p=>({card_id:Number(p.card_id),question_id:Number(p.question_id)}));
     const {apiSetConfig}=await import('../../services/api.js');
-    const {error}=await apiSetConfig('demo_geocoins',pairs);
-    setMsg(error?`❌ ${error}`:`✅ Démo sauvegardée (${pairs.length} geocoin${pairs.length>1?'s':''}) !`);
+    const [r1,r2]=await Promise.all([apiSetConfig('demo_geocoins',pairs),apiSetConfig('demo_tribute_geocoins',demoTribute)]);
+    const error=r1.error||r2.error;
+    setMsg(error?`❌ ${error}`:`✅ Démo sauvegardée (${pairs.length} geocoin${pairs.length>1?'s':''}, ${demoTribute.length} hommage) !`);
   };
 
   const [achCards,setAchCards]=useState([]);
@@ -2256,6 +2261,25 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               );
             })}
           </div>
+
+          {/* Geocoins « hommage » — alimentent le faux feed « derniers geocoins disputés » côté invité */}
+          <div style={{fontWeight:800,color:"#f9ca24",marginTop:18,marginBottom:4,fontSize:13}}>Geocoins hommage (feed démo)</div>
+          <div style={{fontSize:11,color:"#a8bfcf",marginBottom:8}}>Affichés en faux « derniers disputés » à l'invité. Vide = repli sur des communs.</div>
+          <select value="" onChange={e=>{addTribute(e.target.value);e.target.value='';}} style={{...SEL,marginBottom:8}}>
+            <option value="">+ Ajouter un geocoin hommage…</option>
+            {cardPool.filter(c=>!c.forgeable&&!demoTribute.includes(c.id)).map(c=>(
+              <option key={c.id} value={c.id}>{c.name} ({c.rarity})</option>
+            ))}
+          </select>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {demoTribute.map(id=>{const c=cardPool.find(x=>x.id===id);return (
+              <span key={id} style={{display:"inline-flex",alignItems:"center",gap:6,background:"#ffffff10",border:"1px solid #ffffff22",borderRadius:50,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#fff"}}>
+                {c?c.name:`#${id}`}
+                <button onClick={()=>removeTribute(id)} style={{background:"none",border:"none",color:"#e74c3c",cursor:"pointer",fontSize:13,lineHeight:1,padding:0}}>✕</button>
+              </span>
+            );})}
+          </div>
+
           <button onClick={saveDemo} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"10px 22px",borderRadius:9,marginTop:14}}>
             Sauvegarder la démo
           </button>
