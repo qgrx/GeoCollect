@@ -15,7 +15,7 @@ import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandi
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiDemoStart, apiDemoAnswer, apiDemoPromote } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiDemoStart, apiDemoAnswer, apiDemoPromote, apiDemoAbandon } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -262,6 +262,27 @@ export default function App() {
       Notification.requestPermission()
     }
   }, [auth.profile?.id])
+
+  // ── Erreur OAuth (retour de redirection Supabase, ex. conversion Google échouée) ──
+  // Ex. identity_already_exists : le compte Google est déjà lié à un autre compte.
+  // On affiche un message clair et on nettoie l'URL (sinon état confus persistant).
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const h = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    if (!q.get('error') && !h.get('error')) return
+    const code = q.get('error_code') || h.get('error_code') || ''
+    const desc = q.get('error_description') || h.get('error_description') || ''
+    window.history.replaceState({}, '', window.location.pathname)
+    // Conversion Google d'un compte invité refusée car l'identité existe déjà →
+    // on abandonne (supprime) le compte temporaire et on connecte l'utilisateur à
+    // son compte existant (connexion Google normale).
+    if (code === 'identity_already_exists') {
+      showToast(t('oauth_identity_exists'), 'error')
+      apiDemoAbandon().catch(() => {}).finally(() => auth.signInWithGoogle())
+      return
+    }
+    showToast(desc ? decodeURIComponent(desc.replace(/\+/g, ' ')) : t('oauth_error'), 'error')
+  }, [])
 
   function sendPushNotif(card) {
     if (typeof Notification === 'undefined') return
@@ -816,20 +837,27 @@ export default function App() {
   useEffect(() => {
     if (!auth.isDemo || demoStartedRef.current) return
     demoStartedRef.current = true
-    apiDemoStart().then(({ data }) => {
-      const steps = data?.steps || []
-      // En démo, useGameState ne charge rien : on alimente nous-mêmes l'état réutilisé.
-      const stepCards = steps.map(s => s.card).filter(Boolean)
-      const seen = new Set()
-      gs.setCardPool(stepCards.filter(c => c && !seen.has(c.id) && seen.add(c.id)))
-      const earned = {}
-      for (const s of steps) if (s.earned && s.card) earned[s.card.id] = 1
-      gs.setCollection(earned)
-      gs.setInitialQuests(DEMO_QUESTS)
-      setDemoSocial({ pseudos: data?.social?.pseudos || [], tribute: data?.social?.tribute || [] })
-      setDemoSteps(steps)
-      presentDemoStep(steps)
-    }).catch(() => {})
+    let cancelled = false
+    // Retry si l'appel échoue / renvoie vide (ex. session anonyme transitoire après un
+    // retour de redirection OAuth), pour éviter une démo bloquée sur un état vide.
+    const load = (attempt = 0) => {
+      apiDemoStart().then(({ data }) => {
+        if (cancelled) return
+        const steps = data?.steps || []
+        if (!steps.length) { if (attempt < 4) setTimeout(() => load(attempt + 1), 1500); return }
+        const seen = new Set()
+        gs.setCardPool(steps.map(s => s.card).filter(c => c && !seen.has(c.id) && seen.add(c.id)))
+        const earned = {}
+        for (const s of steps) if (s.earned && s.card) earned[s.card.id] = 1
+        gs.setCollection(earned)
+        gs.setInitialQuests(DEMO_QUESTS)
+        setDemoSocial({ pseudos: data?.social?.pseudos || [], tribute: data?.social?.tribute || [] })
+        setDemoSteps(steps)
+        presentDemoStep(steps)
+      }).catch(() => { if (!cancelled && attempt < 4) setTimeout(() => load(attempt + 1), 1500) })
+    }
+    load()
+    return () => { cancelled = true }
   }, [auth.isDemo])
 
   // Fermeture du quiz démo (après victoire) → étape suivante ou mur d'inscription.

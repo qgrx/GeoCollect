@@ -111,6 +111,7 @@ export const apiResetQuestionReports = (questionId) =>
 export const apiDemoStart   = ()             => apiFetch('/api/demo/start',   { method: 'POST' })
 export const apiDemoAnswer  = (step, answer) => apiFetch('/api/demo/answer',  { method: 'POST', body: { step, answer } })
 export const apiDemoPromote = ()             => apiFetch('/api/demo/promote', { method: 'POST' })
+export const apiDemoAbandon = ()             => apiFetch('/api/demo/abandon', { method: 'POST' })
 
 // ─── Transactions ─────────────────────────────────────────────────────────────
 export const apiGetTransactions = (params = {}) => {
