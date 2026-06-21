@@ -149,7 +149,18 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         if (joinGold > 0 && cbRef.current.showGoldFlash) cbRef.current.showGoldFlash(joinGold)
       }
 
-      apiJoinQuiz(quiz.id).then(({ data }) => {
+      apiJoinQuiz(quiz.id).then(({ data, status }) => {
+        // Quiz déjà résolu / expiré (event quiz:solved manqué, ex. socket coupé sur
+        // mobile) : le /join renvoie 404 → on referme et on nettoie plutôt que de
+        // laisser le joueur répondre à un quiz déjà gagné par un autre.
+        if (status === 404) {
+          resolvedQuizIdsRef.current.add(quiz.id)
+          if (activeQuizRef.current?.id === quiz.id) { setActiveQuiz(null); activeQuizRef.current = null }
+          setPendingQuiz(p => (p && p.id === quiz.id ? null : p))
+          setNextQuizTime(resolveNextQuizTime(Date.now()))
+          cbRef.current.showToast?.(cbRef.current.t('quiz_already_solved'), 'error')
+          return
+        }
         // Si le backend refuse finalement l'or (limite atteinte) et que c'était une nouvelle participation
         // (uniquement si l'or de participation est activé — sinon gold_earned=0 est normal)
         const joinGold = cbRef.current.limits?.quizJoinGold ?? 1

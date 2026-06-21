@@ -384,6 +384,10 @@ export default function App() {
         if (Date.now() >= snoozedUntilRef.current) {
           setPendingQuiz(q)
           soundQuizNew()
+        } else {
+          // Snoozé : on n'affiche pas le nouveau quiz, mais on RETIRE l'ancien pending
+          // (il appartient au tour précédent → sinon « Participer » sur un quiz périmé).
+          setPendingQuiz(null)
         }
         sendPushNotif(card)
       })
@@ -394,6 +398,12 @@ export default function App() {
         if (data.price !== undefined || data.buyer !== undefined || data.type === 'vente' || data.type === 'achat') return
 
         setQuizSessionActive(false)
+
+        // Si le quiz résolu est celui actuellement EN ATTENTE (non rejoint), le marquer
+        // « gagné » tout de suite : handleJoin refuse alors de le rejoindre et la barre
+        // ne propose plus « Participer » sur un quiz déjà gagné (robuste aux courses
+        // avec quiz:new / au snooze).
+        if (data.quiz_id) setPendingQuiz(p => (p && p.id === data.quiz_id) ? { ...p, winner: data.winner || '?' } : p)
 
         // Mettre à jour le prochain quiz dès quiz:solved (sans attendre quiz:new).
         // applyServerSchedule fait primer l'horaire dynamique serveur sur le calcul local.
@@ -481,6 +491,18 @@ export default function App() {
 
       s.on('connect',    () => {
         setSocketOnline(true)
+        // Re-synchroniser après une (re)connexion : un quiz a pu être résolu pendant
+        // une coupure → on réaligne le pending sur l'état serveur pour ne pas laisser
+        // « Participer » sur un quiz déjà gagné.
+        apiGetCurrentQuiz().then(({ data }) => {
+          if (!data) return
+          const activeId = data.quiz?.id ?? null
+          setPendingQuiz(p => (!p || (activeId && p.id === activeId)) ? p : null)
+          if (!data.quiz && data.next_quiz_at && data.server_time) {
+            const msLeft = Math.max(0, new Date(data.next_quiz_at).getTime() - new Date(data.server_time).getTime())
+            applyServerSchedule(Date.now() + msLeft, Math.round(msLeft / 1000))
+          }
+        }).catch(() => {})
       })
       s.on('disconnect', () => setSocketOnline(false))
       s.on('connect_error', () => setSocketOnline(false))
@@ -1343,7 +1365,7 @@ export default function App() {
                 <div data-tour="countdown">
                   {demoComplete
                     ? <DemoComplete onSignup={() => setShowAuth(true)} t={t} />
-                    : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />}
+                    : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />}
                 </div>
               )}
 
@@ -1491,7 +1513,7 @@ export default function App() {
                 <div data-tour="countdown" style={{ marginBottom: 14 }}>
                   {demoComplete
                     ? <DemoComplete onSignup={() => setShowAuth(true)} t={t} />
-                    : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />}
+                    : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />}
                 </div>
               )}
 
