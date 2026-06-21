@@ -11,11 +11,12 @@ import Logo from './components/Logo.jsx';
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
 import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard } from './utils/gameUtils.js';
+import { isCorrectAnswer } from './utils/answer.js';
 
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiDemoStart, apiDemoAnswer, apiDemoPromote, apiDemoAbandon } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiGetDemo, apiDemoClaim } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -182,6 +183,13 @@ const DEMO_QUESTS = [
   { id: 'demo-q2', name: 'Réponds à 5 quiz',   progress: 0, threshold: 5, type: 'quiz_win', forge_points: 0, gold_reward: 50, completed_at: null },
   { id: 'demo-q3', name: 'Fais une série de 2', progress: 0, threshold: 2, type: 'streak',   forge_points: 2, gold_reward: 0,  completed_at: null },
 ]
+// Geocoins démo gagnés, mémorisés dans le navigateur (pas de compte). Crédités au
+// vrai inventaire à la création du compte (POST /api/demo/claim), puis effacés.
+const DEMO_EARNED_KEY = 'geocoins_demo_earned'
+const readDemoEarned  = () => { try { return JSON.parse(localStorage.getItem(DEMO_EARNED_KEY) || '[]') } catch { return [] } }
+const writeDemoEarned = (ids) => { try { localStorage.setItem(DEMO_EARNED_KEY, JSON.stringify([...new Set(ids)])) } catch { /* quota/private */ } }
+const clearDemoEarned = () => { try { localStorage.removeItem(DEMO_EARNED_KEY) } catch { /* ignore */ } }
+
 const buildDemoHistory = (pseudos, tribute, n = 8) => {
   if (!tribute?.length) return []
   return Array.from({ length: n }, () => ({
@@ -270,17 +278,8 @@ export default function App() {
     const q = new URLSearchParams(window.location.search)
     const h = new URLSearchParams(window.location.hash.replace(/^#/, ''))
     if (!q.get('error') && !h.get('error')) return
-    const code = q.get('error_code') || h.get('error_code') || ''
     const desc = q.get('error_description') || h.get('error_description') || ''
     window.history.replaceState({}, '', window.location.pathname)
-    // Conversion Google d'un compte invité refusée car l'identité existe déjà →
-    // on abandonne (supprime) le compte temporaire et on connecte l'utilisateur à
-    // son compte existant (connexion Google normale).
-    if (code === 'identity_already_exists') {
-      showToast(t('oauth_identity_exists'), 'error')
-      apiDemoAbandon().catch(() => {}).finally(() => auth.signInWithGoogle())
-      return
-    }
     showToast(desc ? decodeURIComponent(desc.replace(/\+/g, ' ')) : t('oauth_error'), 'error')
   }, [])
 
@@ -847,7 +846,8 @@ export default function App() {
     const card = { ...step.card, ...poolCard, sellable: false, minPrice: null, desc: '' }
     const tr = step.translations?.[getLang()]
     const wc = step.answer_word_count || 1
-    return { _demoStep: step.step, id: undefined, card, q: tr?.question || step.question, a: Array(wc).fill('x').join(' '), h: step.hint, is_shiny: false, started_at: new Date().toISOString() }
+    // _q : données de validation (réponses) embarquées → la démo valide côté client.
+    return { _demoStep: step.step, _q: { answer: step.answer, alt_answers: step.alt_answers, translations: step.translations }, id: undefined, card, q: tr?.question || step.question, a: Array(wc).fill('x').join(' '), h: step.hint, is_shiny: false, started_at: new Date().toISOString() }
   }, [gs.cardPool])
 
   const presentDemoStep = useCallback((steps) => {
@@ -862,13 +862,15 @@ export default function App() {
     if (!auth.isDemo || demoStartedRef.current) return
     demoStartedRef.current = true
     let cancelled = false
-    // Retry si l'appel échoue / renvoie vide (ex. session anonyme transitoire après un
-    // retour de redirection OAuth), pour éviter une démo bloquée sur un état vide.
+    // Retry si l'appel échoue / renvoie vide, pour éviter une démo bloquée vide.
     const load = (attempt = 0) => {
-      apiDemoStart().then(({ data }) => {
+      apiGetDemo().then(({ data }) => {
         if (cancelled) return
-        const steps = data?.steps || []
-        if (!steps.length) { if (attempt < 4) setTimeout(() => load(attempt + 1), 1500); return }
+        const rawSteps = data?.steps || []
+        if (!rawSteps.length) { if (attempt < 4) setTimeout(() => load(attempt + 1), 1500); return }
+        // Progression « gagnés » reprise depuis le navigateur (localStorage).
+        const earnedIds = new Set(readDemoEarned())
+        const steps = rawSteps.map(s => ({ ...s, earned: earnedIds.has(s.card?.id) }))
         const seen = new Set()
         gs.setCardPool(steps.map(s => s.card).filter(c => c && !seen.has(c.id) && seen.add(c.id)))
         const earned = {}
@@ -885,27 +887,31 @@ export default function App() {
     return () => { cancelled = true }
   }, [auth.isDemo])
 
+  // Quitter la démo (connexion) réarme le contrôleur : si l'utilisateur se déconnecte
+  // ensuite, la démo se recharge proprement.
+  useEffect(() => { if (!auth.isDemo) demoStartedRef.current = false }, [auth.isDemo])
+
   // Fermeture du quiz démo (après victoire) → étape suivante ou mur d'inscription.
   const demoAdvance = useCallback(() => {
     setActiveQuiz(null); activeQuizRef.current = null
     setDemoSteps(prev => { presentDemoStep(prev); return prev })
   }, [presentDemoStep, setActiveQuiz, activeQuizRef])
 
-  // Réponse au quiz démo (branchée dans wrappedHandleQuizAnswer).
+  // Réponse au quiz démo : validation 100% navigateur (réponses embarquées dans _q),
+  // geocoin mémorisé en localStorage (crédité au vrai compte plus tard via /claim).
   const demoAnswer = useCallback(async (userAnswer) => {
-    const stepIdx = activeQuizRef.current?._demoStep
+    const aq = activeQuizRef.current
+    const stepIdx = aq?._demoStep
     if (stepIdx == null) return 'error'
-    const { data, status } = await apiDemoAnswer(stepIdx, userAnswer)
-    if (data?.correct) {
-      gs.earnCard(activeQuizRef.current.card, false)
-      setDemoSteps(prev => (prev || []).map((s, i) => (i === stepIdx ? { ...s, earned: true } : s)))
-      // Pas de socket en démo : on referme le résultat et on enchaîne nous-mêmes
-      // (le vrai jeu le fait via quiz:solved). Délai = temps de voir « Bonne réponse ».
-      setTimeout(() => demoAdvance(), 2200)
-      return { ok: true, outcome: 'card', forge: 0 }
-    }
-    if (status === 422) return false
-    return 'error'
+    if (!isCorrectAnswer(aq._q, userAnswer)) return false  // mauvaise réponse
+    const cardId = aq.card?.id
+    if (cardId != null) writeDemoEarned([...readDemoEarned(), cardId])
+    gs.earnCard(aq.card, false)
+    setDemoSteps(prev => (prev || []).map((s, i) => (i === stepIdx ? { ...s, earned: true } : s)))
+    // Pas de socket en démo : on referme le résultat et on enchaîne nous-mêmes
+    // (le vrai jeu le fait via quiz:solved). Délai = temps de voir « Bonne réponse ».
+    setTimeout(() => demoAdvance(), 2200)
+    return { ok: true, outcome: 'card', forge: 0 }
   }, [activeQuizRef, gs, demoAdvance])
 
   // Démo : rester sur la collection (onglets marché/forge/trésor/top restreints).
@@ -913,13 +919,29 @@ export default function App() {
     if (auth.isDemo && ['market', 'forge', 'tresors', 'top'].includes(activeTab)) setActiveTab('collection')
   }, [auth.isDemo, activeTab])
 
-  // Conversion terminée (email ou Google) : le compte n'est plus anonyme → sortir
-  // du mode démo côté serveur (is_demo=false). Filet couvrant le retour OAuth.
+  // Création/connexion d'un vrai compte avec des geocoins démo en localStorage →
+  // on les crédite à l'inventaire (filtrés serveur), puis on efface le localStorage
+  // et on rafraîchit la collection. Couvre email et OAuth (retour de redirection).
+  const demoClaimedRef = useRef(false)
   useEffect(() => {
-    if (auth.user && !auth.user.is_anonymous && auth.profile?.is_demo) {
-      apiDemoPromote().then(() => auth.setProfile(p => (p ? { ...p, is_demo: false } : p))).catch(() => {})
-    }
-  }, [auth.user?.is_anonymous, auth.profile?.is_demo])
+    if (!auth.user || demoClaimedRef.current) return
+    const ids = readDemoEarned()
+    if (!ids.length) { demoClaimedRef.current = true; return }
+    demoClaimedRef.current = true
+    apiDemoClaim(ids)
+      .then(({ data }) => {
+        clearDemoEarned()
+        // Fusion optimiste (loadAll rechargera la collection serveur après login).
+        if (data?.credited?.length) {
+          gs.setCollection(prev => {
+            const next = { ...prev }
+            for (const id of data.credited) next[id] = next[id] || 1
+            return next
+          })
+        }
+      })
+      .catch(() => { demoClaimedRef.current = false })  // réessayer au prochain rendu si échec réseau
+  }, [auth.user?.id])
 
   // Démo : faux feed « derniers geocoins disputés », rotatif toutes les 60 s
   // (pseudos du top × geocoins hommage), alimente le VRAI strip d'historique.
@@ -936,7 +958,7 @@ export default function App() {
       setShowRegisterPrompt(true)
       return false
     }
-    // Démo : ne pas passer par le quiz global, valider via /api/demo/answer.
+    // Démo : ne pas passer par le quiz global, valider côté client (sans compte).
     if (auth.isDemo) return demoAnswer(_userAnswer)
     const result = await handleQuizAnswer(_userAnswer, _turnstileToken)
     // Resynchroniser le profil (gold, daily_*, forge_points...) après la réponse
@@ -1149,8 +1171,10 @@ export default function App() {
     }
 
     // ── Mode normal (existant) ───────────────────────────────────────────────
+    // En démo : toujours afficher les 5 geocoins du parcours, les non-gagnés en
+    // « manquant » (cardPool ne contient que ces 5).
     let normalList;
-    if (showMissing) {
+    if (showMissing || auth.isDemo) {
       normalList = gs.cardPool
         .filter(c => (af || c.type === filter) && matchSearch(c))
         .map(c => ({ card: c, count: gs.collection[c.id] || 0, missing: !(gs.collection[c.id] > 0) }))
@@ -1171,7 +1195,7 @@ export default function App() {
       }
     }
     return normalList.sort(sortFn)
-  }, [showMissing, showShiny, sortBy, filter, cardSearch, gs.collection, gs.cardPool, gs.shinyCollection]);
+  }, [showMissing, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, gs.cardPool, gs.shinyCollection]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0
   const pseudoChanged   = pseudoChangedAt > 0 && (Date.now() - pseudoChangedAt) < PSEUDO_NOTIF_DAYS * 864e5
@@ -1385,8 +1409,10 @@ export default function App() {
       </header>
 
       {/* ── MAIN CONTENT ── */}
+      {/* Visiteur (non connecté) : profil démo synthétique → l'app s'affiche en mode
+          démo. LandingSection ne sert plus que de splash pendant auth.loading. */}
       {!auth.profile && import.meta.env.VITE_API_URL ? (
-        <LandingSection onOpenAuth={() => setShowAuth(true)} onStartDemo={() => auth.signInAnonymously?.()} />
+        <LandingSection onOpenAuth={() => setShowAuth(true)} />
       ) : (
         <div style={{ flex: 1, display: isWide ? 'flex' : 'block', alignItems: 'flex-start' }}>
 

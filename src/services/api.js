@@ -107,11 +107,11 @@ export const apiReportQuestion      = (questionId) =>
 export const apiResetQuestionReports = (questionId) =>
   apiFetch(`/api/admin/questions/${questionId}/reports`, { method: 'DELETE' })
 
-// ─── Démo / onboarding (compte anonyme) ───────────────────────────────────────
-export const apiDemoStart   = ()             => apiFetch('/api/demo/start',   { method: 'POST' })
-export const apiDemoAnswer  = (step, answer) => apiFetch('/api/demo/answer',  { method: 'POST', body: { step, answer } })
-export const apiDemoPromote = ()             => apiFetch('/api/demo/promote', { method: 'POST' })
-export const apiDemoAbandon = ()             => apiFetch('/api/demo/abandon', { method: 'POST' })
+// ─── Démo / onboarding (sans compte — geocoins en localStorage) ───────────────
+// GET public : 5 étapes AVEC réponses (validation côté client) + faux feed + totaux.
+export const apiGetDemo   = ()        => apiFetch('/api/demo')
+// Après création d'un vrai compte : crédite les geocoins démo gagnés (filtrés serveur).
+export const apiDemoClaim = (cardIds) => apiFetch('/api/demo/claim', { method: 'POST', body: { card_ids: cardIds } })
 
 // ─── Transactions ─────────────────────────────────────────────────────────────
 export const apiGetTransactions = (params = {}) => {

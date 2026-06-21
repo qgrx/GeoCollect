@@ -10,7 +10,17 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { apiDeleteAccount, apiDemoPromote } from '../services/api.js'
+import { apiDeleteAccount } from '../services/api.js'
+
+// Profil factice du mode démo (visiteur non connecté). Reproduit les défauts d'un
+// profil réel pour que le vrai app s'affiche sans compte. Les appels API sont
+// court-circuités par `isDemo` (cf. useGameState), donc l'id 'demo' n'est jamais
+// utilisé contre le backend.
+const DEMO_PROFILE = {
+  id: 'demo', pseudo: 'Invité', role: 'user', status: 'actif', is_demo: true,
+  score: 0, gold: 0, card_count: 0, welcome_given: true,
+  pseudo_changed_at: null, pseudo_history: [], quiz_win_streak: 0,
+}
 
 // ─── Hook unique — branch au runtime, pas au niveau hook ──────────────────────
 export function useAuth() {
@@ -88,17 +98,6 @@ export function useAuth() {
   // ── Actions ────────────────────────────────────────────────────────────────
 
   const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin
-
-  // Mode démo : compte ANONYME Supabase (is_anonymous=true). Le joueur gagne 5
-  // geocoins sans compte ; converti en compte définitif via convertAnonymous.
-  // On fournit un pseudo temporaire dans les métadonnées (comme signUpWithEmail) :
-  // le trigger handle_new_user en a besoin pour créer le profil (pseudo NOT NULL),
-  // sinon la création du user anonyme échoue (500).
-  const signInAnonymously = useCallback(async () => {
-    const tempPseudo = `Invité_${Math.random().toString(36).slice(2, 7)}`
-    const locale = (() => { try { return localStorage.getItem('geocards_lang') || 'fr' } catch { return 'fr' } })()
-    return supabase.auth.signInAnonymously({ options: { data: { pseudo: tempPseudo, locale } } })
-  }, [])
 
   const signInWithGoogle = useCallback(async () => {
     return supabase.auth.signInWithOAuth({
@@ -199,35 +198,13 @@ export function useAuth() {
     return { error }
   }, [user, profile])
 
-  // Conversion via Google : lie une identité Google au compte anonyme (même id →
-  // geocoins conservés). Redirige vers Google ; au retour, l'utilisateur n'est plus
-  // anonyme et l'effet « promote » côté App pose is_demo=false.
-  // NB : nécessite GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true côté Supabase.
-  const convertWithGoogle = useCallback(async () => {
-    return supabase.auth.linkIdentity({
-      provider: 'google',
-      options: { redirectTo: APP_URL, queryParams: { prompt: 'select_account' } },
-    })
-  }, [])
+  // Mode démo = visiteur NON connecté (plus de compte anonyme). La démo se joue
+  // entièrement côté client ; les geocoins gagnés sont stockés en localStorage et
+  // crédités à la création d'un vrai compte. Sert à l'aiguillage de l'UI.
+  const isDemo = !loading && !user
 
-  // Convertit le compte démo anonyme en compte définitif (même id → les geocoins
-  // gagnés sont conservés) : email + mot de passe, pseudo, puis sortie du mode démo.
-  const convertAnonymous = useCallback(async (email, password, newPseudo) => {
-    if (!user) return { error: { message: 'not_authenticated' } }
-    const { error: upErr } = await supabase.auth.updateUser({ email, password })
-    if (upErr) return { error: upErr }
-    if (newPseudo) {
-      const { error: pErr } = await updatePseudo(newPseudo)
-      if (pErr) return { error: pErr }
-    }
-    await apiDemoPromote().catch(() => {})
-    await loadProfile(user)
-    return { error: null }
-  }, [user, updatePseudo, loadProfile])
+  // En démo, exposer le profil factice pour que le vrai app s'affiche sans compte.
+  const effectiveProfile = profile || (isDemo ? DEMO_PROFILE : null)
 
-  // Mode démo = utilisateur anonyme (fiable dès la connexion, avant même que le
-  // backend ne pose is_demo). Sert à l'aiguillage de l'UI (démo vs jeu complet).
-  const isDemo = !!user?.is_anonymous
-
-  return { user, profile, setProfile, loading, isDemo, signInAnonymously, convertAnonymous, convertWithGoogle, signInWithGoogle, signInWithFacebook, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
+  return { user, profile: effectiveProfile, setProfile, loading, isDemo, signInWithGoogle, signInWithFacebook, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
 }
