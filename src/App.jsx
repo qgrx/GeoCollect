@@ -179,9 +179,9 @@ function OnboardingPseudoScreen({ auth, t, onDone }) {
 // 3 quêtes du jour factices (non incrémentables) + générateur de faux « derniers
 // geocoins disputés » (pseudos du top × geocoins hommage), pour un accueil crédible.
 const DEMO_QUESTS = [
-  { id: 'demo-q1', name: 'Gagne 3 geocoins',   progress: 0, threshold: 3, type: 'quiz_win', forge_points: 1, gold_reward: 0,  completed_at: null },
-  { id: 'demo-q2', name: 'Réponds à 5 quiz',   progress: 0, threshold: 5, type: 'quiz_win', forge_points: 0, gold_reward: 50, completed_at: null },
-  { id: 'demo-q3', name: 'Fais une série de 2', progress: 0, threshold: 2, type: 'streak',   forge_points: 2, gold_reward: 0,  completed_at: null },
+  { id: 'demo-q1', name: 'Connecte-toi aujourd’hui',      progress: 0, threshold: 1, type: 'daily_connection', forge_points: 0, gold_reward: 20, completed_at: null },
+  { id: 'demo-q2', name: 'Atteins 6 geocoins uniques',        progress: 0, threshold: 6, type: 'collection_size',  forge_points: 2, gold_reward: 0,  completed_at: null },
+  { id: 'demo-q3', name: 'Réclame ton trésor du jour', progress: 0, threshold: 1, type: 'daily_treasure',   forge_points: 0, gold_reward: 50, completed_at: null },
 ]
 // Geocoins démo gagnés, mémorisés dans le navigateur (pas de compte). Crédités au
 // vrai inventaire à la création du compte (POST /api/demo/claim), puis effacés.
