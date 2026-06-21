@@ -580,6 +580,7 @@ export default function App() {
   const [filter,          setFilter]          = useState('Tous');
   const [showMissing,     setShowMissing]     = useState(false);
   const [showShiny,       setShowShiny]       = useState(false);
+  const [demoInfo,        setDemoInfo]        = useState(null);  // 'shiny' | 'rarity' : présentation feature en démo
   const [sortBy,          setSortBy]          = useState('rarity'); // 'rarity'|'name-asc'|'name-desc'
   const [sortMenuOpen,    setSortMenuOpen]    = useState(false);
   const [gridAnimKey,     setGridAnimKey]     = useState(0);
@@ -834,6 +835,7 @@ export default function App() {
   // objets démo n'ont pas d'id → handleJoin n'appelle aucune API quiz globale).
   const [demoSteps, setDemoSteps] = useState(null)
   const [demoSocial, setDemoSocial] = useState(null)   // { pseudos, tribute } pour le faux feed
+  const [demoTypeTotals, setDemoTypeTotals] = useState(null)  // [{type,total}] vrais totaux par type (onglets démo)
   const demoStartedRef = useRef(false)
   const demoDone  = demoSteps ? demoSteps.filter(s => s.earned).length : 0
   // Démo terminée : les 5 geocoins gagnés → on remplace la barre par l'invitation à s'inscrire.
@@ -873,6 +875,7 @@ export default function App() {
         for (const s of steps) if (s.earned && s.card) earned[s.card.id] = 1
         gs.setCollection(earned)
         gs.setInitialQuests(DEMO_QUESTS)
+        setDemoTypeTotals(data?.type_totals || [])
         setDemoSocial({ pseudos: data?.social?.pseudos || [], tribute: data?.social?.tribute || [] })
         setDemoSteps(steps)
         presentDemoStep(steps)
@@ -1084,6 +1087,37 @@ export default function App() {
 
   // ── Derived display state ─────────────────────────────────────────────────
   const types = ['Tous', ...new Set(gs.cardPool.filter(c => c.type !== 'Achievement').map(c => c.type).filter(Boolean))];
+  // Démo : cardPool ne contient que le type jouable. On affiche TOUS les vrais types
+  // (vrais totaux fournis par le backend) ; seuls les types présents dans la démo sont
+  // consultables, les autres invitent à se connecter.
+  const demoUnlockedTypes = useMemo(
+    () => new Set((demoSteps || []).map(s => s.card?.type).filter(Boolean)),
+    [demoSteps]
+  );
+  const typeTabs = useMemo(() => {
+    if (auth.isDemo && demoTypeTotals?.length) {
+      // « Tous » = total de TOUS les geocoins, achievements compris.
+      const grand = demoTypeTotals.reduce((s, x) => s + (x.total || 0), 0);
+      const ownedOf = tp => ((tp === 'Tous' || demoUnlockedTypes.has(tp))
+        ? gs.cardPool.filter(c => (tp === 'Tous' || c.type === tp) && (gs.collection[c.id] || 0) > 0).length
+        : 0);
+      return [
+        // « Tous » est jouable : même contenu que le type démo (cardPool = geocoins démo).
+        { type: 'Tous', total: grand, owned: ownedOf('Tous'), locked: false },
+        ...demoTypeTotals.map(x => ({ type: x.type, total: x.total, owned: ownedOf(x.type), locked: !demoUnlockedTypes.has(x.type) })),
+      ];
+    }
+    return types.map(tp => {
+      const pool  = tp === 'Tous' ? gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement') : gs.cardPool.filter(c => c.type === tp);
+      const total = pool.length;
+      const owned = showShiny
+        ? pool.filter(c => (gs.shinyCollection?.[c.id] || 0) > 0).length
+        : pool.filter(c => (gs.collection[c.id] || 0) > 0).length;
+      return { type: tp, total, owned, locked: false };
+    });
+  }, [auth.isDemo, demoTypeTotals, demoUnlockedTypes, types, gs.cardPool, gs.collection, gs.shinyCollection, showShiny]);
+  // Onglet courant verrouillé en démo : tout sauf « Tous » et le type jouable.
+  const currentTabLocked = auth.isDemo && demoTypeTotals?.length > 0 && filter !== 'Tous' && !demoUnlockedTypes.has(filter);
   const displayCards = useMemo(() => {
     const af = filter === 'Tous';
     const q = cardSearch.trim().toLowerCase();
@@ -1210,6 +1244,7 @@ export default function App() {
         @keyframes dotBounce { 0%,100%{transform:translateY(0);opacity:.4} 50%{transform:translateY(-8px);opacity:1} }
         @keyframes slideFromRight { from{transform:translateX(100%)} to{transform:translateX(0)} }
         @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
+        @keyframes popIn    { from{opacity:0;transform:scale(.92) translateY(16px)} to{opacity:1;transform:none} }
         @keyframes fadeUp   { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes cardSort { 0%{opacity:0;transform:scale(.88) translateY(6px)} 60%{transform:scale(1.03) translateY(-2px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
         @keyframes fadeLeft { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
@@ -1257,7 +1292,7 @@ export default function App() {
               ].map(tb => {
                 const active = activeTab === tb.id
                 return (
-                  <button key={tb.id} onClick={() => tb.disabled ? (auth.isDemo && setShowAuth(true)) : setActiveTab(tb.id)}
+                  <button key={tb.id} onClick={() => tb.disabled ? (auth.isDemo && setDemoInfo(tb.id)) : setActiveTab(tb.id)}
                     data-tour={tb.tour}
                     style={{ position: 'relative', background: 'none', border: 'none', color: tb.disabled ? theme.textMuted : active ? '#f9ca24' : theme.headerMuted, padding: '6px 18px 8px', cursor: (tb.disabled && !auth.isDemo) ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, fontFamily: "'Nunito',sans-serif", transition: 'color .15s', opacity: tb.disabled ? 0.45 : 1 }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>{tb.icon}</span>
@@ -1291,14 +1326,14 @@ export default function App() {
           </div>
         )}
 
-        {/* Theme toggle — connecté uniquement */}
-        {auth.profile && <button onClick={toggle} title={mode === 'dark' ? 'Mode clair' : 'Mode sombre'}
+        {/* Theme toggle — connecté uniquement (pas en démo : header type « non connecté ») */}
+        {auth.profile && !auth.isDemo && <button onClick={toggle} title={mode === 'dark' ? 'Mode clair' : 'Mode sombre'}
           style={{ background: 'none', border: `1px solid ${theme.headerMuted}44`, color: theme.headerMuted, width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           {mode === 'dark' ? '☀️' : '🌙'}
         </button>}
 
-        {/* Avatar */}
-        {auth.profile ? (
+        {/* Avatar — masqué en démo : on affiche barre de langue + « Se connecter » (comme non connecté) */}
+        {auth.profile && !auth.isDemo ? (
           <div style={{ position: 'relative' }} ref={avatarMenuRef}>
             <button onClick={() => setAvatarMenu(v => !v)} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: '2px solid #f9ca2444', cursor: 'pointer', fontSize: 13, fontWeight: 900, color: '#1a2538', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {auth.profile.pseudo[0].toUpperCase()}
@@ -1520,19 +1555,13 @@ export default function App() {
               {/* Type filter tabs */}
               {(!auth.profile || activeTab === 'collection') && gs.cardPool.length > 0 && (
                 <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 10, paddingBottom: 2, scrollbarWidth: 'none' }}>
-                  {types.map(tp => {
-                    const pool  = tp === 'Tous' ? gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement') : gs.cardPool.filter(c => c.type === tp)
-                    const total = pool.length
-                    // En mode shiny : owned = cartes avec une version shiny
-                    const owned = showShiny
-                      ? pool.filter(c => (gs.shinyCollection?.[c.id] || 0) > 0).length
-                      : pool.filter(c => (gs.collection[c.id] || 0) > 0).length
+                  {typeTabs.map(({ type: tp, total, owned, locked }) => {
                     const pct   = total > 0 ? Math.round(owned / total * 100) : 0
                     const full  = owned === total && total > 0
                     const active = filter === tp
                     return (
-                      <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }} style={{ flexShrink: 0, background: active ? '#f9ca24' : theme.bgSurface, border: `1px solid ${active ? '#f9ca24' : theme.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', textAlign: 'center', minWidth: 60 }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a2538' : full ? '#3fb950' : theme.textSecondary, whiteSpace: 'nowrap', marginBottom: 2 }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}</div>
+                      <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }} style={{ flexShrink: 0, background: active ? '#f9ca24' : theme.bgSurface, border: `1px solid ${active ? '#f9ca24' : theme.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', textAlign: 'center', minWidth: 60, opacity: locked && !active ? 0.7 : 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a2538' : full ? '#3fb950' : theme.textSecondary, whiteSpace: 'nowrap', marginBottom: 2 }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}{locked ? <span style={{ marginLeft: 3, fontSize: 9, opacity: .7 }}>🔒</span> : ''}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                           <span style={{ fontSize: 10, fontWeight: 700, color: active ? '#1a253866' : full ? '#3fb950' : theme.textSecondary }}>{owned}/{total}</span>
                           <div style={{ flex: 1, height: 2, borderRadius: 2, background: active ? '#0000001a' : theme.border, overflow: 'hidden', minWidth: 16 }}>
@@ -1545,8 +1574,14 @@ export default function App() {
                 </div>
               )}
 
-              {/* Collection content (search + grid) */}
-              {(!auth.profile || activeTab === 'collection') && (
+              {/* Collection content (search + grid) — en démo, les types non jouables invitent à se connecter */}
+              {(!auth.profile || activeTab === 'collection') && (currentTabLocked ? (
+                <div style={{ textAlign: 'center', padding: '48px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                  <div style={{ fontSize: 46 }}>✨</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: theme.textPrimary, maxWidth: 300, lineHeight: 1.4 }}>{t('demo_locked_sub')}</div>
+                  <button onClick={() => setShowAuth(true)} style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: '13px 26px', borderRadius: 12, cursor: 'pointer', fontSize: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900, boxShadow: '0 8px 24px #6c5ce755' }}>{t('demo_locked_cta')}</button>
+                </div>
+              ) : (
                 <>
                   {/* Search + missing toggle */}
                   {/* Barre de contrôles : search + filtres + tri */}
@@ -1554,13 +1589,19 @@ export default function App() {
                     <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }} placeholder={t('collection_search')}
                       style={{ flex: 1, minWidth: 100, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, padding: '7px 11px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
 
-                    {/* ✨ Shiny */}
-                    <button onClick={() => { setShowShiny(v => !v); setCollPage(0); setGridAnimKey(k => k+1); }}
+                    {/* ✨ Shiny — en démo : présentation de la feature au lieu du filtre */}
+                    <button onClick={() => { if (auth.isDemo) { setDemoInfo('shiny'); return; } setShowShiny(v => !v); setCollPage(0); setGridAnimKey(k => k+1); }}
                       style={{ flexShrink: 0, background: showShiny ? '#f9ca2422' : theme.bgInput, border: `1px solid ${showShiny ? '#f9ca24' : theme.border}`, color: showShiny ? '#f9ca24' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       {t('filter_shiny')}
                     </button>
 
-                    {/* Tri */}
+                    {/* Tri — en démo : bouton « Raretés » (présentation) au lieu du menu de tri */}
+                    {auth.isDemo ? (
+                      <button onClick={() => setDemoInfo('rarity')}
+                        style={{ flexShrink: 0, background: theme.bgInput, border: `1px solid ${theme.border}`, color: theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        {t('demo_rarity_btn')}
+                      </button>
+                    ) : (
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <button onClick={() => setSortMenuOpen(v => !v)}
                         style={{ background: sortBy !== 'rarity' ? '#74b9ff22' : theme.bgInput, border: `1px solid ${sortBy !== 'rarity' ? '#74b9ff' : theme.border}`, color: sortBy !== 'rarity' ? '#74b9ff' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1580,6 +1621,7 @@ export default function App() {
                         </>
                       )}
                     </div>
+                    )}
 
                     {/* Manquants — masqué en démo (collection = uniquement les geocoins gagnés) */}
                     {!auth.isDemo && <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
@@ -1633,7 +1675,7 @@ export default function App() {
                     )
                   })()}
                 </>
-              )}
+              ))}
 
               {/* Market inline */}
               {auth.profile && activeTab === 'market' && (
@@ -1767,7 +1809,7 @@ export default function App() {
           ].map(item => {
             const active = activeTab === item.id
             return (
-              <button key={item.id} onClick={() => item.disabled ? (auth.isDemo && setShowAuth(true)) : setActiveTab(item.id)}
+              <button key={item.id} onClick={() => item.disabled ? (auth.isDemo && setDemoInfo(item.id)) : setActiveTab(item.id)}
                 data-tour={item.tour}
                 style={{ flex: 1, background: 'none', border: 'none', color: item.disabled ? theme.textMuted : active ? '#f9ca24' : theme.textSecondary, padding: '9px 4px 11px', cursor: (item.disabled && !auth.isDemo) ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative', fontFamily: "'Nunito',sans-serif", transition: 'color .15s', opacity: item.disabled ? 0.45 : 1 }}>
                 <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
@@ -1963,6 +2005,85 @@ export default function App() {
         />
       )}
       {showAuth        && <AuthModal auth={auth} isDemo={auth.isDemo} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
+
+      {/* Démo : présentation des features (Shiny, Raretés, Trésors, Marché, Forge, Classement) */}
+      {demoInfo && (() => {
+        const FEAT = {
+          tresors: { icon: '💎', grad: '#c87f0a,#f0932b', title: t('nav_tresors'), desc: t('demo_feat_tresors_desc'), points: [['🎁', t('demo_feat_tresors_p1')]] },
+          market:  { icon: '🏪', grad: '#0984e3,#74b9ff', title: t('nav_market'),  desc: t('demo_feat_market_desc'),  points: [['💰', t('demo_feat_market_p1')], ['🔎', t('demo_feat_market_p2')], ['📈', t('demo_feat_market_p3')]] },
+          forge:   { icon: '🔨', grad: '#d63031,#ff7675', title: t('nav_forge'),   desc: t('demo_feat_forge_desc'),   points: [['🔨', t('demo_feat_forge_p1')], ['✨', t('demo_feat_forge_p2')], ['♻️', t('demo_feat_forge_p3')]] },
+          top:     { icon: '🏆', grad: '#6c5ce7,#a29bfe', title: t('nav_top'),     desc: t('demo_feat_top_desc'),     points: [['🥇', t('demo_feat_top_p1')], ['⚡', t('demo_feat_top_p2')], ['🔥', t('demo_feat_top_p3')]] },
+        };
+        const feat = FEAT[demoInfo];
+        const shinyCard = gs.cardPool?.[0] || nextCard;
+        const loginBtn = <button onClick={() => { setDemoInfo(null); setShowAuth(true); }} style={{ width: '100%', background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: '13px', borderRadius: 12, cursor: 'pointer', fontSize: 15, fontWeight: 900, boxShadow: '0 8px 24px #6c5ce755' }}>{t('btn_login')}</button>;
+        const Points = ({ items }) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 22 }}>
+            {items.map(([ic, tx], i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                <span style={{ fontSize: 19, flexShrink: 0 }}>{ic}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, lineHeight: 1.4 }}>{tx}</span>
+              </div>
+            ))}
+          </div>
+        );
+        return (
+        <div onClick={() => setDemoInfo(null)} style={{ position: 'fixed', inset: 0, background: '#000a', backdropFilter: 'blur(4px)', zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, animation: 'fadeIn .2s ease', fontFamily: "'Nunito',sans-serif" }}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', maxWidth: 380, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 18, overflow: 'hidden', boxShadow: '0 24px 64px #000c', maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'popIn .25s cubic-bezier(.34,1.56,.64,1) both' }}>
+            <button onClick={() => setDemoInfo(null)} style={{ position: 'absolute', top: 14, right: 16, zIndex: 2, background: '#0003', border: 'none', color: '#fff', width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', fontSize: 15, fontWeight: 900, lineHeight: 1 }}>×</button>
+
+            {demoInfo === 'shiny' ? (
+              <>
+                <div style={{ padding: '28px 20px 22px', textAlign: 'center', background: 'radial-gradient(circle at 50% 35%, #f9ca2433, transparent 70%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                  {shinyCard ? <Card card={shinyCard} count={1} isShiny /> : <div style={{ fontSize: 56 }}>✨</div>}
+                  <div style={{ fontSize: 21, fontWeight: 900, color: theme.textPrimary }}>{t('demo_shiny_title')}</div>
+                </div>
+                <div style={{ padding: '4px 20px 22px', overflowY: 'auto' }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.55, color: theme.textPrimary, fontWeight: 600, margin: '0 0 16px' }}>{t('demo_shiny_desc')}</p>
+                  <Points items={[['🌟', t('demo_shiny_p1')], ['💎', t('demo_shiny_p2')], ['🏆', t('demo_shiny_p3')]]} />
+                  {loginBtn}
+                </div>
+              </>
+            ) : demoInfo === 'rarity' ? (
+              <>
+                <div style={{ padding: '26px 20px 16px', textAlign: 'center', borderBottom: `1px solid ${theme.border}` }}>
+                  <div style={{ fontSize: 21, fontWeight: 900, color: theme.textPrimary }}>{t('demo_rarity_title')}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: theme.textSecondary, marginTop: 5 }}>{t('demo_rarity_sub')}</div>
+                </div>
+                <div style={{ padding: '16px', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                    {['légendaire', 'épique', 'rare', 'commun'].map(r => {
+                      const rc = RARITY_CONFIG[r];
+                      const rate = (gs.limits?.quizRarityRates || DEFAULT_RARITY_RATES)?.[r];
+                      return (
+                        <div key={r} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 13px', borderRadius: 12, background: theme.bgElevated, borderLeft: `4px solid ${rc.color}` }}>
+                          <div style={{ fontSize: 13, color: rc.color, letterSpacing: 1, flexShrink: 0 }}>{'★'.repeat(rc.stars)}{'☆'.repeat(4 - rc.stars)}</div>
+                          <div style={{ flex: 1, fontSize: 14, fontWeight: 900, color: rc.color }}>{rarityLabel(r, t)}</div>
+                          {rate != null && <div style={{ fontSize: 12.5, fontWeight: 900, color: rc.color, background: rc.bg, borderRadius: 50, padding: '3px 11px', flexShrink: 0 }}>{rate}%</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {loginBtn}
+                </div>
+              </>
+            ) : feat ? (
+              <>
+                <div style={{ padding: '32px 20px 22px', textAlign: 'center', background: `linear-gradient(135deg,${feat.grad})` }}>
+                  <div style={{ fontSize: 52, filter: 'drop-shadow(0 3px 10px #0005)' }}>{feat.icon}</div>
+                  <div style={{ fontSize: 21, fontWeight: 900, color: '#fff', marginTop: 4, textShadow: '0 2px 8px #0004' }}>{feat.title}</div>
+                </div>
+                <div style={{ padding: '18px 20px 22px', overflowY: 'auto' }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.55, color: theme.textPrimary, fontWeight: 600, margin: '0 0 16px' }}>{feat.desc}</p>
+                  <Points items={feat.points} />
+                  {loginBtn}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+        );
+      })()}
       {showChoosePseudo && <AuthModal auth={auth} initialMode="choose_pseudo"
         onClose={() => {
           // Fermée sans choisir : ne plus reproposer sur cet appareil (sinon
