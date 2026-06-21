@@ -179,9 +179,12 @@ function OnboardingPseudoScreen({ auth, t, onDone }) {
 // 3 quêtes du jour factices (non incrémentables) + générateur de faux « derniers
 // geocoins disputés » (pseudos du top × geocoins hommage), pour un accueil crédible.
 const DEMO_QUESTS = [
-  { id: 'demo-q1', name: 'Connecte-toi aujourd’hui',      progress: 0, threshold: 1, type: 'daily_connection', forge_points: 0, gold_reward: 20, completed_at: null },
-  { id: 'demo-q2', name: 'Atteins 6 geocoins uniques',        progress: 0, threshold: 6, type: 'collection_size',  forge_points: 2, gold_reward: 0,  completed_at: null },
-  { id: 'demo-q3', name: 'Réclame ton trésor du jour', progress: 0, threshold: 1, type: 'daily_treasure',   forge_points: 0, gold_reward: 50, completed_at: null },
+  { id: 'demo-q1', name: 'Connecte-toi aujourd’hui', progress: 0, threshold: 1, type: 'daily_connection', forge_points: 0, gold_reward: 20, completed_at: null,
+    translations: { fr: { name: 'Connecte-toi aujourd’hui' }, en: { name: 'Log in today' }, de: { name: 'Melde dich heute an' }, es: { name: 'Conéctate hoy' } } },
+  { id: 'demo-q2', name: 'Atteins 6 geocoins uniques', progress: 0, threshold: 6, type: 'collection_size', forge_points: 2, gold_reward: 0, completed_at: null,
+    translations: { fr: { name: 'Atteins 6 geocoins uniques' }, en: { name: 'Reach 6 unique geocoins' }, de: { name: 'Erreiche 6 einzigartige Geocoins' }, es: { name: 'Alcanza 6 geocoins únicos' } } },
+  { id: 'demo-q3', name: 'Réclame ton trésor du jour', progress: 0, threshold: 1, type: 'daily_treasure', forge_points: 0, gold_reward: 50, completed_at: null,
+    translations: { fr: { name: 'Réclame ton trésor du jour' }, en: { name: 'Claim your daily treasure' }, de: { name: 'Hol dir deinen Tagesschatz' }, es: { name: 'Reclama tu tesoro del día' } } },
 ]
 // Geocoins démo gagnés, mémorisés dans le navigateur (pas de compte). Crédités au
 // vrai inventaire à la création du compte (POST /api/demo/claim), puis effacés.
@@ -2023,6 +2026,7 @@ export default function App() {
       {selectedCard && (
         <CardDetailModal
           card={selectedCard}
+          typeTranslations={gs.limits.typeTranslations}
           count={selectedCardFromHistory ? 0 : selectedCardIsShiny ? (gs.shinyCollection?.[selectedCard.id] || 0) : (gs.collection[selectedCard.id] || 0)}
           owned={selectedCardIsShiny ? (gs.shinyCollection?.[selectedCard.id] || 0) > 0 : (gs.collection[selectedCard.id] || 0) > 0}
           isShiny={selectedCardIsShiny}

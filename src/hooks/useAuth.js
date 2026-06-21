@@ -21,6 +21,17 @@ const DEMO_PROFILE = {
   score: 0, gold: 0, card_count: 0, welcome_given: true,
   pseudo_changed_at: null, pseudo_history: [], quiz_win_streak: 0,
 }
+// Pseudo « Invité » traduit selon la langue stockée (le profil synthétique n'a pas
+// accès au hook de traduction).
+const GUEST_PSEUDO = { fr: 'Invité', en: 'Guest', de: 'Gast', es: 'Invitado' }
+const guestPseudo = () => {
+  let l = null
+  try { l = localStorage.getItem('geocards_lang') } catch { /* private mode */ }
+  // Repli sur la langue du navigateur si rien n'est encore persisté (sinon « Invité »
+  // s'afficherait pour un visiteur allemand tant qu'il n'a pas changé la langue).
+  if (!l) { try { l = (navigator.language || 'fr').slice(0, 2) } catch { l = 'fr' } }
+  return GUEST_PSEUDO[l] || GUEST_PSEUDO.fr
+}
 
 // ─── Hook unique — branch au runtime, pas au niveau hook ──────────────────────
 export function useAuth() {
@@ -204,7 +215,7 @@ export function useAuth() {
   const isDemo = !loading && !user
 
   // En démo, exposer le profil factice pour que le vrai app s'affiche sans compte.
-  const effectiveProfile = profile || (isDemo ? DEMO_PROFILE : null)
+  const effectiveProfile = profile || (isDemo ? { ...DEMO_PROFILE, pseudo: guestPseudo() } : null)
 
   return { user, profile: effectiveProfile, setProfile, loading, isDemo, signInWithGoogle, signInWithFacebook, signInWithEmail, signUpWithEmail, signOut, updatePseudo, resetPassword, updatePassword, deactivateAccount }
 }

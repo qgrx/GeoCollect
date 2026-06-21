@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback } from 'react'
-import { RC, cardCC, rarityLabel, cardName } from '../data/cards.js'
+import { RC, cardCC, rarityLabel, cardName, typeLabel } from '../data/cards.js'
 import { useT } from '../i18n/translations.js'
 import { ShinyEffect } from './Card.jsx'
 import { ReferralPanel } from '../features/referral/ReferralModal.jsx'
 
-export default function CardDetailModal({ card, count, owned, onClose, onSell, isShiny = false }) {
+export default function CardDetailModal({ card, count, owned, onClose, onSell, isShiny = false, typeTranslations }) {
   const { t, lang } = useT()
 
   const imgRef = useRef()
@@ -58,7 +58,7 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
             backgroundSize: '400px 100%', animation: 'shimmer 2s linear infinite' }}/>}
           <div>
             <div style={{ fontWeight: 900, fontSize: 12, color: isShiny ? '#f9ca24' : '#fff', textTransform: 'uppercase', letterSpacing: 1, textShadow: isShiny ? '-1px -1px 0 #0009, 1px -1px 0 #0009, -1px 1px 0 #0009, 1px 1px 0 #0009' : 'none' }}>
-              {card.type}{isShiny && ' ✨'}
+              {typeLabel(card.type, typeTranslations, lang)}{isShiny && ' ✨'}
             </div>
             <div style={{ fontSize: 10, color: isShiny ? '#f9ca2499' : '#ffffff88', fontWeight: 700 }}>{rarityLabel(card.rarity, t)}</div>
           </div>
@@ -149,7 +149,7 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <div style={{ background: '#ffffff0a', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#888', fontWeight: 700 }}>
-              Type : <span style={{ color: '#ccc' }}>{card.type}</span>
+              Type : <span style={{ color: '#ccc' }}>{typeLabel(card.type, typeTranslations, lang)}</span>
             </div>
             {card.sellable === false && <div style={{ background: '#e74c3c18', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#e74c3c', fontWeight: 700 }}>Non vendable</div>}
             {(card.minPrice || card.min_price) > 0 && <div style={{ background: '#f9ca2418', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#f9ca24', fontWeight: 700 }}>Min {card.minPrice || card.min_price}G</div>}

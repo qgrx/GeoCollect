@@ -237,9 +237,14 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
 
   const Back = ({ to }) => (
     <button onClick={() => { setMode(to || 'choice'); reset() }}
-      style={{ background: 'none', border: 'none', color: '#888', fontSize: 12, cursor: 'pointer',
-        fontFamily: "'Nunito',sans-serif", marginBottom: 8, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 4 }}>
-      ← {t('auth_back')}
+      style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6,
+        background: '#ffffff10', border: '1px solid #ffffff20', color: '#cbd5e1',
+        fontSize: 12.5, fontWeight: 800, fontFamily: "'Nunito',sans-serif",
+        padding: '7px 14px 7px 11px', borderRadius: 999, cursor: 'pointer', marginBottom: 6,
+        transition: 'background .15s, border-color .15s, transform .15s' }}
+      onMouseEnter={e => { e.currentTarget.style.background = '#ffffff1c'; e.currentTarget.style.borderColor = '#ffffff38'; e.currentTarget.style.transform = 'translateX(-2px)' }}
+      onMouseLeave={e => { e.currentTarget.style.background = '#ffffff10'; e.currentTarget.style.borderColor = '#ffffff20'; e.currentTarget.style.transform = 'none' }}>
+      {t('auth_back')}
     </button>
   )
 
@@ -272,7 +277,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26, color: '#f9ca24' }}>Geocoins</div>
           <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
             {mode === 'login'        && 'Connexion à ton compte'}
-            {mode === 'register'     && 'Créer un compte'}
+            {mode === 'register'     && t('auth_register_title')}
             {mode === 'choice'       && t('auth_subtitle')}
             {mode === 'forgot'       && 'Mot de passe oublié'}
             {mode === 'forgot_sent'  && 'Email envoyé'}
@@ -362,10 +367,10 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
             <BtnMain onClick={doRegister} gradient="linear-gradient(135deg,#6c5ce7,#a29bfe)">
               {t('auth_signup')}
             </BtnMain>
-            <button onClick={() => { setMode('login'); reset() }}
+            <button onClick={() => { setMode('choice'); reset() }}
               style={{ background: 'none', border: 'none', color: '#666', fontSize: 11,
                 cursor: 'pointer', fontFamily: "'Nunito',sans-serif", textAlign: 'center' }}>
-              Déjà un compte ? Se connecter
+              {t('demo_wall_have_account')}
             </button>
           </div>
         )}
