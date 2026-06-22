@@ -62,8 +62,11 @@ export function useDocsContent(page) {
         // Toute autre erreur = base réellement inaccessible : on n'affiche RIEN de périmé.
         if (error && error !== 'api_not_configured') { setError(error); return }
         // Contenu en base (langue courante ou repli FR côté serveur) → source de vérité.
-        // Sinon, seed local (jamais pour release-notes).
-        const initial = data?.content ?? DEFAULTS[page] ?? []
+        // Tolérance : un backend pas encore à jour peut renvoyer la map { fr, en… }
+        // entière au lieu du tableau d'une langue → on extrait nous-mêmes la langue.
+        let c = data?.content
+        if (c && !Array.isArray(c) && typeof c === 'object') c = c[lang] ?? c.fr ?? null
+        const initial = c ?? DEFAULTS[page] ?? []
         setContent(withIds(initial))
       })
       .catch(() => { if (alive) setError('network') })
