@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiGetDocsPage, apiSaveDocsPage } from '../../services/api.js'
+import { useT } from '../../i18n/translations.js'
 
 // Contenu de pré-remplissage (« seed ») utilisé uniquement pour amorcer une page
 // encore vide côté serveur. JAMAIS affiché en cas d'erreur réseau : si la base est
@@ -41,6 +42,7 @@ function withIds(list) {
 }
 
 export function useDocsContent(page) {
+  const { lang } = useT()
   const [content, setContent] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
@@ -52,20 +54,22 @@ export function useDocsContent(page) {
     let alive = true
     setLoading(true)
     setError(null)
-    apiGetDocsPage(page)
+    setDirty(false)
+    apiGetDocsPage(page, lang)
       .then(({ data, error }) => {
         if (!alive) return
         // `api_not_configured` = mode local (dev sans backend) : on retombe sur le seed.
         // Toute autre erreur = base réellement inaccessible : on n'affiche RIEN de périmé.
         if (error && error !== 'api_not_configured') { setError(error); return }
-        // Contenu en base → source de vérité. Sinon, seed local (jamais pour release-notes).
+        // Contenu en base (langue courante ou repli FR côté serveur) → source de vérité.
+        // Sinon, seed local (jamais pour release-notes).
         const initial = data?.content ?? DEFAULTS[page] ?? []
         setContent(withIds(initial))
       })
       .catch(() => { if (alive) setError('network') })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [page])
+  }, [page, lang])
 
   const update = useCallback((newContent) => {
     setContent(newContent)
@@ -85,12 +89,12 @@ export function useDocsContent(page) {
     const toSave = override ?? content
     setSaving(true)
     setSaveError(false)
-    const { error } = await apiSaveDocsPage(page, toSave).catch(() => ({ error: 'network' }))
+    const { error } = await apiSaveDocsPage(page, toSave, lang).catch(() => ({ error: 'network' }))
     setSaving(false)
     if (error) { setSaveError(true); return false }
     setDirty(false)
     return true
-  }, [page, content])
+  }, [page, content, lang])
 
   return { content, update, save, reset, loading, saving, dirty, error, saveError, uid }
 }

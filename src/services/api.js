@@ -225,8 +225,8 @@ export const apiCreateCheckout       = (pack_id)    => apiFetch('/api/shop/check
 export const apiGetPurchase          = (checkoutId) => apiFetch(`/api/shop/purchase/${checkoutId}`)
 
 // ─── Docs (FAQ / Release Notes / Support) ────────────────────────────────────
-export const apiGetDocsPage   = (page)          => apiFetch(`/api/docs/${page}`)
-export const apiSaveDocsPage  = (page, content) => apiFetch(`/api/docs/${page}`, { method: 'PATCH', body: { content } })
+export const apiGetDocsPage   = (page, lang)          => apiFetch(`/api/docs/${page}${lang ? `?lang=${lang}` : ''}`)
+export const apiSaveDocsPage  = (page, content, lang) => apiFetch(`/api/docs/${page}`, { method: 'PATCH', body: { content, lang } })
 
 // ─── Jeu Quotidien ────────────────────────────────────────────────────────────
 export const apiGetJeuQuotidien = () => apiFetch('/api/jeu/quotidien')

@@ -3,6 +3,7 @@ import EditableText from './EditableText.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
 import RichContent from './RichContent.jsx'
 import { useDocsContent } from './useDocsContent.js'
+import { useT } from '../../i18n/translations.js'
 import { apiPublishReleaseNote } from '../../services/api.js'
 
 // Signature de contenu d'une release, hors métadonnée d'enregistrement, pour détecter
@@ -18,6 +19,7 @@ function formatSavedAt(iso) {
 
 export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, editMode }) {
   const { content: releases, update, save, loading, error, uid } = useDocsContent('release-notes')
+  const { t } = useT()
   const [publishedVersion, setPublishedVersion] = useState(null)
   const [savingId, setSavingId] = useState(null)   // id de la release en cours d'enregistrement
   const [errorId,  setErrorId]  = useState(null)   // id de la release dont l'enregistrement a échoué
@@ -75,14 +77,14 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
   return (
     <div style={{ padding: '32px 28px', maxWidth: 680, margin: '0 auto', color: textColor }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold }}>📋 Release Notes</div>
+        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold }}>📋 {t('docs_release_title')}</div>
         {editMode && !error && (
           <button onClick={addRelease} style={{ background: '#ffffff15', border: '1px dashed #ffffff44', color: mutedColor, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11 }}>
             + Version
           </button>
         )}
       </div>
-      <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>Historique des mises à jour</div>
+      <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>{t('docs_release_subtitle')}</div>
 
       {/* Chargement : on n'affiche rien de statique tant que la base n'a pas répondu */}
       {loading && (
@@ -92,13 +94,13 @@ export default function ReleaseNotesPage({ theme, mode, textColor, mutedColor, e
       {/* Erreur réseau : aucun texte périmé, message neutre */}
       {!loading && error && (
         <div style={{ color: mutedColor, fontSize: 13, padding: '16px 18px', background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 12 }}>
-          ⚠️ Contenu momentanément indisponible. Réessaie plus tard.
+          {t('docs_unavailable')}
         </div>
       )}
 
       {!loading && !error && releases.length === 0 && (
         <div style={{ color: mutedColor, fontSize: 13, padding: '12px 0' }}>
-          {editMode ? 'Aucune note. Clique sur « + Version » pour en ajouter une.' : 'Aucune note pour le moment.'}
+          {editMode ? 'Aucune note. Clique sur « + Version » pour en ajouter une.' : t('docs_release_empty')}
         </div>
       )}
 

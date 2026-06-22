@@ -1,4 +1,4 @@
-import { sanitizeHtml } from '../../utils/sanitize.js'
+import { sanitizeHtml, neutralizeDarkText } from '../../utils/sanitize.js'
 
 // Rendu en lecture du HTML produit par l'éditeur. Reproduit fidèlement la mise en
 // forme de RichTextEditor (WYSIWYG) : lignes vides préservées, marges, titres,
@@ -27,7 +27,7 @@ export default function RichContent({ html, style }) {
     <div
       className="docs-rich"
       style={{ lineHeight: 1.7, wordBreak: 'break-word', ...style }}
-      dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
+      dangerouslySetInnerHTML={{ __html: sanitizeHtml(neutralizeDarkText(html)) }}
     />
   )
 }

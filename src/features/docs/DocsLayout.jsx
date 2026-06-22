@@ -1,26 +1,27 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../../ThemeContext.jsx'
-import { useT } from '../../i18n/translations.js'
+import { useT, setLang, LANGS } from '../../i18n/translations.js'
 import { apiGetPublicConfig, apiSetConfig } from '../../services/api.js'
 import FaqPage from './FaqPage.jsx'
 import ReleaseNotesPage from './ReleaseNotesPage.jsx'
 import SupportContent from './SupportContent.jsx'
 
 const NAV = [
-  { id: 'release-notes', label: 'Release Notes', icon: '📋' },
-  { id: 'faq',           label: 'FAQ',           icon: '❓' },
-  { id: 'support',       label: 'Support',       icon: '💬' },
+  { id: 'release-notes', labelKey: 'docs_nav_release', icon: '📋' },
+  { id: 'faq',           labelKey: 'docs_nav_faq',     icon: '❓' },
+  { id: 'support',       labelKey: 'docs_nav_support', icon: '💬' },
 ]
 
 const PAGES = { faq: FaqPage, 'release-notes': ReleaseNotesPage, support: SupportContent }
 
 export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = false }) {
   const { theme, toggle, mode } = useTheme()
-  const { t } = useT()
+  const { t, lang } = useT()
   const [page,     setPage]     = useState(initialPage)
   const [editMode, setEditMode] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
   const [hiddenPages, setHiddenPages] = useState([])
+  const [langOpen, setLangOpen] = useState(false)
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 640)
     window.addEventListener('resize', h)
@@ -75,6 +76,26 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
           <span style={{ color: mutedColor, fontSize: 13 }}>{t('docs_help')}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Sélecteur de langue (thémé pour rester lisible en mode clair) */}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setLangOpen(o => !o)}
+              style={{ background: theme.overlayMd, border: `1px solid ${theme.border}`, borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 12, color: textColor, fontFamily: "'Nunito',sans-serif", fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+              🌐 {LANGS[lang]} <span style={{ fontSize: 9, opacity: 0.7 }}>▾</span>
+            </button>
+            {langOpen && (
+              <>
+                <div onClick={() => setLangOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, background: topBg, border: `1px solid ${theme.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 32px #0006', zIndex: 11, minWidth: 140 }}>
+                  {Object.entries(LANGS).map(([code, label]) => (
+                    <button key={code} onClick={() => { setLang(code); setLangOpen(false) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: lang === code ? '#f9ca2422' : 'transparent', border: 'none', color: lang === code ? '#f9ca24' : textColor, padding: '9px 14px', fontFamily: "'Nunito',sans-serif", fontWeight: lang === code ? 800 : 600, fontSize: 13, cursor: 'pointer' }}>
+                      {label}{lang === code && <span style={{ marginLeft: 'auto', fontSize: 10 }}>✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           {isAdmin && (
             <button onClick={() => setEditMode(e => !e)}
               style={{ background: editMode ? '#f9ca2422' : theme.overlayMd, border: `1px solid ${editMode ? '#f9ca2466' : theme.border}`, borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 12, color: editMode ? '#f9ca24' : mutedColor, fontFamily: "'Nunito',sans-serif", fontWeight: 800 }}>
@@ -105,7 +126,7 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
                 fontSize: 12,
               }}>
                 <span>{n.icon}</span>
-                <span>{n.label}</span>
+                <span>{t(n.labelKey)}</span>
               </button>
               {editMode && (
                 <button onClick={e => { e.stopPropagation(); toggleHidden(n.id) }} title={isHidden(n.id) ? 'Onglet masqué — cliquer pour afficher' : 'Masquer cet onglet'}
@@ -138,7 +159,7 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
                   fontSize: 14, textAlign: 'left', transition: 'all .15s',
                 }}>
                   <span style={{ fontSize: 16 }}>{n.icon}</span>
-                  <span>{n.label}</span>
+                  <span>{t(n.labelKey)}</span>
                 </button>
                 {editMode && (
                   <button onClick={() => toggleHidden(n.id)} title={isHidden(n.id) ? 'Onglet masqué — cliquer pour afficher' : 'Masquer cet onglet'}
@@ -160,7 +181,7 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
 
         {/* Contenu */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          <PageComponent theme={theme} mode={mode} textColor={textColor} mutedColor={mutedColor} isAdmin={isAdmin} editMode={editMode} />
+          <PageComponent key={`${page}-${lang}`} theme={theme} mode={mode} textColor={textColor} mutedColor={mutedColor} isAdmin={isAdmin} editMode={editMode} />
         </div>
       </div>
     </div>

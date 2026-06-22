@@ -3,6 +3,7 @@ import EditableText from './EditableText.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
 import RichContent from './RichContent.jsx'
 import { useDocsContent } from './useDocsContent.js'
+import { useT } from '../../i18n/translations.js'
 
 function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMoveDown, colors, mode }) {
   const canUp = idx > 0, canDown = idx < total - 1
@@ -47,6 +48,7 @@ function FaqItem({ item, idx, total, editing, onChange, onRemove, onMoveUp, onMo
 
 export default function FaqPage({ theme, mode, textColor, mutedColor, isAdmin, editMode }) {
   const { content: items, update, save, reset, saving, dirty, loading, error, saveError, uid } = useDocsContent('faq')
+  const { t } = useT()
   const cardBg    = mode === 'light' ? '#ffffff' : '#1a2744'
   const borderCol = mode === 'light' ? '#e0e8f0' : '#ffffff18'
   const colors    = { cardBg, borderCol, textColor, mutedColor }
@@ -61,20 +63,20 @@ export default function FaqPage({ theme, mode, textColor, mutedColor, isAdmin, e
   return (
     <div style={{ padding: '32px 28px', maxWidth: 680, margin: '0 auto', color: textColor }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold }}>❓ FAQ</div>
+        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold }}>❓ {t('docs_faq_title')}</div>
         {editMode && !loading && !error && (
           <button onClick={addItem} style={{ background: '#ffffff15', border: '1px dashed #ffffff44', color: mutedColor, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11 }}>
             + Question
           </button>
         )}
       </div>
-      <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>Questions fréquemment posées</div>
+      <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>{t('docs_faq_subtitle')}</div>
 
       {loading && <div style={{ color: mutedColor, fontSize: 13, padding: '20px 0' }}>Chargement…</div>}
 
       {!loading && error && (
         <div style={{ color: mutedColor, fontSize: 13, padding: '16px 18px', background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 12 }}>
-          ⚠️ Contenu momentanément indisponible. Réessaie plus tard.
+          {t('docs_unavailable')}
         </div>
       )}
 

@@ -7,6 +7,7 @@ import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
 import ResizableImage from './ResizableImage.jsx'
+import { neutralizeDarkText } from '../../utils/sanitize.js'
 
 // Redimensionne/compresse une image côté client en data URI, pour l'intégrer
 // directement dans le contenu (pas d'endpoint d'upload requis). Cible ~720px.
@@ -128,7 +129,7 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
       ResizableImage.configure({ inline: false, allowBase64: true }),
       Placeholder.configure({ placeholder }),
     ],
-    content: value || '',
+    content: neutralizeDarkText(value || ''),
     editorProps: {
       handlePaste: (_view, event) => {
         const files = Array.from(event.clipboardData?.files || []).filter(f => f.type.startsWith('image/'))
@@ -156,7 +157,7 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
   useEffect(() => {
     if (!editor) return
     const current = editorHtml(editor)
-    const next = value || ''
+    const next = neutralizeDarkText(value || '')
     if (next !== current) {
       editor.commands.setContent(next, false)
     }

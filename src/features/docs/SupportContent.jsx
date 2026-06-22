@@ -3,6 +3,7 @@ import EditableText from './EditableText.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
 import RichContent from './RichContent.jsx'
 import { useDocsContent } from './useDocsContent.js'
+import { useT } from '../../i18n/translations.js'
 
 function EmailImage({ email, color }) {
   const canvasRef = useRef(null)
@@ -24,6 +25,7 @@ function EmailImage({ email, color }) {
 
 export default function SupportContent({ theme, mode, textColor, mutedColor, editMode }) {
   const { content: sections, update, save, reset, saving, dirty, loading, error, saveError, uid } = useDocsContent('support')
+  const { t } = useT()
   const cardBg    = mode === 'light' ? '#ffffff' : '#1a2744'
   const borderCol = mode === 'light' ? '#e0e8f0' : '#ffffff18'
 
@@ -34,29 +36,29 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
   return (
     <div style={{ padding: '32px 28px', maxWidth: 680, margin: '0 auto', color: textColor }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold }}>💬 Support</div>
+        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 28, color: theme.gold }}>💬 {t('docs_support_title')}</div>
         {editMode && !loading && !error && (
           <button onClick={addSection} style={{ background: '#ffffff15', border: '1px dashed #ffffff44', color: mutedColor, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11 }}>
             + Section
           </button>
         )}
       </div>
-      <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>Besoin d'aide ? On est là.</div>
+      <div style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>{t('docs_support_subtitle')}</div>
 
       {/* Contact — non éditable (email protégé) */}
       <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 14, padding: '22px 24px', marginBottom: 16 }}>
         <div style={{ fontSize: 22, marginBottom: 10 }}>🐛</div>
-        <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 8 }}>Un bug ou un problème ?</div>
+        <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 8 }}>{t('docs_support_bug_title')}</div>
         <div style={{ fontSize: 14, color: mutedColor, lineHeight: 1.7, marginBottom: 20 }}>
-          Erreur d'affichage, paiement non crédité, geocoin manquant… Décrivez le problème et nous vous répondrons rapidement.
+          {t('docs_support_bug_desc')}
         </div>
         <div style={{ background: mode === 'light' ? '#f0f5ff' : '#ffffff0a', borderRadius: 10, padding: '14px 16px' }}>
-          <div style={{ fontSize: 11, color: mutedColor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .8, marginBottom: 8 }}>Email de contact</div>
+          <div style={{ fontSize: 11, color: mutedColor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .8, marginBottom: 8 }}>{t('docs_support_email_label')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <span style={{ fontSize: 16 }}>📧</span>
             <EmailImage email="contact@geocoins.fr" color={theme.gold || '#f9ca24'} />
           </div>
-          <div style={{ fontSize: 12, color: mutedColor }}>Pensez à inclure votre pseudo, une description et si possible une capture d'écran.</div>
+          <div style={{ fontSize: 12, color: mutedColor }}>{t('docs_support_email_note')}</div>
         </div>
       </div>
 
@@ -64,7 +66,7 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
 
       {!loading && error && (
         <div style={{ color: mutedColor, fontSize: 13, padding: '16px 18px', background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 12 }}>
-          ⚠️ Contenu momentanément indisponible. Réessaie plus tard.
+          {t('docs_unavailable')}
         </div>
       )}
 
@@ -106,7 +108,7 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
       )}
 
       <div style={{ textAlign: 'center', marginTop: 28, fontSize: 12, color: mutedColor }}>
-        Geocoins est un projet indépendant — merci pour votre patience et votre soutien 💚
+        {t('docs_support_footer')}
       </div>
     </div>
   )
