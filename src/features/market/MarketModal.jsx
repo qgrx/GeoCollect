@@ -1,12 +1,21 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
-import { RC, cardCC, rarityLabel } from '../../data/cards.js'
+import { RC, cardCC } from '../../data/cards.js'
 import Card from '../../components/Card.jsx'
 import { TxHistoryModal } from '../achievements/NotifComponents.jsx'
 import { ThumbImage } from '../quiz/QuizComponents.jsx'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
 import { apiGetPriceCaps } from '../../services/api.js'
+
+// Coins par rareté : chaque rareté a son « coin » (bannière + devise) qui porte
+// l'info de rareté, plutôt qu'un badge sur chaque carte. Ordre = RC[rarity].order.
+const MERCHANTS = {
+  légendaire: { nameKey: 'merchant_legendaire', taglineKey: 'merchant_tagline_legendaire' },
+  épique:     { nameKey: 'merchant_epique',     taglineKey: 'merchant_tagline_epique' },
+  rare:       { nameKey: 'merchant_rare',       taglineKey: 'merchant_tagline_rare' },
+  commun:     { nameKey: 'merchant_commun',     taglineKey: 'merchant_tagline_commun' },
+}
 
 function PanelWrapper({ inline, onClose, theme, children }) {
   if (inline) return <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
@@ -54,13 +63,17 @@ export default function MarketModal({
     apiGetPriceCaps().then(({ data }) => { if (data?.caps) setPriceCaps(data.caps) }).catch(() => {})
   }, [])
   const [exp, setExp] = useState(null)
-  const [listPage, setListPage]           = useState(0)
   const [cancelConfirm, setCancelConfirm] = useState(null)
   const [buySearch, setBuySearch]         = useState('')  // index en attente de confirmation
-  const [buySort, setBuySort]             = useState('rarity')
+  const [buySort, setBuySort]             = useState('price_asc')
+  const [showMissing, setShowMissing]     = useState(false) // n'afficher que les geocoins non possédés (cf. Collection)
+  const [onlyMine, setOnlyMine]           = useState(false) // n'afficher que les cartes où j'ai une annonce
+  // Étals : un seul marchand déplié à la fois (null = tous pliés, état initial).
+  const [expandedMerchant, setExpandedMerchant] = useState(null)
+  const merchantRefs = useRef({})   // rareté -> nœud DOM du bloc marchand
+  const flipPrev     = useRef(null) // rects capturés avant un changement à animer (FLIP)
   const [sellSearch, setSellSearch]       = useState('')
   const [sellSort, setSellSort]           = useState('rarity')
-  const LIST_PAGE_SIZE = 6
 
   const myCards = Object.entries(myCollection)
     .filter(([, v]) => v > 1)
@@ -106,22 +119,16 @@ export default function MarketModal({
         return arr.sort((a, b) => a.tiersArr[0].price - b.tiersArr[0].price)
       case 'price_desc':
         return arr.sort((a, b) => b.tiersArr[0].price - a.tiersArr[0].price)
-      case 'unowned':
-        return arr.sort((a, b) => {
-          const ao = (myCollection[a.card.id] || 0) > 0 ? 1 : 0
-          const bo = (myCollection[b.card.id] || 0) > 0 ? 1 : 0
-          if (ao !== bo) return ao - bo
-          return RC[a.card.rarity].order - RC[b.card.rarity].order
-        })
       default:
         return arr.sort((a, b) => RC[a.card.rarity].order - RC[b.card.rarity].order)
     }
-  }, [ob, buySort, myCollection])
+  }, [ob, buySort])
+
+  const myListingCardIds = useMemo(() => new Set(myListings.map(l => l.card?.id)), [myListings])
 
   const tabs = [
     { id: 'acheter',    label: t('market_buy') },
     { id: 'vendre',     label: t('market_sell') },
-    { id: 'meslistes',  label: `${t('market_listings')}${myListings.length ? ` (${myListings.length})` : ''}` },
     { id: 'historique', label: t('market_history'), badge: unreadSales },
   ]
 
@@ -140,6 +147,62 @@ export default function MarketModal({
       if (visitedHistoryRef.current) onClearNewTransactions()
     }
   }, [onClearNewTransactions])
+
+  // ── Réordonnancement animé du dépliage d'un coin (technique FLIP) ──────────
+  // Réinitialise tout style FLIP résiduel (anim interrompue) pour éviter qu'un
+  // transform fantôme ne décale un bloc → chevauchement / espace blanc.
+  const clearFlip = (el) => { if (el) { el.style.transition = ''; el.style.transform = ''; el.style.zIndex = '' } }
+  const captureMerchantRects = useCallback(() => {
+    const rects = {}
+    Object.entries(merchantRefs.current).forEach(([k, el]) => { if (el) { clearFlip(el); rects[k] = el.getBoundingClientRect() } })
+    return rects
+  }, [])
+
+  const toggleMerchant = useCallback((rarity) => {
+    flipPrev.current = captureMerchantRects()
+    setExpandedMerchant(prev => (prev === rarity ? null : rarity))
+  }, [captureMerchantRects])
+
+  // Annule toutes mes annonces d'une rareté donnée. On déclenche tous les retraits
+  // sur le snapshot courant de myListings (onCancelListing filtre par id → composable).
+  const cancelRarity = useCallback((rarity) => {
+    myListings.forEach((l, i) => { if (l.card?.rarity === rarity) onCancelListing(i) })
+  }, [myListings, onCancelListing])
+
+  // Après le re-render (nouvel ordre/hauteurs appliqués), on inverse le delta de
+  // position puis on le laisse revenir à 0 → glissement fluide vers la nouvelle place.
+  // N'anime que le dépliage d'un coin (flipPrev posé uniquement par toggleMerchant).
+  useLayoutEffect(() => {
+    const prev = flipPrev.current
+    if (!prev) return
+    flipPrev.current = null
+    // À l'ouverture, le coin flotte en tête : on le ramène dans le champ de vision.
+    // Calculé avant d'appliquer les transforms FLIP pour viser la position finale.
+    if (expandedMerchant) {
+      merchantRefs.current[expandedMerchant]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+    Object.entries(merchantRefs.current).forEach(([k, el]) => {
+      const p = prev[k]
+      if (!el || !p) return
+      const r = el.getBoundingClientRect()
+      const dx = p.left - r.left
+      const dy = p.top - r.top
+      if (!dx && !dy) return
+      el.style.transition = 'none'
+      el.style.transform = `translate(${dx}px,${dy}px)`
+      el.style.zIndex = '4'
+      void el.offsetWidth // reflow pour ancrer la position inversée
+      requestAnimationFrame(() => {
+        el.style.transition = 'transform .42s cubic-bezier(.2,.7,.2,1)'
+        el.style.transform = ''
+      })
+      // transitionend + fallback : on garantit le nettoyage même si l'event ne part pas.
+      let done = false
+      const finish = () => { if (done) return; done = true; clearFlip(el); el.removeEventListener('transitionend', finish) }
+      el.addEventListener('transitionend', finish)
+      setTimeout(finish, 550)
+    })
+  }, [expandedMerchant])
 
   return (
     <PanelWrapper inline={inline} onClose={onClose} theme={theme}>
@@ -165,59 +228,117 @@ export default function MarketModal({
         {/* ── ACHETER ── */}
         {tab === 'acheter' && (
           <div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-              <input value={buySearch} onChange={e => setBuySearch(e.target.value)}
+            {/* Barre de contrôles — même design que la Collection (search + filtres) */}
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+              <input value={buySearch} onChange={e => { setExpandedMerchant(null); setBuySearch(e.target.value) }}
                 placeholder={t('collection_search')}
-                style={{ flex: 1, minWidth: 120, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none' }}/>
-              {buySearch && <button onClick={() => setBuySearch('')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 16 }}>✕</button>}
+                style={{ flex: 1, minWidth: 100, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, padding: '7px 11px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
+              {buySearch && <button onClick={() => setBuySearch('')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>✕</button>}
               <select value={buySort} onChange={e => setBuySort(e.target.value)}
-                style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none', cursor: 'pointer' }}>
-                <option value="rarity">{t('market_sort_label')}: {t('market_sort_rarity')}</option>
-                <option value="price_asc">{t('market_sort_label')}: {t('market_sort_price_asc')}</option>
-                <option value="price_desc">{t('market_sort_label')}: {t('market_sort_price_desc')}</option>
-                <option value="unowned">{t('market_sort_label')}: {t('market_sort_unowned')}</option>
+                style={{ flexShrink: 0, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textSecondary, padding: '7px 11px', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, outline: 'none', cursor: 'pointer' }}>
+                <option value="price_asc">{t('market_sort_price_asc')}</option>
+                <option value="price_desc">{t('market_sort_price_desc')}</option>
               </select>
+              {/* Manquants / Tous — même système que la Collection ; désactivé en vue « Mes annonces » */}
+              <button disabled={onlyMine} onClick={() => { setExpandedMerchant(null); setShowMissing(v => !v) }}
+                style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : theme.bgInput, border: `1px solid ${showMissing ? '#6c5ce7' : theme.border}`, color: showMissing ? '#fff' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: onlyMine ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: onlyMine ? 0.45 : 1 }}>
+                {showMissing ? t('filter_all') : t('filter_missing')}
+              </button>
+              {/* Mes annonces */}
+              <button onClick={() => { setExpandedMerchant(null); setOnlyMine(v => !v) }}
+                style={{ flexShrink: 0, background: onlyMine ? '#f9ca24' : theme.bgInput, border: `1px solid ${onlyMine ? '#f9ca24' : theme.border}`, color: onlyMine ? '#1e3045' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {t('market_only_mine')}{myListings.length ? ` (${myListings.length})` : ''}
+              </button>
             </div>
             {(() => {
               const q = buySearch.trim().toLowerCase()
-              const filtered = q ? gArr.filter(({ card }) => card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q)) : gArr
-              return filtered.length === 0 ? (
-              loading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 0', gap: 10 }}>
-                  <style>{`@keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-8px);opacity:1}}`}</style>
-                  {[0, 0.18, 0.36].map(d => <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />)}
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', color: '#888', padding: '30px 0' }}>
-                  <div style={{ fontSize: 36 }}>🏜️</div>
-                  <div style={{ marginTop: 8 }}>{t('market_empty')}</div>
-                </div>
+              let filtered = q ? gArr.filter(({ card }) => card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q)) : gArr
+              if (onlyMine) filtered = filtered.filter(({ card }) => myListingCardIds.has(card.id))
+              if (showMissing) filtered = filtered.filter(({ card }) => !((myCollection[card.id] || 0) > 0))
+              // Recherche ou « mes annonces » = vue à plat : tous les coins dépliés, non repliables.
+              const flat = !!q || onlyMine
+              if (filtered.length === 0) return (
+                (loading && !flat && !showMissing) ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 0', gap: 10 }}>
+                    <style>{`@keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-8px);opacity:1}}`}</style>
+                    {[0, 0.18, 0.36].map(d => <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />)}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#888', padding: '30px 0' }}>
+                    <div style={{ fontSize: 36 }}>{onlyMine ? '📭' : '🏜️'}</div>
+                    <div style={{ marginTop: 8 }}>{onlyMine ? t('market_no_listings') : t('market_empty')}</div>
+                  </div>
+                )
               )
-            ) : (
-              <div style={{ display: 'flex',flexDirection: 'column',gap: 9 }}>
-                {filtered.map(({ card, tiersArr, totalQty, maxQty }) => {
-                  const isO = exp === card.id
-                  const rc = RC[card.rarity]
-                  const { c1, c2 } = cardCC(card.rarity)
-                  const owned = (myCollection[card.id] || 0) > 0
+              // Regroupement des ventes par marchand (= rareté).
+              const merchantGroups = {}
+              filtered.forEach(g => { (merchantGroups[g.card.rarity] ||= []).push(g) })
+              // Ordre de base : commun → rare → épique → légendaire (RC.order décroissant).
+              const baseOrder = Object.keys(merchantGroups).sort((a, b) => RC[b].order - RC[a].order)
+              // En vue à plat, l'étal déplié ne flotte pas ; sinon il passe au-dessus des autres.
+              const displayOrder = (!flat && expandedMerchant && merchantGroups[expandedMerchant])
+                ? [expandedMerchant, ...baseOrder.filter(r => r !== expandedMerchant)]
+                : baseOrder
+              return (
+              <div style={{ display: 'flex',flexDirection: 'column',gap: 18, marginTop: 10 }}>
+                <style>{`@keyframes stallReveal{from{clip-path:inset(0 0 100% 0);opacity:.35}to{clip-path:inset(0 0 0 0);opacity:1}}`}</style>
+                {displayOrder.map(rarity => {
+                  const m = MERCHANTS[rarity]
+                  const mc = cardCC(rarity)
+                  const groupCards = merchantGroups[rarity]
+                  const stock = groupCards.reduce((s, g) => s + g.totalQty, 0)
+                  const isExpanded = flat ? true : expandedMerchant === rarity
                   return (
+                  <div key={rarity} ref={el => { merchantRefs.current[rarity] = el }} style={{ scrollMarginTop: inline ? 64 : 14 }}>
+                    {/* Bannière du coin — collante sous le header de l'app (~53px) pendant le scroll de son étal */}
+                    <div onClick={() => { if (!flat) toggleMerchant(rarity) }}
+                      style={{ position: flat ? 'relative' : 'sticky', top: inline ? 60 : 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, marginBottom: isExpanded ? 11 : 0, cursor: flat ? 'default' : 'pointer', background: `linear-gradient(135deg,${mc.c1},${mc.c2})`, boxShadow: `0 4px 16px ${mc.c1}44` }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', textShadow: '0 1px 3px #0006' }}>{t(m.nameKey)}</div>
+                        <div style={{ fontSize: 10.5, color: '#ffffffd0', fontStyle: 'italic', textShadow: '0 1px 2px #0005', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>« {t(m.taglineKey)} »</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <span style={{ background: '#00000038', color: '#fff', fontWeight: 800, fontSize: 11, padding: '3px 10px', borderRadius: 50, whiteSpace: 'nowrap', border: '1px solid #ffffff33' }}>{stock.toLocaleString()} {t('market_for_sale')}</span>
+                        {/* Tout retirer — par coin, uniquement en vue « Mes annonces » */}
+                        {onlyMine && (cancelConfirm === `coin_${rarity}` ? (
+                          <div style={{ display: 'flex', gap: 5 }}>
+                            <button onClick={(e) => { e.stopPropagation(); cancelRarity(rarity); setCancelConfirm(null) }}
+                              style={{ background: '#d63031', border: '1px solid #ffffff66', color: '#fff', fontWeight: 900, fontSize: 11, padding: '4px 9px', borderRadius: 50, cursor: 'pointer', fontFamily: "'Nunito',sans-serif" }}>✓</button>
+                            <button onClick={(e) => { e.stopPropagation(); setCancelConfirm(null) }}
+                              style={{ background: '#00000040', border: '1px solid #ffffff44', color: '#fff', fontWeight: 800, fontSize: 11, padding: '4px 8px', borderRadius: 50, cursor: 'pointer', fontFamily: "'Nunito',sans-serif" }}>✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={(e) => { e.stopPropagation(); setCancelConfirm(`coin_${rarity}`) }}
+                            style={{ background: '#00000040', border: '1px solid #ffffff55', color: '#fff', fontWeight: 800, fontSize: 10, padding: '4px 10px', borderRadius: 50, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'Nunito',sans-serif" }}>✕ {t('market_remove_all')}</button>
+                        ))}
+                        {!flat && <div style={{ color: '#fff', fontSize: 16, transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform .25s' }}>⌄</div>}
+                      </div>
+                    </div>
+                    {/* Étal du marchand */}
+                    {isExpanded && (
+                    <div style={{ display: 'flex',flexDirection: 'column',gap: 9, animation: 'stallReveal .42s cubic-bezier(.2,.7,.2,1) both' }}>
+                      {groupCards.map(({ card, tiersArr, totalQty, maxQty }) => {
+                        const isO = exp === card.id
+                        const { c1, c2 } = cardCC(card.rarity)
+                        const owned = (myCollection[card.id] || 0) > 0
+                        return (
                     <div key={card.id} style={{ background: theme.overlay,border: isO ? `1.5px solid #f9ca2455` : `1.5px solid ${theme.border}`,borderRadius: 13,overflow: 'hidden' }}>
                       <div onClick={() => setExp(isO ? null : card.id)} style={{ display: 'flex',alignItems: 'center',gap: 11,padding: '9px 13px',cursor: 'pointer' }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 9, overflow: 'hidden', background: `linear-gradient(135deg,${c1},${c2})`, flexShrink: 0, border: `1.5px solid ${c1}66` }}>
-                          {(card.image_url_thumb || card.image_url)
-                            ? <ThumbImage src={card.image_url_thumb || card.image_url} alt={card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: '#fff' }}>{card.name[0]}</div>
-                          }
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 9, overflow: 'hidden', background: `linear-gradient(135deg,${c1},${c2})`, border: `1.5px solid ${c1}66` }}>
+                            {(card.image_url_thumb || card.image_url)
+                              ? <ThumbImage src={card.image_url_thumb || card.image_url} alt={card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: '#fff' }}>{card.name[0]}</div>
+                            }
+                          </div>
+                          {owned && <div title={t('market_already_owned')} style={{ position: 'absolute', bottom: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#00b894', border: `2px solid ${theme.bgSurface}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 900, lineHeight: 1, boxShadow: '0 1px 3px #0006' }}>✓</div>}
                         </div>
                         <div style={{ flex: 1,minWidth: 0 }}>
                           <div style={{ display: 'flex',alignItems: 'center',gap: 7,flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 900,fontSize: 14,color: theme.textPrimary }}>{card.name}</span>
-                            <span style={{ background: rc.bg,color: rc.color,fontSize: 8,fontWeight: 800,padding: '1px 6px',borderRadius: 50,textTransform: 'uppercase' }}>{rarityLabel(card.rarity, t)}</span>
-                            {owned && <span style={{ background: '#f9ca2422',color: theme.gold,fontSize: 8,fontWeight: 800,padding: '1px 6px',borderRadius: 50 }}>{t('market_already_owned')}</span>}
                           </div>
                           <div style={{ fontSize: 10,color: theme.textMuted,marginTop: 2,display: 'flex',gap: 10,flexWrap: 'wrap' }}>
                             <span style={{ color: theme.gold,fontWeight: 800 }}>{totalQty.toLocaleString()} {t('market_for_sale')}</span>
-                            <span>{tiersArr.length} {tiersArr.length > 1 ? t('market_tiers_pl') : t('market_tiers')}</span>
                             <span>{t('market_from')} <span style={{ color: '#00b894',fontWeight: 800 }}>{tiersArr[0].price}G</span></span>
                           </div>
                         </div>
@@ -298,10 +419,16 @@ export default function MarketModal({
                         </div>
                       )}
                     </div>
+                        )
+                      })}
+                    </div>
+                    )}
+                  </div>
                   )
                 })}
               </div>
-            )})()}
+              )
+            })()}
           </div>
         )}
 
@@ -451,108 +578,6 @@ export default function MarketModal({
             </div>
           </div>
         )}
-
-        {/* ── MES ANNONCES ── */}
-        {tab === 'meslistes' && (() => {
-          const totalPages = Math.ceil(myListings.length / LIST_PAGE_SIZE)
-          const page = Math.min(listPage, Math.max(0, totalPages - 1))
-          const slice = myListings.slice(page * LIST_PAGE_SIZE, (page + 1) * LIST_PAGE_SIZE)
-          return (
-            <div>
-              <style>{`
-                @keyframes highlightNewListing {
-                  0% { opacity: 0; transform: translateY(-10px); background: #00b89444; border-color: #00b894aa; }
-                  100% { opacity: 1; transform: translateY(0); background: #00b89415; border-color: #00b89466; }
-                }
-              `}</style>
-              {myListings.length === 0 ? (
-                <div style={{ textAlign: 'center',color: '#888',padding: '36px 0' }}>
-                  <div style={{ fontSize: 36 }}>📭</div>
-                  <div style={{ marginTop: 8,fontSize: 13 }}>{t('market_no_listings')}</div>
-                  <button onClick={() => setTab('vendre')} style={{ marginTop: 12, background: 'none', border: 'none', color: '#00b894', padding: '4px 0', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}>{t('market_sell_geocoin')}</button>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: 'flex',justifyContent: 'space-between',alignItems: 'center',marginBottom: 12,flexWrap: 'wrap',gap: 8 }}>
-                    <div style={{ display: 'flex',alignItems: 'center',gap: 12 }}>
-                      <div style={{ fontSize: 12,color: '#888',fontWeight: 700 }}>
-                        {(myListings.length > 1 ? t('market_listings_count_plural') : t('market_listings_count')).replace('{n}', myListings.length)}
-                      </div>
-                      <button onClick={() => setTab('vendre')} style={{ background: 'none', border: 'none', color: '#00b894', padding: '4px 0', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }}>{t('market_sell_geocoin')}</button>
-                      {myListings.length > 1 && (
-                        <button onClick={onCancelAllListings} style={{ background: '#e74c3c15', border: '1px solid #e74c3c44', color: '#e74c3c', padding: '4px 10px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 10, cursor: 'pointer' }}>✕ Tout retirer</button>
-                      )}
-                    </div>
-                    {totalPages > 1 && (
-                      <div style={{ display: 'flex',alignItems: 'center',gap: 6 }}>
-                        <button onClick={() => setListPage(p => Math.max(0, p - 1))} disabled={page === 0}
-                          style={{ background: page===0?theme.overlay:theme.bgElevated,border:`1px solid ${theme.border}`,color:page===0?theme.textMuted:theme.textPrimary,width:28,height:28,borderRadius:8,cursor:page===0?'default':'pointer',fontWeight:900,fontSize:14 }}>‹</button>
-                        <span style={{ fontSize: 11,color: theme.textMuted,fontWeight: 700 }}>{page + 1} / {totalPages}</span>
-                        <button onClick={() => setListPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
-                          style={{ background: page===totalPages-1?theme.overlay:theme.bgElevated,border:`1px solid ${theme.border}`,color:page===totalPages-1?theme.textMuted:theme.textPrimary,width:28,height:28,borderRadius:8,cursor:page===totalPages-1?'default':'pointer',fontWeight:900,fontSize:14 }}>›</button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex',flexDirection: 'column',gap: 8 }}>
-                    {slice.map((l, si) => {
-                      const realIdx = page * LIST_PAGE_SIZE + si
-                      const { c1, c2 } = cardCC(l.card.rarity)
-                      const rc = RC[l.card.rarity]
-                      const isConfirming = cancelConfirm === realIdx
-                      const isTemp = String(l.id).startsWith('temp_')
-                      return (
-                        <div key={l.id || realIdx} style={{ display: 'flex',alignItems: 'center',gap: 11,background: isConfirming ? '#e74c3c12' : (isTemp ? '#00b89415' : theme.overlay),border: `1px solid ${isConfirming ? '#e74c3c44' : (isTemp ? '#00b89466' : theme.border)}`,borderRadius: 12,padding: '10px 14px',transition: 'all .3s ease', animation: isTemp ? 'highlightNewListing .4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both' : 'none' }}>
-                          {/* Vignette geocoin */}
-                          <div style={{ width: 38, height: 38, borderRadius: 10, overflow: 'hidden', background: `linear-gradient(135deg,${c1},${c2})`, flexShrink: 0, border: `1.5px solid ${c1}66` }}>
-                            {(l.card.image_url_thumb || l.card.image_url)
-                              ? <ThumbImage src={l.card.image_url_thumb || l.card.image_url} alt={l.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff' }}>{l.card.name[0]}</div>
-                            }
-                          </div>
-                          {/* Infos */}
-                          <div style={{ flex: 1,minWidth: 0 }}>
-                            <div style={{ fontWeight: 900,color: theme.textPrimary,fontSize: 14,whiteSpace: 'nowrap',overflow: 'hidden',textOverflow: 'ellipsis' }}>{l.card.name}</div>
-                            <div style={{ fontSize: 10,color: rc.color,fontWeight: 700,marginTop: 1 }}>{rarityLabel(l.card.rarity, t)} · {l.card.type}</div>
-                          </div>
-                          {/* Prix */}
-                          <div style={{ fontWeight: 900,fontSize: 17,color: theme.gold,flexShrink: 0 }}>{l.price}G</div>
-                          {/* Actions */}
-                          {isConfirming ? (
-                            <div style={{ display: 'flex',gap: 6,flexShrink: 0 }}>
-                              <button onClick={() => { onCancelListing(realIdx); setCancelConfirm(null); setListPage(p => Math.min(p, Math.max(0, Math.ceil((myListings.length - 1) / LIST_PAGE_SIZE) - 1))); }}
-                                style={{ background: 'linear-gradient(135deg,#d63031,#e17055)',border: 'none',color: '#fff',padding: '5px 11px',borderRadius: 8,fontFamily: "'Nunito',sans-serif",fontWeight: 900,fontSize: 11,cursor: 'pointer' }}>
-                                Confirmer
-                              </button>
-                              <button onClick={() => setCancelConfirm(null)}
-                                style={{ background: theme.bgElevated,border: `1px solid ${theme.border}`,color: theme.textMuted,padding: '5px 10px',borderRadius: 8,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 11,cursor: 'pointer' }}>
-                                Annuler
-                              </button>
-                            </div>
-                          ) : (
-                            <button onClick={() => setCancelConfirm(realIdx)}
-                              style={{ background: '#e74c3c22',border: '1px solid #e74c3c44',color: '#e74c3c',padding: '5px 12px',borderRadius: 8,fontFamily: "'Nunito',sans-serif",fontWeight: 800,fontSize: 11,cursor: 'pointer',flexShrink: 0 }}>
-                              {t('market_remove')}
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {totalPages > 1 && (
-                    <div style={{ display: 'flex',justifyContent: 'center',gap: 5,marginTop: 12 }}>
-                      {Array.from({ length: totalPages }, (_, i) => (
-                        <button key={i} onClick={() => setListPage(i)}
-                          style={{ width: 8,height: 8,borderRadius: '50%',border: 'none',cursor: 'pointer',background: i === page ? '#f9ca24' : '#ffffff33',padding: 0,transition: 'background .2s' }}/>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )
-        })()}
 
         {/* ── HISTORIQUE — 50 dernières ventes/achats ── */}
         {tab === 'historique' && (

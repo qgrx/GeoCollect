@@ -182,11 +182,11 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
                     {isAchat ? t('tx_bought_from') : t('tx_sold_to')} {tx.counterpart} · {tx.date}
                   </div>
                 </div>
-                <div style={{ display: 'flex',alignItems: 'center',gap: 8 }}>
-                  <span style={{ fontSize: 11, background: isAchat ? '#e74c3c22' : '#00b89422', color: isAchat ? '#e74c3c' : '#00b894', border: `1px solid ${isAchat ? '#e74c3c44' : '#00b89444'}`, borderRadius: 50, padding: '3px 10px', fontWeight: 800 }}>
+                <div style={{ display: 'flex',alignItems: 'center',gap: 10,flexShrink: 0 }}>
+                  <span style={{ width: 60, textAlign: 'center', boxSizing: 'border-box', fontSize: 11, background: isAchat ? '#e74c3c22' : '#00b89422', color: isAchat ? '#e74c3c' : '#00b894', border: `1px solid ${isAchat ? '#e74c3c44' : '#00b89444'}`, borderRadius: 50, padding: '3px 0', fontWeight: 800 }}>
                     {isAchat ? t('tx_buy_label') : t('tx_sell_label')}
                   </span>
-                  <div style={{ display: 'flex',flexDirection: 'column',alignItems: 'flex-end' }}>
+                  <div style={{ display: 'flex',flexDirection: 'column',alignItems: 'flex-end',width: 84 }}>
                     <span style={{ fontWeight: 900,fontSize: 15,color: isAchat ? '#e74c3c' : theme.gold }}>
                       {isAchat ? '-' : '+'}{isAchat ? tx.price : netOf(tx.price)}G
                     </span>
