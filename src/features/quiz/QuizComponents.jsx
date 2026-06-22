@@ -397,6 +397,8 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
   const colorRarity = hasPendingQuiz ? nextCard?.rarity : (urgent ? nextQuizRarity : null)
   const {c1,c2}    = (colorRarity && showColors) ? cardCC(colorRarity) : {c1:'#6c7c93',c2:'#48576b'}
   const shinyActive = isShiny && (hasPendingQuiz || urgent)
+  // Joueur « en feu » (série de victoires) à signaler pour la prochaine carte.
+  const onFire = !!streakLeader && streakLeader.handicap_seconds > 0 && !isHandicapExemptCard(nextCard?.rarity, isShiny)
 
   // ── Annonce « en feu » (série de victoires) — en grand, mais JAMAIS quand un
   // quiz est joignable (le bouton « Participer » reste prioritaire) ───────────
@@ -474,6 +476,10 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
           {shinyActive&&(
             <div style={{position:'absolute',top:-4,right:-4,zIndex:15,fontSize:12,animation:'shinySparkle 2s ease-in-out infinite',filter:'drop-shadow(0 0 3px gold)'}}>✨</div>
           )}
+          {/* Coche « déjà possédé » sur l'image — identique au marché */}
+          {hasCard&&owned&&(
+            <div title={t('quiz_already_owned')} style={{position:'absolute',bottom:-4,right:-4,zIndex:16,width:16,height:16,borderRadius:'50%',background:'#00b894',border:`2px solid ${theme.bgSurface}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,color:'#fff',fontWeight:900,lineHeight:1,boxShadow:'0 1px 3px #0006'}}>✓</div>
+          )}
         </div>
 
         {/* Contenu central */}
@@ -515,24 +521,15 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
             <div style={{width:hasPendingQuiz?'100%':`${pct}%`,height:'100%',background:shinyActive?'linear-gradient(90deg,#f9ca24,#e17055)':`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:'width 1s linear,background .5s',boxShadow:urgent?`0 0 8px ${c1}`:''}}/>
           </div>
 
-          {/* Infos carte (masquées en mode urgent) */}
+          {/* Infos carte (masquées en mode urgent). Pour un geocoin mystère, le message
+              « joueur en feu » remplace le texte « Geocoin mystère ». */}
           {!urgent&&(
-            <div style={{fontSize:10,color:'#666'}}>
+            <div style={{fontSize:10,color:'#666',display:'flex',alignItems:'center',gap:4}}>
               {hasCard
                 ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}</>
-                : <span style={{color:theme.textMuted,fontStyle:'italic'}}>{t('quiz_mystery_card')}</span>}
-            </div>
-          )}
-          {/* Déjà possédé — indiqué quand le geocoin précis apparaît */}
-          {!urgent&&hasCard&&owned&&(
-            <div style={{fontSize:9.5,fontWeight:800,color:'#3fb950',marginTop:2,display:'flex',alignItems:'center',gap:4}}>
-              <span>✓</span>{t('quiz_already_owned')}
-            </div>
-          )}
-          {/* Petit message : joueur en série (handicap bienveillant) — sauf carte exemptée */}
-          {!urgent&&streakLeader&&(streakLeader.handicap_seconds>0)&&!isHandicapExemptCard(nextCard?.rarity,isShiny)&&(
-            <div style={{fontSize:9.5,fontWeight:800,color:'#ff8a5c',marginTop:2,display:'flex',alignItems:'center',gap:4}}>
-              <span>🔥</span>{t('streak_bar_small').replace('{pseudo}',streakLeader.pseudo).replace('{n}',streakLeader.streak).replace('{x}',streakLeader.handicap_seconds)}
+                : onFire
+                  ? <span style={{color:'#ff8a5c',fontWeight:800}}>🔥 {t('streak_bar_small').replace('{pseudo}',streakLeader.pseudo).replace('{n}',streakLeader.streak).replace('{x}',streakLeader.handicap_seconds)}</span>
+                  : <span style={{color:theme.textMuted,fontStyle:'italic'}}>{t('quiz_mystery_card')}</span>}
             </div>
           )}
         </div>
