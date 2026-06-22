@@ -1,11 +1,11 @@
-# 🗺️ GeoCards
+# Geocoins.fr
 
 Jeu de cartes à collectionner basé sur le géocaching.  
 Réponds aux questions, gagne des cartes, vends tes doublons sur le marché.
 
 ---
 
-## 🚀 Démarrage rapide
+## Démarrage rapide
 
 ### Prérequis
 - **Node.js 18+** — [nodejs.org](https://nodejs.org)
@@ -83,7 +83,7 @@ geocards/
 
 ---
 
-## 🌍 Langues
+## Langues
 
 L'interface est disponible en **Français 🇫🇷**, **English 🇬🇧**, **Deutsch 🇩🇪** et **Español 🇪🇸**.
 
@@ -91,7 +91,7 @@ Le sélecteur de langue est dans le header. Le choix est persisté en `localStor
 
 ---
 
-## 🎮 Fonctionnalités
+## Fonctionnalités
 
 | Feature | Détail |
 |---|---|
@@ -106,7 +106,7 @@ Le sélecteur de langue est dans le header. Le choix est persisté en `localStor
 
 ---
 
-## 🔧 Extensions VS Code recommandées
+## Extensions VS Code recommandées
 
 Quand tu ouvres le projet, VS Code proposera d'installer automatiquement :
 
@@ -119,7 +119,7 @@ Quand tu ouvres le projet, VS Code proposera d'installer automatiquement :
 
 ---
 
-## 🗺️ Roadmap backend
+## Roadmap backend
 
 Ce prototype utilise du state React local.  
 La prochaine étape est le backend (voir `geocards_cdc.docx`) :
@@ -129,7 +129,6 @@ La prochaine étape est le backend (voir `geocards_cdc.docx`) :
 - **Socket.io** — quiz et notifications temps réel
 - **Supabase Auth** — Google OAuth + email
 - **Redis** (Upstash) — cache marché, sessions
-- **Fly.io** — hébergement API (~3€/mois)
 - **Vercel** — hébergement frontend (gratuit)
 
 ---
@@ -138,7 +137,7 @@ La prochaine étape est le backend (voir `geocards_cdc.docx`) :
 
 | Poste | Coût |
 |---|---|
-| Fly.io API (shared-cpu-1x) | ~3 €/mois |
-| Domaine (.fr) | ~0,50 €/mois |
+| OVH VPS | ~10 €/mois |
+| Domaine (.fr) | ~1 €/mois |
 | Supabase, Vercel, Redis, Sentry, Resend | **Gratuit** |
-| **Total** | **~3,50 €/mois** |
+| **Total** | **~11 €/mois** |
