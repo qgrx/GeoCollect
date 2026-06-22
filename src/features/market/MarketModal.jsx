@@ -378,7 +378,7 @@ export default function MarketModal({
                                   {!isOwn && ib && <span style={{ fontSize: 7,background: '#00b894',color: '#fff',borderRadius: 3,padding: '1px 4px',fontWeight: 800 }}>{t('market_best')}</span>}
                                   {tier.price}G
                                 </div>
-                                <div>
+                                <div style={{ minWidth: 0 }}>
                                   <div style={{ background: theme.overlayMd,borderRadius: 3,height: 5,overflow: 'hidden',marginBottom: 2 }}>
                                     <div style={{ width: `${bp}%`, height: '100%', background: ib ? 'linear-gradient(90deg,#00b894,#00cec9)' : `linear-gradient(90deg,${c1}88,${c2}88)`, borderRadius: 3, transition: 'width .4s' }} />
                                   </div>
