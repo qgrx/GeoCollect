@@ -244,8 +244,8 @@ export default function MarketModal({
                 style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : theme.bgInput, border: `1px solid ${showMissing ? '#6c5ce7' : theme.border}`, color: showMissing ? '#fff' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: onlyMine ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: onlyMine ? 0.45 : 1 }}>
                 {showMissing ? t('filter_all') : t('filter_missing')}
               </button>
-              {/* Mes annonces */}
-              <button onClick={() => { setExpandedMerchant(null); setOnlyMine(v => !v) }}
+              {/* Mes annonces — désactive le filtre Manquants (incompatible) */}
+              <button onClick={() => { setExpandedMerchant(null); setShowMissing(false); setOnlyMine(v => !v) }}
                 style={{ flexShrink: 0, background: onlyMine ? '#f9ca24' : theme.bgInput, border: `1px solid ${onlyMine ? '#f9ca24' : theme.border}`, color: onlyMine ? '#1e3045' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {t('market_only_mine')}{myListings.length ? ` (${myListings.length})` : ''}
               </button>
