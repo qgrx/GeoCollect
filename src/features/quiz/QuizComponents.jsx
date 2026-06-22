@@ -288,8 +288,8 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           <div style={{flex:1,minWidth:0}}>
             {questionMasked ? (
               <div style={{fontSize:13,fontWeight:800,color:"#ffd28a",lineHeight:1.5,display:"flex",alignItems:"center",gap:8,minHeight:42}}>
-                <span style={{fontSize:22}}>🎁</span>
-                <span>{handicapLeft>0 ? t('streak_question_hidden').replace('{x}',handicapLeft) : `${t('quiz_validating')||'…'}`}</span>
+                <span style={{fontSize:22}}>{handicapLeft>0 ? '🎁' : '🔥'}</span>
+                <span>{handicapLeft>0 ? t('streak_question_hidden').replace('{x}',handicapLeft) : `${t('quiz_on_fire')} ${streakLeader?.streak ?? ''}`.trim()}</span>
               </div>
             ) : (<>
               <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1.5,marginBottom:5}}>{displayedQ}</div>
