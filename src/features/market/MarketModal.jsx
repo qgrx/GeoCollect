@@ -292,7 +292,7 @@ export default function MarketModal({
                   <div key={rarity} ref={el => { merchantRefs.current[rarity] = el }} style={{ scrollMarginTop: inline ? 64 : 14 }}>
                     {/* Bannière du coin — collante sous le header de l'app (~53px) pendant le scroll de son étal */}
                     <div onClick={() => { if (!flat) toggleMerchant(rarity) }}
-                      style={{ position: flat ? 'relative' : 'sticky', top: inline ? 60 : 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, marginBottom: isExpanded ? 11 : 0, cursor: flat ? 'default' : 'pointer', background: `linear-gradient(135deg,${mc.c1},${mc.c2})`, boxShadow: `0 4px 16px ${mc.c1}44` }}>
+                      style={{ position: flat ? 'static' : 'sticky', top: inline ? 60 : 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, marginBottom: isExpanded ? 11 : 0, cursor: flat ? 'default' : 'pointer', background: `linear-gradient(135deg,${mc.c1},${mc.c2})`, boxShadow: `0 4px 16px ${mc.c1}44` }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', textShadow: '0 1px 3px #0006' }}>{t(m.nameKey)}</div>
                         <div style={{ fontSize: 10.5, color: '#ffffffd0', fontStyle: 'italic', textShadow: '0 1px 2px #0005', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>« {t(m.taglineKey)} »</div>
