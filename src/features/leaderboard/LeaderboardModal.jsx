@@ -228,20 +228,18 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
   const [search, setSearch] = useState('');
   const PG = 15;
 
-  // Même calcul que ProfileView : nb de cartes uniques (normales + brillantes).
-  const myCardCount = new Set([
-    ...Object.keys(myCollection || {}).filter(k => (myCollection[k] || 0) > 0),
-    ...Object.keys(myShinyCollection || {}).filter(k => (myShinyCollection[k] || 0) > 0),
-  ]).size;
+  // Comptés séparément, comme côté serveur : geocoins normaux d'un côté, shiny de l'autre.
+  const myCardCount  = Object.keys(myCollection || {}).filter(k => (myCollection[k] || 0) > 0).length;
+  const myShinyCount = Object.keys(myShinyCollection || {}).filter(k => (myShinyCollection[k] || 0) > 0).length;
 
   useEffect(() => {
     setLoading(true);
     apiGetLeaderboard(page, search || undefined).then(({ data }) => {
       if (data?.players) {
         // Injecter le joueur courant s'il n'est pas dans la page
-        let list = data.players.map(p => p.id === myId ? { ...p, isMe: true, score: myScore ?? p.score, card_count: myCardCount, gold: myGold ?? p.gold, forge_points: myForgePoints ?? p.forge_points, col: myCollection, shinyCol: myShinyCollection } : p);
+        let list = data.players.map(p => p.id === myId ? { ...p, isMe: true, score: myScore ?? p.score, card_count: myCardCount, shiny_count: myShinyCount, gold: myGold ?? p.gold, forge_points: myForgePoints ?? p.forge_points, col: myCollection, shinyCol: myShinyCollection } : p);
         if (myId && !list.find(p => p.isMe)) {
-          const me = { id: myId, pseudo: myPseudo || 'Moi', isMe: true, isMeSeparate: true, score: myScore ?? 0, card_count: myCardCount, gold: myGold ?? 0, forge_points: myForgePoints ?? 0, col: myCollection, shinyCol: myShinyCollection };
+          const me = { id: myId, pseudo: myPseudo || 'Moi', isMe: true, isMeSeparate: true, score: myScore ?? 0, card_count: myCardCount, shiny_count: myShinyCount, gold: myGold ?? 0, forge_points: myForgePoints ?? 0, col: myCollection, shinyCol: myShinyCollection };
           list = [...list, me];
         }
         setPlayers(list);
@@ -311,7 +309,11 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
                       <div style={{ fontWeight: 900, fontSize: 13 }}>
                         <PseudoDisplay pseudo={(p.pseudo||p.name)+(p.isMe?` ${t('lb_you')}`:'')} score={p.score||0} ranks={ranks} style={{ color: p.isMe ? theme.gold : theme.textPrimary }}/>
                       </div>
-                      <div style={{ fontSize: 10, color: theme.textMuted }}>{p.score ?? '—'} pts · 🃏 {p.card_count ?? '—'} · 💰 {p.gold ?? '—'} G</div>
+                      <div style={{ fontSize: 10, color: theme.textMuted }}>
+                        {p.score ?? '—'} pts · 🃏 {p.card_count ?? '—'}
+                        {p.shiny_count > 0 && <span style={{ color: '#f9ca24', fontWeight: 800 }}> ✨{p.shiny_count}</span>}
+                        {' · 💰 '}{p.gold ?? '—'} G
+                      </div>
                     </div>
                     {!p.isMe && <div style={{ color: '#888', fontSize: 12 }}>→</div>}
                   </div>
@@ -326,6 +328,12 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ background: page === 0 ? theme.overlayMd : theme.overlay, border: `1px solid ${theme.border}`, color: page === 0 ? theme.textMuted : theme.textPrimary, padding: '5px 13px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: page === 0 ? 'default' : 'pointer' }}>{t('lb_prev')}</button>
             <span style={{ fontSize: 11, color: theme.textMuted, fontWeight: 700 }}>Page {page + 1}/{pages}</span>
             <button onClick={() => setPage(p => Math.min(pages - 1, p + 1))} disabled={page === pages - 1} style={{ background: page === pages - 1 ? theme.overlayMd : theme.overlay, border: `1px solid ${theme.border}`, color: page === pages - 1 ? theme.textMuted : theme.textPrimary, padding: '5px 13px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: page === pages - 1 ? 'default' : 'pointer' }}>{t('lb_next')}</button>
+          </div>
+        )}
+
+        {!loading && (
+          <div style={{ textAlign: 'center', fontSize: 9, color: theme.textMuted, marginTop: 10, opacity: .7 }}>
+            🕐 {t('lb_refresh_note')}
           </div>
         )}
     </PanelWrapper>
