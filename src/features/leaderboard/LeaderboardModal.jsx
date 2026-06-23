@@ -312,7 +312,6 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
                       <div style={{ fontSize: 10, color: theme.textMuted }}>
                         {p.score ?? '—'} pts · 🃏 {p.card_count ?? '—'}
                         {p.shiny_count > 0 && <span style={{ color: '#f9ca24', fontWeight: 800 }}> ✨{p.shiny_count}</span>}
-                        {' · 💰 '}{p.gold ?? '—'} G
                       </div>
                     </div>
                     {!p.isMe && <div style={{ color: '#888', fontSize: 12 }}>→</div>}
