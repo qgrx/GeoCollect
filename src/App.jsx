@@ -16,7 +16,7 @@ import { isCorrectAnswer } from './utils/answer.js';
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiGetDemo, apiDemoClaim } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiGetDemo, apiDemoClaim } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -494,6 +494,18 @@ export default function App() {
         showToast(message, type === 'error' ? 'error' : 'success')
       })
 
+      // Publication groupée de cartes (admin) → recharge le pool en temps réel
+      s.on('cards:released', () => {
+        gs.reloadCards?.()
+        showToast(t('new_cards_released'), 'success')
+      })
+
+      // Publication groupée d'achievements (admin) → recharge les achievements
+      s.on('achievements:released', () => {
+        gs.refreshAchievements?.()
+        showToast(t('new_achievements_released'), 'success')
+      })
+
       s.on('connect',    () => {
         setSocketOnline(true)
         // Re-synchroniser après une (re)connexion : un quiz a pu être résolu pendant
@@ -519,6 +531,9 @@ export default function App() {
       socket?.off('quiz:expired')
       socket?.off('market:sold')
       socket?.off('maintenance')
+      socket?.off('announcement')
+      socket?.off('cards:released')
+      socket?.off('achievements:released')
       socket?.off('connect')
       socket?.off('disconnect')
       socket?.off('connect_error')
@@ -658,7 +673,7 @@ export default function App() {
     if (!auth.profile) return
     apiAdminGetQuestions().then(({ data }) => {
       if (data?.questions) setQuestions(data.questions.map(q => ({
-        id: q.id, q: q.question, a: q.answer, hint: q.hint || '', active: q.active, translations: q.translations || {}
+        id: q.id, q: q.question, a: q.answer, hint: q.hint || '', active: q.active, hidden: !!q.hidden, translations: q.translations || {}, alt_answers: q.alt_answers || []
       })))
     })
   }, [showAdmin, auth.profile])
@@ -2237,13 +2252,19 @@ export default function App() {
               setQuestions(prev => [...prev, q])
               return
             }
-            const { data, error } = await apiAdminAddQuestion(q.q, q.a, q.translations, q.alt_answers)
+            const { data, error } = await apiAdminAddQuestion(q.q, q.a, q.translations, q.alt_answers, !!q.hidden)
             if (!error && data?.question) {
               const saved = data.question
-              setQuestions(prev => [...prev, { id: saved.id, q: saved.question, a: saved.answer, hint: saved.hint || '', active: saved.active, translations: saved.translations || {}, alt_answers: saved.alt_answers || [] }])
+              setQuestions(prev => [...prev, { id: saved.id, q: saved.question, a: saved.answer, hint: saved.hint || '', active: saved.active, hidden: !!saved.hidden, translations: saved.translations || {}, alt_answers: saved.alt_answers || [] }])
             }
           }}
           onReplaceQuestions={list => setQuestions(list)}
+          onReleaseHiddenQuestions={async () => {
+            const { data, error } = await apiReleaseHiddenQuestions()
+            if (error) return { error }
+            setQuestions(prev => prev.map(x => x.hidden ? { ...x, hidden: false } : x))
+            return { released: data?.released || 0 }
+          }}
           onEditQuestion={q => setQuestions(prev => prev.map(x => x.id === q.id ? q : x))}
           onDeleteQuestion={id => setQuestions(prev => prev.map(x => x.id === id ? { ...x, active: false } : x))}
           onToggleQuestion={async id => {

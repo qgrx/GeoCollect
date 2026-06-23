@@ -11,7 +11,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
   apiAdminSaveTranslations,
   apiAdminEditFullQuestion,
-  apiGetAchievementDefs, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef,
+  apiGetAchievementDefs, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef, apiReleaseHiddenAchievements,
   apiAdminAddCard,
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
   apiGetDailySchedule, apiRegenerateDailySchedule,
@@ -85,7 +85,7 @@ function CardSelect({value,cards,onChange,style}){
 }
 
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
-export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool,onTestAchievement,onShopPacksSaved,onShopTestModeChange}){
+export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onReleaseHiddenQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool,onTestAchievement,onShopPacksSaved,onShopTestModeChange}){
   const {t}=useT();
   // Geocoins de type achievement, proposés pour lier une condition à une carte.
   const achievementCards=(cardPool||[]).filter(c=>c.type?.toLowerCase().startsWith('achievement'));
@@ -166,7 +166,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [listingsPage,setListingsPage]=useState(0);
   const [listingsQ,setListingsQ]=useState('');
   const [expiredDays,setExpiredDays]=useState(limits.marketExpireDays || 30);
-  const [nq,setNq]=useState({q:"",a:"",hint:"",alt_answers:[]});
+  const [nq,setNq]=useState({q:"",a:"",hint:"",alt_answers:[],hidden:false});
   const [altInput,setAltInput]=useState(""); // saisie d'une réponse alternative
   const [transQ,setTransQ]=useState(null);   // question en cours de traduction
   const [transLang,setTransLang]=useState('en');
@@ -424,6 +424,10 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {tab==="questions"&&<div>
           <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
             <div style={{flex:1,fontWeight:900,color:"#e74c3c",fontSize:14}}>❓ Questions ({(liveQuestions??questions).length})</div>
+            {(()=>{const hiddenCount=(liveQuestions??questions).filter(q=>q.hidden).length;return hiddenCount>0&&(
+              <button onClick={async()=>{if(!window.confirm(`Publier ${hiddenCount} question(s) en brouillon ? Elles entreront dans le pool des quiz.`))return;const r=await onReleaseHiddenQuestions?.();if(r?.error){setMsg("❌ "+r.error);return;}setLiveQuestions(qs=>(qs??questions).map(x=>x.hidden?{...x,hidden:false}:x));setMsg(`✅ ${r?.released??hiddenCount} question(s) publiée(s) !`);}}
+                style={{...BTN("linear-gradient(135deg,#e17055,#d63031)"),padding:"5px 11px",fontSize:11,borderRadius:7}} title="Rendre visibles toutes les questions en brouillon">🚀 Publier {hiddenCount} brouillon{hiddenCount>1?"s":""}</button>
+            );})()}
             <button onClick={()=>csvQRef.current.click()} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📥 CSV</button>
             <button onClick={exportCSVQ} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📤 Export</button>
             <input ref={csvQRef} type="file" accept=".csv" onChange={handleCSVQ} style={{display:"none"}}/>
@@ -472,6 +476,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 </div>
               </Fld>
               <Fld lbl="Indice"><input value={cur.hint} onChange={e=>set({...cur,hint:e.target.value})} style={INP} placeholder={t("admin_hint_placeholder")}/></Fld>
+              <Fld lbl="Visibilité"><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={!!cur.hidden} onChange={e=>set({...cur,hidden:e.target.checked})} style={{width:16,height:16}}/><span style={{color:"#e17055",fontSize:13,fontWeight:700}}>🚫 Brouillon (hors quiz)</span></label><div style={{color:"#8daacc",fontSize:11,marginTop:3}}>Prépare la question sans l'utiliser dans les quiz. Publie tout d'un coup avec « 🚀 Publier ».</div></Fld>
               <div style={{display:"flex",gap:8}}>
                 {editQ?(
                   <><button onClick={async()=>{
@@ -486,7 +491,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Enregistrer</button>
                   <button onClick={()=>{setEditQ(null);setAltInput("");}} style={{background:"none",border:"none",color:"#8daacc",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>{t("shop_cancel")}</button></>
                 ):(
-                  <button onClick={()=>{if(!nq.q||!nq.a){setMsg("❌ Q et R requis.");return;}onAddQuestion({...nq});setMsg("✅ Question ajoutée !");setNq({q:"",a:"",hint:"",alt_answers:[]});setAltInput("");}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Ajouter</button>
+                  <button onClick={()=>{if(!nq.q||!nq.a){setMsg("❌ Q et R requis.");return;}onAddQuestion({...nq});setMsg("✅ Question ajoutée !");setNq({q:"",a:"",hint:"",alt_answers:[],hidden:false});setAltInput("");}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Ajouter</button>
                 )}
               </div>
             </div>
@@ -531,6 +536,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                           </div>
                         )}
                         {inactive&&<div style={{fontSize:9,color:"#e74c3c",fontWeight:800,marginTop:3}}>DÉSACTIVÉE</div>}
+                        {q.hidden&&<div style={{display:"inline-block",fontSize:9,color:"#fff",fontWeight:800,marginTop:3,background:"#e17055cc",borderRadius:4,padding:"1px 6px"}}>🚫 BROUILLON</div>}
                       </div>
                       <div style={{display:"flex",gap:5,flexShrink:0}}>
                         {!inactive&&<button onClick={()=>{setEditQ(editQ?.id===q.id?null:{...q,alt_answers:q.alt_answers||[]});setAltInput("");}} style={{background:"#f9ca2422",border:"1px solid #f9ca2444",color:"#f9ca24",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>✏️</button>}
@@ -1387,8 +1393,14 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           <div style={{marginTop:22,background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:12,padding:14}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
               <div style={{fontWeight:900,color:"#f9ca24",fontSize:13}}>⚙️ Conditions déclenchantes</div>
-              <button onClick={()=>setNewDef({key:'',name:'',description:'',type:'buy_count',threshold:1,card_id:'',points:0,category:'permanent',active:true})}
-                style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"5px 12px",borderRadius:8,fontSize:11}}>+ Nouvelle</button>
+              <div style={{display:"flex",gap:6}}>
+                {(()=>{const hiddenCount=achDefs.filter(d=>d.hidden).length;return hiddenCount>0&&(
+                  <button onClick={async()=>{if(!window.confirm(`Publier ${hiddenCount} achievement(s) en brouillon ? Ils deviendront visibles et débloquables par les joueurs.`))return;const {data,error}=await apiReleaseHiddenAchievements();if(error){setMsg("❌ "+error);return;}setAchDefs(prev=>prev.map(d=>d.hidden?{...d,hidden:false}:d));setMsg(`✅ ${data?.released??hiddenCount} achievement(s) publié(s) !`);}}
+                    style={{...BTN("linear-gradient(135deg,#e17055,#d63031)"),padding:"5px 12px",borderRadius:8,fontSize:11}} title="Rendre visibles tous les achievements en brouillon">🚀 Publier {hiddenCount} brouillon{hiddenCount>1?"s":""}</button>
+                );})()}
+                <button onClick={()=>setNewDef({key:'',name:'',description:'',type:'buy_count',threshold:1,card_id:'',points:0,category:'permanent',active:true,hidden:false})}
+                  style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"5px 12px",borderRadius:8,fontSize:11}}>+ Nouvelle</button>
+              </div>
             </div>
 
             {/* Formulaire nouvelle définition */}
@@ -1413,6 +1425,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                     </select>
                   </Fld>
                   <Fld lbl="Description"><input value={newDef.description} onChange={e=>setNewDef({...newDef,description:e.target.value})} style={INP}/></Fld>
+                  <Fld lbl="Visibilité"><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginTop:4}}><input type="checkbox" checked={!!newDef.hidden} onChange={e=>setNewDef({...newDef,hidden:e.target.checked})} style={{width:16,height:16}}/><span style={{color:"#e17055",fontSize:12,fontWeight:700}}>🚫 Brouillon (caché jusqu'à publication)</span></label></Fld>
                 </div>
                 {TRIGGER_META[newDef.type]?.help && (
                   <div style={{margin:"2px 0 8px",fontSize:10,color:"#8daacc",lineHeight:1.4,background:"#ffffff08",borderRadius:8,padding:"7px 10px"}}>
@@ -1472,6 +1485,12 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                                   <option value="0">⏸ Inactif</option>
                                 </select>
                               </Fld>
+                              <Fld lbl="Visibilité">
+                                <select value={editDef.hidden?"1":"0"} onChange={e=>setEditDef({...editDef,hidden:e.target.value==="1"})} style={{...SEL,fontSize:11}}>
+                                  <option value="0">👁 Publié</option>
+                                  <option value="1">🚫 Brouillon</option>
+                                </select>
+                              </Fld>
                             </div>
                             <div style={{display:"flex",gap:6}}>
                               <button onClick={async()=>{
@@ -1504,8 +1523,9 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                           <td style={{padding:"5px 8px"}}>
                             <span style={{background:def.category==="daily"?"#f9ca2422":"#ffffff10",color:def.category==="daily"?"#f9ca24":"#aaa",borderRadius:5,padding:"2px 7px",fontSize:10}}>{def.category}</span>
                           </td>
-                          <td style={{padding:"5px 8px"}}>
+                          <td style={{padding:"5px 8px",whiteSpace:"nowrap"}}>
                             <span style={{color:def.active?"#00b894":"#e74c3c",fontWeight:800,fontSize:12}}>{def.active?"●":"○"}</span>
+                            {def.hidden&&<span title="Brouillon — masqué aux joueurs" style={{marginLeft:5,background:"#e17055cc",color:"#fff",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:800}}>🚫 BR</span>}
                           </td>
                           <td style={{padding:"5px 8px"}}>
                             <button onClick={()=>setEditDef({...def})} style={{...BTN("#ffffff12"),padding:"3px 10px",borderRadius:6,fontSize:10,cursor:"pointer"}}>✏️</button>

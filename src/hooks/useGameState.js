@@ -6,7 +6,7 @@ import {
   apiGetCards, apiGetCollection, apiGetMarket, apiGetMyListings,
   apiBuyCard, apiListCard, apiCancelListing, apiGetTransactions,
   apiPingProfile, apiSetConfig, apiGetAdminConfig, apiGetPublicConfig,
-  apiAdminAddCard, apiAdminEditCard, apiAdminDeleteCard, apiAdminDeleteType, apiAdminRenameType,
+  apiAdminGetCards, apiAdminAddCard, apiAdminEditCard, apiAdminDeleteCard, apiAdminDeleteType, apiAdminRenameType,
   apiGetDailyQuests, apiQuestCheckin, apiGetAchievements, apiClaimReferral,
 } from '../services/api.js'
 
@@ -240,7 +240,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
       // ── Requêtes rapides (cache Redis chaud) — conditionnent setLoadingData ─
       try {
-        const cardsPromise = apiGetCards()
+        // L'admin charge le pool COMPLET (cartes cachées/inactives incluses) pour
+        // pouvoir les gérer et les attribuer ; les joueurs n'obtiennent que /api/cards.
+        const fetchCardPool = () => (profile.role === 'admin' ? apiAdminGetCards() : apiGetCards())
+        const cardsPromise = fetchCardPool()
 
         // Config publique — chargée pour tous les utilisateurs connectés
         const { data: pubCfg } = await apiGetPublicConfig()
@@ -324,7 +327,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         let cardsResult = await cardsPromise
         if (!cardsResult.data?.cards?.length && cardsResult.error !== 'HTTP 429') {
           await new Promise(r => setTimeout(r, 1000))
-          cardsResult = await apiGetCards()
+          cardsResult = await fetchCardPool()
         }
         if (cardsResult.data?.cards?.length && mounted.current) {
           const normalized = cardsResult.data.cards.map(c => ({
@@ -739,6 +742,24 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const adminBanIP         = useCallback((ip) => setBannedIPs(prev => [...prev, ip]), [])
   const adminUnbanIP       = useCallback((ip) => setBannedIPs(prev => prev.filter(i => i !== ip)), [])
 
+  // Recharge le pool de cartes depuis le serveur (event socket cards:released après une
+  // publication groupée, ou tout besoin de resync). L'admin récupère le pool complet.
+  const reloadCards = useCallback(async () => {
+    const { data } = await (profile?.role === 'admin' ? apiAdminGetCards() : apiGetCards())
+    if (data?.cards && mounted.current) {
+      const normalized = data.cards.map(c => ({
+        ...c,
+        desc:      c.desc      ?? c.description    ?? '',
+        image:     c.image     ?? c.image_url      ?? null,
+        thumbnail: c.thumbnail ?? c.image_url_thumb ?? null,
+        minPrice:  c.minPrice  ?? c.min_price      ?? null,
+      }))
+      normalized.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
+      setCardPool(normalized)
+      setCardTypes([...new Set(normalized.map(c => c.type).filter(t => t !== 'Achievement'))])
+    }
+  }, [profile?.role])
+
   return {
     // World
     cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs,
@@ -758,6 +779,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     },
     triggerQuestRefresh: () => setQuestActivitySignal(s => s + 1),
     refreshAchievements,
+    reloadCards,
     // Actions
     earnGold, earnCard, checkAchievements,
     handleBuy, handleListCard, handleCancelListing, handleCancelAllListings,
