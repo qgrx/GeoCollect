@@ -1357,8 +1357,9 @@ export default function App() {
           <div style={{ flex: 1 }} />
         )}
 
-        {/* Currencies (mobile only — desktop shows in sidebar profile) */}
-        {auth.profile && isMobile && (
+        {/* Currencies (mobile only — desktop shows in sidebar profile)
+            Masquées en démo : header type « non connecté » (sinon elles tronquent « Se connecter »). */}
+        {auth.profile && !auth.isDemo && isMobile && (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <div data-tour="gold" style={{ background: '#f9ca2410', border: '1px solid #f9ca2428', borderRadius: 20, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontSize: 13 }}>💰</span>
