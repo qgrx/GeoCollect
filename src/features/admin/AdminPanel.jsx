@@ -56,6 +56,11 @@ const TRIGGER_META = {
   quiz_win:        { label:"Quiz gagnés",              unit:"victoires",           help:"Nombre total de quiz gagnés (cumulé)." },
   win_streak:      { label:"Quiz gagnés d'affilée",    unit:"victoires d'affilée", help:"Victoires consécutives dans la journée, remises à zéro en cas de défaite." },
   streak:          { label:"Série de connexion",       unit:"jours",               help:"Jours de connexion consécutifs." },
+  shiny_count:     { label:"Geocoins brillants",       unit:"shiny uniques",       help:"Nombre de geocoins brillants uniques possédés." },
+  legendary_count: { label:"Cartes légendaires",       unit:"légendaires uniques", help:"Nombre de cartes légendaires uniques possédées (ex. « Première légendaire » = seuil 1)." },
+  streak_break:    { label:"Tueur en série",           unit:"interruptions",       help:"Nombre de fois où le joueur casse, en gagnant un quiz, la série « en feu » d'un adversaire (adversaire au-dessus du seuil de handicap)." },
+  melt_count:      { label:"Geocoins fondus",          unit:"geocoins fondus",     help:"Nombre total de geocoins fondus à la forge (normaux + brillants)." },
+  forge_count:     { label:"Cartes forgées",           unit:"cartes forgées",      help:"Nombre de cartes forgées : rendre brillant ou forger une carte." },
   rank_reached:    { label:"Rang atteint",             unit:"points de score",     help:"Score de rang minimum à atteindre." },
   referral:        { label:"Parrainage « Le parrain »", unit:"filleuls qualifiés", help:"Nombre de filleuls devant chacun récolter assez de geocoins. Le seuil de geocoins par filleul et le max à l'inscription se règlent dans Limites & Prix → Parrainage." },
 };
@@ -1231,7 +1236,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                     <div style={{fontWeight:800,color:"#aaa",fontSize:10,textTransform:"uppercase",letterSpacing:.8,marginBottom:10,marginTop:6}}>🎯 Condition achievement</div>
                     <Fld lbl="Trigger">
                       <select value={newAchCard.trigger} onChange={e=>setNewAchCard({...newAchCard,trigger:e.target.value})} style={SEL}>
-                        {['buy_count','sell_count','quiz_win','new_card','streak','collection_size','rank_reached'].map(t=><option key={t} value={t}>{t}</option>)}
+                        {['buy_count','sell_count','quiz_win','new_card','streak','win_streak','collection_size','shiny_count','legendary_count','streak_break','melt_count','forge_count','rank_reached'].map(t=><option key={t} value={t}>{t}</option>)}
                       </select>
                     </Fld>
                     <Fld lbl="Seuil (nombre d'événements)">
