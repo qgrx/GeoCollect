@@ -198,7 +198,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         mktData.market.forEach(({ card, tiers }) => {
           tiers.forEach(tier => {
             tier.ids.forEach((id, i) => {
-              flat.push({ id, card, price: tier.price, seller: tier.sellers[i] ?? null })
+              flat.push({ id, card, price: tier.price, seller: tier.sellers[i] ?? null, listedAt: tier.dates?.[i] ?? null })
             })
           })
         })
@@ -374,7 +374,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     const flat = []
     data.market.forEach(({ card, tiers }) => {
       tiers.forEach(tier => {
-        tier.ids.forEach((id, i) => flat.push({ id, card, price: tier.price, seller: tier.sellers[i] ?? null }))
+        tier.ids.forEach((id, i) => flat.push({ id, card, price: tier.price, seller: tier.sellers[i] ?? null, listedAt: tier.dates?.[i] ?? null }))
       })
     })
     setMarket(flat)
@@ -490,7 +490,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         data.market.forEach(({ card, tiers }) => {
           tiers.forEach(tier => {
             tier.ids.forEach((id, i) => {
-              flat.push({ id, card, price: tier.price, seller: tier.sellers[i] ?? null })
+              flat.push({ id, card, price: tier.price, seller: tier.sellers[i] ?? null, listedAt: tier.dates?.[i] ?? null })
             })
           })
         })
@@ -525,7 +525,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
     // Mise à jour optimiste pour un affichage instantané dans l'interface
     const tempId = `temp_${Date.now()}`
-    const tempListing = { id: tempId, card, price, seller: sellerName }
+    const tempListing = { id: tempId, card, price, seller: sellerName, listedAt: new Date().toISOString() }
     setMyListings(prev => [tempListing, ...prev]) // Ajout au début pour le voir directement
     setMarket(prev => [...prev, tempListing])
 
@@ -556,7 +556,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         const flat = []
         mkt.market.forEach(({ card: c, tiers }) => {
           tiers.forEach(tier => {
-            tier.ids.forEach((id, i) => flat.push({ id, card: c, price: tier.price, seller: tier.sellers[i] ?? null }))
+            tier.ids.forEach((id, i) => flat.push({ id, card: c, price: tier.price, seller: tier.sellers[i] ?? null, listedAt: tier.dates?.[i] ?? null }))
           })
         })
         setMarket(flat)

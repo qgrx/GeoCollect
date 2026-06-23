@@ -17,6 +17,18 @@ const MERCHANTS = {
   commun:     { nameKey: 'merchant_commun',     taglineKey: 'merchant_tagline_commun' },
 }
 
+// Durée de mise en vente d'une annonce → libellé court (« Nouveau » < 24 h, puis
+// « 2 j » jusqu'à 6 jours, puis « 1 sem », « 2 sem »…). Renvoie null si date absente.
+function listingAgeLabel(listedAt, t) {
+  if (!listedAt) return null
+  const ms = Date.now() - new Date(listedAt).getTime()
+  if (!(ms >= 0)) return null
+  const days = Math.floor(ms / 86400000)
+  if (days < 1) return { label: t('market_age_new'), isNew: true }
+  if (days < 7) return { label: t('market_age_days').replace('{n}', days), isNew: false }
+  return { label: t('market_age_weeks').replace('{n}', Math.floor(days / 7)), isNew: false }
+}
+
 function PanelWrapper({ inline, onClose, theme, children }) {
   if (inline) return <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
   return (
@@ -85,9 +97,9 @@ export default function MarketModal({
     market.forEach((l, i) => {
       const id = l.card.id
       if (!g[id]) g[id] = { card: l.card, tiers: {} }
-      if (!g[id].tiers[l.price]) g[id].tiers[l.price] = { price: l.price, qty: 0, sellers: [], indices: [] }
+      if (!g[id].tiers[l.price]) g[id].tiers[l.price] = { price: l.price, qty: 0, sellers: [], dates: [], indices: [] }
       g[id].tiers[l.price].qty++
-      if (l.seller && g[id].tiers[l.price].sellers.length < 5) g[id].tiers[l.price].sellers.push(l.seller)
+      if (l.seller && g[id].tiers[l.price].sellers.length < 5) { g[id].tiers[l.price].sellers.push(l.seller); g[id].tiers[l.price].dates.push(l.listedAt ?? null) }
       g[id].tiers[l.price].indices.push(i)
     })
     Object.values(g).forEach(v => {
@@ -371,11 +383,15 @@ export default function MarketModal({
                                     <div style={{ width: `${bp}%`, height: '100%', background: ib ? 'linear-gradient(90deg,#00b894,#00cec9)' : `linear-gradient(90deg,${c1}88,${c2}88)`, borderRadius: 3, transition: 'width .4s' }} />
                                   </div>
                                   <div style={{ fontSize: 9,color: theme.textMuted,whiteSpace: 'nowrap',overflow: 'hidden',textOverflow: 'ellipsis' }}>
-                                    {tier.sellers.slice(0, 3).map((s, si) => (
+                                    {tier.sellers.slice(0, 3).map((s, si) => {
+                                      const age = listingAgeLabel(tier.dates?.[si], t)
+                                      return (
                                       <span key={si}>{si > 0 && ', '}
                                         <PseudoDisplay pseudo={s} score={topSellerScores[s] || 0} ranks={ranks} tag="span" style={{ fontSize: 9 }}/>
+                                        {age && <span style={{ marginLeft: 3, color: age.isNew ? '#00b894' : theme.textMuted, fontWeight: age.isNew ? 800 : 600 }}>· {age.label}</span>}
                                       </span>
-                                    ))}{tier.qty > tier.sellers.length ? ` +${tier.qty - tier.sellers.length}` : ''}
+                                      )
+                                    })}{tier.qty > tier.sellers.length ? ` +${tier.qty - tier.sellers.length}` : ''}
                                   </div>
                                 </div>
                                 <div style={{ textAlign: 'right',fontWeight: 800,color: theme.textSecondary,fontSize: 11 }}>{tier.qty.toLocaleString()}</div>
