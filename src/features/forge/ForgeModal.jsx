@@ -892,6 +892,10 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
           const pageCards = ownedCards.slice(page * SHINY_PAGE_SIZE, (page + 1) * SHINY_PAGE_SIZE)
           return (
             <>
+              <div style={{ background: '#a29bfe18', border: '1px solid #a29bfe33', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#a29bfe', lineHeight: 1.6 }}>
+                {t('forge_shiny_desc')}
+              </div>
+
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
                 {ownedCards.length === 0 ? (
                   loading ? (
