@@ -165,7 +165,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
             {[
               { icon: '💰', value: profile.gold ?? 0,  label: 'Or' },
-              { icon: '🃏', value: uniqueCards,          label: 'Cartes', shiny: shinyCards },
+              { icon: '🃏', value: uniqueCards,          label: 'Geocoins', shiny: shinyCards },
               { icon: '🏆', value: unlockedAch.length,  label: 'Succès' },
             ].map(({ icon, value, label, shiny }) => (
               <div key={label} style={{ background: '#00000033', borderRadius: 12,
