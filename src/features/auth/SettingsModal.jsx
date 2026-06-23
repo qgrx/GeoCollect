@@ -161,11 +161,10 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           </div>
 
           {/* Stats row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
             {[
               { icon: '💰', value: profile.gold ?? 0,  label: 'Or' },
               { icon: '🃏', value: uniqueCards,          label: 'Cartes' },
-              { icon: '🔥', value: profile.streak ?? 0, label: 'Série' },
               { icon: '🏆', value: unlockedAch.length,  label: 'Succès' },
             ].map(({ icon, value, label }) => (
               <div key={label} style={{ background: '#00000033', borderRadius: 12,
