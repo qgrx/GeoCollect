@@ -48,6 +48,9 @@ import TresorPage  from './features/treasures/TresorPage.jsx';
 import SeasonPopup  from './components/SeasonPopup.jsx';
 import DocsLayout   from './features/docs/DocsLayout.jsx';
 
+// Lien d'invitation Discord (bannière + menu avatar)
+const DISCORD_URL = 'https://discord.gg/QE5fM6H6n';
+
 function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
   const imgRef = useRef(null)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
@@ -616,13 +619,30 @@ export default function App() {
   const [goldFlash,       setGoldFlash]       = useState(null);
   const [showDiscordBanner, setShowDiscordBanner] = useState(() => {
     try {
+      // Lien déjà cliqué, ou fermée 3 fois → on n'affiche plus jamais la bannière.
+      if (localStorage.getItem('geocoins_discord_link_clicked') === '1') return false;
+      if (parseInt(localStorage.getItem('geocoins_discord_dismiss_count') || '0', 10) >= 3) return false;
       const until = parseInt(localStorage.getItem('geocoins_discord_banner_dismissed_until') || '0', 10);
       return Date.now() > until;
     } catch { return true; }
   });
+  // Fermeture via la croix : on snooze 1h et on incrémente le compteur (3 → plus jamais).
   const dismissDiscordBanner = () => {
-    try { localStorage.setItem('geocoins_discord_banner_dismissed_until', String(Date.now() + 60 * 60 * 1000)); } catch { /* ignore */ }
+    try {
+      const count = parseInt(localStorage.getItem('geocoins_discord_dismiss_count') || '0', 10) + 1;
+      localStorage.setItem('geocoins_discord_dismiss_count', String(count));
+      localStorage.setItem('geocoins_discord_banner_dismissed_until', String(Date.now() + 60 * 60 * 1000));
+    } catch { /* ignore */ }
     setShowDiscordBanner(false);
+  };
+  // Clic sur le lien (bannière ou menu) : on ne réaffiche plus jamais la bannière.
+  const markDiscordLinkClicked = () => {
+    try { localStorage.setItem('geocoins_discord_link_clicked', '1'); } catch { /* ignore */ }
+    setShowDiscordBanner(false);
+  };
+  const openDiscord = () => {
+    markDiscordLinkClicked();
+    window.open(DISCORD_URL, '_blank', 'noopener,noreferrer');
   };
 
   const [questions, setQuestions] = useState([]);
@@ -1288,7 +1308,7 @@ export default function App() {
       {showDiscordBanner && !auth.isDemo && (
         <div style={{ position: 'relative', flexShrink: 0, background: '#5865F2', color: '#fff', textAlign: 'center', padding: '7px 36px', fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <span>🎮</span>
-          <a href="https://discord.gg/QE5fM6H6n" target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'underline' }}>
+          <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={markDiscordLinkClicked} style={{ color: '#fff', textDecoration: 'underline' }}>
             {t('discord_banner')}
           </a>
           <button onClick={dismissDiscordBanner} aria-label="Fermer"
@@ -1384,6 +1404,7 @@ export default function App() {
                     { icon: '🤝', label: t('referral_title'), fn: () => { setShowReferral(true); setAvatarMenu(false) } },
                   ]),
                   { icon: '📣', label: t('menu_news') || 'Nouveautés', notif: hasReleaseNotif, fn: () => { clearReleaseNotif(); setDocsPage('release-notes'); setShowDocs(true); setAvatarMenu(false); window.history.pushState({}, '', '/release-notes') } },
+                  { icon: '🎮', label: t('discord_menu') || 'Discord', color: '#5865F2', fn: () => { openDiscord(); setAvatarMenu(false) } },
                   ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false); window.history.pushState({}, '', '/admin') } }] : []),
                   null,
                   // Invité (démo) : pas de déconnexion → inscription (conversion, garde les geocoins).
