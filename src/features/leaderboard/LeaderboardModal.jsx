@@ -305,16 +305,27 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
                     <div style={{ width: 32, height: 32, borderRadius: '50%', background: p.isMe ? 'linear-gradient(135deg,#f9ca24,#e17055)' : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
                       {(p.pseudo || p.name || '?')[0].toUpperCase()}
                     </div>
-                    <div style={{ flex: 1 }}>
+                    {/* Colonne 1 : pseudo */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 900, fontSize: 13 }}>
                         <PseudoDisplay pseudo={(p.pseudo||p.name)+(p.isMe?` ${t('lb_you')}`:'')} score={p.score||0} ranks={ranks} style={{ color: p.isMe ? theme.gold : theme.textPrimary }}/>
                       </div>
-                      <div style={{ fontSize: 10, color: theme.textMuted }}>
-                        {p.score ?? '—'} pts · 🃏 {p.card_count ?? '—'}
-                        {p.shiny_count > 0 && <span style={{ color: '#f9ca24', fontWeight: 800 }}> ✨{p.shiny_count}</span>}
+                    </div>
+                    {/* Colonne 2 : score (axe aligné entre tous les joueurs) */}
+                    <div style={{ width: 64, flexShrink: 0, textAlign: 'right' }}>
+                      <div style={{ fontWeight: 900, fontSize: 16, color: theme.gold, lineHeight: 1.1 }}>{p.score ?? '—'}</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: .3 }}>pts</div>
+                    </div>
+                    {/* Colonne 3 : geocoins */}
+                    <div style={{ width: 64, flexShrink: 0, textAlign: 'right' }}>
+                      <div style={{ fontWeight: 900, fontSize: 15, color: theme.textSecondary, lineHeight: 1.1 }}>
+                        🃏 {p.card_count ?? '—'}
+                      </div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: p.shiny_count > 0 ? '#f9ca24' : theme.textMuted, textTransform: 'uppercase', letterSpacing: .3 }}>
+                        {p.shiny_count > 0 ? `✨ ${p.shiny_count}` : 'geocoins'}
                       </div>
                     </div>
-                    {!p.isMe && <div style={{ color: '#888', fontSize: 12 }}>→</div>}
+                    <div style={{ width: 12, flexShrink: 0, color: '#888', fontSize: 12, textAlign: 'center' }}>{p.isMe ? '' : '→'}</div>
                   </div>
                 </div>
               );
