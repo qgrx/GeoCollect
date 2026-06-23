@@ -2218,7 +2218,7 @@ export default function App() {
         )
       })()}
 
-      {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} limits={gs.limits} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
+      {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} shinyCollection={gs.shinyCollection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} limits={gs.limits} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
       {showReferral && auth.profile && <ReferralModal onClose={() => setShowReferral(false)} />}
       {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0); setRevealPayment('') }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} initialPaymentLabel={revealPayment} />}
       {/* CGV désactivée temporairement */}

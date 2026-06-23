@@ -39,7 +39,7 @@ function memberSince(dateStr) {
 }
 
 // ─── SettingsModal ────────────────────────────────────────────────────────────
-export default function SettingsModal({ auth, collection = {}, cardPool = [], unlockedAch = [], ranks = [], limits = {}, score: scoreProp, onClose, onStartTour }) {
+export default function SettingsModal({ auth, collection = {}, shinyCollection = {}, cardPool = [], unlockedAch = [], ranks = [], limits = {}, score: scoreProp, onClose, onStartTour }) {
   const { t, lang } = useT()
   const { theme } = useTheme()
   const { profile } = auth
@@ -59,6 +59,7 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
   const rank = getrank(score, ranks)
   const { c1, c2 } = rankCC(rank)
   const uniqueCards = countOwnedUnique(collection)
+  const shinyCards  = countOwnedUnique(shinyCollection)
   const memberStr   = memberSince(profile.joined_at)
 
   // Limites quotidiennes — affichées à tous les joueurs pour comprendre
@@ -164,13 +165,16 @@ export default function SettingsModal({ auth, collection = {}, cardPool = [], un
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
             {[
               { icon: '💰', value: profile.gold ?? 0,  label: 'Or' },
-              { icon: '🃏', value: uniqueCards,          label: 'Cartes' },
+              { icon: '🃏', value: uniqueCards,          label: 'Cartes', shiny: shinyCards },
               { icon: '🏆', value: unlockedAch.length,  label: 'Succès' },
-            ].map(({ icon, value, label }) => (
+            ].map(({ icon, value, label, shiny }) => (
               <div key={label} style={{ background: '#00000033', borderRadius: 12,
                 padding: '10px 6px', textAlign: 'center', backdropFilter: 'blur(4px)' }}>
                 <div style={{ fontSize: 18, marginBottom: 2 }}>{icon}</div>
-                <div style={{ fontWeight: 900, fontSize: 16, color: '#fff' }}>{value}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
+                  <span style={{ fontWeight: 900, fontSize: 16, color: '#fff' }}>{value}</span>
+                  {shiny > 0 && <span style={{ fontWeight: 800, fontSize: 11, color: '#f9ca24' }}>✨{shiny}</span>}
+                </div>
                 <div style={{ fontSize: 9, color: '#ffffff88', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5 }}>{label}</div>
               </div>
             ))}
