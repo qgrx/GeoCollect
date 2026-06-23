@@ -2145,6 +2145,8 @@ export default function App() {
         }}
         onSuccess={() => setShowChoosePseudo(false)} />}
       {showScoreDetail && (() => {
+        // Ce panneau est toujours rendu en thème sombre (il s'affiche mal en mode clair).
+        const theme = THEMES.dark
         const W = gs.limits.scoreRules || { commun: 1, rare: 3, épique: 7, légendaire: 20 }
         const SW = gs.limits.shinyScoreRules || { commun: 2, rare: 6, épique: 14, légendaire: 40 }
         const rarities = ['légendaire', 'épique', 'rare', 'commun']
