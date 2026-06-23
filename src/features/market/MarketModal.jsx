@@ -74,7 +74,7 @@ export default function MarketModal({
       if (!g[id]) g[id] = { card: l.card, tiers: {} }
       if (!g[id].tiers[l.price]) g[id].tiers[l.price] = { price: l.price, qty: 0, sellers: [], indices: [] }
       g[id].tiers[l.price].qty++
-      if (g[id].tiers[l.price].sellers.length < 5) g[id].tiers[l.price].sellers.push(l.seller)
+      if (l.seller && g[id].tiers[l.price].sellers.length < 5) g[id].tiers[l.price].sellers.push(l.seller)
       g[id].tiers[l.price].indices.push(i)
     })
     Object.values(g).forEach(v => {

@@ -198,7 +198,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         mktData.market.forEach(({ card, tiers }) => {
           tiers.forEach(tier => {
             tier.ids.forEach((id, i) => {
-              flat.push({ id, card, price: tier.price, seller: tier.sellers[i] || tier.sellers[0] })
+              flat.push({ id, card, price: tier.price, seller: tier.sellers[i] ?? null })
             })
           })
         })
@@ -374,7 +374,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     const flat = []
     data.market.forEach(({ card, tiers }) => {
       tiers.forEach(tier => {
-        tier.ids.forEach((id, i) => flat.push({ id, card, price: tier.price, seller: tier.sellers[i] || tier.sellers[0] }))
+        tier.ids.forEach((id, i) => flat.push({ id, card, price: tier.price, seller: tier.sellers[i] ?? null }))
       })
     })
     setMarket(flat)
@@ -490,7 +490,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         data.market.forEach(({ card, tiers }) => {
           tiers.forEach(tier => {
             tier.ids.forEach((id, i) => {
-              flat.push({ id, card, price: tier.price, seller: tier.sellers[i] || tier.sellers[0] })
+              flat.push({ id, card, price: tier.price, seller: tier.sellers[i] ?? null })
             })
           })
         })
@@ -556,7 +556,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         const flat = []
         mkt.market.forEach(({ card: c, tiers }) => {
           tiers.forEach(tier => {
-            tier.ids.forEach((id, i) => flat.push({ id, card: c, price: tier.price, seller: tier.sellers[i] || tier.sellers[0] }))
+            tier.ids.forEach((id, i) => flat.push({ id, card: c, price: tier.price, seller: tier.sellers[i] ?? null }))
           })
         })
         setMarket(flat)
