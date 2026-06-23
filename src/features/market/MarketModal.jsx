@@ -232,7 +232,12 @@ export default function MarketModal({
                             const bp = maxQty > 0 ? (tier.qty / maxQty * 100) : 0
                             const ca = gold >= tier.price
                             const ib = i === 0
-                            const isOwn = myPseudo && tier.sellers.includes(myPseudo)
+                            // Propriété du palier déterminée d'abord via myListings (source fiable,
+                            // non tronquée) : la liste `sellers` est plafonnée à 5 côté serveur, donc
+                            // un vendeur au-delà du 5e (fréquent sur les légendaires regroupés au prix
+                            // plancher) n'y figure pas. On retombe sur le pseudo en secours.
+                            const myIdx = myListings.findIndex(m => m.card?.id === card.id && m.price === tier.price)
+                            const isOwn = myIdx >= 0 || (myPseudo && tier.sellers.includes(myPseudo))
                             return (
                               <div key={tier.price} style={{ display: 'grid',gridTemplateColumns: '65px 1fr 50px auto',gap: 5,alignItems: 'center',padding: '4px 3px',borderRadius: 6,background: isOwn ? '#f9ca2408' : ib ? '#00b89412' : 'transparent',border: isOwn ? '1px solid #f9ca2428' : ib ? '1px solid #00b89428' : '1px solid transparent', opacity: ca ? 1 : 0.4 }}>
                                 <div style={{ fontWeight: 900,fontSize: 13,color: isOwn ? theme.gold : ib ? '#00b894' : theme.textPrimary,display: 'flex',alignItems: 'center',gap: 3,flexWrap: 'wrap' }}>
@@ -256,7 +261,6 @@ export default function MarketModal({
                                 <div style={{ textAlign: 'right' }}>
                                   {isOwn ? (() => {
                                     // Retirer directement SON annonce de ce palier (carte + prix) sans passer par « Mes annonces ».
-                                    const myIdx = myListings.findIndex(m => m.card?.id === card.id && m.price === tier.price)
                                     if (myIdx < 0) return <span style={{ fontSize: 9,color: theme.gold,fontWeight: 700,opacity: .7 }}>Votre annonce</span>
                                     return cancelConfirm === `buy_${myIdx}` ? (
                                       <div style={{ display: 'flex',gap: 4,justifyContent: 'flex-end' }}>
