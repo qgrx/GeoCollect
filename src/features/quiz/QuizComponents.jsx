@@ -121,6 +121,11 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // Question récupérée après le délai cadeau (protection anti-domination) : le
   // serveur ne l'envoie pas au leader tant que sa fenêtre n'est pas écoulée.
   const [revealed,setRevealed]=useState(null);
+  // iOS : le clavier ne réduit pas 100dvh, il recouvre le bas de l'écran. On suit
+  // le visualViewport pour redimensionner la modale dans la zone réellement visible
+  // (sinon iOS fait défiler la page et masque le haut de la question — cf. capture
+  // où seule la dernière ligne de la question restait visible clavier ouvert).
+  const [vv,setVv]=useState(null);
   const ref=useRef(); const doneRef=useRef(false); const submittingRef=useRef(false); const revealReqRef=useRef(false); const retryRef=useRef(0);
   // Figer l'état "brillant" au montage : un événement quiz:solved (annonçant le prochain
   // quiz) peut mettre à jour isShiny pendant que cette modale affiche encore le résultat.
@@ -137,6 +142,17 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   }, [quiz.winner, status]);
 
   useEffect(()=>{ref.current?.focus();},[]);
+
+  // Suivi du visualViewport : hauteur visible (hors clavier) + décalage vertical.
+  useEffect(()=>{
+    const visualViewport=window.visualViewport;
+    if(!visualViewport) return;
+    const update=()=>setVv({height:visualViewport.height,offsetTop:visualViewport.offsetTop});
+    update();
+    visualViewport.addEventListener('resize',update);
+    visualViewport.addEventListener('scroll',update);
+    return()=>{visualViewport.removeEventListener('resize',update);visualViewport.removeEventListener('scroll',update);};
+  },[]);
 
   useEffect(()=>{
     if(status!=="open") return;
@@ -229,10 +245,14 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     }
     return null;
   },[quiz.answer_first_letters,revealedLetters]);
+  // Clavier ouvert (ou écran court) → hauteur visible réduite : on bascule en mode
+  // compact (vignette au lieu de la grande carte) pour que la question reste
+  // entièrement lisible au-dessus du champ de saisie.
+  const compact = !!vv && vv.height < 540;
   return (
-    <div style={{position:"fixed",inset:0,zIndex:800,background:"#000000bb",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div style={{position:"fixed",left:0,right:0,top:vv?vv.offsetTop:0,height:vv?vv.height:"100%",zIndex:800,background:"#000000bb",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:compact?10:20}}>
       <style>{`@keyframes shakeIt{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}} @keyframes winGlow{0%,100%{box-shadow:0 0 0 0 #00b89400}50%{box-shadow:0 0 32px 8px #00b89466}} @keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.5)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}`}</style>
-      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(calc(100vw - 40px),520px)",maxHeight:"calc(100dvh - 100px)",display:"flex",flexDirection:"column",boxSizing:"border-box",border:isShinyFrozen?"2px solid #f9ca24aa":"2px solid #f9ca2444",boxShadow:isShinyFrozen?"0 24px 60px #000c,0 0 40px #f9ca2433":"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
+      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(calc(100vw - 40px),520px)",maxHeight:vv?`${Math.max(0,vv.height-(compact?20:40))}px`:"calc(100dvh - 100px)",display:"flex",flexDirection:"column",boxSizing:"border-box",border:isShinyFrozen?"2px solid #f9ca24aa":"2px solid #f9ca2444",boxShadow:isShinyFrozen?"0 24px 60px #000c,0 0 40px #f9ca2433":"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:17,color:"#f9ca24"}}>{t("quiz_title")}</div>
@@ -283,7 +303,15 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
         <div style={{flex:1,minHeight:0,overflowY:"auto",overflowX:"hidden"}}>
         <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
           <div style={{flexShrink:0,pointerEvents:"none"}}>
-            <Card card={quiz.card} small isShiny={isShinyFrozen} />
+            {compact ? (
+              <div style={{width:48,height:48,borderRadius:8,overflow:"hidden",border:`2px solid ${c1}`,background:"#1e3045",boxShadow:isShinyFrozen?`0 0 10px ${c1}aa`:"none"}}>
+                {quiz.card.image_url
+                  ? <ThumbImage src={quiz.card.image_url} alt={cardName(quiz.card,getLang())} style={{width:"100%",height:"100%",objectFit:"contain",imageRendering:"-webkit-optimize-contrast"}}/>
+                  : <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:900,color:"#fff",background:`linear-gradient(135deg,${c1},${c2})`}}>{cardName(quiz.card,getLang())[0]}</div>}
+              </div>
+            ) : (
+              <Card card={quiz.card} small isShiny={isShinyFrozen} />
+            )}
           </div>
           <div style={{flex:1,minWidth:0}}>
             {questionMasked ? (
