@@ -105,7 +105,7 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
           <button onClick={toggle} style={{ background: theme.overlayMd, border: `1px solid ${theme.border}`, borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 12, color: textColor, fontFamily: "'Nunito',sans-serif", fontWeight: 700 }}>
             {mode === 'dark' ? t('docs_light_mode') : t('docs_dark_mode')}
           </button>
-          {onClose && (
+          {onClose && page !== 'release-notes' && (
             <button onClick={onClose} style={{ background: theme.overlayMd, border: `1px solid ${theme.border}`, color: mutedColor, width: 32, height: 32, borderRadius: '50%', fontSize: 16, cursor: 'pointer', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
           )}
         </div>
