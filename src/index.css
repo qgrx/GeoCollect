@@ -11,6 +11,14 @@ body {
   color: #fff;
 }
 
+/* Empêche un débordement horizontal (toasts/animations qui démarrent hors écran
+   à droite, ex. notif de vente) de rendre la page scrollable et de décaler le
+   contenu sur mobile, surtout au logout. `clip` plutôt que `hidden` : il ne crée
+   pas de conteneur de défilement, donc le header sticky reste fonctionnel. */
+html, body {
+  overflow-x: clip;
+}
+
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #f9ca2466; border-radius: 3px; }
