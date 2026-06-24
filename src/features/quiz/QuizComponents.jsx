@@ -617,7 +617,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
 }
 
 // ── HoldModal — choix après quiz hors-limite : Dépôt OU 1 Point de Forge ──────
-export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, forgeCapped = false }) {
+export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, forgeCapped = false, owned = false }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [loading, setLoading] = useState(false)
@@ -665,11 +665,17 @@ export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, 
 
         {/* Carte gagnée */}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', background: `linear-gradient(135deg,${c1}18,${c2}12)`, border: `1px solid ${c1}44`, borderRadius: 14, padding: '12px 14px', marginBottom: 14 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 9, overflow: 'hidden', flexShrink: 0, border: `2px solid ${c1}`, background: '#1e3045', boxShadow: `0 0 12px ${c1}44` }}>
-            {holdCard.image_url
-              ? <ThumbImage src={holdCard.image_url} alt={cardName(holdCard, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
-              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{cardName(holdCard, getLang())[0]}</div>
-            }
+          <div style={{ position: 'relative', width: 52, height: 52, flexShrink: 0 }}>
+            <div style={{ width: '100%', height: '100%', borderRadius: 9, overflow: 'hidden', border: `2px solid ${c1}`, background: '#1e3045', boxShadow: `0 0 12px ${c1}44` }}>
+              {holdCard.image_url
+                ? <ThumbImage src={holdCard.image_url} alt={cardName(holdCard, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: '-webkit-optimize-contrast' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{cardName(holdCard, getLang())[0]}</div>
+              }
+            </div>
+            {/* Coche « déjà possédé » sur l'image — identique au marché */}
+            {owned && (
+              <div title={t('quiz_already_owned')} style={{ position: 'absolute', bottom: -4, right: -4, zIndex: 16, width: 16, height: 16, borderRadius: '50%', background: '#00b894', border: `2px solid ${theme.bgSurface}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 900, lineHeight: 1, boxShadow: '0 1px 3px #0006' }}>✓</div>
+            )}
           </div>
           <div>
             <div style={{ fontWeight: 900, fontSize: 14, color: '#ffffff' }}>{cardName(holdCard, getLang())}{holdCard.is_shiny ? ' ✨' : ''}</div>
