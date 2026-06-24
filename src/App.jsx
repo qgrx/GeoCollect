@@ -815,65 +815,38 @@ export default function App() {
   const beginnerRef = useRef(beginner)
   useEffect(() => { beginnerRef.current = beginner })
   const [beginnerWinnersPopup, setBeginnerWinnersPopup] = useState(null)   // { card, winners }
-  // Protection inter-modes : a-t-on déjà gagné dans l'AUTRE mode pour la manche en cours ?
+  // Protection inter-modes — AUTORITÉ SERVEUR. Le serveur calcule cross_blocked
+  // (round-based, jamais déclenché par un vieux gain) et le renvoie dans /current.
+  // Le client n'interroge /current QUE si le mode courant peut être bloqué (gain
+  // RÉCENT dans l'autre mode), puis affiche un chargement le temps de la réponse.
   const lastWinAtMs  = auth.profile?.last_geocoin_at ? new Date(auth.profile.last_geocoin_at).getTime() : 0
   const lastWinMode  = auth.profile?.last_geocoin_mode
-  // Garde-fou de fraîcheur : last_geocoin_at est le DERNIER gain (jamais), pas un gain
-  // récent. Un gain vieux de plus de quelques minutes ne peut jamais bloquer (sinon
-  // des joueurs restaient bloqués des heures après un vieux gain Entraînement).
-  const CROSS_BLOCK_WINDOW_MS = 6 * 60 * 1000
-  const winRecent = !!lastWinAtMs && (Date.now() - lastWinAtMs < CROSS_BLOCK_WINDOW_MS)
-  // Entraînement bloqué : la manche débutant en cours a démarré avant/à mon gain PVP
-  // (l'Entraînement étant continu, la manche « en cours » est toujours détectée).
-  const beginnerBlocked = beginnerActive && winRecent && lastWinMode === 'pvp'
-    && beginner.roundStartedAt && new Date(beginner.roundStartedAt).getTime() <= lastWinAtMs
-
-  const pvpExempt = !!(pendingQuiz?.card && (pendingQuiz.card.rarity === 'légendaire' || (pendingQuiz.card.rarity === 'épique' && (pendingQuiz?.is_shiny ?? quizIsShiny))))
-  // PVP — blocage « manche en cours » : ce quiz a démarré avant/au gain Entraînement.
-  // (Comparaison de timestamps : ne se déclenche JAMAIS pour un vieux gain — le quiz
-  // courant a forcément démarré après.)
-  const pvpCurrentBlocked = !beginnerActive && !auth.isDemo && winRecent && lastWinMode === 'beginner'
-    && !pvpExempt && pendingQuiz?.started_at && new Date(pendingQuiz.started_at).getTime() <= lastWinAtMs
-
-  // PVP — blocage « prochaine manche » (creux teaser) : suivi de la 1re manche à
-  // bloquer, consommée ensuite. ACTIVÉ UNIQUEMENT sur un VRAI gain en direct (la
-  // baseline ignore la valeur périmée au chargement → pas de blocage fantôme après
-  // des heures, ni au refresh).
-  const [pvpBlock, setPvpBlock] = useState({ blockedId: null, consumed: true })
-  const winBaselineRef = useRef(0)
-  const winBaselineIdRef = useRef(null)
+  const CROSS_POLL_WINDOW_MS = 10 * 60 * 1000
+  const otherMode = beginnerActive ? 'pvp' : 'beginner'
+  const crossEligible = !auth.isDemo && !!auth.profile?.id && lastWinMode === otherMode
+    && !!lastWinAtMs && (Date.now() - lastWinAtMs < CROSS_POLL_WINDOW_MS)
+  const [crossBlocked, setCrossBlocked] = useState(false)
+  const [crossChecking, setCrossChecking] = useState(false)
   useEffect(() => {
-    const id = auth.profile?.id
-    if (!id) return
-    if (winBaselineIdRef.current !== id) {   // (nouveau) compte → baseline = valeur au chargement (ignorée)
-      winBaselineIdRef.current = id
-      winBaselineRef.current = lastWinAtMs || 0
-      setPvpBlock({ blockedId: null, consumed: true })
-      return
+    if (!crossEligible) { setCrossBlocked(false); setCrossChecking(false); return }
+    let cancelled = false
+    let first = true
+    const check = async () => {
+      if (first) setCrossChecking(true)
+      const api = await import('./services/api.js').catch(() => null)
+      const fn = beginnerActive ? api?.apiGetBeginnerQuiz : api?.apiGetCurrentQuiz
+      const { data } = (fn ? await fn().catch(() => ({ data: null })) : { data: null })
+      if (cancelled) return
+      setCrossBlocked(!!data?.cross_blocked)
+      if (first) { setCrossChecking(false); first = false }
     }
-    if (lastWinMode === 'beginner' && lastWinAtMs > winBaselineRef.current) {
-      winBaselineRef.current = lastWinAtMs
-      setPvpBlock({ blockedId: null, consumed: false })   // vrai gain Entraînement en direct
-    }
-  }, [auth.profile?.id, lastWinMode, lastWinAtMs])
-  useEffect(() => {
-    if (!pendingQuiz?.id) return
-    setPvpBlock(prev => {
-      if (prev.consumed) return prev
-      if (prev.blockedId === null) return { ...prev, blockedId: pendingQuiz.id }   // 1re manche vue
-      if (pendingQuiz.id !== prev.blockedId) return { blockedId: null, consumed: true }  // manche suivante → libéré
-      return prev
-    })
-  }, [pendingQuiz?.id])
-  const pvpNextBlocked = !beginnerActive && !auth.isDemo && winRecent && !pvpExempt && !pvpBlock.consumed
-    && ((pvpBlock.blockedId === null && !pendingQuiz)          // teaser avant la manche bloquée
-        || (!!pendingQuiz && pendingQuiz.id === pvpBlock.blockedId))  // la manche bloquée elle-même
-
-  const pvpBlocked = pvpCurrentBlocked || pvpNextBlocked
-  const crossBlocked = beginnerBlocked || pvpBlocked
-  const crossBlockMsg = crossBlocked
+    check()
+    const id = setInterval(check, 3000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [crossEligible, beginnerActive])
+  const crossBlockMsg = (crossBlocked || crossChecking)
     ? (t('beginner_cross_block') || 'Vous avez déjà gagné un geocoin en mode {mode}, vous pourrez jouer la prochaine manche.')
-        .replace('{mode}', t(lastWinMode === 'pvp' ? 'mode_pvp' : 'mode_beginner'))
+        .replace('{mode}', t(otherMode === 'pvp' ? 'mode_pvp' : 'mode_beginner'))
     : ''
 
   // Préférence de mode PAR COMPTE :
@@ -912,16 +885,24 @@ export default function App() {
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
       : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
-    // Protection inter-modes : on FLOUTE la barre + overlay (message + timer), et on
-    // bloque toute interaction tant que le joueur ne peut pas participer.
+    // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
+    // → barre floutée + message + timer. Dans les deux cas, interaction impossible.
     const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown
-    const barWrapped = crossBlocked ? (
+    const barWrapped = (crossChecking || crossBlocked) ? (
       <div style={{ position: 'relative' }}>
         <div style={{ filter: 'blur(5px)', opacity: 0.5, pointerEvents: 'none', userSelect: 'none' }} aria-hidden="true">{bar}</div>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 4, padding: '6px 12px', borderRadius: 13, background: 'rgba(14,24,34,0.55)', backdropFilter: 'blur(1px)' }}>
-          <div style={{ fontSize: 11.5, fontWeight: 800, color: '#ffd28a', lineHeight: 1.3 }}>🔒 {crossBlockMsg}</div>
-          {blockTimer > 0 && <div style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>⏳ {blockTimer}s</div>}
+          {crossBlocked ? (<>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: '#ffd28a', lineHeight: 1.3 }}>🔒 {crossBlockMsg}</div>
+            {blockTimer > 0 && <div style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>⏳ {blockTimer}s</div>}
+          </>) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#cfd8e3', fontWeight: 800, fontSize: 12 }}>
+              <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid #cfd8e3', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+              {t('cross_checking') || 'Vérification…'}
+            </div>
+          )}
         </div>
+        <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
       </div>
     ) : bar
     if (auth.isDemo || !auth.profile) return barWrapped  // démo : pas de bascule de mode
@@ -1153,6 +1134,8 @@ export default function App() {
     // Démo : ne pas passer par le quiz global, valider côté client (sans compte).
     if (auth.isDemo) return demoAnswer(_userAnswer)
     const result = await handleQuizAnswer(_userAnswer, _turnstileToken)
+    // Refusé par le serveur (protection inter-modes) → afficher le blocage (confirmé/effacé par le poll /current).
+    if (result === 'blocked') setCrossBlocked(true)
     // Resynchroniser le profil (gold, daily_*, forge_points...) après la réponse
     if (import.meta.env.VITE_API_URL) {
       const { apiGetProfile } = await import('./services/api.js').catch(() => ({}))
@@ -1163,6 +1146,13 @@ export default function App() {
     // Sur une victoire, rafraîchir la progression des achievements (ex. « Roi du
     // savoir » qui s'incrémente à chaque quiz gagné) sans attendre un rechargement.
     if (result?.ok) gs.refreshAchievements?.()
+    return result
+  }
+
+  // Réponse Entraînement : capte un refus serveur (423) pour afficher le blocage.
+  const wrappedBeginnerAnswer = async (ans) => {
+    const result = await beginner.handleAnswer(ans)
+    if (result === 'blocked') setCrossBlocked(true)
     return result
   }
 
@@ -2116,7 +2106,7 @@ export default function App() {
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
       {/* Modale Mode Débutant (plusieurs gagnants, communs, sans forge) */}
-      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} onAnswer={beginner.handleAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} />}
+      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} onAnswer={wrappedBeginnerAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} />}
 
       {/* Modale de règles du jeu (PVP vs Débutant) */}
       {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
