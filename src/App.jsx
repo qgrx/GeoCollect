@@ -815,34 +815,37 @@ export default function App() {
   const beginnerRef = useRef(beginner)
   useEffect(() => { beginnerRef.current = beginner })
   const [beginnerWinnersPopup, setBeginnerWinnersPopup] = useState(null)   // { card, winners }
-  // Protection inter-modes — AUTORITÉ SERVEUR. Le serveur calcule cross_blocked
-  // (round-based, jamais déclenché par un vieux gain) et le renvoie dans /current.
-  // Le client n'interroge /current QUE si le mode courant peut être bloqué (gain
-  // RÉCENT dans l'autre mode), puis affiche un chargement le temps de la réponse.
-  const lastWinAtMs  = auth.profile?.last_geocoin_at ? new Date(auth.profile.last_geocoin_at).getTime() : 0
-  const lastWinMode  = auth.profile?.last_geocoin_mode
-  const CROSS_POLL_WINDOW_MS = 10 * 60 * 1000
-  const otherMode = beginnerActive ? 'pvp' : 'beginner'
+  // ── Protection inter-modes — AUTORITÉ SERVEUR UNIQUE ────────────────────────
+  // Le serveur calcule cross_blocked dans /current (round-based : bloque la manche
+  // en cours / la prochaine au moment du gain, puis se libère après une manche ;
+  // jamais déclenché par un vieux gain). Le client ne fait que REFLÉTER ce flag —
+  // aucune heuristique locale. On n'interroge /current que si on a gagné en dernier
+  // dans l'AUTRE mode (= seul cas où le serveur peut bloquer ; sinon il répond false).
+  const lastWinMode = auth.profile?.last_geocoin_mode
+  const otherMode   = beginnerActive ? 'pvp' : 'beginner'
   const crossEligible = !auth.isDemo && !!auth.profile?.id && lastWinMode === otherMode
-    && !!lastWinAtMs && (Date.now() - lastWinAtMs < CROSS_POLL_WINDOW_MS)
   const [crossBlocked, setCrossBlocked] = useState(false)
   const [crossChecking, setCrossChecking] = useState(false)
+  const crossServedRef = useRef(false)   // pénalité purgée pour ce gain → ne plus interroger
+  useEffect(() => { crossServedRef.current = false }, [auth.profile?.last_geocoin_at])  // ré-arme à chaque nouveau gain
   useEffect(() => {
-    if (!crossEligible) { setCrossBlocked(false); setCrossChecking(false); return }
-    let cancelled = false
-    let first = true
+    if (!crossEligible || crossServedRef.current) { setCrossBlocked(false); setCrossChecking(false); return }
+    let cancelled = false, first = true, timer
     const check = async () => {
       if (first) setCrossChecking(true)
       const api = await import('./services/api.js').catch(() => null)
       const fn = beginnerActive ? api?.apiGetBeginnerQuiz : api?.apiGetCurrentQuiz
       const { data } = (fn ? await fn().catch(() => ({ data: null })) : { data: null })
       if (cancelled) return
-      setCrossBlocked(!!data?.cross_blocked)
+      const blocked = !!data?.cross_blocked
+      setCrossBlocked(blocked)
       if (first) { setCrossChecking(false); first = false }
+      // Première réponse non bloquée → pénalité absente ou déjà purgée : on arrête.
+      if (!blocked) { crossServedRef.current = true; clearInterval(timer) }
     }
     check()
-    const id = setInterval(check, 3000)
-    return () => { cancelled = true; clearInterval(id) }
+    timer = setInterval(check, 3000)
+    return () => { cancelled = true; clearInterval(timer) }
   }, [crossEligible, beginnerActive])
   const crossBlockMsg = (crossBlocked || crossChecking)
     ? (t('beginner_cross_block') || 'Vous avez déjà gagné un geocoin en mode {mode}, vous pourrez jouer la prochaine manche.')
@@ -1134,8 +1137,9 @@ export default function App() {
     // Démo : ne pas passer par le quiz global, valider côté client (sans compte).
     if (auth.isDemo) return demoAnswer(_userAnswer)
     const result = await handleQuizAnswer(_userAnswer, _turnstileToken)
-    // Refusé par le serveur (protection inter-modes) → afficher le blocage (confirmé/effacé par le poll /current).
-    if (result === 'blocked') setCrossBlocked(true)
+    // Filet de sécurité (course rare avant le 1er poll) : un refus serveur affiche le
+    // blocage ; le poll /current confirmera/effacera ensuite.
+    if (result === 'blocked') { crossServedRef.current = false; setCrossBlocked(true) }
     // Resynchroniser le profil (gold, daily_*, forge_points...) après la réponse
     if (import.meta.env.VITE_API_URL) {
       const { apiGetProfile } = await import('./services/api.js').catch(() => ({}))
@@ -1149,10 +1153,10 @@ export default function App() {
     return result
   }
 
-  // Réponse Entraînement : capte un refus serveur (423) pour afficher le blocage.
+  // Réponse Entraînement : filet de sécurité si un refus serveur précède le 1er poll.
   const wrappedBeginnerAnswer = async (ans) => {
     const result = await beginner.handleAnswer(ans)
-    if (result === 'blocked') setCrossBlocked(true)
+    if (result === 'blocked') { crossServedRef.current = false; setCrossBlocked(true) }
     return result
   }
 
