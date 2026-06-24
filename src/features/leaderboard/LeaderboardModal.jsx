@@ -252,22 +252,12 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
   const pages = Math.ceil(total / PG);
   const medal = ['🥇', '🥈', '🥉'];
 
-  const PanelWrapper = ({ children }) => inline ? (
-    <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
-  ) : (
-    <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: 'min(96vw,500px)', maxHeight: 'calc(100dvh - 100px)', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif" }}>
-        {children}
-      </div>
-    </div>
-  )
-
   if (viewing) {
     return <ProfileView player={viewing} cardPool={cardPool} myScore={myScore} myGold={myGold} myForgePoints={myForgePoints} ranks={ranks} scoreRules={scoreRules} shinyScoreRules={shinyScoreRules} onBack={() => setViewing(null)} />;
   }
 
-  return (
-    <PanelWrapper>
+  const content = (
+    <>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
           <div style={{ color: theme.gold, fontWeight: 900, fontSize: 20 }}>{t('lb_title')}</div>
           {!inline && <button onClick={onClose} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>✕</button>}
@@ -305,18 +295,15 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
                     <div style={{ width: 32, height: 32, borderRadius: '50%', background: p.isMe ? 'linear-gradient(135deg,#f9ca24,#e17055)' : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
                       {(p.pseudo || p.name || '?')[0].toUpperCase()}
                     </div>
-                    {/* Colonne 1 : pseudo */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 900, fontSize: 13 }}>
                         <PseudoDisplay pseudo={(p.pseudo||p.name)+(p.isMe?` ${t('lb_you')}`:'')} score={p.score||0} ranks={ranks} style={{ color: p.isMe ? theme.gold : theme.textPrimary }}/>
                       </div>
                     </div>
-                    {/* Colonne 2 : score (axe aligné entre tous les joueurs) */}
                     <div style={{ width: 64, flexShrink: 0, textAlign: 'right' }}>
                       <div style={{ fontWeight: 900, fontSize: 16, color: theme.gold, lineHeight: 1.1 }}>{p.score ?? '—'}</div>
                       <div style={{ fontSize: 9, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: .3 }}>pts</div>
                     </div>
-                    {/* Colonne 3 : geocoins */}
                     <div style={{ width: 64, flexShrink: 0, textAlign: 'right' }}>
                       <div style={{ fontWeight: 900, fontSize: 15, color: theme.textSecondary, lineHeight: 1.1 }}>
                         🃏 {p.card_count ?? '—'}
@@ -346,6 +333,16 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
             🕐 {t('lb_refresh_note')}
           </div>
         )}
-    </PanelWrapper>
+    </>
+  );
+
+  if (inline) return <div style={{ fontFamily: "'Nunito',sans-serif" }}>{content}</div>;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, backdropFilter: 'blur(6px)' }}>
+      <div style={{ background: `linear-gradient(135deg,${theme.bgSurface},${theme.bgElevated})`, borderRadius: 22, padding: 22, width: 'min(96vw,500px)', maxHeight: 'calc(100dvh - 100px)', overflowY: 'auto', boxShadow: '0 24px 80px #000a', border: `1.5px solid ${theme.borderLight}`, fontFamily: "'Nunito',sans-serif" }}>
+        {content}
+      </div>
+    </div>
   );
 }
