@@ -16,6 +16,7 @@ import { isCorrectAnswer } from './utils/answer.js';
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
+import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
 import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiGetDemo, apiDemoClaim } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
@@ -35,7 +36,7 @@ import SettingsModal from './features/auth/SettingsModal.jsx';
 import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
 import { DemoComplete } from './features/demo/DemoGame.jsx';
-import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal } from './features/quiz/QuizComponents.jsx';
+import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, GameRulesModal } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
@@ -478,6 +479,11 @@ export default function App() {
         handleQuizExpireRef.current(null)
       })
 
+      // Mode Débutant — nouvelle manche / fin de manche / quelqu'un a répondu
+      s.on('beginner:new',      (data) => beginnerRef.current?.applyBeginnerNew(data))
+      s.on('beginner:closed',   (data) => beginnerRef.current?.applyBeginnerClosed(data))
+      s.on('beginner:answered', ()     => beginnerRef.current?.refreshHistory())
+
       // Marché — ma carte vendue
       s.on('market:sold', (data) => {
         gs.handleSaleNotifFromSocket(data)
@@ -529,6 +535,9 @@ export default function App() {
       socket?.off('quiz:new')
       socket?.off('quiz:solved')
       socket?.off('quiz:expired')
+      socket?.off('beginner:new')
+      socket?.off('beginner:closed')
+      socket?.off('beginner:answered')
       socket?.off('market:sold')
       socket?.off('maintenance')
       socket?.off('announcement')
@@ -631,6 +640,12 @@ export default function App() {
   const [onlineCount,     setOnlineCount]     = useState(0);
   const [streakLeader,    setStreakLeader]    = useState(null);   // { id, pseudo, streak, handicap_seconds }
   const [streakHype,      setStreakHype]      = useState(null);   // annonce 5s { pseudo, streak, handicap }
+  // Mode de quiz courant — préférence MÉMORISÉE PAR COMPTE (cf. effet plus bas).
+  // Défaut neutre 'pvp' avant chargement du profil ; un nouveau compte est basculé
+  // en 'beginner' à sa première connexion (welcome_given falsy).
+  const [quizMode,        setQuizMode]        = useState('pvp');
+  const [showRules,       setShowRules]       = useState(false);
+  const modePrefUserRef = useRef(null);   // id du compte pour lequel la préférence a été appliquée
   const [goldFlash,       setGoldFlash]       = useState(null);
   const [showDiscordBanner, setShowDiscordBanner] = useState(() => {
     try {
@@ -780,6 +795,64 @@ export default function App() {
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
 
+  // ── Mode Débutant (piste parallèle) ─────────────────────────────────────────
+  const beginnerActive = quizMode === 'beginner' && !auth.isDemo && !!auth.profile
+  const beginner = useBeginnerQuiz({
+    profile: auth.profile,
+    active: beginnerActive,
+    earnGoldWithFx,
+    earnCard: gs.earnCard,
+    showToast,
+    t,
+    cardPool: gs.cardPool,
+    checkAchievements: gs.checkAchievements,
+  })
+  const beginnerRef = useRef(beginner)
+  useEffect(() => { beginnerRef.current = beginner })
+
+  // Préférence de mode PAR COMPTE :
+  //   - choix déjà mémorisé pour ce compte → on le restaure
+  //   - sinon : nouveau compte (welcome_given falsy) → Débutant ; compte existant → PVP
+  // Le choix est ensuite persisté (effet suivant) à chaque bascule.
+  useEffect(() => {
+    const id = auth.profile?.id
+    if (!id || auth.isDemo) return
+    if (modePrefUserRef.current === id) return
+    modePrefUserRef.current = id
+    let saved = null
+    try { saved = localStorage.getItem(`gc_quiz_mode_${id}`) } catch { /* ignore */ }
+    if (saved === 'beginner' || saved === 'pvp') { setQuizMode(saved); return }
+    const def = auth.profile.welcome_given ? 'pvp' : 'beginner'   // nouveau compte → Débutant
+    setQuizMode(def)
+    try { localStorage.setItem(`gc_quiz_mode_${id}`, def) } catch { /* ignore */ }
+  }, [auth.profile?.id, auth.isDemo])
+
+  // Mémoriser le choix de l'utilisateur (par compte), une fois la préférence appliquée.
+  useEffect(() => {
+    const id = auth.profile?.id
+    if (!id || auth.isDemo || modePrefUserRef.current !== id) return
+    try { localStorage.setItem(`gc_quiz_mode_${id}`, quizMode) } catch { /* ignore */ }
+  }, [quizMode, auth.profile?.id, auth.isDemo])
+
+  // Démo : forcer le PVP (le sélecteur de mode est masqué pendant le parcours invité).
+  useEffect(() => { if (auth.isDemo && quizMode !== 'pvp') setQuizMode('pvp') }, [auth.isDemo, quizMode])
+
+  // Une modale de quiz est-elle ouverte (PVP ou Débutant) ? — pour masquer la barre.
+  const anyActiveQuiz = activeQuiz || beginner.activeQuiz
+  // Barre de quiz du mode courant, précédée d'un petit bouton de bascule (à gauche).
+  const renderQuizBar = () => {
+    const bar = beginnerActive
+      ? <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
+    if (auth.isDemo || !auth.profile) return bar  // démo : pas de bascule de mode
+    return (
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
+        <ModeToggle mode={quizMode} onChange={setQuizMode} onOpenRules={() => setShowRules(true)} />
+        <div style={{ flex: 1, minWidth: 0 }}>{bar}</div>
+      </div>
+    )
+  }
+
   const streakHypeTimerRef = useRef(null)
   // Ref pour éviter la capture stale de handleQuizExpire dans les handlers socket
   const handleQuizExpireRef = useRef(handleQuizExpire)
@@ -815,7 +888,7 @@ export default function App() {
   useEffect(() => {
     const anyOpen = showAuth || showSettings || showReferral || showAdmin || showMarket || showForge ||
       showLeaderboard || showShop || showTxHistory || showDocs || !!selectedCard ||
-      showScoreDetail || !!seasonPopup || !!activeQuiz
+      showScoreDetail || !!seasonPopup || !!activeQuiz || !!beginner.activeQuiz || showRules
     document.body.style.overflow = anyOpen ? 'hidden' : ''
     document.body.style.touchAction = anyOpen ? 'none' : ''
     return () => { document.body.style.overflow = ''; document.body.style.touchAction = '' }
@@ -1462,11 +1535,11 @@ export default function App() {
             <aside style={{ width: isWide ? 288 : '100%', flexShrink: 0, padding: '14px 16px', borderRight: isWide ? `1px solid ${theme.border}` : 'none', display: 'flex', flexDirection: 'column', gap: 14, animation: 'fadeLeft .35s ease-out both', ...(isWide ? { position: 'sticky', top: 53, maxHeight: 'calc(100vh - 53px)', overflowY: 'auto' } : {}) }}>
 
               {/* Countdown hero (mobile only — en haut) */}
-              {!isWide && !activeQuiz && auth.profile?.status !== 'banni' && (
+              {!isWide && !anyActiveQuiz && auth.profile?.status !== 'banni' && (
                 <div data-tour="countdown">
                   {demoComplete
                     ? <DemoComplete onSignup={() => setShowAuth(true)} t={t} />
-                    : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />}
+                    : renderQuizBar()}
                 </div>
               )}
 
@@ -1560,19 +1633,22 @@ export default function App() {
                 <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
               </div>
 
-              {/* Last 8 geocoins — 4×2 */}
-              {history.filter(h => !h.skipped).length > 0 && (
+              {/* Last 8 geocoins — 4×2 (feed propre au mode courant) */}
+              {(beginnerActive ? beginner.history : history).filter(h => !h.skipped).length > 0 && (
                 <div style={{ animation: 'fadeUp .4s .2s ease-out both' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: theme.textMuted, marginBottom: 4 }}>{t('last_cards')}</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: theme.textMuted, marginBottom: 4 }}>{beginnerActive ? (t('last_cards_beginner') || 'Derniers geocoins disputés (Débutant)') : t('last_cards')}</div>
                   <div style={{ background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '8px' }}>
                   <div style={isWide
                     ? { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }
                     : { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, justifyItems: 'center' }}>
-                    {history.filter(h => !h.skipped).slice(0, 8).map((h, i) => {
+                    {(beginnerActive ? beginner.history : history).filter(h => !h.skipped).slice(0, 8).map((h, i) => {
                       const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
                       // « Gagné par moi » = drapeau won OU pseudo == le mien : évite de se voir
                       // tantôt en ✓, tantôt sous son pseudo (selon la source de l'entrée).
-                      const mine = h.won || (!!h.winner && h.winner === auth.profile?.pseudo);
+                      // En débutant : plusieurs gagnants → on coche si je suis dans la liste.
+                      const mine = beginnerActive
+                        ? (Array.isArray(h.winners) && h.winners.includes(auth.profile?.pseudo))
+                        : (h.won || (!!h.winner && h.winner === auth.profile?.pseudo));
                       return (
                         <div key={i} title={h.card?.name} onClick={() => { if (!h.card) return; setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); setSelectedCardFromHistory(true); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, minWidth: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
@@ -1587,7 +1663,9 @@ export default function App() {
                             {h.isShiny && <div style={{ position: 'absolute', top: -4, right: -4, fontSize: 10, lineHeight: 1, animation: 'shinySparkle 2s ease-in-out infinite', filter: 'drop-shadow(0 0 3px gold)', zIndex: 5 }}>✨</div>}
                           </div>
                           <div style={{ fontSize: 8, fontWeight: 700, color: mine ? '#3fb950' : theme.textSecondary, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {mine ? '✓' : h.winner}
+                            {beginnerActive
+                              ? `${mine ? '✓ ' : ''}${h.winners_count || 0}🏆`
+                              : (mine ? '✓' : h.winner)}
                           </div>
                         </div>
                       );
@@ -1610,11 +1688,11 @@ export default function App() {
             <main style={{ flex: 1, padding: isWide ? '14px 20px' : '12px 14px', minWidth: 0 }}>
 
               {/* New geocoin available — above type filter */}
-              {auth.profile && !activeQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
+              {auth.profile && !anyActiveQuiz && auth.profile?.status !== 'banni' && activeTab !== 'tresors' && (
                 <div data-tour="countdown" style={{ marginBottom: 14 }}>
                   {demoComplete
                     ? <DemoComplete onSignup={() => setShowAuth(true)} t={t} />
-                    : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />}
+                    : renderQuizBar()}
                 </div>
               )}
 
@@ -1949,7 +2027,13 @@ export default function App() {
 
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
-      {activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
+      {/* Modale Mode Débutant (plusieurs gagnants, communs, sans forge) */}
+      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} onAnswer={beginner.handleAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} />}
+
+      {/* Modale de règles du jeu (PVP vs Débutant) */}
+      {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
+
+      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {
           // Délai cadeau écoulé : le serveur autorise enfin la question au leader.
           const { data } = await apiGetCurrentQuiz().catch(() => ({ data: null }))
@@ -2294,6 +2378,8 @@ export default function App() {
                 apiSetConfig('quiz_consolation_gold',  limEdit.quizConsolationGold  ?? 5),
                 apiSetConfig('quiz_consolation_forge', limEdit.quizConsolationForge ?? 1),
                 apiSetConfig('quiz_daily_forge_cap',   limEdit.quizDailyForgeCap    ?? 0),
+                apiSetConfig('beginner_quiz_enabled',  limEdit.beginnerEnabled  !== false),
+                apiSetConfig('beginner_quiz_duration', limEdit.beginnerDuration ?? 60),
                 apiSetConfig('forge_cost_by_rarity',   limEdit.forgeCostByRarity   ?? { commun:60,rare:180,épique:600,légendaire:1800 }),
                 apiSetConfig('melt_points_by_rarity',  limEdit.meltPointsByRarity  ?? {}),
                 apiSetConfig('melt_points_by_rarity_shiny', limEdit.meltPointsByRarityShiny ?? {}),

@@ -102,6 +102,12 @@ export const apiJoinQuiz = (quizId) =>
 export const apiAnswerQuiz = (quizId, answer) =>
   apiFetch('/api/quiz/answer', { method: 'POST', body: { quiz_id: quizId, answer } })
 
+// ─── Quiz — Mode Débutant ───────────────────────────────────────────────────
+export const apiGetBeginnerQuiz     = () => apiFetch('/api/quiz/beginner/current')
+export const apiGetBeginnerHistory  = (limit = 10) => apiFetch(`/api/quiz/beginner/history?limit=${limit}`)
+export const apiAnswerBeginnerQuiz  = (quizId, answer) =>
+  apiFetch('/api/quiz/beginner/answer', { method: 'POST', body: { quiz_id: quizId, answer } })
+
 export const apiReportQuestion      = (questionId) =>
   apiFetch(`/api/quiz/questions/${questionId}/report`, { method: 'POST' })
 export const apiResetQuestionReports = (questionId) =>

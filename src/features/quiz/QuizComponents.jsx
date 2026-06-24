@@ -100,7 +100,7 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
 }
 
 // ─── Quiz Modal ───────────────────────────────────────────────────────────────
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
   const [outcome,setOutcome]=useState("card");  // 'card' | 'consolation' | 'hold'
@@ -132,6 +132,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   const isShinyFrozen=useRef(isShiny).current;
   const rc=RC[quiz.card.rarity]; const {c1,c2}=cardCC(quiz.card.rarity);
   const wc=wordCount(revealed?.a ?? quiz.a);
+  // Mode Débutant : décompte de la manche (durée fixe). À 0 → « Trop tard » + réponse bloquée.
+  const timeLeft=(beginner&&roundDuration!=null)?Math.max(0,Math.ceil(roundDuration-elapsed)):null;
+  const tooLate=beginner&&timeLeft!=null&&timeLeft<=0&&status==="open";
 
   useEffect(() => {
     if (quiz.winner && status === "open" && !doneRef.current) {
@@ -173,6 +176,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   function finish(n){if(doneRef.current)return;doneRef.current=true;setNpc(n || 'Un autre joueur');setStatus("lost");onExpire(n || 'Un autre joueur');}
     async function submit(){
     if(status!=="open") return;
+    if(tooLate) return;  // mode débutant : décompte terminé, réponse bloquée
     if(handicapLeft>0) return;  // série : cadeau aux autres, envoi bloqué côté client
     if(submittingRef.current) return
     submittingRef.current = true
@@ -186,7 +190,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     if (result && result.ok) { doneRef.current=true; setOutcome(result.outcome||'card'); setResultForge(result.forge||0); setStatus("won"); soundCorrect(); retryRef.current=0; }
     else if (result && result.handicap) { setSubmitError(t('streak_handicap_wait')); } // série : délai cadeau pas encore écoulé
     else if (result === 'fast') { setSubmitError("⏱️ Réponse trop rapide ! Lis bien la question."); setIsSubmitting(false); submittingRef.current=false; return; }
-    else if (result === 'late') { finish(null); }
+    else if (result === 'late') { if (beginner) { onClose?.(); } else finish(null); }
     else if (result === 'error') {
       // Réseau/5xx : la réponse a PEUT-ÊTRE abouti côté serveur (le serveur est
       // idempotent → renvoie « déjà gagné »). On revalide AUTOMATIQUEMENT la même
@@ -256,10 +260,16 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:17,color:"#f9ca24"}}>{t("quiz_title")}</div>
-            {status==="open" && <div style={{display:"flex",alignItems:"center",gap:4,color:"#00b894",fontSize:10,fontWeight:800}}>
-              <span style={{display:"inline-block",width:6,height:6,background:"#00b894",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/>
-              Live
-            </div>}
+            {status==="open" && (
+              (beginner && timeLeft!=null)
+                ? <div style={{display:"flex",alignItems:"center",gap:4,color:tooLate?"#e74c3c":(timeLeft<=10?"#e17055":"#00b894"),fontSize:11,fontWeight:900}}>
+                    {tooLate ? `⏰ ${t('quiz_too_late')||'Trop tard'}` : `⏳ ${(t('beginner_time_left')||'Il reste {n}s pour répondre').replace('{n}',timeLeft)}`}
+                  </div>
+                : <div style={{display:"flex",alignItems:"center",gap:4,color:"#00b894",fontSize:10,fontWeight:800}}>
+                    <span style={{display:"inline-block",width:6,height:6,background:"#00b894",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/>
+                    Live
+                  </div>
+            )}
           </div>
           {status==="open"&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:26,height:26,borderRadius:"50%",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
         </div>
@@ -329,7 +339,15 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
         </div>
         {/* Pied épinglé : saisie / résultat / signalement (toujours visible) */}
         <div style={{flexShrink:0}}>
-        {status==="open"&&<>
+        {/* Mode Débutant : décompte écoulé → « Trop tard », saisie masquée */}
+        {status==="open"&&tooLate&&(
+          <div style={{textAlign:"center",padding:"14px 0",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}>
+            <div style={{fontSize:34}}>⏰</div>
+            <div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:6}}>{t('quiz_too_late')||'Trop tard !'}</div>
+            <div style={{color:"#e9a8a8",fontWeight:700,fontSize:12,marginTop:4}}>{t('beginner_won_waiting')||'En attente du prochain geocoin…'}</div>
+          </div>
+        )}
+        {status==="open"&&!tooLate&&<>
           {isSubmitting && (
             <div style={{
               background:"linear-gradient(90deg,#f9ca24,#e17055)",
@@ -354,9 +372,17 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
         </>}
         {/* Turnstile invisible — aucune UI visible */}
         {/* Résultat : geocoin gagné */}
-        {status==="won"&&outcome==="card"&&<div style={{textAlign:"center",padding:"14px 0",background:"#00b89420",borderRadius:13,border:"1.5px solid #00b89444",animation:"winGlow 1.5s infinite"}}><div style={{fontSize:38}}>🎉</div><div style={{color:"#00b894",fontWeight:900,fontSize:19,marginTop:7}}>{t("quiz_won").replace("{card}",cardName(quiz.card, getLang()))}</div></div>}
+        {status==="won"&&outcome==="card"&&<div style={{textAlign:"center",padding:"14px 0",background:"#00b89420",borderRadius:13,border:"1.5px solid #00b89444",animation:"winGlow 1.5s infinite"}}><div style={{fontSize:38}}>🎉</div><div style={{color:"#00b894",fontWeight:900,fontSize:19,marginTop:7}}>{t("quiz_won").replace("{card}",cardName(quiz.card, getLang()))}</div>{beginner&&<div style={{color:"#8fe3c8",fontWeight:700,fontSize:12,marginTop:6}}>{t("beginner_won_waiting")}</div>}</div>}
+        {/* Mode Débutant hors-limite : pas de PF — message neutre et positif */}
+        {status==="won"&&outcome==="consolation"&&beginner&&(
+          <div style={{textAlign:"center",padding:"16px 12px",background:"#00b89418",borderRadius:13,border:"1.5px solid #00b89444"}}>
+            <div style={{fontSize:30,marginBottom:6}}>🪙</div>
+            <div style={{color:"#00b894",fontWeight:900,fontSize:15}}>{t('quiz_limit_reached')||'Limite de geocoins atteinte'}</div>
+            <div style={{color:"#8fe3c8",fontWeight:700,fontSize:12,marginTop:4}}>{t('beginner_won_waiting')}</div>
+          </div>
+        )}
         {/* Résultat : limite atteinte → PF au lieu du geocoin (ou rien si cap PF atteint) */}
-        {status==="won"&&outcome==="consolation"&&(resultForge>0 ? (
+        {status==="won"&&outcome==="consolation"&&!beginner&&(resultForge>0 ? (
           <div style={{textAlign:"center",padding:"16px 12px",background:"linear-gradient(135deg,#3a2a0e,#241a08)",borderRadius:13,border:"1.5px solid #f9ca2466"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14,marginBottom:8}}>
               <span style={{position:"relative",fontSize:34,opacity:0.7,filter:"grayscale(0.4)"}}>
@@ -541,7 +567,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
 
           {/* Titre + secondes (masqué en mode urgent) */}
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:3,opacity:urgent?0:1,transition:'opacity .3s'}}>
-            <span style={{fontSize:11,color:hasPendingQuiz?theme.gold:'#aaa',fontWeight:700}}>{hasPendingQuiz?t('quiz_new_card'):t('next_card')}</span>
+            <span style={{fontSize:11,color:hasPendingQuiz?theme.gold:'#aaa',fontWeight:900}}>⚔️ {t('pvp_badge')||'Mode PVP'}</span>
             {!hasPendingQuiz&&<span style={{fontSize:13,fontWeight:900,color:theme.gold}}>{secondsLeft>0?`${secondsLeft}s`:'...'}</span>}
           </div>
 
@@ -558,7 +584,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
                 ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}</>
                 : onFire
                   ? <span style={{color:'#ff8a5c',fontWeight:800}}>🔥 {t('streak_bar_small').replace('{pseudo}',streakLeader.pseudo).replace('{n}',streakLeader.streak).replace('{x}',streakLeader.handicap_seconds)}</span>
-                  : <span style={{color:theme.textMuted,fontStyle:'italic'}}>{t('quiz_mystery_card')}</span>}
+                  : <span style={{color:theme.textMuted,fontStyle:'italic'}}>{t('next_card')}</span>}
             </div>
           )}
         </div>
@@ -706,4 +732,126 @@ export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, 
       </div>
     </div>
   )
+}
+
+// ─── Bascule de mode (icône seule, compacte) + accès règles ──────────────────
+// Colonne étroite à gauche de la barre : un seul bouton pour basculer PVP↔Débutant
+// (icône du mode courant) + un petit « ? » pour les règles, pour gagner de la place.
+export function ModeToggle({ mode, onChange, onOpenRules }) {
+  const { t } = useT(); const { theme } = useTheme();
+  const beginner = mode === 'beginner';
+  const accent = beginner ? '#00b894' : '#f9ca24';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center', flexShrink: 0 }}>
+      <button
+        onClick={() => onChange(beginner ? 'pvp' : 'beginner')}
+        title={beginner ? (t('mode_switch_to_pvp') || 'Passer en mode PVP') : (t('mode_switch_to_beginner') || 'Passer en mode Débutant')}
+        style={{
+          width: 34, height: 30, borderRadius: 9, background: `${accent}22`, border: `1.5px solid ${accent}88`,
+          color: accent, cursor: 'pointer', fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: `0 0 12px ${accent}44`, transition: 'all .2s',
+        }}>{beginner ? '🌱' : '⚔️'}</button>
+      <button onClick={onOpenRules} title={t('rules_open') || 'Règles du jeu'} style={{
+        width: 34, height: 20, borderRadius: 7, background: theme.overlay, border: `1.5px solid ${theme.border}`,
+        color: theme.textSecondary, cursor: 'pointer', fontWeight: 900, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>?</button>
+    </div>
+  );
+}
+
+// ─── Barre de quiz — MODE DÉBUTANT (style distinct, communs, multi-gagnants) ──
+export function BeginnerCountdownWidget({ secondsLeft, cycleTime = 60, nextCard, hasPendingQuiz, alreadyWon = false, onJoin, owned = false }) {
+  const { t } = useT(); const { theme } = useTheme();
+  const pct = Math.max(0, Math.min(100, ((cycleTime - secondsLeft) / cycleTime) * 100));
+  const c1 = '#00b894', c2 = '#0984e3';
+  return (
+    <>
+      <style>{CW_STYLES}</style>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 11, background: `${c1}12`, border: `1.5px solid ${c1}55`, borderRadius: 13, padding: '9px 14px' }}>
+        {/* Vignette — la coche « déjà possédé » déborde du cadre (overflow uniquement
+            sur le calque image, pas sur le conteneur parent), comme en PVP. */}
+        <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
+          <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', border: `2px solid ${c1}`, background: '#1e3045', boxSizing: 'border-box' }}>
+            {nextCard
+              ? nextCard.image_url
+                ? <ThumbImage src={nextCard.image_url} alt={cardName(nextCard, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{cardName(nextCard, getLang())[0]}</div>
+              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: c1, fontWeight: 900 }}>?</div>}
+          </div>
+          {nextCard && owned && (
+            <div title={t('quiz_already_owned')} style={{ position: 'absolute', bottom: -4, right: -4, zIndex: 5, width: 16, height: 16, borderRadius: '50%', background: '#00b894', border: `2px solid ${theme.bgSurface}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 900, lineHeight: 1, boxShadow: '0 1px 3px #0006' }}>✓</div>
+          )}
+        </div>
+        {/* Contenu */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 3 }}>
+            {/* Titre homogène : « 🌱 Mode Débutant - Plusieurs gagnants » */}
+            <span style={{ fontSize: 11, color: c1, fontWeight: 900, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌱 {t('beginner_badge') || 'Mode Débutant'} - {t('beginner_multiple_winners') || 'Plusieurs gagnants'}</span>
+            {/* Décompte de la manche */}
+            <span style={{ fontSize: 12, fontWeight: 900, color: secondsLeft > 0 && secondsLeft <= 10 ? '#e17055' : c1, flexShrink: 0 }}>⏳ {secondsLeft > 0 ? `${secondsLeft}s` : '…'}</span>
+          </div>
+          <div style={{ background: theme.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden', marginBottom: 3 }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg,${c1},${c2})`, borderRadius: 50, transition: 'width 1s linear' }} />
+          </div>
+          {/* Info homogène avec le PVP : « Rareté - Nom » (toujours commun en débutant) */}
+          <div style={{ fontSize: 10, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {nextCard
+              ? <><span style={{ color: (RC[nextCard.rarity] || {}).color || c1, fontWeight: 800 }}>{rarityLabel(nextCard.rarity, t)}</span> - {cardName(nextCard, getLang())}</>
+              : t('next_card')}
+          </div>
+        </div>
+        {/* Bouton */}
+        {alreadyWon ? (
+          <div style={{ flexShrink: 0, color: c1, fontWeight: 900, fontSize: 12, whiteSpace: 'nowrap' }}>✓ {t('beginner_already_won') || 'Gagné'}</div>
+        ) : (
+          <button onClick={hasPendingQuiz ? onJoin : undefined} style={{
+            background: hasPendingQuiz ? `linear-gradient(135deg,${c1},${c2})` : '#ffffff18', border: 'none',
+            color: hasPendingQuiz ? '#0e1822' : '#666', padding: hasPendingQuiz ? '10px 18px' : '7px 13px', borderRadius: 10,
+            fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: hasPendingQuiz ? 13 : 11, flexShrink: 0, whiteSpace: 'nowrap',
+            cursor: hasPendingQuiz ? 'pointer' : 'default', animation: hasPendingQuiz ? 'joinPulse 1.8s ease-in-out infinite' : 'none',
+          }}>{t('quiz_participate')}</button>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Modale de règles du jeu (PVP vs Débutant) ───────────────────────────────
+export function GameRulesModal({ onClose }) {
+  const { t } = useT(); const { theme } = useTheme();
+  const Col = ({ accent, title, emoji, rules }) => (
+    <div style={{ flex: 1, minWidth: 0, background: `${accent}10`, border: `1.5px solid ${accent}44`, borderRadius: 14, padding: '14px 14px' }}>
+      <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 15, color: accent, marginBottom: 10 }}>{emoji} {title}</div>
+      <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 7 }}>
+        {rules.map((r, i) => <li key={i} style={{ fontSize: 12.5, color: theme.textSecondary, lineHeight: 1.45 }}>{r}</li>)}
+      </ul>
+    </div>
+  );
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000b', backdropFilter: 'blur(8px)', padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'linear-gradient(145deg,#0f1923,#1a2736)', border: '1.5px solid #ffffff22', borderRadius: 20, padding: '20px 20px', maxWidth: 720, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 60px #000c', fontFamily: "'Nunito',sans-serif" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: '#f9ca24' }}>📜 {t('rules_title') || 'Règles du jeu'}</div>
+          <button onClick={onClose} style={{ background: '#ffffff18', border: 'none', color: '#888', width: 28, height: 28, borderRadius: '50%', fontSize: 14, cursor: 'pointer', fontWeight: 900 }}>✕</button>
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <Col accent="#f9ca24" emoji="⚔️" title={t('mode_pvp') || 'PVP'} rules={[
+            t('rules_pvp_1') || 'Un seul gagnant par geocoin : le premier à répondre juste l\'emporte.',
+            t('rules_pvp_2') || 'Toutes les raretés, et parfois des geocoins brillants (shiny).',
+            t('rules_pvp_3') || 'Cadence variable selon le nombre de joueurs en ligne.',
+            t('rules_pvp_4') || 'Or, points de forge et bonus de série à gagner.',
+          ]} />
+          <Col accent="#00b894" emoji="🌱" title={t('mode_beginner') || 'Débutant'} rules={[
+            t('rules_beginner_1') || 'Plusieurs gagnants : tout le monde a une minute pour répondre.',
+            t('rules_beginner_2') || 'Geocoins communs uniquement, jamais de brillant.',
+            t('rules_beginner_3') || 'Un nouveau geocoin à la fin de chaque minute.',
+            t('rules_beginner_4') || 'Or à gagner, mais aucun point de forge dans ce mode.',
+          ]} />
+        </div>
+        <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 14, textAlign: 'center' }}>
+          {t('rules_limits_note') || 'Les limites quotidiennes de geocoins s\'appliquent aux deux modes.'}
+        </div>
+      </div>
+    </div>
+  );
 }
