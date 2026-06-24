@@ -164,6 +164,7 @@ export const apiGetPublicConfig       = () => apiFetch('/api/config')
 export const apiGetAdminConfig        = () => apiFetch('/api/admin/config')
 export const apiAdminGetMarketHistory = (params = {}) => { const qs = new URLSearchParams(params).toString(); return apiFetch(`/api/admin/market-history${qs ? '?' + qs : ''}`) }
 export const apiAdminGetCardQuizStats = () => apiFetch('/api/admin/cards/quiz-stats')
+export const apiAdminGetReferrals     = () => apiFetch('/api/admin/referrals')
 export const apiAdminFlushCache         = () => apiFetch('/api/admin/cache/flush', { method: 'DELETE' })
 export const apiAdminRecalculateScores  = () => apiFetch('/api/admin/recalculate-scores', { method: 'POST' })
 

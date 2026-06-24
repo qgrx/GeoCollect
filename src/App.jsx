@@ -823,31 +823,48 @@ export default function App() {
   const beginnerBlocked = beginnerActive && lastWinMode === 'pvp' && lastWinAtMs
     && beginner.roundStartedAt && new Date(beginner.roundStartedAt).getTime() <= lastWinAtMs
 
-  // PVP bloqué : le PVP a des creux (teaser). On suit la 1re manche PVP « à bloquer »
-  // (celle en cours au gain, ou la prochaine s'il n'y en avait pas), consommée ensuite.
-  const [pvpBlock, setPvpBlock] = useState({ winAt: 0, blockedId: null, consumed: true })
+  const pvpExempt = !!(pendingQuiz?.card && (pendingQuiz.card.rarity === 'légendaire' || (pendingQuiz.card.rarity === 'épique' && (pendingQuiz?.is_shiny ?? quizIsShiny))))
+  // PVP — blocage « manche en cours » : ce quiz a démarré avant/au gain Entraînement.
+  // (Comparaison de timestamps : ne se déclenche JAMAIS pour un vieux gain — le quiz
+  // courant a forcément démarré après.)
+  const pvpCurrentBlocked = !beginnerActive && !auth.isDemo && lastWinMode === 'beginner' && lastWinAtMs
+    && !pvpExempt && pendingQuiz?.started_at && new Date(pendingQuiz.started_at).getTime() <= lastWinAtMs
+
+  // PVP — blocage « prochaine manche » (creux teaser) : suivi de la 1re manche à
+  // bloquer, consommée ensuite. ACTIVÉ UNIQUEMENT sur un VRAI gain en direct (la
+  // baseline ignore la valeur périmée au chargement → pas de blocage fantôme après
+  // des heures, ni au refresh).
+  const [pvpBlock, setPvpBlock] = useState({ blockedId: null, consumed: true })
+  const winBaselineRef = useRef(0)
+  const winBaselineIdRef = useRef(null)
   useEffect(() => {
-    if (lastWinMode === 'beginner' && lastWinAtMs) {
-      setPvpBlock(prev => prev.winAt === lastWinAtMs ? prev : { winAt: lastWinAtMs, blockedId: null, consumed: false })
-    } else if (lastWinMode !== 'beginner') {
-      setPvpBlock(prev => (prev.consumed && !prev.winAt) ? prev : { winAt: 0, blockedId: null, consumed: true })
+    const id = auth.profile?.id
+    if (!id) return
+    if (winBaselineIdRef.current !== id) {   // (nouveau) compte → baseline = valeur au chargement (ignorée)
+      winBaselineIdRef.current = id
+      winBaselineRef.current = lastWinAtMs || 0
+      setPvpBlock({ blockedId: null, consumed: true })
+      return
     }
-  }, [lastWinMode, lastWinAtMs])
+    if (lastWinMode === 'beginner' && lastWinAtMs > winBaselineRef.current) {
+      winBaselineRef.current = lastWinAtMs
+      setPvpBlock({ blockedId: null, consumed: false })   // vrai gain Entraînement en direct
+    }
+  }, [auth.profile?.id, lastWinMode, lastWinAtMs])
   useEffect(() => {
-    if (lastWinMode !== 'beginner' || !pendingQuiz?.id) return
+    if (!pendingQuiz?.id) return
     setPvpBlock(prev => {
       if (prev.consumed) return prev
       if (prev.blockedId === null) return { ...prev, blockedId: pendingQuiz.id }   // 1re manche vue
-      if (pendingQuiz.id !== prev.blockedId) return { ...prev, consumed: true }     // manche suivante → libéré
+      if (pendingQuiz.id !== prev.blockedId) return { blockedId: null, consumed: true }  // manche suivante → libéré
       return prev
     })
-  }, [pendingQuiz?.id, lastWinMode])
-  const pvpExempt = !!(pendingQuiz?.card && (pendingQuiz.card.rarity === 'légendaire' || (pendingQuiz.card.rarity === 'épique' && (pendingQuiz?.is_shiny ?? quizIsShiny))))
-  const pvpBlocked = !beginnerActive && !auth.isDemo && !!auth.profile && lastWinMode === 'beginner'
-    && !pvpBlock.consumed && !pvpExempt
+  }, [pendingQuiz?.id])
+  const pvpNextBlocked = !beginnerActive && !auth.isDemo && !pvpExempt && !pvpBlock.consumed
     && ((pvpBlock.blockedId === null && !pendingQuiz)          // teaser avant la manche bloquée
         || (!!pendingQuiz && pendingQuiz.id === pvpBlock.blockedId))  // la manche bloquée elle-même
 
+  const pvpBlocked = pvpCurrentBlocked || pvpNextBlocked
   const crossBlocked = beginnerBlocked || pvpBlocked
   const crossBlockMsg = crossBlocked
     ? (t('beginner_cross_block') || 'Vous avez déjà gagné un geocoin en mode {mode}, vous pourrez jouer la prochaine manche.')
