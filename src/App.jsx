@@ -36,7 +36,7 @@ import SettingsModal from './features/auth/SettingsModal.jsx';
 import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
 import { DemoComplete } from './features/demo/DemoGame.jsx';
-import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, GameRulesModal } from './features/quiz/QuizComponents.jsx';
+import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, BeginnerRecap, GameRulesModal } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
@@ -842,7 +842,9 @@ export default function App() {
   // Barre de quiz du mode courant, précédée d'un petit bouton de bascule (à gauche).
   const renderQuizBar = () => {
     const bar = beginnerActive
-      ? <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />
+      ? (beginner.recap
+          ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} />
+          : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
       : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
     if (auth.isDemo || !auth.profile) return bar  // démo : pas de bascule de mode
     return (

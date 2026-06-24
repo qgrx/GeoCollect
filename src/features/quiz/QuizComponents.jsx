@@ -816,6 +816,44 @@ export function BeginnerCountdownWidget({ secondsLeft, cycleTime = 60, nextCard,
   );
 }
 
+// ─── Pause récap entre 2 manches débutant (félicitations aux gagnants) ────────
+export function BeginnerRecap({ winners = [], secondsLeft = 0 }) {
+  const { t } = useT(); const { theme } = useTheme();
+  const c1 = '#00b894', c2 = '#0984e3';
+  const has = winners.length > 0;
+  const MAX = 18;                              // au-delà, on résume « +N »
+  const shown = winners.slice(0, MAX);
+  const extra = winners.length - shown.length;
+  return (
+    <>
+      <style>{CW_STYLES}</style>
+      <div style={{ background: `linear-gradient(135deg,${c1}1f,${c2}14)`, border: `1.5px solid ${c1}66`, borderRadius: 13, padding: '12px 14px', textAlign: 'center', animation: 'cgSlide .4s cubic-bezier(.34,1.56,.64,1) both', boxShadow: `0 0 26px ${c1}22` }}>
+        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 14, color: c1, marginBottom: has ? 8 : 4 }}>
+          {has ? `🎉 ${t('beginner_recap_title') || 'Bravo aux gagnants !'}` : `🙈 ${t('beginner_recap_none') || 'Personne n\'a trouvé cette fois !'}`}
+        </div>
+        {has && (
+          // Pseudos des gagnants — puces qui s'enroulent (jusqu'à ~3 lignes), jolies.
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', maxHeight: 84, overflow: 'hidden', marginBottom: 8 }}>
+            {shown.map((p, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: `${c1}22`, border: `1px solid ${c1}55`, color: theme.textPrimary, borderRadius: 50, padding: '3px 10px', fontSize: 11.5, fontWeight: 800, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                🏆 {p}
+              </span>
+            ))}
+            {extra > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', background: '#ffffff14', border: `1px solid ${theme.border}`, color: theme.textSecondary, borderRadius: 50, padding: '3px 10px', fontSize: 11.5, fontWeight: 800 }}>
+                +{extra}
+              </span>
+            )}
+          </div>
+        )}
+        <div style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 700 }}>
+          ⏳ {(t('beginner_next_round') || 'Prochaine manche dans {n}s').replace('{n}', Math.max(0, secondsLeft))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Modale de règles du jeu (PVP vs Débutant) ───────────────────────────────
 export function GameRulesModal({ onClose }) {
   const { t } = useT(); const { theme } = useTheme();

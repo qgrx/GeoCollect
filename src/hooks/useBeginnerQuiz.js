@@ -4,40 +4,43 @@ import { apiGetBeginnerQuiz, apiAnswerBeginnerQuiz, apiGetBeginnerHistory } from
 import { getLang } from '../i18n/translations.js'
 
 /**
- * Hook du MODE DÉBUTANT — version allégée de useQuiz, pilotée par les events socket
- * beginner:new / beginner:closed / beginner:answered.
+ * Hook du MODE DÉBUTANT.
  *
- * Différences clés avec le PVP :
- *   - manche de durée FIXE (duration serveur), geocoins communs, pas de shiny
- *   - PLUSIEURS gagnants : répondre juste → état « gagné », sans « trop tard » ;
- *     la manche continue jusqu'à la fin du décompte (nouveau geocoin ensuite)
- *   - aucun point de forge
+ * Cycle : manche 'active' (décompte) → 'recap' (pause de félicitations) → manche.
+ * Le timing fait autorité côté serveur (ends_at / next_at + server_time fournis) :
+ * on recale localement (endTime / recap.untilMs) en neutralisant le décalage
+ * d'horloge client. Une resynchronisation périodique via /current répare les
+ * éventuels events socket manqués (sinon le client pouvait rester sans geocoin).
  */
 export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements }) {
   const cbRef = useRef({})
   cbRef.current = { earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements }
-  // Les events socket beginner:* arrivent même en mode PVP : on évite alors tout
-  // appel réseau (l'historique débutant n'est utile que quand le mode est affiché).
   const activeRef = useRef(active)
   useEffect(() => { activeRef.current = active }, [active])
 
   const [cycleSec,    setCycleSec]    = useState(QUIZ_INTERVAL)
-  const [countdown,   setCountdown]   = useState(QUIZ_INTERVAL)
+  const [countdown,   setCountdown]   = useState(0)
   const [endTime,     setEndTime]     = useState(0)        // fin de la manche en cours (ms)
   const [pendingQuiz, setPendingQuiz] = useState(null)
   const [activeQuiz,  setActiveQuiz]  = useState(null)
   const [nextCard,    setNextCard]    = useState(null)
   const [history,     setHistory]     = useState([])
   const [alreadyWon,  setAlreadyWon]  = useState(false)
+  const [recap,       setRecap]       = useState(null)     // { winners:[], untilMs }
+  const [recapLeft,   setRecapLeft]   = useState(0)
   const activeQuizRef = useRef(null)
+  // Refs pour le re-sync (éviter de recréer l'intervalle à chaque tick)
+  const recapRef = useRef(null);   useEffect(() => { recapRef.current = recap }, [recap])
+  const pendingRef = useRef(null); useEffect(() => { pendingRef.current = pendingQuiz }, [pendingQuiz])
+  const endRef = useRef(0);        useEffect(() => { endRef.current = endTime }, [endTime])
 
-  // Construire un objet quiz à partir d'un payload (socket beginner:new ou /current)
-  const buildQuiz = useCallback((data, fromSocket) => {
-    const cardSrc = fromSocket ? data.card : data.card
+  // Construit l'objet quiz. started_at est dérivé de endTime pour que le décompte
+  // de la MODALE (durée - elapsed) coïncide exactement avec celui de la barre.
+  const buildQuiz = useCallback((data, fromSocket, startedAtIso) => {
+    const cardSrc = data.card
     const poolCard = cbRef.current.cardPool?.find(c => c.id === cardSrc?.id) || {}
     const wc = data.answer_word_count || 1
-    const curLang = getLang()
-    const trans = data.translations?.[curLang]
+    const trans = data.translations?.[getLang()]
     const card = { ...cardSrc, ...poolCard, sellable: true, minPrice: null, desc: '' }
     return {
       id:   fromSocket ? data.quiz_id : data.id,
@@ -46,7 +49,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
       a:    trans?.answer ? Array((trans.answer.trim().split(/\s+/).length) || 1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
       h:    data.hint,
       is_shiny: false,
-      started_at: data.started_at,
+      started_at: startedAtIso || data.started_at,
       question_id: data.question_id,
       answer_word_count: wc,
       answer_length: data.answer_length,
@@ -60,63 +63,102 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     }).catch(() => {})
   }, [])
 
+  // Applique une manche active (depuis socket beginner:new ou /current)
+  const applyRound = useCallback((src, fromSocket, alreadyWonFlag) => {
+    const dur = src.duration || QUIZ_INTERVAL
+    const round = fromSocket ? src : src.quiz
+    const serverTime = src.server_time
+    const remaining = (round.ends_at && serverTime)
+      ? new Date(round.ends_at).getTime() - new Date(serverTime).getTime()
+      : dur * 1000
+    const end = Date.now() + Math.max(0, remaining)
+    setCycleSec(dur)
+    setEndTime(end)
+    setRecap(null)
+    setAlreadyWon(!!alreadyWonFlag)
+    setActiveQuiz(null); activeQuizRef.current = null
+    const startedIso = new Date(end - dur * 1000).toISOString()
+    const q = buildQuiz(round, fromSocket, startedIso)
+    setNextCard(q.card)
+    setPendingQuiz(alreadyWonFlag ? null : q)
+  }, [buildQuiz])
+
+  const applyRecap = useCallback((winners, nextAtIso, serverTime) => {
+    const until = (nextAtIso && serverTime)
+      ? Date.now() + Math.max(0, new Date(nextAtIso).getTime() - new Date(serverTime).getTime())
+      : Date.now() + 10_000
+    setRecap({ winners: winners || [], untilMs: until })
+    setPendingQuiz(null)
+    setActiveQuiz(null); activeQuizRef.current = null
+    setEndTime(0)
+  }, [])
+
+  // Resynchronisation à partir de /current (état serveur faisant autorité)
+  const syncFromCurrent = useCallback((data) => {
+    if (!data) return
+    setCycleSec(data.duration || QUIZ_INTERVAL)
+    if (data.phase === 'pause' || (data.quiz == null && data.next_at)) {
+      applyRecap(data.winners, data.next_at, data.server_time)
+      return
+    }
+    if (data.quiz) {
+      applyRound(data, false, data.quiz.already_won)
+      return
+    }
+    // idle (transition courte) : on ne casse pas un récap en cours
+    if (!recapRef.current || recapRef.current.untilMs <= Date.now()) {
+      setPendingQuiz(null); setRecap(null); setEndTime(0)
+    }
+  }, [applyRound, applyRecap])
+
   // Chargement initial à l'activation du mode
   useEffect(() => {
     if (!active || !profile) return
     let cancelled = false
-    apiGetBeginnerQuiz().then(({ data }) => {
-      if (cancelled || !data) return
-      setCycleSec(data.duration || QUIZ_INTERVAL)
-      if (data.quiz) {
-        const serverNow = data.server_time ? new Date(data.server_time).getTime() : Date.now()
-        const startedAt = new Date(data.quiz.started_at).getTime()
-        const end = Date.now() + Math.max(0, (data.duration || QUIZ_INTERVAL) * 1000 - (serverNow - startedAt))
-        setEndTime(end)
-        setAlreadyWon(!!data.quiz.already_won)
-        if (!data.quiz.already_won) setPendingQuiz(buildQuiz(data.quiz, false))
-        setNextCard(buildQuiz(data.quiz, false).card)
-      }
-    }).catch(() => {})
+    apiGetBeginnerQuiz().then(({ data }) => { if (!cancelled) syncFromCurrent(data) }).catch(() => {})
     refreshHistory()
     return () => { cancelled = true }
-  }, [active, profile, buildQuiz, refreshHistory])
+  }, [active, profile, syncFromCurrent, refreshHistory])
 
-  // Décompte vers la fin de la manche
+  // Décomptes (manche + récap)
   useEffect(() => {
     if (!active) return
-    const tick = () => setCountdown(endTime ? Math.max(0, Math.ceil((endTime - Date.now()) / 1000)) : cycleSec)
+    const tick = () => {
+      setCountdown(endTime ? Math.max(0, Math.ceil((endTime - Date.now()) / 1000)) : 0)
+      setRecapLeft(recap ? Math.max(0, Math.ceil((recap.untilMs - Date.now()) / 1000)) : 0)
+    }
     tick()
     const id = setInterval(tick, 500)
     return () => clearInterval(id)
-  }, [active, endTime, cycleSec])
+  }, [active, endTime, recap])
 
-  // Garde-fou : si la manche se termine (décompte à 0) avec la modale encore ouverte
-  // sans victoire, on referme après un court délai. Normalement beginner:new referme
-  // déjà la modale ; ce filet évite de rester bloqué sur « Trop tard » si la manche
-  // suivante tarde. On NE re-propose PAS la manche écoulée (contrairement à handleClose).
+  // Re-sync périodique : répare un event manqué (aucune manche dispo / récap fini).
   useEffect(() => {
-    if (!active || countdown > 0 || alreadyWon || !activeQuizRef.current) return
-    const id = setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 3000)
-    return () => clearTimeout(id)
-  }, [active, countdown, alreadyWon])
+    if (!active || !profile) return
+    let cancelled = false
+    const id = setInterval(() => {
+      if (cancelled) return
+      if (activeQuizRef.current) return                                   // modale ouverte
+      if (recapRef.current && recapRef.current.untilMs > Date.now()) return // récap en cours
+      if (pendingRef.current && endRef.current > Date.now()) return        // manche dispo
+      apiGetBeginnerQuiz().then(({ data }) => { if (!cancelled) syncFromCurrent(data) }).catch(() => {})
+    }, 3000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [active, profile, syncFromCurrent])
 
   // ── Appliqué depuis les handlers socket de App.jsx ──────────────────────────
   const applyBeginnerNew = useCallback((data) => {
-    setCycleSec(data.duration || QUIZ_INTERVAL)
-    const serverNow = data.server_time ? new Date(data.server_time).getTime() : Date.now()
-    const startedAt = new Date(data.started_at).getTime()
-    const end = Date.now() + Math.max(0, (data.duration || QUIZ_INTERVAL) * 1000 - (serverNow - startedAt))
-    setEndTime(end)
-    setAlreadyWon(false)
-    const q = buildQuiz(data, true)
-    setNextCard(q.card)
-    setActiveQuiz(null); activeQuizRef.current = null
-    setPendingQuiz(q)
-  }, [buildQuiz])
+    applyRound(data, true, false)
+  }, [applyRound])
 
-  const applyBeginnerClosed = useCallback(() => {
+  const applyBeginnerClosed = useCallback((data) => {
+    if (data?.enabled === false) {
+      setRecap(null); setPendingQuiz(null); setActiveQuiz(null); activeQuizRef.current = null; setEndTime(0)
+      return
+    }
+    applyRecap(data?.winners, data?.next_at, data?.server_time)
     refreshHistory()
-  }, [refreshHistory])
+  }, [applyRecap, refreshHistory])
 
   // Bascule sur la manche en attente (ouvre la modale)
   const handleJoin = useCallback(() => {
@@ -129,7 +171,8 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
   }, [alreadyWon])
 
   const handleClose = useCallback(() => {
-    if (activeQuizRef.current && !alreadyWon) {
+    if (activeQuizRef.current && !alreadyWon && endRef.current > Date.now()) {
+      // Manche encore en cours → on remet en attente. Sinon (terminée) on referme.
       setPendingQuiz(activeQuizRef.current)
     }
     setActiveQuiz(null); activeQuizRef.current = null
@@ -148,13 +191,8 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
       return 'error'
     }
     setAlreadyWon(true)
-    // Refermer la modale après l'animation de résultat (le bar reprend, ✓ Gagné).
     const autoClose = () => setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 2500)
-    if (data.already_won) {
-      // Re-tentative après une réponse gagnante : ne rien re-créditer.
-      autoClose()
-      return { ok: true, outcome: 'card', card }
-    }
+    if (data.already_won) { autoClose(); return { ok: true, outcome: 'card', card } }
     if (data.card_earned) earnCard(card, false)
     if (data.gold_earned) earnGoldWithFx(data.gold_earned)
     if (data.achievements?.length) cbRef.current.checkAchievements?.(data.achievements)
@@ -170,6 +208,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     pendingQuiz, setPendingQuiz,
     activeQuiz, setActiveQuiz,
     nextCard, history, alreadyWon,
+    recap, recapLeft,
     activeQuizRef,
     applyBeginnerNew, applyBeginnerClosed, refreshHistory,
     handleJoin, handleClose, handleAnswer,
