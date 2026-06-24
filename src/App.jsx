@@ -1679,7 +1679,7 @@ export default function App() {
                         <div key={i} title={h.card?.name} onClick={() => {
                           if (!h.card) return;
                           // Entraînement : clic → liste des gagnants. PVP : détail du geocoin.
-                          if (beginnerActive) { setBeginnerWinnersPopup({ card: h.card, winners: h.winners || [] }); return; }
+                          if (beginnerActive) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: h.winners || [] }); return; }
                           setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); setSelectedCardFromHistory(true);
                         }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, minWidth: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}

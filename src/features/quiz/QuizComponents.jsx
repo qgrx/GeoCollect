@@ -943,24 +943,12 @@ export function BeginnerWinnersModal({ card, winners = [], onClose }) {
           </div>
           <button onClick={onClose} style={{ background: '#eef1f5', border: 'none', color: '#64748b', width: 26, height: 26, borderRadius: '50%', fontSize: 13, cursor: 'pointer', fontWeight: 900 }}>✕</button>
         </div>
-        {/* Le geocoin disputé */}
-        {card && (() => {
-          const { c1, c2 } = cardCC(card.rarity); const rc = RC[card.rarity];
-          const img = card.image_url_thumb || card.image_url || card.image || card.thumbnail;
-          return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', marginBottom: 12 }}>
-              <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: 8, overflow: 'hidden', border: `2px solid ${c1}`, background: '#1e3045' }}>
-                {img
-                  ? <ThumbImage src={img} alt={cardName(card, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{cardName(card, getLang())[0]}</div>}
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 900, color: '#1a2538', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cardName(card, getLang())}</div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: rc?.color || c1, marginTop: 2 }}>{rarityLabel(card.rarity, t)}</div>
-              </div>
-            </div>
-          );
-        })()}
+        {/* Le geocoin disputé — carte entière (comme en PVP) */}
+        {card && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+            <Card card={card} />
+          </div>
+        )}
         {winners.length === 0 ? (
           <div style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center', padding: '10px 0' }}>{t('beginner_recap_none') || "Personne n'a trouvé cette fois !"}</div>
         ) : (
