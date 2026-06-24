@@ -116,14 +116,16 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     }
   }, [applyRound, applyRecap, refreshHistory])
 
-  // Chargement initial à l'activation du mode
+  // Chargement initial à l'activation du mode.
+  // Dépend de profile?.id (PAS de l'objet profile) : sinon un rafraîchissement de
+  // token Supabase (déclenché au retour d'onglet) recharge et fermerait la modale.
   useEffect(() => {
-    if (!active || !profile) return
+    if (!active || !profile?.id) return
     let cancelled = false
     apiGetBeginnerQuiz().then(({ data }) => { if (!cancelled) syncFromCurrent(data) }).catch(() => {})
     refreshHistory()
     return () => { cancelled = true }
-  }, [active, profile, syncFromCurrent, refreshHistory])
+  }, [active, profile?.id, syncFromCurrent, refreshHistory])
 
   // Décomptes (manche + récap)
   useEffect(() => {
@@ -139,7 +141,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
 
   // Re-sync périodique : répare un event manqué (aucune manche dispo / récap fini).
   useEffect(() => {
-    if (!active || !profile) return
+    if (!active || !profile?.id) return
     let cancelled = false
     const id = setInterval(() => {
       if (cancelled) return
@@ -149,7 +151,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
       apiGetBeginnerQuiz().then(({ data }) => { if (!cancelled) syncFromCurrent(data) }).catch(() => {})
     }, 3000)
     return () => { cancelled = true; clearInterval(id) }
-  }, [active, profile, syncFromCurrent])
+  }, [active, profile?.id, syncFromCurrent])
 
   // ── Appliqué depuis les handlers socket de App.jsx ──────────────────────────
   const applyBeginnerNew = useCallback((data) => {
