@@ -274,10 +274,20 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
               </button>
           }
         </div>}
-        {/* Bannière d'avertissement : limite atteinte — placée au-dessus du quiz (zone
-            fixe) pour que la question reste collée au champ et lisible clavier ouvert */}
+        {/* Bandeau cadeau du leader uniquement — l'info aux autres joueurs a déjà
+            été annoncée dans la barre (countdown), inutile de la répéter ici. */}
+        {status==="open" && isStreakLeader && handicapLeft>0 && (
+          <div style={{flexShrink:0,fontSize:11.5,fontWeight:800,color:"#ffd28a",background:"#ff70431a",border:"1px solid #ff7043aa",borderRadius:10,padding:"7px 11px",marginBottom:10}}>
+            🎁 {t('streak_handicap_self').replace('{x}',handicapLeft)}
+          </div>
+        )}
+        {/* Zone scrollable : bannière limite + carte + question (collée au champ en bas).
+            La bannière est DANS le scroll (pas en section fixe) : sur viewport court
+            (S23, clavier), les sections fixes ne dépassent plus le cadre et la question
+            reste lisible / le bouton Répondre ne déborde plus. */}
+        <div style={{flex:1,minHeight:0,overflowY:"auto",overflowX:"hidden"}}>
         {status==="open" && limitStatus?.over && (
-          <div style={{flexShrink:0,background:"linear-gradient(135deg,#3a2a0e,#2a1f0a)",border:"1.5px solid #f9ca2466",borderRadius:12,padding:"10px 13px",marginBottom:12,display:"flex",gap:10,alignItems:"flex-start"}}>
+          <div style={{background:"linear-gradient(135deg,#3a2a0e,#2a1f0a)",border:"1.5px solid #f9ca2466",borderRadius:12,padding:"10px 13px",marginBottom:12,display:"flex",gap:10,alignItems:"flex-start"}}>
             <span style={{fontSize:20,lineHeight:1.2,flexShrink:0}}>⚠️</span>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:12.5,fontWeight:900,color:"#f9ca24",marginBottom:2}}>
@@ -292,15 +302,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             </div>
           </div>
         )}
-        {/* Bandeau cadeau du leader uniquement — l'info aux autres joueurs a déjà
-            été annoncée dans la barre (countdown), inutile de la répéter ici. */}
-        {status==="open" && isStreakLeader && handicapLeft>0 && (
-          <div style={{flexShrink:0,fontSize:11.5,fontWeight:800,color:"#ffd28a",background:"#ff70431a",border:"1px solid #ff7043aa",borderRadius:10,padding:"7px 11px",marginBottom:10}}>
-            🎁 {t('streak_handicap_self').replace('{x}',handicapLeft)}
-          </div>
-        )}
-        {/* Zone scrollable : carte + question (collée au champ de réponse en bas) */}
-        <div style={{flex:1,minHeight:0,overflowY:"auto",overflowX:"hidden"}}>
         <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
           <div style={{flexShrink:0,pointerEvents:"none"}}>
             {compact ? (
