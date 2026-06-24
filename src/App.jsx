@@ -818,16 +818,21 @@ export default function App() {
   // Protection inter-modes : a-t-on déjà gagné dans l'AUTRE mode pour la manche en cours ?
   const lastWinAtMs  = auth.profile?.last_geocoin_at ? new Date(auth.profile.last_geocoin_at).getTime() : 0
   const lastWinMode  = auth.profile?.last_geocoin_mode
+  // Garde-fou de fraîcheur : last_geocoin_at est le DERNIER gain (jamais), pas un gain
+  // récent. Un gain vieux de plus de quelques minutes ne peut jamais bloquer (sinon
+  // des joueurs restaient bloqués des heures après un vieux gain Entraînement).
+  const CROSS_BLOCK_WINDOW_MS = 6 * 60 * 1000
+  const winRecent = !!lastWinAtMs && (Date.now() - lastWinAtMs < CROSS_BLOCK_WINDOW_MS)
   // Entraînement bloqué : la manche débutant en cours a démarré avant/à mon gain PVP
   // (l'Entraînement étant continu, la manche « en cours » est toujours détectée).
-  const beginnerBlocked = beginnerActive && lastWinMode === 'pvp' && lastWinAtMs
+  const beginnerBlocked = beginnerActive && winRecent && lastWinMode === 'pvp'
     && beginner.roundStartedAt && new Date(beginner.roundStartedAt).getTime() <= lastWinAtMs
 
   const pvpExempt = !!(pendingQuiz?.card && (pendingQuiz.card.rarity === 'légendaire' || (pendingQuiz.card.rarity === 'épique' && (pendingQuiz?.is_shiny ?? quizIsShiny))))
   // PVP — blocage « manche en cours » : ce quiz a démarré avant/au gain Entraînement.
   // (Comparaison de timestamps : ne se déclenche JAMAIS pour un vieux gain — le quiz
   // courant a forcément démarré après.)
-  const pvpCurrentBlocked = !beginnerActive && !auth.isDemo && lastWinMode === 'beginner' && lastWinAtMs
+  const pvpCurrentBlocked = !beginnerActive && !auth.isDemo && winRecent && lastWinMode === 'beginner'
     && !pvpExempt && pendingQuiz?.started_at && new Date(pendingQuiz.started_at).getTime() <= lastWinAtMs
 
   // PVP — blocage « prochaine manche » (creux teaser) : suivi de la 1re manche à
@@ -860,7 +865,7 @@ export default function App() {
       return prev
     })
   }, [pendingQuiz?.id])
-  const pvpNextBlocked = !beginnerActive && !auth.isDemo && !pvpExempt && !pvpBlock.consumed
+  const pvpNextBlocked = !beginnerActive && !auth.isDemo && winRecent && !pvpExempt && !pvpBlock.consumed
     && ((pvpBlock.blockedId === null && !pendingQuiz)          // teaser avant la manche bloquée
         || (!!pendingQuiz && pendingQuiz.id === pvpBlock.blockedId))  // la manche bloquée elle-même
 
