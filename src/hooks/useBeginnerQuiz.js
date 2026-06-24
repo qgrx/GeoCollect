@@ -90,6 +90,16 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     return () => clearInterval(id)
   }, [active, endTime, cycleSec])
 
+  // Garde-fou : si la manche se termine (décompte à 0) avec la modale encore ouverte
+  // sans victoire, on referme après un court délai. Normalement beginner:new referme
+  // déjà la modale ; ce filet évite de rester bloqué sur « Trop tard » si la manche
+  // suivante tarde. On NE re-propose PAS la manche écoulée (contrairement à handleClose).
+  useEffect(() => {
+    if (!active || countdown > 0 || alreadyWon || !activeQuizRef.current) return
+    const id = setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 3000)
+    return () => clearTimeout(id)
+  }, [active, countdown, alreadyWon])
+
   // ── Appliqué depuis les handlers socket de App.jsx ──────────────────────────
   const applyBeginnerNew = useCallback((data) => {
     setCycleSec(data.duration || QUIZ_INTERVAL)
