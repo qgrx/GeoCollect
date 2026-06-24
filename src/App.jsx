@@ -818,11 +818,36 @@ export default function App() {
   // Protection inter-modes : a-t-on déjà gagné dans l'AUTRE mode pour la manche en cours ?
   const lastWinAtMs  = auth.profile?.last_geocoin_at ? new Date(auth.profile.last_geocoin_at).getTime() : 0
   const lastWinMode  = auth.profile?.last_geocoin_mode
+  // Entraînement bloqué : la manche débutant en cours a démarré avant/à mon gain PVP
+  // (l'Entraînement étant continu, la manche « en cours » est toujours détectée).
   const beginnerBlocked = beginnerActive && lastWinMode === 'pvp' && lastWinAtMs
     && beginner.roundStartedAt && new Date(beginner.roundStartedAt).getTime() <= lastWinAtMs
-  const pvpBlocked = !beginnerActive && !auth.isDemo && !!auth.profile && lastWinMode === 'beginner' && lastWinAtMs
-    && pendingQuiz?.started_at && new Date(pendingQuiz.started_at).getTime() <= lastWinAtMs
-    && !(pendingQuiz?.card && (pendingQuiz.card.rarity === 'légendaire' || (pendingQuiz.card.rarity === 'épique' && (pendingQuiz?.is_shiny ?? quizIsShiny))))
+
+  // PVP bloqué : le PVP a des creux (teaser). On suit la 1re manche PVP « à bloquer »
+  // (celle en cours au gain, ou la prochaine s'il n'y en avait pas), consommée ensuite.
+  const [pvpBlock, setPvpBlock] = useState({ winAt: 0, blockedId: null, consumed: true })
+  useEffect(() => {
+    if (lastWinMode === 'beginner' && lastWinAtMs) {
+      setPvpBlock(prev => prev.winAt === lastWinAtMs ? prev : { winAt: lastWinAtMs, blockedId: null, consumed: false })
+    } else if (lastWinMode !== 'beginner') {
+      setPvpBlock(prev => (prev.consumed && !prev.winAt) ? prev : { winAt: 0, blockedId: null, consumed: true })
+    }
+  }, [lastWinMode, lastWinAtMs])
+  useEffect(() => {
+    if (lastWinMode !== 'beginner' || !pendingQuiz?.id) return
+    setPvpBlock(prev => {
+      if (prev.consumed) return prev
+      if (prev.blockedId === null) return { ...prev, blockedId: pendingQuiz.id }   // 1re manche vue
+      if (pendingQuiz.id !== prev.blockedId) return { ...prev, consumed: true }     // manche suivante → libéré
+      return prev
+    })
+  }, [pendingQuiz?.id, lastWinMode])
+  const pvpExempt = !!(pendingQuiz?.card && (pendingQuiz.card.rarity === 'légendaire' || (pendingQuiz.card.rarity === 'épique' && (pendingQuiz?.is_shiny ?? quizIsShiny))))
+  const pvpBlocked = !beginnerActive && !auth.isDemo && !!auth.profile && lastWinMode === 'beginner'
+    && !pvpBlock.consumed && !pvpExempt
+    && ((pvpBlock.blockedId === null && !pendingQuiz)          // teaser avant la manche bloquée
+        || (!!pendingQuiz && pendingQuiz.id === pvpBlock.blockedId))  // la manche bloquée elle-même
+
   const crossBlocked = beginnerBlocked || pvpBlocked
   const crossBlockMsg = crossBlocked
     ? (t('beginner_cross_block') || 'Vous avez déjà gagné un geocoin en mode {mode}, vous pourrez jouer la prochaine manche.')
