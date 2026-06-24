@@ -927,27 +927,27 @@ export function GameRulesModal({ onClose }) {
 }
 
 // ─── Liste des gagnants d'une manche Entraînement (clic sur le feed) ──────────
+// Carte CLAIRE (couleurs explicites, indépendantes du thème) pour une lecture nette.
 export function BeginnerWinnersModal({ card, winners = [], onClose }) {
-  const { t } = useT(); const { theme } = useTheme();
-  const c1 = '#00b894';
+  const { t } = useT();
   const RANK = ['#f59e0b', '#9aa6b2', '#b45309'];   // or / argent / bronze
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000b', backdropFilter: 'blur(8px)', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'linear-gradient(145deg,#0f1923,#1a2736)', border: `1.5px solid ${c1}55`, borderRadius: 18, padding: '18px 18px', maxWidth: 360, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 24px 60px #000c', fontFamily: "'Nunito',sans-serif" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 18, padding: '18px 18px', maxWidth: 360, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 24px 60px #0009', fontFamily: "'Nunito',sans-serif" }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 15, color: c1 }}>
+          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 15, color: '#1a2538' }}>
             {t('beginner_winners_title') || 'Gagnants'}{card ? ` — ${cardName(card, getLang())}` : ''}
           </div>
-          <button onClick={onClose} style={{ background: '#ffffff18', border: 'none', color: '#888', width: 26, height: 26, borderRadius: '50%', fontSize: 13, cursor: 'pointer', fontWeight: 900 }}>✕</button>
+          <button onClick={onClose} style={{ background: '#eef1f5', border: 'none', color: '#64748b', width: 26, height: 26, borderRadius: '50%', fontSize: 13, cursor: 'pointer', fontWeight: 900 }}>✕</button>
         </div>
         {winners.length === 0 ? (
-          <div style={{ fontSize: 12.5, color: theme.textSecondary, textAlign: 'center', padding: '10px 0' }}>{t('beginner_recap_none') || "Personne n'a trouvé cette fois !"}</div>
+          <div style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center', padding: '10px 0' }}>{t('beginner_recap_none') || "Personne n'a trouvé cette fois !"}</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {winners.map((p, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: i < 3 ? `${RANK[i]}18` : '#ffffff08', border: `1px solid ${i < 3 ? RANK[i] + '55' : theme.border}`, borderRadius: 9, padding: '7px 11px' }}>
-                <span style={{ width: 22, height: 22, flexShrink: 0, borderRadius: '50%', background: i < 3 ? RANK[i] : '#ffffff1a', color: i < 3 ? '#1a1205' : theme.textSecondary, fontWeight: 900, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-                <span style={{ fontSize: 13, fontWeight: 800, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: i < 3 ? `${RANK[i]}22` : '#f1f5f9', border: `1px solid ${i < 3 ? RANK[i] + '88' : '#e2e8f0'}`, borderRadius: 9, padding: '7px 11px' }}>
+                <span style={{ width: 22, height: 22, flexShrink: 0, borderRadius: '50%', background: i < 3 ? RANK[i] : '#cbd5e1', color: i < 3 ? '#1a1205' : '#475569', fontWeight: 900, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#1a2538', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
               </div>
             ))}
           </div>
