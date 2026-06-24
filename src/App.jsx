@@ -863,16 +863,25 @@ export default function App() {
     const bar = beginnerActive
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} />
-          : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginnerBlocked ? undefined : beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} blocked={beginnerBlocked} blockMessage={crossBlockMsg} />)
-      : (<>
-          {pvpBlocked && <div style={{ fontSize: 11, fontWeight: 800, color: '#e7b04a', background: '#e7b04a18', border: '1px solid #e7b04a44', borderRadius: 10, padding: '8px 11px', marginBottom: 8 }}>{crossBlockMsg}</div>}
-          <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={pvpBlocked ? undefined : handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
-        </>)
-    if (auth.isDemo || !auth.profile) return bar  // démo : pas de bascule de mode
+          : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
+    // Protection inter-modes : on FLOUTE la barre + overlay (message + timer), et on
+    // bloque toute interaction tant que le joueur ne peut pas participer.
+    const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown
+    const barWrapped = crossBlocked ? (
+      <div style={{ position: 'relative' }}>
+        <div style={{ filter: 'blur(5px)', opacity: 0.5, pointerEvents: 'none', userSelect: 'none' }} aria-hidden="true">{bar}</div>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 4, padding: '6px 12px', borderRadius: 13, background: 'rgba(14,24,34,0.55)', backdropFilter: 'blur(1px)' }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: '#ffd28a', lineHeight: 1.3 }}>🔒 {crossBlockMsg}</div>
+          {blockTimer > 0 && <div style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>⏳ {blockTimer}s</div>}
+        </div>
+      </div>
+    ) : bar
+    if (auth.isDemo || !auth.profile) return barWrapped  // démo : pas de bascule de mode
     return (
       <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
         <ModeToggle mode={quizMode} onChange={setQuizMode} onOpenRules={() => setShowRules(true)} />
-        <div style={{ flex: 1, minWidth: 0 }}>{bar}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>{barWrapped}</div>
       </div>
     )
   }
