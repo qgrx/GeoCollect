@@ -1337,7 +1337,7 @@ export default function App() {
       <div style={{ height: 3, background: 'linear-gradient(90deg,#58a6ff,#bc8cff,#f9ca24,#f85149)', flexShrink: 0 }} />
 
       {/* ── HEADER ── */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 200, background: theme.headerBg, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${theme.border}`, padding: isMobile ? '9px 14px' : '9px 20px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 200, background: theme.headerBg, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${theme.border}`, padding: isMobile ? '9px 10px' : '9px 20px', display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, flexShrink: 0 }}>
         <Logo iconSize={isMobile ? 26 : 30} textSize={isMobile ? 15 : 19} />
 
         {/* Desktop tab nav — même style que mobile, centré dans le header */}
@@ -1375,13 +1375,13 @@ export default function App() {
         {/* Currencies (mobile only — desktop shows in sidebar profile)
             Masquées en démo : header type « non connecté » (sinon elles tronquent « Se connecter »). */}
         {auth.profile && !auth.isDemo && isMobile && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <div data-tour="gold" style={{ background: '#f9ca2410', border: '1px solid #f9ca2428', borderRadius: 20, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center', minWidth: 0, flexShrink: 1, overflow: 'hidden' }}>
+            <div data-tour="gold" style={{ flexShrink: 0, background: '#f9ca2410', border: '1px solid #f9ca2428', borderRadius: 20, padding: '5px 9px', display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontSize: 13 }}>💰</span>
               <span style={{ fontWeight: 700, fontSize: 14, color: theme.gold }}>{gs.gold}<span style={{ fontWeight: 500, fontSize: 11, opacity: .6 }}>G</span></span>
             </div>
             {gs.forgePoints > 0 && (
-              <div style={{ background: '#a29bfe10', border: '1px solid #a29bfe28', borderRadius: 20, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ flexShrink: 0, background: '#a29bfe10', border: '1px solid #a29bfe28', borderRadius: 20, padding: '5px 9px', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ fontSize: 13 }}>🔨</span>
                 <span style={{ fontWeight: 700, fontSize: 13, color: '#a29bfe' }}>{gs.forgePoints}</span>
               </div>
@@ -1567,7 +1567,7 @@ export default function App() {
                   <div style={{ background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '8px' }}>
                   <div style={isWide
                     ? { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }
-                    : { display: 'flex', justifyContent: 'space-between' }}>
+                    : { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, justifyItems: 'center' }}>
                     {history.filter(h => !h.skipped).slice(0, 8).map((h, i) => {
                       const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
                       // « Gagné par moi » = drapeau won OU pseudo == le mien : évite de se voir
