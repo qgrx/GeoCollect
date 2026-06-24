@@ -43,6 +43,7 @@ function parseCSV(text) {
 import Card from '../../components/Card.jsx';
 import AdminCards from './AdminCards.jsx';
 import AdminPlayers from './AdminPlayers.jsx';
+import AdminReferrals from './AdminReferrals.jsx';
 import AdminSeasons from './AdminSeasons.jsx';
 import AdminShop    from './AdminShop.jsx';
 
@@ -307,7 +308,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
     {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'},{id:'demo',icon:'🎮',label:'Démo'}]},
     {label:'Économie',items:[{id:'limits',icon:'💰',label:'Limites & Prix'},{id:'shop',icon:'🛍️',label:'Boutique'},{id:'ranks',icon:'🎖️',label:'Rangs'}]},
     {label:'Récompenses',items:[{id:'quests',icon:'🔨',label:'Quêtes'},{id:'achievements',icon:'🏆',label:'Achievements'}]},
-    {label:'Communauté',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'bots',icon:'🤖',label:'Bots'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_history',icon:'💸',label:'Historique'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
+    {label:'Communauté',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'referrals',icon:'🤝',label:'Parrainage'},{id:'bots',icon:'🤖',label:'Bots'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_history',icon:'💸',label:'Historique'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
     {label:'Système',items:[{id:'maintenance',icon:'🛠️',label:'Maintenance'},{id:'interface',icon:'📱',label:'Interface'},{id:'cache',icon:'⚡',label:'Cache'},{id:'stats',icon:'📈',label:'Stats'},{id:'domains',icon:'🔒',label:'Domaines'},{id:'version',icon:'🔖',label:'Version'}]},
   ]
 
@@ -1098,6 +1099,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {/* ── JOUEURS ── */}
         {tab==="players" && (
           <AdminPlayers cardPool={cardPool} limEdit={limEdit} onBanIP={onBanIP} setTab={setTab} setMsg={setMsg} />
+        )}
+
+        {/* ── PARRAINAGE ── */}
+        {tab==="referrals" && (
+          <AdminReferrals setMsg={setMsg} />
         )}
 
         {/* ── IPs ── */}
