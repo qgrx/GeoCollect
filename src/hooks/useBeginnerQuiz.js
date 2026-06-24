@@ -12,9 +12,9 @@ import { getLang } from '../i18n/translations.js'
  * d'horloge client. Une resynchronisation périodique via /current répare les
  * éventuels events socket manqués (sinon le client pouvait rester sans geocoin).
  */
-export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements }) {
+export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements, refreshProfile }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements, refreshProfile }
   const activeRef = useRef(active)
   useEffect(() => { activeRef.current = active }, [active])
 
@@ -28,11 +28,14 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
   const [alreadyWon,  setAlreadyWon]  = useState(false)
   const [recap,       setRecap]       = useState(null)     // { winners:[], untilMs }
   const [recapLeft,   setRecapLeft]   = useState(0)
+  const [roundStartedAt, setRoundStartedAt] = useState(null)  // started_at SERVEUR (protection inter-modes)
   const activeQuizRef = useRef(null)
   // Refs pour le re-sync (éviter de recréer l'intervalle à chaque tick)
   const recapRef = useRef(null);   useEffect(() => { recapRef.current = recap }, [recap])
   const pendingRef = useRef(null); useEffect(() => { pendingRef.current = pendingQuiz }, [pendingQuiz])
   const endRef = useRef(0);        useEffect(() => { endRef.current = endTime }, [endTime])
+  const nextCardRef = useRef(null); useEffect(() => { nextCardRef.current = nextCard }, [nextCard])
+  const lastClosedIdRef = useRef(null)   // anti-doublon du feed optimiste
 
   // Construit l'objet quiz. started_at est dérivé de endTime pour que le décompte
   // de la MODALE (durée - elapsed) coïncide exactement avec celui de la barre.
@@ -75,6 +78,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     setCycleSec(dur)
     setEndTime(end)
     setRecap(null)
+    setRoundStartedAt(round.started_at || null)
     setAlreadyWon(!!alreadyWonFlag)
     setActiveQuiz(null); activeQuizRef.current = null
     const startedIso = new Date(end - dur * 1000).toISOString()
@@ -99,6 +103,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     setCycleSec(data.duration || QUIZ_INTERVAL)
     if (data.phase === 'pause' || (data.quiz == null && data.next_at)) {
       applyRecap(data.winners, data.next_at, data.server_time)
+      refreshHistory()   // resync : couvre un beginner:closed manqué
       return
     }
     if (data.quiz) {
@@ -109,7 +114,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     if (!recapRef.current || recapRef.current.untilMs <= Date.now()) {
       setPendingQuiz(null); setRecap(null); setEndTime(0)
     }
-  }, [applyRound, applyRecap])
+  }, [applyRound, applyRecap, refreshHistory])
 
   // Chargement initial à l'activation du mode
   useEffect(() => {
@@ -156,6 +161,16 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
       setRecap(null); setPendingQuiz(null); setActiveQuiz(null); activeQuizRef.current = null; setEndTime(0)
       return
     }
+    // Mise à jour OPTIMISTE du feed (zéro latence) : la carte de la manche qui vient
+    // de se terminer est encore dans nextCardRef, et les gagnants sont fournis par
+    // l'event. refreshHistory() ci-dessous réconcilie ensuite avec le serveur.
+    const card = nextCardRef.current
+    const winners = data?.winners || []
+    // Ne pas afficher les manches sans gagnant dans le feed « disputés ».
+    if (card && winners.length > 0 && data?.quiz_id != null && lastClosedIdRef.current !== data.quiz_id) {
+      lastClosedIdRef.current = data.quiz_id
+      setHistory(h => [{ card, winners, winners_count: winners.length, isShiny: false }, ...h].slice(0, 10))
+    }
     applyRecap(data?.winners, data?.next_at, data?.server_time)
     refreshHistory()
   }, [applyRecap, refreshHistory])
@@ -186,6 +201,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     const { data, error, status } = await apiAnswerBeginnerQuiz(aq.id, userAnswer)
     if (error) {
       if (status === 429) return 'fast'
+      if (status === 423) { cbRef.current.refreshProfile?.(); return 'blocked' }  // protection inter-modes
       if (status === 409) return 'late'   // manche terminée
       if (status === 422) return false    // mauvaise réponse
       return 'error'
@@ -196,6 +212,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     if (data.card_earned) earnCard(card, false)
     if (data.gold_earned) earnGoldWithFx(data.gold_earned)
     if (data.achievements?.length) cbRef.current.checkAchievements?.(data.achievements)
+    cbRef.current.refreshProfile?.()   // MAJ last_geocoin_* (protection inter-modes)
     showToast(data.card_earned
       ? t('toast_quiz_won').replace('{card}', card.name)
       : (t('toast_gold_limit') || t('quiz_limit_reached')))
@@ -203,12 +220,14 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     return { ok: true, outcome: data.card_earned ? 'card' : 'consolation', card }
   }, [])
 
+  // handleAnswer renvoie aussi 'blocked' si le serveur refuse (423 cross_mode_blocked)
+
   return {
     cycleSec, countdown,
     pendingQuiz, setPendingQuiz,
     activeQuiz, setActiveQuiz,
     nextCard, history, alreadyWon,
-    recap, recapLeft,
+    recap, recapLeft, roundStartedAt,
     activeQuizRef,
     applyBeginnerNew, applyBeginnerClosed, refreshHistory,
     handleJoin, handleClose, handleAnswer,

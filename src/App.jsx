@@ -36,7 +36,7 @@ import SettingsModal from './features/auth/SettingsModal.jsx';
 import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
 import { DemoComplete } from './features/demo/DemoGame.jsx';
-import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, BeginnerRecap, GameRulesModal } from './features/quiz/QuizComponents.jsx';
+import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, BeginnerRecap, BeginnerWinnersModal, GameRulesModal } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
@@ -806,9 +806,28 @@ export default function App() {
     t,
     cardPool: gs.cardPool,
     checkAchievements: gs.checkAchievements,
+    refreshProfile: () => {
+      import('./services/api.js').then(({ apiGetProfile }) => apiGetProfile?.().then(({ data }) => {
+        if (data?.profile) auth.setProfile(data.profile)
+      })).catch(() => {})
+    },
   })
   const beginnerRef = useRef(beginner)
   useEffect(() => { beginnerRef.current = beginner })
+  const [beginnerWinnersPopup, setBeginnerWinnersPopup] = useState(null)   // { card, winners }
+  // Protection inter-modes : a-t-on déjà gagné dans l'AUTRE mode pour la manche en cours ?
+  const lastWinAtMs  = auth.profile?.last_geocoin_at ? new Date(auth.profile.last_geocoin_at).getTime() : 0
+  const lastWinMode  = auth.profile?.last_geocoin_mode
+  const beginnerBlocked = beginnerActive && lastWinMode === 'pvp' && lastWinAtMs
+    && beginner.roundStartedAt && new Date(beginner.roundStartedAt).getTime() <= lastWinAtMs
+  const pvpBlocked = !beginnerActive && !auth.isDemo && !!auth.profile && lastWinMode === 'beginner' && lastWinAtMs
+    && pendingQuiz?.started_at && new Date(pendingQuiz.started_at).getTime() <= lastWinAtMs
+    && !(pendingQuiz?.card && (pendingQuiz.card.rarity === 'légendaire' || (pendingQuiz.card.rarity === 'épique' && (pendingQuiz?.is_shiny ?? quizIsShiny))))
+  const crossBlocked = beginnerBlocked || pvpBlocked
+  const crossBlockMsg = crossBlocked
+    ? (t('beginner_cross_block') || 'Vous avez déjà gagné un geocoin en mode {mode}, vous pourrez jouer la prochaine manche.')
+        .replace('{mode}', t(lastWinMode === 'pvp' ? 'mode_pvp' : 'mode_beginner'))
+    : ''
 
   // Préférence de mode PAR COMPTE :
   //   - choix déjà mémorisé pour ce compte → on le restaure
@@ -844,8 +863,11 @@ export default function App() {
     const bar = beginnerActive
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} />
-          : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
-      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
+          : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginnerBlocked ? undefined : beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} blocked={beginnerBlocked} blockMessage={crossBlockMsg} />)
+      : (<>
+          {pvpBlocked && <div style={{ fontSize: 11, fontWeight: 800, color: '#e7b04a', background: '#e7b04a18', border: '1px solid #e7b04a44', borderRadius: 10, padding: '8px 11px', marginBottom: 8 }}>{crossBlockMsg}</div>}
+          <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={pvpBlocked ? undefined : handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
+        </>)
     if (auth.isDemo || !auth.profile) return bar  // démo : pas de bascule de mode
     return (
       <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
@@ -890,12 +912,13 @@ export default function App() {
   useEffect(() => {
     const anyOpen = showAuth || showSettings || showReferral || showAdmin || showMarket || showForge ||
       showLeaderboard || showShop || showTxHistory || showDocs || !!selectedCard ||
-      showScoreDetail || !!seasonPopup || !!activeQuiz || !!beginner.activeQuiz || showRules
+      showScoreDetail || !!seasonPopup || !!activeQuiz || !!beginner.activeQuiz || showRules || !!beginnerWinnersPopup
     document.body.style.overflow = anyOpen ? 'hidden' : ''
     document.body.style.touchAction = anyOpen ? 'none' : ''
     return () => { document.body.style.overflow = ''; document.body.style.touchAction = '' }
   }, [showAuth, showSettings, showReferral, showAdmin, showMarket, showForge, showLeaderboard,
-      showShop, showTxHistory, showDocs, selectedCard, showScoreDetail, seasonPopup, activeQuiz])
+      showShop, showTxHistory, showDocs, selectedCard, showScoreDetail, seasonPopup, activeQuiz,
+      beginner.activeQuiz, showRules, beginnerWinnersPopup])
 
   // ── Market actions with toasts ─────────────────────────────────────────────
   function handleBuy(listing, index) {
@@ -1635,15 +1658,16 @@ export default function App() {
                 <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
               </div>
 
-              {/* Last 8 geocoins — 4×2 (feed propre au mode courant) */}
-              {(beginnerActive ? beginner.history : history).filter(h => !h.skipped).length > 0 && (
+              {/* Last 8 geocoins — 4×2 (feed propre au mode courant). En Entraînement,
+                  on n'affiche que les manches AVEC au moins un gagnant. */}
+              {(beginnerActive ? beginner.history : history).filter(h => !h.skipped && (!beginnerActive || (h.winners_count || 0) > 0)).length > 0 && (
                 <div style={{ animation: 'fadeUp .4s .2s ease-out both' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: theme.textMuted, marginBottom: 4 }}>{beginnerActive ? (t('last_cards_beginner') || 'Derniers geocoins disputés (Débutant)') : t('last_cards')}</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: theme.textMuted, marginBottom: 4 }}>{t('last_cards')}</div>
                   <div style={{ background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '8px' }}>
                   <div style={isWide
                     ? { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }
                     : { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, justifyItems: 'center' }}>
-                    {(beginnerActive ? beginner.history : history).filter(h => !h.skipped).slice(0, 8).map((h, i) => {
+                    {(beginnerActive ? beginner.history : history).filter(h => !h.skipped && (!beginnerActive || (h.winners_count || 0) > 0)).slice(0, 8).map((h, i) => {
                       const { c1, c2 } = cardCC(h.card?.rarity || 'commun');
                       // « Gagné par moi » = drapeau won OU pseudo == le mien : évite de se voir
                       // tantôt en ✓, tantôt sous son pseudo (selon la source de l'entrée).
@@ -1652,7 +1676,12 @@ export default function App() {
                         ? (Array.isArray(h.winners) && h.winners.includes(auth.profile?.pseudo))
                         : (h.won || (!!h.winner && h.winner === auth.profile?.pseudo));
                       return (
-                        <div key={i} title={h.card?.name} onClick={() => { if (!h.card) return; setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); setSelectedCardFromHistory(true); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, minWidth: 0, maxWidth: isWide ? undefined : 44 }}>
+                        <div key={i} title={h.card?.name} onClick={() => {
+                          if (!h.card) return;
+                          // Entraînement : clic → liste des gagnants. PVP : détail du geocoin.
+                          if (beginnerActive) { setBeginnerWinnersPopup({ card: h.card, winners: h.winners || [] }); return; }
+                          setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); setSelectedCardFromHistory(true);
+                        }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, minWidth: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
                             onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.zIndex = 10; }}
                             onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = 1; }}>
@@ -2034,6 +2063,9 @@ export default function App() {
 
       {/* Modale de règles du jeu (PVP vs Débutant) */}
       {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
+
+      {/* Liste des gagnants d'une manche Entraînement (clic sur le feed) */}
+      {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} onClose={() => setBeginnerWinnersPopup(null)} />}
 
       {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {

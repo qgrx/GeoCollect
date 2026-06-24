@@ -190,6 +190,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     if (result && result.ok) { doneRef.current=true; setOutcome(result.outcome||'card'); setResultForge(result.forge||0); setStatus("won"); soundCorrect(); retryRef.current=0; }
     else if (result && result.handicap) { setSubmitError(t('streak_handicap_wait')); } // série : délai cadeau pas encore écoulé
     else if (result === 'fast') { setSubmitError("⏱️ Réponse trop rapide ! Lis bien la question."); setIsSubmitting(false); submittingRef.current=false; return; }
+    else if (result === 'blocked') { onClose?.(); }   // protection inter-modes (prochaine manche)
     else if (result === 'late') { if (beginner) { onClose?.(); } else finish(null); }
     else if (result === 'error') {
       // Réseau/5xx : la réponse a PEUT-ÊTRE abouti côté serveur (le serveur est
@@ -760,7 +761,7 @@ export function ModeToggle({ mode, onChange, onOpenRules }) {
 }
 
 // ─── Barre de quiz — MODE DÉBUTANT (style distinct, communs, multi-gagnants) ──
-export function BeginnerCountdownWidget({ secondsLeft, cycleTime = 60, nextCard, hasPendingQuiz, alreadyWon = false, onJoin, owned = false }) {
+export function BeginnerCountdownWidget({ secondsLeft, cycleTime = 60, nextCard, hasPendingQuiz, alreadyWon = false, onJoin, owned = false, blocked = false, blockMessage = '' }) {
   const { t } = useT(); const { theme } = useTheme();
   const pct = Math.max(0, Math.min(100, ((cycleTime - secondsLeft) / cycleTime) * 100));
   const c1 = '#00b894', c2 = '#0984e3';
@@ -786,7 +787,7 @@ export function BeginnerCountdownWidget({ secondsLeft, cycleTime = 60, nextCard,
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 3 }}>
             {/* Titre homogène : « 🌱 Mode Débutant - Plusieurs gagnants » */}
-            <span style={{ fontSize: 11, color: c1, fontWeight: 900, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌱 {t('beginner_badge') || 'Mode Débutant'} - {t('beginner_multiple_winners') || 'Plusieurs gagnants'}</span>
+            <span style={{ fontSize: 11, color: c1, fontWeight: 900, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌱 {t('beginner_badge') || 'Mode Entraînement'}</span>
             {/* Décompte de la manche */}
             <span style={{ fontSize: 12, fontWeight: 900, color: secondsLeft > 0 && secondsLeft <= 10 ? '#e17055' : c1, flexShrink: 0 }}>⏳ {secondsLeft > 0 ? `${secondsLeft}s` : '…'}</span>
           </div>
@@ -801,7 +802,9 @@ export function BeginnerCountdownWidget({ secondsLeft, cycleTime = 60, nextCard,
           </div>
         </div>
         {/* Bouton */}
-        {alreadyWon ? (
+        {blocked ? (
+          <div style={{ flexShrink: 0, maxWidth: 150, color: '#e7b04a', fontWeight: 800, fontSize: 10, lineHeight: 1.3, textAlign: 'right' }}>{blockMessage}</div>
+        ) : alreadyWon ? (
           <div style={{ flexShrink: 0, color: c1, fontWeight: 900, fontSize: 12, whiteSpace: 'nowrap' }}>✓ {t('beginner_already_won') || 'Gagné'}</div>
         ) : (
           <button onClick={hasPendingQuiz ? onJoin : undefined} style={{
@@ -816,42 +819,70 @@ export function BeginnerCountdownWidget({ secondsLeft, cycleTime = 60, nextCard,
   );
 }
 
-// ─── Pause récap entre 2 manches débutant (félicitations aux gagnants) ────────
+// ─── Pause récap entre 2 manches Entraînement (félicitations aux gagnants) ────
+// Pas d'emoji : le top 3 (les plus rapides) est mis en avant avec des coupes
+// or / argent / bronze. Les gagnants sont déjà ordonnés par rapidité.
 export function BeginnerRecap({ winners = [], secondsLeft = 0 }) {
   const { t } = useT(); const { theme } = useTheme();
   const c1 = '#00b894', c2 = '#0984e3';
   const has = winners.length > 0;
-  const MAX = 18;                              // au-delà, on résume « +N »
-  const shown = winners.slice(0, MAX);
-  const extra = winners.length - shown.length;
+  const top3 = winners.slice(0, 3);
+  const rest = winners.slice(3, 3 + 15);
+  const extra = Math.max(0, winners.length - (3 + rest.length));
+  const MEDALS = [
+    { bg: 'linear-gradient(135deg,#fde68a,#f59e0b)', ring: '#f59e0b' },  // or
+    { bg: 'linear-gradient(135deg,#eef2f5,#9aa6b2)', ring: '#9aa6b2' },  // argent
+    { bg: 'linear-gradient(135deg,#e6b07a,#b45309)', ring: '#b45309' },  // bronze
+  ];
+  const Cup = ({ ring, size }) => (
+    // Petite coupe stylisée (CSS) : coupe + anses + pied.
+    <span style={{ position: 'relative', display: 'inline-block', width: size, height: size }}>
+      <span style={{ position: 'absolute', left: '18%', top: 0, width: '64%', height: '52%', background: MEDALS_BG_FROM_RING(ring), borderRadius: '0 0 50% 50% / 0 0 70% 70%', border: `1.5px solid ${ring}`, boxShadow: `0 1px 6px ${ring}66` }} />
+      <span style={{ position: 'absolute', left: '2%', top: '8%', width: '20%', height: '30%', border: `1.5px solid ${ring}`, borderRight: 'none', borderRadius: '50% 0 0 50%' }} />
+      <span style={{ position: 'absolute', right: '2%', top: '8%', width: '20%', height: '30%', border: `1.5px solid ${ring}`, borderLeft: 'none', borderRadius: '0 50% 50% 0' }} />
+      <span style={{ position: 'absolute', left: '42%', top: '50%', width: '16%', height: '22%', background: ring }} />
+      <span style={{ position: 'absolute', left: '30%', bottom: 0, width: '40%', height: '14%', background: ring, borderRadius: 2 }} />
+    </span>
+  );
   return (
     <>
       <style>{CW_STYLES}</style>
       <div style={{ background: `linear-gradient(135deg,${c1}1f,${c2}14)`, border: `1.5px solid ${c1}66`, borderRadius: 13, padding: '12px 14px', textAlign: 'center', animation: 'cgSlide .4s cubic-bezier(.34,1.56,.64,1) both', boxShadow: `0 0 26px ${c1}22` }}>
-        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 14, color: c1, marginBottom: has ? 8 : 4 }}>
-          {has ? `🎉 ${t('beginner_recap_title') || 'Bravo aux gagnants !'}` : `🙈 ${t('beginner_recap_none') || 'Personne n\'a trouvé cette fois !'}`}
+        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 14, color: c1, marginBottom: has ? 10 : 4 }}>
+          {has ? (t('beginner_recap_title') || 'Bravo aux gagnants !') : (t('beginner_recap_none') || "Personne n'a trouvé cette fois !")}
         </div>
-        {has && (
-          // Pseudos des gagnants — puces qui s'enroulent (jusqu'à ~3 lignes), jolies.
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', maxHeight: 84, overflow: 'hidden', marginBottom: 8 }}>
-            {shown.map((p, i) => (
-              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: `${c1}22`, border: `1px solid ${c1}55`, color: theme.textPrimary, borderRadius: 50, padding: '3px 10px', fontSize: 11.5, fontWeight: 800, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                🏆 {p}
-              </span>
+        {has && (<>
+          {/* Podium des 3 plus rapides, avec coupes */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 14, marginBottom: rest.length ? 10 : 4 }}>
+            {top3.map((p, i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, maxWidth: 96 }}>
+                <Cup ring={MEDALS[i].ring} size={i === 0 ? 30 : 26} />
+                <span style={{ fontSize: i === 0 ? 12 : 11, fontWeight: 900, color: theme.textPrimary, maxWidth: 96, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+              </div>
             ))}
-            {extra > 0 && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', background: '#ffffff14', border: `1px solid ${theme.border}`, color: theme.textSecondary, borderRadius: 50, padding: '3px 10px', fontSize: 11.5, fontWeight: 800 }}>
-                +{extra}
-              </span>
-            )}
           </div>
-        )}
+          {/* Autres gagnants — puces qui s'enroulent */}
+          {rest.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', maxHeight: 56, overflow: 'hidden', marginBottom: 8 }}>
+              {rest.map((p, i) => (
+                <span key={i} style={{ background: `${c1}1c`, border: `1px solid ${c1}44`, color: theme.textSecondary, borderRadius: 50, padding: '2px 9px', fontSize: 11, fontWeight: 700, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+              ))}
+              {extra > 0 && <span style={{ background: '#ffffff14', border: `1px solid ${theme.border}`, color: theme.textSecondary, borderRadius: 50, padding: '2px 9px', fontSize: 11, fontWeight: 700 }}>+{extra}</span>}
+            </div>
+          )}
+        </>)}
         <div style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 700 }}>
-          ⏳ {(t('beginner_next_round') || 'Prochaine manche dans {n}s').replace('{n}', Math.max(0, secondsLeft))}
+          {(t('beginner_next_round') || 'Prochaine manche dans {n}s').replace('{n}', Math.max(0, secondsLeft))}
         </div>
       </div>
     </>
   );
+}
+// Coupe : remplissage métallique dérivé de la couleur d'anneau.
+function MEDALS_BG_FROM_RING(ring) {
+  if (ring === '#f59e0b') return 'linear-gradient(135deg,#fde68a,#f59e0b)';
+  if (ring === '#9aa6b2') return 'linear-gradient(135deg,#eef2f5,#9aa6b2)';
+  return 'linear-gradient(135deg,#e6b07a,#b45309)';
 }
 
 // ─── Modale de règles du jeu (PVP vs Débutant) ───────────────────────────────
@@ -861,7 +892,7 @@ export function GameRulesModal({ onClose }) {
     <div style={{ flex: 1, minWidth: 0, background: `${accent}10`, border: `1.5px solid ${accent}44`, borderRadius: 14, padding: '14px 14px' }}>
       <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 15, color: accent, marginBottom: 10 }}>{emoji} {title}</div>
       <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 7 }}>
-        {rules.map((r, i) => <li key={i} style={{ fontSize: 12.5, color: theme.textSecondary, lineHeight: 1.45 }}>{r}</li>)}
+        {rules.map((r, i) => <li key={i} style={{ fontSize: 12.5, color: theme.textPrimary, lineHeight: 1.45 }}>{r}</li>)}
       </ul>
     </div>
   );
@@ -879,16 +910,48 @@ export function GameRulesModal({ onClose }) {
             t('rules_pvp_3') || 'Cadence variable selon le nombre de joueurs en ligne.',
             t('rules_pvp_4') || 'Or, points de forge et bonus de série à gagner.',
           ]} />
-          <Col accent="#00b894" emoji="🌱" title={t('mode_beginner') || 'Débutant'} rules={[
+          <Col accent="#00b894" emoji="🌱" title={t('mode_beginner') || 'Entraînement'} rules={[
             t('rules_beginner_1') || 'Plusieurs gagnants : tout le monde a une minute pour répondre.',
             t('rules_beginner_2') || 'Geocoins communs uniquement, jamais de brillant.',
             t('rules_beginner_3') || 'Un nouveau geocoin à la fin de chaque minute.',
-            t('rules_beginner_4') || 'Or à gagner, mais aucun point de forge dans ce mode.',
+            t('rules_beginner_gold') || 'Seuls les 5 premiers gagnants reçoivent de l\'or.',
+            t('rules_beginner_4') || 'Aucun point de forge dans ce mode.',
           ]} />
         </div>
-        <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 14, textAlign: 'center' }}>
+        <div style={{ fontSize: 11.5, color: theme.textSecondary, marginTop: 14, textAlign: 'center' }}>
           {t('rules_limits_note') || 'Les limites quotidiennes de geocoins s\'appliquent aux deux modes.'}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Liste des gagnants d'une manche Entraînement (clic sur le feed) ──────────
+export function BeginnerWinnersModal({ card, winners = [], onClose }) {
+  const { t } = useT(); const { theme } = useTheme();
+  const c1 = '#00b894';
+  const RANK = ['#f59e0b', '#9aa6b2', '#b45309'];   // or / argent / bronze
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000b', backdropFilter: 'blur(8px)', padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'linear-gradient(145deg,#0f1923,#1a2736)', border: `1.5px solid ${c1}55`, borderRadius: 18, padding: '18px 18px', maxWidth: 360, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 24px 60px #000c', fontFamily: "'Nunito',sans-serif" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 15, color: c1 }}>
+            {t('beginner_winners_title') || 'Gagnants'}{card ? ` — ${cardName(card, getLang())}` : ''}
+          </div>
+          <button onClick={onClose} style={{ background: '#ffffff18', border: 'none', color: '#888', width: 26, height: 26, borderRadius: '50%', fontSize: 13, cursor: 'pointer', fontWeight: 900 }}>✕</button>
+        </div>
+        {winners.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: theme.textSecondary, textAlign: 'center', padding: '10px 0' }}>{t('beginner_recap_none') || "Personne n'a trouvé cette fois !"}</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {winners.map((p, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: i < 3 ? `${RANK[i]}18` : '#ffffff08', border: `1px solid ${i < 3 ? RANK[i] + '55' : theme.border}`, borderRadius: 9, padding: '7px 11px' }}>
+                <span style={{ width: 22, height: 22, flexShrink: 0, borderRadius: '50%', background: i < 3 ? RANK[i] : '#ffffff1a', color: i < 3 ? '#1a1205' : theme.textSecondary, fontWeight: 900, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

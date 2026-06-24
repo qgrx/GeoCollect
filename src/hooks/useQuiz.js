@@ -188,6 +188,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       const { data, error, status, body } = await apiAnswerQuiz(activeQuiz.id, userAnswer)
       if (error) {
         if (status === 425) return { handicap: true, wait_ms: body?.wait_ms || 0 } // série : délai cadeau
+        if (status === 423) return 'blocked' // protection inter-modes (prochaine manche)
         if (status === 429) return 'fast'    // trop rapide
         if (status === 409 || status === 404) { resolvedQuizIdsRef.current.add(activeQuiz.id); return 'late' }  // déjà résolu / expiré
         if (status === 422) return false     // vraie mauvaise réponse
