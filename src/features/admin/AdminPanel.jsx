@@ -10,7 +10,9 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiAdminGetBots, apiAdminCreateBot, apiAdminUpdateBot, apiAdminDeleteBot,
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
   apiAdminSaveTranslations,
-  apiAdminEditFullQuestion,
+  apiAdminEditFullQuestion, apiAdminAddQuestion, apiAdminBatchAddQuestions,
+  apiAdminDeleteDraftQuestions, apiAdminDeletePublishedQuestions,
+  apiAdminToggleQuestion, apiReleaseHiddenQuestions,
   apiGetAchievementDefs, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef, apiReleaseHiddenAchievements,
   apiAdminAddCard,
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
@@ -85,31 +87,325 @@ function CardSelect({value,cards,onChange,style}){
   );
 }
 
+// ─── Date locale ⇄ ISO pour <input type="datetime-local"> ────────────────────
+function isoToLocalInput(iso){
+  if(!iso) return '';
+  const d=new Date(iso); if(isNaN(d.getTime())) return '';
+  const pad=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function localInputToIso(s){
+  if(!s) return null;
+  const d=new Date(s); return isNaN(d.getTime())?null:d.toISOString();
+}
+const mapServerQ = q => ({
+  id:q.id, q:q.question, a:q.answer, hint:q.hint||'', active:q.active,
+  hidden:!!q.hidden, publish_at:q.publish_at||null,
+  translations:q.translations||{}, alt_answers:q.alt_answers||[],
+  report_count:q.report_count||0,
+});
+const Q_TRANS_LANGS=[{code:'en',label:'English'},{code:'de',label:'Deutsch'},{code:'es',label:'Español'}];
+
+// ─── Gestionnaire de questions (réutilisé par les onglets « Questions » et « Brouillons ») ──
+// mode='published' → questions en jeu (hidden=false) · mode='drafts' → brouillons (hidden=true).
+// Composant autonome : il charge ses propres données et n'écrit jamais hors de son périmètre
+// (un import de brouillons ne touche pas les questions publiées et inversement).
+function QuestionsManager({mode,setMsg,t}){
+  const isDraft = mode==='drafts';
+  const accent = isDraft ? '#e17055' : '#e74c3c';
+  const [all,setAll]=useState(null);                 // toutes les questions (null = chargement)
+  const [editQ,setEditQ]=useState(null);
+  const emptyNq=()=>({q:"",a:"",hint:"",alt_answers:[],publish_at:null});
+  const [nq,setNq]=useState(emptyNq);
+  const [altInput,setAltInput]=useState("");
+  const [qPage,setQPage]=useState(0);
+  const [qSearch,setQSearch]=useState("");
+  const [qFilterReported,setQFilterReported]=useState(false);
+  const [resetReports]=useState(()=>new Set());
+  const [transQ,setTransQ]=useState(null);
+  const [transLang,setTransLang]=useState('en');
+  const [csvPending,setCsvPending]=useState(null);
+  const csvRef=useRef();
+
+  useEffect(()=>{
+    apiAdminGetQuestions().then(({data})=>setAll((data?.questions||[]).map(mapServerQ)));
+  },[]);
+
+  const items=(all||[]).filter(q=> isDraft ? q.hidden : !q.hidden);
+
+  // ── CSV (périmètre du mode courant uniquement) ──
+  async function handleCSV(e){
+    const f=e.target.files[0]; if(!f) return; e.target.value='';
+    const rows=parseCSV(await f.text());
+    const parsed=rows.map(([q,a,q_en,a_en,q_de,a_de,q_es,a_es])=>{
+      if(!q||!a) return null;
+      const translations={};
+      if(q_en&&a_en) translations.en={question:q_en,answer:a_en};
+      if(q_de&&a_de) translations.de={question:q_de,answer:a_de};
+      if(q_es&&a_es) translations.es={question:q_es,answer:a_es};
+      return {question:q,answer:a,hint:"",translations};
+    }).filter(Boolean);
+    if(!parsed.length){setMsg("❌ Aucune question valide.");return;}
+    setCsvPending({questions:parsed});
+  }
+  async function doImportCSV(replace){
+    if(!csvPending) return;
+    const {questions:parsed}=csvPending; setCsvPending(null);
+    setMsg("⏳ Importation en cours…");
+    if(replace){
+      const {error}=await (isDraft?apiAdminDeleteDraftQuestions():apiAdminDeletePublishedQuestions());
+      if(error){setMsg("❌ Erreur suppression : "+error);return;}
+      setAll(prev=>(prev||[]).filter(q=> isDraft ? !q.hidden : q.hidden));
+    }
+    const {data,error}=await apiAdminBatchAddQuestions(parsed,isDraft);
+    if(error){setMsg("❌ Erreur import : "+error);return;}
+    const saved=(data?.questions||[]).map(mapServerQ);
+    setAll(prev=>[...saved,...(prev||[])]);
+    setMsg(`✅ ${data?.inserted||saved.length} ${isDraft?'brouillon(s)':'question(s)'} importé(s) !`);
+  }
+  function exportCSV(){
+    const header="question,reponse,question_en,reponse_en,question_de,reponse_de,question_es,reponse_es";
+    const rows=items.map(q=>{const tr=q.translations||{};return `"${q.q}","${q.a}","${tr.en?.question||""}","${tr.en?.answer||""}","${tr.de?.question||""}","${tr.de?.answer||""}","${tr.es?.question||""}","${tr.es?.answer||""}"`;});
+    const blob=new Blob([[header,...rows].join("\n")],{type:"text/csv"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=isDraft?"brouillons.csv":"questions.csv"; a.click();
+  }
+
+  // ── Mutations ──
+  async function addQuestion(){
+    if(!nq.q||!nq.a){setMsg("❌ Q et R requis.");return;}
+    const {data,error}=await apiAdminAddQuestion(nq.q,nq.a,{},nq.alt_answers,isDraft,nq.hint,isDraft?nq.publish_at:null);
+    if(error||!data?.question){setMsg("❌ Erreur ajout");return;}
+    setAll(prev=>[mapServerQ(data.question),...(prev||[])]);
+    setMsg(isDraft?"✅ Brouillon ajouté !":"✅ Question ajoutée !");
+    setNq(emptyNq()); setAltInput("");
+  }
+  async function saveEdit(){
+    if(!editQ.q||!editQ.a){setMsg("❌ Q et R requis.");return;}
+    const fields={q:editQ.q,a:editQ.a,hint:editQ.hint,alt_answers:editQ.alt_answers||[]};
+    if(isDraft) fields.publish_at=editQ.publish_at||null;
+    const {data,error}=await apiAdminEditFullQuestion(editQ.id,fields);
+    if(error){setMsg("❌ Erreur sauvegarde");return;}
+    const merged={...editQ,...(data?.question?mapServerQ(data.question):{})};
+    setAll(prev=>(prev||[]).map(x=>x.id===merged.id?merged:x));
+    setEditQ(null);setAltInput("");setMsg("✅ Question mise à jour !");
+  }
+  async function toggleActive(q){
+    const newActive=q.active===false;
+    setAll(prev=>(prev||[]).map(x=>x.id===q.id?{...x,active:newActive}:x));
+    const {error}=await apiAdminToggleQuestion(q.id,newActive);
+    if(error){setAll(prev=>(prev||[]).map(x=>x.id===q.id?{...x,active:!newActive}:x));setMsg("❌ "+error);return;}
+    setMsg(newActive?"✅ Question réactivée.":"⛔ Question désactivée.");
+  }
+  async function publishNow(q){
+    if(!window.confirm("Publier ce brouillon maintenant ? Il entrera dans le pool des quiz."))return;
+    const {error}=await apiAdminEditFullQuestion(q.id,{q:q.q,a:q.a,hint:q.hint,alt_answers:q.alt_answers||[],hidden:false,publish_at:null});
+    if(error){setMsg("❌ "+error);return;}
+    setAll(prev=>(prev||[]).map(x=>x.id===q.id?{...x,hidden:false,publish_at:null}:x));
+    setMsg("✅ Brouillon publié !");
+  }
+  async function publishAll(){
+    const count=items.length;
+    if(!window.confirm(`Publier ${count} brouillon(s) ? Ils entreront dans le pool des quiz.`))return;
+    const {data,error}=await apiReleaseHiddenQuestions();
+    if(error){setMsg("❌ "+error);return;}
+    setAll(prev=>(prev||[]).map(x=>x.hidden?{...x,hidden:false,publish_at:null}:x));
+    setMsg(`✅ ${data?.released??count} brouillon(s) publié(s) !`);
+  }
+  async function resetRep(q){
+    const {error}=await apiResetQuestionReports(q.id);
+    if(error){setMsg("❌ "+error);return;}
+    setAll(prev=>(prev||[]).map(x=>x.id===q.id?{...x,report_count:0}:x));
+    setMsg("✅ Signalements réinitialisés.");
+  }
+  async function saveTrans(){
+    const {error}=await apiAdminSaveTranslations(transQ.id,transQ.translations);
+    if(error){setMsg("❌ Erreur sauvegarde");return;}
+    setAll(prev=>(prev||[]).map(x=>x.id===transQ.id?{...x,translations:transQ.translations}:x));
+    setMsg("✅ Traductions sauvegardées !");
+  }
+
+  if(all===null) return <div style={{textAlign:"center",color:"#a8bfcf",padding:"30px 0",fontSize:13}}>⏳ Chargement…</div>;
+
+  const cur = editQ ?? nq;
+  const set = v => editQ ? setEditQ(v) : setNq(v);
+  const altAnswers = cur.alt_answers || [];
+  const addAlt = () => {
+    const v = altInput.trim();
+    if(!v || altAnswers.includes(v)) { setAltInput(""); return; }
+    set({...cur, alt_answers:[...altAnswers, v]});
+    setAltInput("");
+  };
+
+  const Q_PAGE=10;
+  const filtered=items.filter(q=>
+    (!qFilterReported || ((q.report_count||0)>0 && !resetReports.has(q.id))) &&
+    (q.q.toLowerCase().includes(qSearch.toLowerCase())||
+     q.a.toLowerCase().includes(qSearch.toLowerCase())||
+     (q.hint||"").toLowerCase().includes(qSearch.toLowerCase())||
+     (q.alt_answers||[]).some(a=>a.toLowerCase().includes(qSearch.toLowerCase())))
+  );
+  const totalPages=Math.ceil(filtered.length/Q_PAGE);
+  const pg=Math.min(qPage,Math.max(0,totalPages-1));
+  const slice=filtered.slice(pg*Q_PAGE,(pg+1)*Q_PAGE);
+
+  return(
+    <div>
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+        <div style={{flex:1,fontWeight:900,color:accent,fontSize:14}}>{isDraft?"📝 Brouillons":"❓ Questions"} ({items.length})</div>
+        {isDraft&&items.length>0&&(
+          <button onClick={publishAll} style={{...BTN("linear-gradient(135deg,#e17055,#d63031)"),padding:"5px 11px",fontSize:11,borderRadius:7}} title="Publier tous les brouillons d'un coup">🚀 Publier {items.length}</button>
+        )}
+        <button onClick={()=>csvRef.current.click()} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📥 CSV</button>
+        <button onClick={exportCSV} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📤 Export</button>
+        <input ref={csvRef} type="file" accept=".csv" onChange={handleCSV} style={{display:"none"}}/>
+      </div>
+
+      {/* Dialog choix import CSV */}
+      {csvPending&&(
+        <div style={{background:"#1a0a2e",border:"1.5px solid #6c5ce7",borderRadius:12,padding:16,marginBottom:14,textAlign:"center"}}>
+          <div style={{fontWeight:900,color:"#f9ca24",fontSize:14,marginBottom:6}}>📥 Importer {csvPending.questions.length} {isDraft?"brouillons":"questions"}</div>
+          <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>Que faire des {isDraft?"brouillons":"questions publiées"} existant·e·s ? {isDraft&&<span style={{color:"#8daacc"}}>(les questions déjà en jeu ne sont jamais touchées)</span>}</div>
+          <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+            <button onClick={()=>doImportCSV(true)} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"9px 18px",borderRadius:9,fontSize:12}}>🗑️ Remplacer les {isDraft?"brouillons":"existantes"}</button>
+            <button onClick={()=>doImportCSV(false)} style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"9px 18px",borderRadius:9,fontSize:12}}>➕ Ajouter</button>
+            <button onClick={()=>setCsvPending(null)} style={{background:"none",border:"none",color:"#8daacc",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {/* Formulaire */}
+      <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:14}}>
+        <div style={{fontWeight:800,color:"#f9ca24",marginBottom:9,fontSize:13}}>{editQ?"✏️ Éditer":(isDraft?"➕ Nouveau brouillon":"➕ Nouvelle question")}</div>
+        <Fld lbl="Question"><input value={cur.q} onChange={e=>set({...cur,q:e.target.value})} style={INP} placeholder={t("admin_q_placeholder")}/></Fld>
+        <Fld lbl="Réponse attendue"><input value={cur.a} onChange={e=>set({...cur,a:e.target.value})} style={INP} placeholder={t("admin_q_answer_placeholder")||"Réponse exacte"}/></Fld>
+        <Fld lbl="Réponses alternatives">
+          <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:6}}>
+            {altAnswers.map((v,i)=>(
+              <span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,background:"#00b89422",border:"1px solid #00b89444",borderRadius:50,padding:"2px 9px",fontSize:11,color:"#00b894",fontWeight:700}}>
+                {v}
+                <button onClick={()=>set({...cur,alt_answers:altAnswers.filter((_,j)=>j!==i)})} style={{background:"none",border:"none",color:"#00b894",cursor:"pointer",padding:0,fontSize:12,lineHeight:1,fontFamily:"'Nunito',sans-serif"}}>×</button>
+              </span>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            <input value={altInput} onChange={e=>setAltInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addAlt();}}} style={{...INP,flex:1,padding:"6px 10px"}} placeholder="Ex: 0 — Entrée pour ajouter"/>
+            <button onClick={addAlt} style={{...BTN("#00b89433"),padding:"6px 12px",borderRadius:8,fontSize:11,border:"1px solid #00b89444",color:"#00b894"}}>+</button>
+          </div>
+        </Fld>
+        <Fld lbl="Indice"><input value={cur.hint} onChange={e=>set({...cur,hint:e.target.value})} style={INP} placeholder={t("admin_hint_placeholder")}/></Fld>
+        {isDraft&&(
+          <Fld lbl="📅 Publication programmée (optionnel)">
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <input type="datetime-local" value={isoToLocalInput(cur.publish_at)} onChange={e=>set({...cur,publish_at:localInputToIso(e.target.value)})} style={{...INP,flex:1}}/>
+              {cur.publish_at&&<button onClick={()=>set({...cur,publish_at:null})} title="Retirer la date" style={{...BTN("#ffffff12"),padding:"6px 10px",borderRadius:8,fontSize:11}}>✕</button>}
+            </div>
+            <div style={{color:"#8daacc",fontSize:11,marginTop:3}}>Le brouillon sera publié automatiquement à cette date/heure et entrera dans le pool des quiz. Laissez vide pour publier manuellement.</div>
+          </Fld>
+        )}
+        <div style={{display:"flex",gap:8}}>
+          {editQ?(
+            <><button onClick={saveEdit} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Enregistrer</button>
+            <button onClick={()=>{setEditQ(null);setAltInput("");}} style={{background:"none",border:"none",color:"#8daacc",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>{t("shop_cancel")}</button></>
+          ):(
+            <button onClick={addQuestion} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Ajouter</button>
+          )}
+        </div>
+      </div>
+
+      {/* Recherche + pagination */}
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+        <input value={qSearch} onChange={e=>{setQSearch(e.target.value);setQPage(0);}} placeholder="Rechercher…" style={{...INP,flex:1,padding:"7px 11px",fontSize:12}}/>
+        <button onClick={()=>{setQFilterReported(v=>!v);setQPage(0);}}
+          style={{background:qFilterReported?"#e74c3c22":"#ffffff0a",border:`1px solid ${qFilterReported?"#e74c3c66":"#ffffff18"}`,color:qFilterReported?"#e74c3c":"#888",padding:"5px 10px",borderRadius:7,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}}>
+          ⚠ Signalées {qFilterReported&&`(${filtered.length})`}
+        </button>
+        <span style={{fontSize:11,color:"#8daacc",whiteSpace:"nowrap",fontWeight:700}}>{filtered.length}/{items.length}</span>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+        {slice.length===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"18px 0",fontSize:12}}>{isDraft?"Aucun brouillon.":"Aucune question trouvée."}</div>}
+        {slice.map(q=>{const inactive=q.active===false;return(
+          <div key={q.id} style={{display:"flex",alignItems:"flex-start",gap:9,background:editQ?.id===q.id?"#f9ca2410":inactive?"#e74c3c08":"#ffffff08",borderRadius:9,padding:"9px 12px",border:`1px solid ${editQ?.id===q.id?"#f9ca2444":inactive?"#e74c3c22":"#ffffff10"}`,opacity:inactive?0.6:1}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,color:inactive?"#666":"#fff",fontWeight:700,marginBottom:2,textDecoration:inactive?"line-through":"none"}}>{q.q}</div>
+              <div style={{fontSize:11,color:"#00b894",fontWeight:700}}>→ {q.a}</div>
+              {(q.alt_answers||[]).length>0&&<div style={{fontSize:10,color:"#00b894",opacity:.7,marginTop:1}}>∥ {q.alt_answers.join(", ")}</div>}
+              {q.hint&&<div style={{fontSize:10,color:"#a8bfcf",marginTop:2}}>💡 {q.hint}</div>}
+              {isDraft&&q.publish_at&&<div style={{display:"inline-block",fontSize:10,color:"#f9ca24",fontWeight:800,marginTop:3,background:"#f9ca2418",borderRadius:4,padding:"1px 6px"}}>📅 Publication : {new Date(q.publish_at).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}</div>}
+              {(q.report_count||0)>0&&!resetReports.has(q.id)&&(
+                <div style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:3}}>
+                  <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#e74c3c22",border:"1px solid #e74c3c44",borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800,color:"#e74c3c"}}>⚠ {q.report_count} signalement{q.report_count>1?"s":""}</div>
+                  <button onClick={()=>resetRep(q)} title="Réinitialiser les signalements" style={{background:"#ffffff12",border:"1px solid #ffffff22",color:"#aaa",padding:"1px 7px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>↺ reset</button>
+                </div>
+              )}
+              {inactive&&<div style={{fontSize:9,color:"#e74c3c",fontWeight:800,marginTop:3}}>DÉSACTIVÉE</div>}
+            </div>
+            <div style={{display:"flex",gap:5,flexShrink:0}}>
+              {!inactive&&isDraft&&<button onClick={()=>publishNow(q)} title="Publier maintenant" style={{background:"#e1705522",border:"1px solid #e1705544",color:"#e17055",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>🚀</button>}
+              {!inactive&&<button onClick={()=>{setEditQ(editQ?.id===q.id?null:{...q,alt_answers:q.alt_answers||[]});setAltInput("");}} style={{background:"#f9ca2422",border:"1px solid #f9ca2444",color:"#f9ca24",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>✏️</button>}
+              {!inactive&&<button onClick={()=>setTransQ(transQ?.id===q.id?null:{...q,translations:q.translations||{}})} title="Traduire" style={{background:"#6c5ce722",border:"1px solid #6c5ce744",color:"#a29bfe",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>🌐</button>}
+              <button onClick={()=>toggleActive(q)} style={{background:inactive?"#00b89422":"#e74c3c22",border:`1px solid ${inactive?"#00b89444":"#e74c3c44"}`,color:inactive?"#00b894":"#e74c3c",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{inactive?"✅":"🗑️"}</button>
+            </div>
+          </div>
+        );})}
+      </div>
+      {totalPages>1&&(
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <button onClick={()=>setQPage(p=>Math.max(0,p-1))} disabled={pg===0}
+            style={{background:pg===0?"#ffffff0a":"#ffffff18",border:"none",color:pg===0?"#444":"#fff",width:28,height:28,borderRadius:8,cursor:pg===0?"default":"pointer",fontWeight:900,fontSize:14}}>‹</button>
+          {Array.from({length:totalPages},(_,i)=>(
+            <button key={i} onClick={()=>setQPage(i)}
+              style={{width:i===pg?28:8,height:8,borderRadius:i===pg?6:50,border:"none",cursor:"pointer",background:i===pg?accent:"#ffffff33",padding:0,transition:"all .2s",color:i===pg?"#fff":"transparent",fontSize:10,fontWeight:900}}>
+              {i===pg?`${i+1}`:""}
+            </button>
+          ))}
+          <button onClick={()=>setQPage(p=>Math.min(totalPages-1,p+1))} disabled={pg===totalPages-1}
+            style={{background:pg===totalPages-1?"#ffffff0a":"#ffffff18",border:"none",color:pg===totalPages-1?"#444":"#fff",width:28,height:28,borderRadius:8,cursor:pg===totalPages-1?"default":"pointer",fontWeight:900,fontSize:14}}>›</button>
+          <span style={{fontSize:11,color:"#8daacc",marginLeft:4}}>{pg+1} / {totalPages}</span>
+        </div>
+      )}
+
+      {/* ── Panneau traductions ── */}
+      {transQ&&(
+        <div style={{background:"#1a0a3a",border:"1.5px solid #6c5ce766",borderRadius:12,padding:16,marginTop:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{fontWeight:900,color:"#a29bfe",fontSize:13}}>🌐 Traductions — <span style={{color:"#fff",fontStyle:"italic"}}>{transQ.q}</span></div>
+            <button onClick={()=>setTransQ(null)} style={{background:"none",border:"none",color:"#8daacc",fontSize:14,cursor:"pointer"}}>✕</button>
+          </div>
+          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+            {Q_TRANS_LANGS.map(l=>(
+              <button key={l.code} onClick={()=>setTransLang(l.code)}
+                style={{background:transLang===l.code?"#6c5ce7":"#ffffff10",border:"none",color:transLang===l.code?"#fff":"#aaa",padding:"5px 12px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
+                {l.label} {transQ.translations?.[l.code]?.question?"✓":""}
+              </button>
+            ))}
+          </div>
+          {Q_TRANS_LANGS.filter(l=>l.code===transLang).map(l=>(
+            <div key={l.code}>
+              <Fld lbl={`Question (${l.label})`}>
+                <input value={transQ.translations?.[l.code]?.question||""} onChange={e=>setTransQ(q=>({...q,translations:{...q.translations,[l.code]:{...q.translations?.[l.code],question:e.target.value}}}))} style={INP} placeholder={`Question en ${l.label}…`}/>
+              </Fld>
+              <Fld lbl={`Réponse (${l.label})`}>
+                <input value={transQ.translations?.[l.code]?.answer||""} onChange={e=>setTransQ(q=>({...q,translations:{...q.translations,[l.code]:{...q.translations?.[l.code],answer:e.target.value}}}))} style={INP} placeholder={`Réponse en ${l.label}…`}/>
+              </Fld>
+            </div>
+          ))}
+          <button onClick={saveTrans} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"8px 18px",borderRadius:8,fontSize:12,marginTop:8}}>
+            💾 Sauvegarder les traductions
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
 export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onReleaseHiddenQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool,onTestAchievement,onShopPacksSaved,onShopTestModeChange}){
   const {t}=useT();
   // Geocoins de type achievement, proposés pour lier une condition à une carte.
   const achievementCards=(cardPool||[]).filter(c=>c.type?.toLowerCase().startsWith('achievement'));
   const [tab,setTab]=useState(()=>window.location.hash.slice(1)||"cards");
-  const [editQ,setEditQ]=useState(null);
-  const [qPage,setQPage]=useState(0);
-  const [qSearch,setQSearch]=useState("");
-  const [qFilterReported,setQFilterReported]=useState(false);
-  const [resetReports]=useState(()=>new Set()); // conservé pour compatibilité badge
   const [showMeltPreview,setShowMeltPreview]=useState(false);
-  const [liveQuestions,setLiveQuestions]=useState(null); // null = utilise le prop
-
-  useEffect(()=>{
-    if(tab!=='questions') return;
-    apiAdminGetQuestions().then(({data})=>{
-      if(data?.questions) setLiveQuestions(data.questions.map(q=>({
-        id: q.id, q: q.question, a: q.answer, hint: q.hint||'',
-        active: q.active, translations: q.translations||{},
-        alt_answers: q.alt_answers||[],
-        report_count: q.report_count||0,
-      })));
-    });
-  },[tab]);
+  // Les onglets « Questions » et « Brouillons » sont gérés par <QuestionsManager/> (autonome).
 
   // ── Mode démo (onboarding) : 5 paires geocoin + question ──────────────────────
   const [demoPairs,setDemoPairs]=useState([]);          // [{card_id, question_id}]
@@ -167,11 +463,6 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [listingsPage,setListingsPage]=useState(0);
   const [listingsQ,setListingsQ]=useState('');
   const [expiredDays,setExpiredDays]=useState(limits.marketExpireDays || 30);
-  const [nq,setNq]=useState({q:"",a:"",hint:"",alt_answers:[],hidden:false});
-  const [altInput,setAltInput]=useState(""); // saisie d'une réponse alternative
-  const [transQ,setTransQ]=useState(null);   // question en cours de traduction
-  const [transLang,setTransLang]=useState('en');
-  const TRANS_LANGS=[{code:'en',label:'English'},{code:'de',label:'Deutsch'},{code:'es',label:'Español'}];
   const [ntName,setNtName]=useState("");
   const [editingType,setEditingType]=useState(null);
   const [editTypeName,setEditTypeName]=useState("");
@@ -181,7 +472,6 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [msg,setMsg]=useState("");
   const [domainInput,setDomainInput]=useState("");
   const [domainSearch,setDomainSearch]=useState("");
-  const csvQRef=useRef();
 
   function imgUpload(e, cb, meta={}) {
     const originalFile = e.target.files[0]; if (!originalFile) return;
@@ -197,54 +487,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
       .catch(err => { setMsg('❌ Erreur traitement image: ' + err.message); });
   }
 
-  const [csvPending,setCsvPending]=useState(null); // {questions:[]} en attente du choix
-
-  async function handleCSVQ(e){
-    const f=e.target.files[0]; if(!f) return;
-    e.target.value='';
-    const text = await f.text();
-    const rows=parseCSV(text);
-    const parsed=rows.map(([q,a,q_en,a_en,q_de,a_de,q_es,a_es])=>{
-      if(!q||!a) return null;
-      const translations={};
-      if(q_en&&a_en) translations.en={question:q_en,answer:a_en};
-      if(q_de&&a_de) translations.de={question:q_de,answer:a_de};
-      if(q_es&&a_es) translations.es={question:q_es,answer:a_es};
-      return {question:q,answer:a,hint:"",translations};
-    }).filter(Boolean);
-    if(!parsed.length){setMsg("❌ Aucune question valide.");return;}
-    setCsvPending({questions:parsed});
-  }
-
-  async function doImportCSV(replace){
-    if(!csvPending) return;
-    const {questions:parsed}=csvPending;
-    setCsvPending(null);
-    setMsg("⏳ Importation en cours…");
-    const {apiAdminBatchAddQuestions,apiAdminDeleteAllQuestions}=await import('../../services/api.js');
-    if(replace){
-      const {error}=await apiAdminDeleteAllQuestions();
-      if(error){setMsg("❌ Erreur suppression : "+error);return;}
-      onReplaceQuestions([]);
-    }
-    const {data,error}=await apiAdminBatchAddQuestions(parsed);
-    if(error){setMsg("❌ Erreur import : "+error);return;}
-    const saved=(data?.questions||[]).map(q=>({id:q.id,q:q.question,a:q.answer,hint:q.hint||'',active:q.active,translations:q.translations||{}}));
-    saved.forEach(q=>onAddQuestion(q));
-    setMsg(`✅ ${data?.inserted||saved.length} questions importées !`);
-  }
-  function exportCSVQ(){
-    const header="question,reponse,question_en,reponse_en,question_de,reponse_de,question_es,reponse_es";
-    const rows=questions.map(q=>{
-      const t=q.translations||{};
-      return `"${q.q}","${q.a}","${t.en?.question||""}","${t.en?.answer||""}","${t.de?.question||""}","${t.de?.answer||""}","${t.es?.question||""}","${t.es?.answer||""}"`;
-    });
-    const csv=[header,...rows];
-    const blob=new Blob([csv.join("\n")],{type:"text/csv"});
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="questions.csv"; a.click();
-  }
-
-  useEffect(()=>{setQPage(0);setQSearch("");setEditAch(null);setListingsPage(0);setListingsQ('');setMktHistPage(0);setMktHistType('');setMktHistQ('');setDomainInput('');setDomainSearch('');},[tab]);
+  useEffect(()=>{setEditAch(null);setListingsPage(0);setListingsQ('');setMktHistPage(0);setMktHistType('');setMktHistQ('');setDomainInput('');setDomainSearch('');},[tab]);
 
   useEffect(()=>{
     if(tab!=='achievements') return;
@@ -305,7 +548,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
   const NAV=[
     {label:'Contenu',items:[{id:'cards',icon:'🃏',label:'Cartes'},{id:'types',icon:'🏷️',label:'Types'},{id:'seasons',icon:'🌸',label:'Saisons'}]},
-    {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'},{id:'demo',icon:'🎮',label:'Démo'}]},
+    {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'drafts',icon:'📝',label:'Brouillons'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'},{id:'demo',icon:'🎮',label:'Démo'}]},
     {label:'Économie',items:[{id:'limits',icon:'💰',label:'Limites & Prix'},{id:'shop',icon:'🛍️',label:'Boutique'},{id:'ranks',icon:'🎖️',label:'Rangs'}]},
     {label:'Récompenses',items:[{id:'quests',icon:'🔨',label:'Quêtes'},{id:'achievements',icon:'🏆',label:'Achievements'}]},
     {label:'Communauté',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'referrals',icon:'🤝',label:'Parrainage'},{id:'bots',icon:'🤖',label:'Bots'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_history',icon:'💸',label:'Historique'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
@@ -421,188 +664,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           </div>
         </div>}
 
-        {/* ── QUESTIONS ── */}
-        {tab==="questions"&&<div>
-          <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
-            <div style={{flex:1,fontWeight:900,color:"#e74c3c",fontSize:14}}>❓ Questions ({(liveQuestions??questions).length})</div>
-            {(()=>{const hiddenCount=(liveQuestions??questions).filter(q=>q.hidden).length;return hiddenCount>0&&(
-              <button onClick={async()=>{if(!window.confirm(`Publier ${hiddenCount} question(s) en brouillon ? Elles entreront dans le pool des quiz.`))return;const r=await onReleaseHiddenQuestions?.();if(r?.error){setMsg("❌ "+r.error);return;}setLiveQuestions(qs=>(qs??questions).map(x=>x.hidden?{...x,hidden:false}:x));setMsg(`✅ ${r?.released??hiddenCount} question(s) publiée(s) !`);}}
-                style={{...BTN("linear-gradient(135deg,#e17055,#d63031)"),padding:"5px 11px",fontSize:11,borderRadius:7}} title="Rendre visibles toutes les questions en brouillon">🚀 Publier {hiddenCount} brouillon{hiddenCount>1?"s":""}</button>
-            );})()}
-            <button onClick={()=>csvQRef.current.click()} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📥 CSV</button>
-            <button onClick={exportCSVQ} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📤 Export</button>
-            <input ref={csvQRef} type="file" accept=".csv" onChange={handleCSVQ} style={{display:"none"}}/>
-          </div>
-          {/* Dialog choix import CSV */}
-          {csvPending&&(
-            <div style={{background:"#1a0a2e",border:"1.5px solid #6c5ce7",borderRadius:12,padding:16,marginBottom:14,textAlign:"center"}}>
-              <div style={{fontWeight:900,color:"#f9ca24",fontSize:14,marginBottom:6}}>📥 Importer {csvPending.questions.length} questions</div>
-              <div style={{color:"#aaa",fontSize:12,marginBottom:14}}>Que faire des questions existantes ?</div>
-              <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
-                <button onClick={()=>doImportCSV(true)} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"9px 18px",borderRadius:9,fontSize:12}}>🗑️ Remplacer les existantes</button>
-                <button onClick={()=>doImportCSV(false)} style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"9px 18px",borderRadius:9,fontSize:12}}>➕ Ajouter aux existantes</button>
-                <button onClick={()=>setCsvPending(null)} style={{background:"none",border:"none",color:"#8daacc",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>Annuler</button>
-              </div>
-            </div>
-          )}
+        {/* ── QUESTIONS (publiées) ── */}
+        {tab==="questions"&&<QuestionsManager key="published" mode="published" setMsg={setMsg} t={t}/>}
 
-          {/* Form */}
-          {(()=>{
-            const cur = editQ ?? nq;
-            const set = v => editQ ? setEditQ(v) : setNq(v);
-            const altAnswers = cur.alt_answers || [];
-            const addAlt = () => {
-              const v = altInput.trim();
-              if(!v || altAnswers.includes(v)) { setAltInput(""); return; }
-              set({...cur, alt_answers:[...altAnswers, v]});
-              setAltInput("");
-            };
-            return(
-            <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:14}}>
-              <div style={{fontWeight:800,color:"#f9ca24",marginBottom:9,fontSize:13}}>{editQ?"✏️ Éditer":"➕ Nouvelle question"}</div>
-              <Fld lbl="Question"><input value={cur.q} onChange={e=>set({...cur,q:e.target.value})} style={INP} placeholder={t("admin_q_placeholder")}/></Fld>
-              <Fld lbl="Réponse attendue"><input value={cur.a} onChange={e=>set({...cur,a:e.target.value})} style={INP} placeholder={t("admin_q_answer_placeholder")||"Réponse exacte"}/></Fld>
-              <Fld lbl="Réponses alternatives">
-                <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:6}}>
-                  {altAnswers.map((v,i)=>(
-                    <span key={i} style={{display:"inline-flex",alignItems:"center",gap:4,background:"#00b89422",border:"1px solid #00b89444",borderRadius:50,padding:"2px 9px",fontSize:11,color:"#00b894",fontWeight:700}}>
-                      {v}
-                      <button onClick={()=>set({...cur,alt_answers:altAnswers.filter((_,j)=>j!==i)})} style={{background:"none",border:"none",color:"#00b894",cursor:"pointer",padding:0,fontSize:12,lineHeight:1,fontFamily:"'Nunito',sans-serif"}}>×</button>
-                    </span>
-                  ))}
-                </div>
-                <div style={{display:"flex",gap:6}}>
-                  <input value={altInput} onChange={e=>setAltInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addAlt();}}} style={{...INP,flex:1,padding:"6px 10px"}} placeholder="Ex: 0 — Entrée pour ajouter"/>
-                  <button onClick={addAlt} style={{...BTN("#00b89433"),padding:"6px 12px",borderRadius:8,fontSize:11,border:"1px solid #00b89444",color:"#00b894"}}>+</button>
-                </div>
-              </Fld>
-              <Fld lbl="Indice"><input value={cur.hint} onChange={e=>set({...cur,hint:e.target.value})} style={INP} placeholder={t("admin_hint_placeholder")}/></Fld>
-              <Fld lbl="Visibilité"><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={!!cur.hidden} onChange={e=>set({...cur,hidden:e.target.checked})} style={{width:16,height:16}}/><span style={{color:"#e17055",fontSize:13,fontWeight:700}}>🚫 Brouillon (hors quiz)</span></label><div style={{color:"#8daacc",fontSize:11,marginTop:3}}>Prépare la question sans l'utiliser dans les quiz. Publie tout d'un coup avec « 🚀 Publier ».</div></Fld>
-              <div style={{display:"flex",gap:8}}>
-                {editQ?(
-                  <><button onClick={async()=>{
-                    if(!editQ.q||!editQ.a){setMsg("❌ Q et R requis.");return;}
-                    const {data,error}=await apiAdminEditFullQuestion(editQ.id,editQ);
-                    if(error){setMsg("❌ Erreur sauvegarde");return;}
-                    const saved=data?.question;
-                    const mapped={...editQ,...(saved?{a:saved.answer,q:saved.question,hint:saved.hint||'',alt_answers:saved.alt_answers||[]}:{})};
-                    onEditQuestion(mapped);
-                    setLiveQuestions(qs=>(qs??questions).map(x=>x.id===mapped.id?mapped:x));
-                    setEditQ(null);setAltInput("");setMsg("✅ Question mise à jour !");
-                  }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Enregistrer</button>
-                  <button onClick={()=>{setEditQ(null);setAltInput("");}} style={{background:"none",border:"none",color:"#8daacc",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>{t("shop_cancel")}</button></>
-                ):(
-                  <button onClick={()=>{if(!nq.q||!nq.a){setMsg("❌ Q et R requis.");return;}onAddQuestion({...nq});setMsg("✅ Question ajoutée !");setNq({q:"",a:"",hint:"",alt_answers:[],hidden:false});setAltInput("");}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Ajouter</button>
-                )}
-              </div>
-            </div>
-            );
-          })()}
-          {/* Recherche + pagination */}
-          {(()=>{
-            const Q_PAGE=10;
-            const filtered=(liveQuestions??questions).filter(q=>
-              (!qFilterReported || ((q.report_count||0)>0 && !resetReports.has(q.id))) &&
-              (q.q.toLowerCase().includes(qSearch.toLowerCase())||
-              q.a.toLowerCase().includes(qSearch.toLowerCase())||
-              (q.hint||"").toLowerCase().includes(qSearch.toLowerCase())||
-              (q.alt_answers||[]).some(a=>a.toLowerCase().includes(qSearch.toLowerCase())))
-            );
-            const totalPages=Math.ceil(filtered.length/Q_PAGE);
-            const pg=Math.min(qPage,Math.max(0,totalPages-1));
-            const slice=filtered.slice(pg*Q_PAGE,(pg+1)*Q_PAGE);
-            return(
-              <>
-                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
-                  <input value={qSearch} onChange={e=>{setQSearch(e.target.value);setQPage(0);}} placeholder="Rechercher…" style={{...INP,flex:1,padding:"7px 11px",fontSize:12}}/>
-                  <button onClick={()=>{setQFilterReported(v=>!v);setQPage(0);}}
-                    style={{background:qFilterReported?"#e74c3c22":"#ffffff0a",border:`1px solid ${qFilterReported?"#e74c3c66":"#ffffff18"}`,color:qFilterReported?"#e74c3c":"#888",padding:"5px 10px",borderRadius:7,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}}>
-                    ⚠ Signalées {qFilterReported&&`(${filtered.length})`}
-                  </button>
-                  <span style={{fontSize:11,color:"#8daacc",whiteSpace:"nowrap",fontWeight:700}}>{filtered.length}/{questions.length}</span>
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-                  {slice.length===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"18px 0",fontSize:12}}>Aucune question trouvée.</div>}
-                  {slice.map(q=>{const inactive=q.active===false;return(
-                    <div key={q.id} style={{display:"flex",alignItems:"flex-start",gap:9,background:editQ?.id===q.id?"#f9ca2410":inactive?"#e74c3c08":"#ffffff08",borderRadius:9,padding:"9px 12px",border:`1px solid ${editQ?.id===q.id?"#f9ca2444":inactive?"#e74c3c22":"#ffffff10"}`,opacity:inactive?0.6:1}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:12,color:inactive?"#666":"#fff",fontWeight:700,marginBottom:2,textDecoration:inactive?"line-through":"none"}}>{q.q}</div>
-                        <div style={{fontSize:11,color:"#00b894",fontWeight:700}}>→ {q.a}</div>
-                        {(q.alt_answers||[]).length>0&&<div style={{fontSize:10,color:"#00b894",opacity:.7,marginTop:1}}>∥ {q.alt_answers.join(", ")}</div>}
-                        {q.hint&&<div style={{fontSize:10,color:"#a8bfcf",marginTop:2}}>💡 {q.hint}</div>}
-                        {(q.report_count||0)>0&&!resetReports.has(q.id)&&(
-                          <div style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:3}}>
-                            <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#e74c3c22",border:"1px solid #e74c3c44",borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800,color:"#e74c3c"}}>⚠ {q.report_count} signalement{q.report_count>1?"s":""}</div>
-                            <button onClick={async()=>{const{error}=await apiResetQuestionReports(q.id);if(error){setMsg("❌ "+error);return;}setLiveQuestions(qs=>(qs??questions).map(x=>x.id===q.id?{...x,report_count:0}:x));setMsg(`✅ Signalements réinitialisés.`);}} title="Réinitialiser les signalements" style={{background:"#ffffff12",border:"1px solid #ffffff22",color:"#aaa",padding:"1px 7px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>↺ reset</button>
-                          </div>
-                        )}
-                        {inactive&&<div style={{fontSize:9,color:"#e74c3c",fontWeight:800,marginTop:3}}>DÉSACTIVÉE</div>}
-                        {q.hidden&&<div style={{display:"inline-block",fontSize:9,color:"#fff",fontWeight:800,marginTop:3,background:"#e17055cc",borderRadius:4,padding:"1px 6px"}}>🚫 BROUILLON</div>}
-                      </div>
-                      <div style={{display:"flex",gap:5,flexShrink:0}}>
-                        {!inactive&&<button onClick={()=>{setEditQ(editQ?.id===q.id?null:{...q,alt_answers:q.alt_answers||[]});setAltInput("");}} style={{background:"#f9ca2422",border:"1px solid #f9ca2444",color:"#f9ca24",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>✏️</button>}
-                        {!inactive&&<button onClick={()=>setTransQ(transQ?.id===q.id?null:{...q,translations:q.translations||{}})} title="Traduire" style={{background:"#6c5ce722",border:"1px solid #6c5ce744",color:"#a29bfe",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>🌐</button>}
-                        <button onClick={()=>{onToggleQuestion(q.id);setMsg(inactive?"✅ Question réactivée.":"⛔ Question désactivée.");}} style={{background:inactive?"#00b89422":"#e74c3c22",border:`1px solid ${inactive?"#00b89444":"#e74c3c44"}`,color:inactive?"#00b894":"#e74c3c",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{inactive?"✅":"🗑️"}</button>
-                      </div>
-                    </div>
-                  );})}
-
-                </div>
-                {totalPages>1&&(
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-                    <button onClick={()=>setQPage(p=>Math.max(0,p-1))} disabled={pg===0}
-                      style={{background:pg===0?"#ffffff0a":"#ffffff18",border:"none",color:pg===0?"#444":"#fff",width:28,height:28,borderRadius:8,cursor:pg===0?"default":"pointer",fontWeight:900,fontSize:14}}>‹</button>
-                    {Array.from({length:totalPages},(_,i)=>(
-                      <button key={i} onClick={()=>setQPage(i)}
-                        style={{width:i===pg?28:8,height:8,borderRadius:i===pg?6:50,border:"none",cursor:"pointer",background:i===pg?"#e74c3c":"#ffffff33",padding:0,transition:"all .2s",color:i===pg?"#fff":"transparent",fontSize:10,fontWeight:900}}>
-                        {i===pg?`${i+1}`:""}
-                      </button>
-                    ))}
-                    <button onClick={()=>setQPage(p=>Math.min(totalPages-1,p+1))} disabled={pg===totalPages-1}
-                      style={{background:pg===totalPages-1?"#ffffff0a":"#ffffff18",border:"none",color:pg===totalPages-1?"#444":"#fff",width:28,height:28,borderRadius:8,cursor:pg===totalPages-1?"default":"pointer",fontWeight:900,fontSize:14}}>›</button>
-                    <span style={{fontSize:11,color:"#8daacc",marginLeft:4}}>{pg+1} / {totalPages}</span>
-                  </div>
-                )}
-              </>
-            );
-          })()}
-
-          {/* ── Panneau traductions ── */}
-          {transQ&&(
-            <div style={{background:"#1a0a3a",border:"1.5px solid #6c5ce766",borderRadius:12,padding:16,marginTop:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                <div style={{fontWeight:900,color:"#a29bfe",fontSize:13}}>🌐 Traductions — <span style={{color:"#fff",fontStyle:"italic"}}>{transQ.q}</span></div>
-                <button onClick={()=>setTransQ(null)} style={{background:"none",border:"none",color:"#8daacc",fontSize:14,cursor:"pointer"}}>✕</button>
-              </div>
-              <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-                {TRANS_LANGS.map(l=>(
-                  <button key={l.code} onClick={()=>setTransLang(l.code)}
-                    style={{background:transLang===l.code?"#6c5ce7":"#ffffff10",border:"none",color:transLang===l.code?"#fff":"#aaa",padding:"5px 12px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
-                    {l.label} {transQ.translations?.[l.code]?.question?"✓":""}
-                  </button>
-                ))}
-              </div>
-              {TRANS_LANGS.filter(l=>l.code===transLang).map(l=>(
-                <div key={l.code}>
-                  <Fld lbl={`Question (${l.label})`}>
-                    <input value={transQ.translations?.[l.code]?.question||""} onChange={e=>setTransQ(q=>({...q,translations:{...q.translations,[l.code]:{...q.translations?.[l.code],question:e.target.value}}}))} style={INP} placeholder={`Question en ${l.label}…`}/>
-                  </Fld>
-                  <Fld lbl={`Réponse (${l.label})`}>
-                    <input value={transQ.translations?.[l.code]?.answer||""} onChange={e=>setTransQ(q=>({...q,translations:{...q.translations,[l.code]:{...q.translations?.[l.code],answer:e.target.value}}}))} style={INP} placeholder={`Réponse en ${l.label}…`}/>
-                  </Fld>
-                </div>
-              ))}
-              <button onClick={async()=>{
-                const {error}=await apiAdminSaveTranslations(transQ.id,transQ.translations);
-                if(error){setMsg("❌ Erreur sauvegarde");return;}
-                onEditQuestion({...transQ});
-                setMsg("✅ Traductions sauvegardées !");
-              }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"8px 18px",borderRadius:8,fontSize:12,marginTop:8}}>
-                💾 Sauvegarder les traductions
-              </button>
-            </div>
-          )}
-        </div>}
+        {/* ── BROUILLONS ── */}
+        {tab==="drafts"&&<QuestionsManager key="drafts" mode="drafts" setMsg={setMsg} t={t}/>}
 
         {/* ── QUIZ CONFIG ── */}
         {tab==="quiz_config"&&<div>
