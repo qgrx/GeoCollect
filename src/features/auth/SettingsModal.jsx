@@ -78,6 +78,8 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
       dailyGoldJoinCap: limits.quizJoinGoldCap || 0,
       dailyCards:       isNewDay ? 0 : (profile.daily_cards || 0),
       dailyCardsCap:    limits.quizDailyCardCap || 0,
+      dailyShiny:       isNewDay ? 0 : (profile.daily_shiny || 0),
+      dailyShinyCap:    limits.quizDailyShinyCap || 0,
       hourlyCards:      hourlyReset ? 0 : (profile.hourly_cards || 0),
       hourlyCardsCap:   limits.quizHourlyCardCap || 0,
       dailyForgeConsolation:    isNewDay ? 0 : (profile.daily_forge_consolation || 0),
@@ -238,6 +240,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
                 ...(limits.quizJoinGold > 0 ? [{ label: 'Or de participation', value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap }] : []),
                 { label: 'Geocoins du jour',   value: limitsDebug.dailyCards,    cap: limitsDebug.dailyCardsCap, info: true },
                 { label: 'Geocoins/heure',     value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap },
+                ...(limitsDebug.dailyShinyCap > 0 ? [{ label: '✨ Shiny du jour', value: limitsDebug.dailyShiny, cap: limitsDebug.dailyShinyCap }] : []),
                 ...(limits.quizConsolationForge > 0 ? [{ label: 'Forge de compensation', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
               ].map(({ label, value, cap, info }) => {
                 const unlimited = !cap || cap <= 0
