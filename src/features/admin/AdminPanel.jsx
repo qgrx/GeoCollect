@@ -18,6 +18,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
   apiGetDailySchedule, apiRegenerateDailySchedule,
   apiResetQuestionReports, apiAdminGetQuestions,
+  apiGetAdminConfig, apiSetConfig,
   apiAdminGetVersion,
   apiAdminSeedJeu,
 } from '../../services/api.js';
@@ -125,13 +126,32 @@ function QuestionsManager({mode,setMsg,t}){
   const [transQ,setTransQ]=useState(null);
   const [transLang,setTransLang]=useState('en');
   const [csvPending,setCsvPending]=useState(null);
+  const [globalPublishAt,setGlobalPublishAt]=useState(null); // planification globale des brouillons (ISO ou null)
+  const [globalInput,setGlobalInput]=useState("");           // saisie datetime-local en attente
   const csvRef=useRef();
 
   useEffect(()=>{
     apiAdminGetQuestions().then(({data})=>setAll((data?.questions||[]).map(mapServerQ)));
-  },[]);
+    if(isDraft) apiGetAdminConfig().then(({data})=>setGlobalPublishAt(data?.config?.drafts_publish_at||null));
+  },[isDraft]);
 
   const items=(all||[]).filter(q=> isDraft ? q.hidden : !q.hidden);
+
+  // ── Planification globale (publie TOUS les brouillons à une date donnée) ──
+  async function saveGlobalSchedule(){
+    const iso=localInputToIso(globalInput);
+    if(!iso){setMsg("❌ Date invalide.");return;}
+    const {error}=await apiSetConfig('drafts_publish_at',iso);
+    if(error){setMsg("❌ "+error);return;}
+    setGlobalPublishAt(iso); setGlobalInput("");
+    setMsg(`✅ Tous les brouillons seront publiés le ${new Date(iso).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}.`);
+  }
+  async function clearGlobalSchedule(){
+    const {error}=await apiSetConfig('drafts_publish_at',null);
+    if(error){setMsg("❌ "+error);return;}
+    setGlobalPublishAt(null); setGlobalInput("");
+    setMsg("✅ Planification groupée annulée.");
+  }
 
   // ── CSV (périmètre du mode courant uniquement) ──
   async function handleCSV(e){
@@ -259,6 +279,25 @@ function QuestionsManager({mode,setMsg,t}){
         <button onClick={exportCSV} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📤 Export</button>
         <input ref={csvRef} type="file" accept=".csv" onChange={handleCSV} style={{display:"none"}}/>
       </div>
+
+      {/* Planification groupée (brouillons uniquement) : publie TOUS les brouillons à une date donnée */}
+      {isDraft&&(
+        <div style={{background:"#e1705512",border:"1px solid #e1705540",borderRadius:11,padding:"11px 14px",marginBottom:14}}>
+          <div style={{fontWeight:800,color:"#e17055",fontSize:12,marginBottom:8}}>📅 Publication groupée programmée</div>
+          {globalPublishAt?(
+            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+              <span style={{fontSize:12,color:"#fff",fontWeight:700}}>Tous les brouillons seront publiés le <span style={{color:"#f9ca24"}}>{new Date(globalPublishAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}</span>.</span>
+              <button onClick={clearGlobalSchedule} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>✕ Annuler la planification</button>
+            </div>
+          ):(
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <input type="datetime-local" value={globalInput} onChange={e=>setGlobalInput(e.target.value)} style={{...INP,width:220}}/>
+              <button onClick={saveGlobalSchedule} disabled={!globalInput} style={{...BTN("linear-gradient(135deg,#e17055,#d63031)"),padding:"7px 14px",fontSize:11,borderRadius:8,opacity:globalInput?1:0.5}}>Programmer</button>
+              <span style={{fontSize:11,color:"#8daacc"}}>Publie d'un coup l'ensemble des brouillons à cette date/heure. Les dates individuelles échues restent appliquées avant.</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Dialog choix import CSV */}
       {csvPending&&(
