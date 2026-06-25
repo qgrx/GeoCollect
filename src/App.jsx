@@ -2498,6 +2498,7 @@ export default function App() {
                 apiSetConfig('quiz_win_gold',        limEdit.quizWinGold       ?? 5),
                 apiSetConfig('quiz_daily_card_cap',    limEdit.quizDailyCardCap    ?? 20),
                 apiSetConfig('quiz_hourly_card_cap',   limEdit.quizHourlyCardCap   ?? 0),
+                apiSetConfig('quiz_daily_shiny_cap',   limEdit.quizDailyShinyCap   ?? 0),
                 apiSetConfig('quiz_consolation_gold',  limEdit.quizConsolationGold  ?? 5),
                 apiSetConfig('quiz_consolation_forge', limEdit.quizConsolationForge ?? 1),
                 apiSetConfig('quiz_daily_forge_cap',   limEdit.quizDailyForgeCap    ?? 0),

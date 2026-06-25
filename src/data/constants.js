@@ -53,6 +53,7 @@ export const INIT_LIMITS = {
   quizWinGold:       5,
   quizDailyCardCap:    20,
   quizHourlyCardCap:   0,
+  quizDailyShinyCap:   0,
   quizConsolationGold:  5,
   quizConsolationForge: 1,
   quizDailyForgeCap:    0,
