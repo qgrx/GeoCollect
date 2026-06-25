@@ -93,10 +93,7 @@ export function useAuth() {
       if (cancelled) return
       setUser(session?.user ?? null)
       loadProfile(session?.user ?? null)
-      // Une nouvelle connexion réinitialise les bannières masquées temporairement
-      // (mais pas un simple rechargement de page, qui déclenche INITIAL_SESSION)
       if (event === 'SIGNED_IN') {
-        try { localStorage.removeItem('geocoins_discord_banner_dismissed_until') } catch { /* ignore */ }
       }
     })
 

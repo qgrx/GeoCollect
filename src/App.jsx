@@ -49,7 +49,7 @@ import TresorPage  from './features/treasures/TresorPage.jsx';
 import SeasonPopup  from './components/SeasonPopup.jsx';
 import DocsLayout   from './features/docs/DocsLayout.jsx';
 
-// Lien d'invitation Discord (bannière + menu avatar)
+// Lien d'invitation Discord (menu avatar)
 const DISCORD_URL = 'https://discord.gg/QE5fM6H6n';
 
 function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
@@ -647,33 +647,42 @@ export default function App() {
   const [showRules,       setShowRules]       = useState(false);
   const modePrefUserRef = useRef(null);   // id du compte pour lequel la préférence a été appliquée
   const [goldFlash,       setGoldFlash]       = useState(null);
-  const [showDiscordBanner, setShowDiscordBanner] = useState(() => {
-    try {
-      // Lien déjà cliqué, ou fermée 3 fois → on n'affiche plus jamais la bannière.
-      if (localStorage.getItem('geocoins_discord_link_clicked') === '1') return false;
-      if (parseInt(localStorage.getItem('geocoins_discord_dismiss_count') || '0', 10) >= 3) return false;
-      const until = parseInt(localStorage.getItem('geocoins_discord_banner_dismissed_until') || '0', 10);
-      return Date.now() > until;
-    } catch { return true; }
-  });
-  // Fermeture via la croix : on snooze 1h et on incrémente le compteur (3 → plus jamais).
-  const dismissDiscordBanner = () => {
-    try {
-      const count = parseInt(localStorage.getItem('geocoins_discord_dismiss_count') || '0', 10) + 1;
-      localStorage.setItem('geocoins_discord_dismiss_count', String(count));
-      localStorage.setItem('geocoins_discord_banner_dismissed_until', String(Date.now() + 60 * 60 * 1000));
-    } catch { /* ignore */ }
-    setShowDiscordBanner(false);
-  };
-  // Clic sur le lien (bannière ou menu) : on ne réaffiche plus jamais la bannière.
-  const markDiscordLinkClicked = () => {
-    try { localStorage.setItem('geocoins_discord_link_clicked', '1'); } catch { /* ignore */ }
-    setShowDiscordBanner(false);
-  };
   const openDiscord = () => {
-    markDiscordLinkClicked();
     window.open(DISCORD_URL, '_blank', 'noopener,noreferrer');
   };
+
+  // ── Shiny Day banner ── null | { mode:'teaser', d, h, m, s } | { mode:'active' }
+  const [shinyDayBanner, setShinyDayBanner] = useState(null);
+  useEffect(() => {
+    const sd = gs.limits.shinyDay;
+    if (!sd || !sd.active || !sd.date || !Array.isArray(sd.slots) || !sd.slots.length) {
+      setShinyDayBanner(null); return;
+    }
+    const firstStart = sd.slots.reduce((mn, s) => s.start < mn ? s.start : mn, '99:99');
+    const dayStartMs = new Date(`${sd.date}T${firstStart}:00`).getTime();
+    const tick = () => {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      if (today === sd.date) {
+        setShinyDayBanner({ mode: 'active' });
+      } else if (Date.now() < dayStartMs) {
+        const diff = dayStartMs - Date.now();
+        setShinyDayBanner({
+          mode: 'teaser',
+          d: Math.floor(diff / 86400000),
+          h: Math.floor((diff % 86400000) / 3600000),
+          m: Math.floor((diff % 3600000) / 60000),
+          s: Math.floor((diff % 60000) / 1000),
+        });
+      } else {
+        setShinyDayBanner(null);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [gs.limits.shinyDay]);
 
   const [questions, setQuestions] = useState([]);
 
@@ -1467,22 +1476,50 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Bannière Discord ── (pas en démo) */}
-      {showDiscordBanner && !auth.isDemo && (
-        <div style={{ position: 'relative', flexShrink: 0, background: '#5865F2', color: '#fff', textAlign: 'center', padding: '7px 36px', fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          <span>🎮</span>
-          <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={markDiscordLinkClicked} style={{ color: '#fff', textDecoration: 'underline' }}>
-            {t('discord_banner')}
-          </a>
-          <button onClick={dismissDiscordBanner} aria-label="Fermer"
-            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#fff', fontSize: 16, fontWeight: 900, cursor: 'pointer', lineHeight: 1, padding: 4 }}>
-            ✕
-          </button>
-        </div>
+      {/* ── Bannière Journée Brillante ── */}
+      {shinyDayBanner && (
+        <>
+          <style>{`
+            @keyframes bannerSparkle {
+              0%,100% { opacity:0; transform:scale(0) rotate(0deg); }
+              50%     { opacity:1; transform:scale(1) rotate(180deg); }
+            }
+          `}</style>
+          <div style={{
+            position: 'relative', flexShrink: 0, overflow: 'hidden',
+            background: '#0c1620',
+            color: theme.gold, textAlign: 'center', padding: '7px 16px',
+            fontSize: 12, fontWeight: 800, fontFamily: "'Nunito',sans-serif",
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            {[...Array(10)].map((_, i) => (
+              <span key={i} style={{
+                position: 'absolute',
+                left: `${(i / 10) * 100}%`,
+                top: `${15 + (i % 3) * 28}%`,
+                fontSize: 8 + (i % 3) * 2,
+                color: theme.gold,
+                opacity: 0.25,
+                animation: `bannerSparkle 2s ease-in-out infinite`,
+                animationDelay: `${i * 0.2}s`,
+                pointerEvents: 'none', zIndex: 1,
+              }}>✦</span>
+            ))}
+            <span style={{ position: 'relative', zIndex: 2 }}>
+              {shinyDayBanner.mode === 'active'
+                ? t('shiny_event_banner')
+                : t('shiny_event_teaser')
+                    .replace('{d}', shinyDayBanner.d)
+                    .replace('{h}', String(shinyDayBanner.h).padStart(2, '0'))
+                    .replace('{m}', String(shinyDayBanner.m).padStart(2, '0'))
+                    .replace('{s}', String(shinyDayBanner.s).padStart(2, '0'))}
+            </span>
+          </div>
+        </>
       )}
 
       {/* ACCENT BAR */}
-      <div style={{ height: 3, background: 'linear-gradient(90deg,#58a6ff,#bc8cff,#f9ca24,#f85149)', flexShrink: 0 }} />
+      {!shinyDayBanner && <div style={{ height: 3, background: 'linear-gradient(90deg,#58a6ff,#bc8cff,#f9ca24,#f85149)', flexShrink: 0 }} />}
 
       {/* ── HEADER ── */}
       <header style={{ position: 'sticky', top: 0, zIndex: 200, background: theme.headerBg, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${theme.border}`, padding: isMobile ? '9px 10px' : '9px 20px', display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, flexShrink: 0 }}>
@@ -2474,6 +2511,7 @@ export default function App() {
                 apiSetConfig('feature_market',       limEdit.featureMarket      ?? true),
                 apiSetConfig('feature_forge',        limEdit.featureForge       ?? true),
                 apiSetConfig('feature_leaderboard',  limEdit.featureLeaderboard ?? true),
+                apiSetConfig('shiny_day',            limEdit.shinyDay           ?? null),
                 apiSetConfig('quiz_rarity_rates',  limEdit.quizRarityRates   ?? DEFAULT_RARITY_RATES),
                 ...(limEdit.cache_ttl_cards       != null ? [apiSetConfig('cache_ttl_cards',       limEdit.cache_ttl_cards)]       : []),
                 ...(limEdit.cache_ttl_config      != null ? [apiSetConfig('cache_ttl_config',      limEdit.cache_ttl_config)]      : []),

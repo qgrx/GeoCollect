@@ -74,4 +74,5 @@ export const INIT_LIMITS = {
   featureMarket:        true,
   featureForge:         true,
   featureLeaderboard:   true,
+  shinyDay:             null,
 };

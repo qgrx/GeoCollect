@@ -1196,6 +1196,62 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               ))}
             </div>
           </div>
+          {/* ── Shiny Day ── */}
+          {(()=>{
+            const sd=limEdit.shinyDay||{active:false,date:"",slots:[]};
+            const setSD=v=>setLimEdit({...limEdit,shinyDay:v});
+            const slots=sd.slots||[];
+            const addSlot=()=>setSD({...sd,slots:[...slots,{start:"10:00",end:"12:00",rate:0.5}]});
+            const delSlot=i=>setSD({...sd,slots:slots.filter((_,j)=>j!==i)});
+            const editSlot=(i,k,v)=>setSD({...sd,slots:slots.map((s,j)=>j===i?{...s,[k]:v}:s)});
+            const now=new Date();const pad=n=>String(n).padStart(2,'0');
+            const today=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+            const isToday=sd.date===today;
+            const hhmm=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            const dayActive=sd.active&&isToday;
+            const dayFuture=sd.active&&sd.date&&sd.date>today;
+            const currentSlot=dayActive?slots.find(s=>hhmm>=s.start&&hhmm<s.end):null;
+            return <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:`1px solid ${sd.active?"#f9ca2433":"#ffffff12"}`,marginBottom:12}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <div style={{fontWeight:800,color:"#f9ca24",fontSize:13}}>✨ Shiny Day</div>
+                {sd.active&&<span style={{fontSize:10,fontWeight:800,background:dayActive?"#f9ca2433":"#4fc3f733",color:dayActive?"#f9ca24":"#4fc3f7",padding:"2px 8px",borderRadius:50}}>{dayActive?"EN COURS":dayFuture?"PLANIFIÉ":"INACTIF"}</span>}
+              </div>
+              <div style={{fontSize:10,color:"#a8bfcf",marginBottom:12}}>Définis une date et des plages horaires avec un taux de shiny boosté. La bannière s'affiche toute la journée.</div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:12,fontWeight:700,color:"#a8bfcf",minWidth:60}}>Date</span>
+                  <input type="date" value={sd.date||""} onChange={e=>setSD({...sd,date:e.target.value})} style={{...INP,flex:1}}/>
+                </div>
+                <div style={{fontWeight:800,color:"#d4e8f8",fontSize:12,marginTop:4}}>Plages horaires</div>
+                {slots.map((slot,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:currentSlot===slot?"#f9ca2411":"#ffffff06",borderRadius:8,padding:"6px 8px",border:currentSlot===slot?"1px solid #f9ca2433":"1px solid #ffffff08"}}>
+                    <input type="time" value={slot.start} onChange={e=>editSlot(i,'start',e.target.value)} style={{...INP,width:90,fontSize:12}}/>
+                    <span style={{color:"#a8bfcf",fontSize:11}}>→</span>
+                    <input type="time" value={slot.end} onChange={e=>editSlot(i,'end',e.target.value)} style={{...INP,width:90,fontSize:12}}/>
+                    <input type="number" min={0} max={100} step={1} value={Math.round((slot.rate??0.1)*100)} onChange={e=>editSlot(i,'rate',Math.min(1,Math.max(0,+e.target.value/100)))} style={{...INP,width:60,fontSize:12}}/>
+                    <span style={{color:"#aaa",fontSize:11}}>%</span>
+                    {currentSlot===slot&&<span style={{fontSize:9,color:"#f9ca24",fontWeight:800}}>🔥</span>}
+                    <button onClick={()=>delSlot(i)} style={{background:"none",border:"none",color:"#e74c3c",cursor:"pointer",fontSize:14,fontWeight:900,marginLeft:"auto"}}>✕</button>
+                  </div>
+                ))}
+                <button onClick={addSlot} style={{...BTN("linear-gradient(135deg,#f9ca24,#b8860b)"),padding:"6px 14px",borderRadius:8,fontSize:11,alignSelf:"flex-start",color:"#1a1a2e"}}>
+                  + Ajouter une plage
+                </button>
+                <div style={{display:"flex",gap:8,marginTop:4}}>
+                  {!sd.active?
+                    <button onClick={()=>{if(!sd.date||!slots.length){setMsg("❌ Définis une date et au moins une plage horaire.");return;}setSD({...sd,active:true});setMsg("✅ Shiny Day activé ! N'oublie pas de sauvegarder.");}} disabled={!sd.date||!slots.length} style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"8px 18px",borderRadius:9,opacity:(!sd.date||!slots.length)?0.4:1}}>
+                      ✨ Activer le Shiny Day
+                    </button>
+                  :
+                    <button onClick={()=>{setSD({...sd,active:false});setMsg("Shiny Day désactivé. N'oublie pas de sauvegarder.");}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 18px",borderRadius:9}}>
+                      ⏹️ Désactiver
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>;
+          })()}
+
           <button onClick={async ()=>{await onSetLimits(limEdit);setMsg("✅ Interface sauvegardée !");}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"10px 22px",borderRadius:9}}>
             Sauvegarder les réglages
           </button>

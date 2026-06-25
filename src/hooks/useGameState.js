@@ -134,6 +134,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           featureMarket:       cfg.feature_market      !== undefined ? cfg.feature_market      !== false : prev.featureMarket,
           featureForge:        cfg.feature_forge       !== undefined ? cfg.feature_forge       !== false : prev.featureForge,
           featureLeaderboard:  cfg.feature_leaderboard !== undefined ? cfg.feature_leaderboard !== false : prev.featureLeaderboard,
+          shinyDay:            cfg.shiny_day           ?? prev.shinyDay,
         }))
         setConfigLoaded(true)
       }
@@ -294,6 +295,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             featureMarket:       cfg.feature_market      !== undefined ? cfg.feature_market      !== false : prev.featureMarket,
             featureForge:        cfg.feature_forge       !== undefined ? cfg.feature_forge       !== false : prev.featureForge,
             featureLeaderboard:  cfg.feature_leaderboard !== undefined ? cfg.feature_leaderboard !== false : prev.featureLeaderboard,
+            shinyEventStart:     cfg.shiny_event_start   ?? prev.shinyEventStart,
+            shinyEventEnd:       cfg.shiny_event_end     ?? prev.shinyEventEnd,
+            shinyEventRate:      cfg.shiny_event_rate    !== undefined ? +cfg.shiny_event_rate : prev.shinyEventRate,
           }))
         }
 
