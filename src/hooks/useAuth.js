@@ -93,8 +93,6 @@ export function useAuth() {
       if (cancelled) return
       setUser(session?.user ?? null)
       loadProfile(session?.user ?? null)
-      if (event === 'SIGNED_IN') {
-      }
     })
 
     return () => {
