@@ -126,7 +126,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // (sinon iOS fait défiler la page et masque le haut de la question — cf. capture
   // où seule la dernière ligne de la question restait visible clavier ouvert).
   const [vv,setVv]=useState(null);
-  const ref=useRef(); const doneRef=useRef(false); const submittingRef=useRef(false); const revealReqRef=useRef(false); const retryRef=useRef(0);
+  const ref=useRef(); const doneRef=useRef(false); const submittingRef=useRef(false); const retryRef=useRef(0);
   // Figer l'état "brillant" au montage : un événement quiz:solved (annonçant le prochain
   // quiz) peut mettre à jour isShiny pendant que cette modale affiche encore le résultat.
   const isShinyFrozen=useRef(isShiny).current;
@@ -236,11 +236,23 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   const questionMasked = isStreakLeader && (handicapLeft > 0 || !displayedQ);
 
   // Fin du délai cadeau → récupérer la question retenue par le serveur (via /current).
+  // Le serveur teste elapsedMs<handicapMs à la milliseconde près alors que le client
+  // compte en secondes entières : sur la frontière (ou un aléa réseau) /current peut
+  // encore retenir la question → on réessaie en boucle jusqu'à l'obtenir, sinon
+  // 🔥 + « … » resteraient affichés indéfiniment.
   useEffect(()=>{
     if(status!=="open"||!isStreakLeader) return;
-    if(handicapLeft>0||displayedQ||revealReqRef.current) return;
-    revealReqRef.current=true;
-    Promise.resolve(onNeedQuestion?.()).then(d=>{ if(d) setRevealed(d); }).catch(()=>{});
+    if(handicapLeft>0||displayedQ) return;
+    let cancelled=false; let timer;
+    const tryFetch=()=>{
+      Promise.resolve(onNeedQuestion?.()).then(d=>{
+        if(cancelled) return;
+        if(d) setRevealed(d);
+        else timer=setTimeout(tryFetch,700);   // serveur retient encore → on réessaie
+      }).catch(()=>{ if(!cancelled) timer=setTimeout(tryFetch,700); });
+    };
+    tryFetch();
+    return ()=>{ cancelled=true; clearTimeout(timer); };
   },[status,isStreakLeader,handicapLeft,displayedQ]);
 
   // Indice progressif : structure puis premières lettres réelles

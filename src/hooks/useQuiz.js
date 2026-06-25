@@ -122,6 +122,10 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     if (!quiz) {
       const { data } = await apiGetCurrentQuiz()
       if (!data?.quiz) return
+      // Propager le joueur en série : sans ça, en rejoignant via /current (rechargement,
+      // participation tardive, event quiz:new manqué) le leader n'aurait pas son statut
+      // « en feu » → masquage/blocage absents → la pénalité ne s'applique pas côté UI.
+      cbRef.current.onStreakLeader?.(data.streak_leader ?? null)
       const wc = data.quiz.answer_word_count || 1
       const poolCard = cbRef.current.cardPool?.find(c => c.id === data.quiz.card?.id) || {}
       const curLang2 = getLang()
