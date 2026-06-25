@@ -617,7 +617,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
 }
 
 // ── HoldModal — choix après quiz hors-limite : Dépôt OU 1 Point de Forge ──────
-export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, forgeCapped = false, owned = false }) {
+export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, onClose, forgeCapped = false, owned = false }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [loading, setLoading] = useState(false)
@@ -656,8 +656,11 @@ export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, 
       <div style={{ background: 'linear-gradient(145deg,#0f1923,#1a2736)', border: `1.5px solid ${c1}55`, borderRadius: 20, padding: '24px 22px', maxWidth: 380, width: '100%', boxShadow: `0 0 40px ${c1}33, 0 12px 40px #0008`, fontFamily: "'Nunito',sans-serif" }}>
 
         {/* Titre */}
-        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 17, color: '#f9ca24', marginBottom: 4 }}>
-          🗄️ {t('hold_popup_title')}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 17, color: '#f9ca24' }}>
+            🗄️ {t('hold_popup_title')}
+          </div>
+          {onClose && <button onClick={onClose} style={{ background: '#ffffff18', border: 'none', color: '#888', width: 28, height: 28, borderRadius: '50%', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }} title={t('close') || 'Fermer'}>✕</button>}
         </div>
         <div style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 16, lineHeight: 1.5 }}>
           {t('hold_popup_body').replace('{rarity}', rarityLabel(holdCard.rarity, t))}

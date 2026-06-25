@@ -2089,6 +2089,7 @@ export default function App() {
           existingHold={hold}
           owned={holdOffer.is_shiny ? (gs.shinyCollection?.[holdOffer.id] || 0) > 0 : (gs.collection?.[holdOffer.id] || 0) > 0}
           forgeCapped={computeCardLimitStatus(auth.profile, gs.limits).forgeCapped}
+          onClose={() => setHoldOffer(null)}
           onStored={(card, forgePoints = 0) => {
             setHold({ card, is_shiny: card.is_shiny || false, held_at: new Date().toISOString(), claimable: false })
             setHoldOffer(null)
