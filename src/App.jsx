@@ -1997,6 +1997,7 @@ export default function App() {
                   forgeCostByRarity={gs.limits.forgeCostByRarity ?? {}}
                   meltPointsByRarity={gs.limits.meltPointsByRarity ?? {}}
                   meltPointsByRarityShiny={gs.limits.meltPointsByRarityShiny ?? {}}
+                  achievementProgress={gs.achievementProgress}
                   onClose={() => setActiveTab('collection')}
                   onForged={(data) => {
                     if (data?.forge_points_remaining !== undefined) {

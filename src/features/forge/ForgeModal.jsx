@@ -464,7 +464,7 @@ function useMeltAnimation() {
 }
 
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
-export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, onMelted, onMeltedShiny, onMeltedAll, onMeltedAllShiny, inline = false, shinyForgeCostByRarity = {}, forgeCostByRarity = {}, meltPointsByRarity = {}, meltPointsByRarityShiny = {}, loading = false }) {
+export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, onMelted, onMeltedShiny, onMeltedAll, onMeltedAllShiny, inline = false, shinyForgeCostByRarity = {}, forgeCostByRarity = {}, meltPointsByRarity = {}, meltPointsByRarityShiny = {}, achievementProgress = {}, loading = false }) {
   useEffect(() => { injectStyle() }, [])
   const { theme } = useTheme()
   const { t } = useT()
@@ -485,8 +485,18 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
 
   const SHINY_PAGE_SIZE = 12
 
+  // Un achievement « évolutif » (L'acheteur, Le vendeur, Fidèle…) monte en rareté
+  // au fil des paliers. On ne peut le rendre brillant qu'une fois le rang légendaire
+  // atteint ; avant cela on l'affiche quand même dans l'onglet Brillance, mais avec
+  // le message « Rang légendaire nécessaire. » au lieu du bouton.
+  const isAchievement = c => c.type?.toLowerCase().startsWith('achievement')
+  const isEvolutiveAch = c => isAchievement(c) && !!achievementProgress?.[c.id]?.tiers
+  const achNeedsLegendary = c => isEvolutiveAch(c) && c.rarity !== 'légendaire'
+
   const forgeableCards = (cardPool || []).filter(c => c.forgeable)
-  const ownedCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 0 && c.type !== 'Achievement')
+  // Geocoins ordinaires + achievements évolutifs (les achievements non évolutifs
+  // restent exclus de la forge brillante).
+  const ownedCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 0 && (!isAchievement(c) || isEvolutiveAch(c)))
   const byRarityDesc = (a, b) => (RC[a.rarity]?.order ?? 99) - (RC[b.rarity]?.order ?? 99)
   const duplicateCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 1 && c.type !== 'Achievement').sort(byRarityDesc)
   const duplicateShinyCards = (cardPool || []).filter(c => (shinyCollection[c.id] || 0) > 1 && c.type !== 'Achievement').sort(byRarityDesc)
@@ -910,13 +920,16 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                   )
                 ) : pageCards.map(card => {
                   const alreadyShiny = (shinyCollection[card.id] || 0) > 0
+                  const needsLegendary = achNeedsLegendary(card)
                   const cost = card.shiny_forge_cost ?? shinyForgeCostByRarity[card.rarity] ?? null
                   const canAfford = cost != null && forgePoints >= cost
                   return (
-                    <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny ? 0.5 : 1 }}>
+                    <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny || needsLegendary ? 0.5 : 1 }}>
                       <Card card={card} isShiny={alreadyShiny} />
-                      <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>🔨 {cost ?? '—'} pts</div>
-                      {alreadyShiny ? (
+                      {!needsLegendary && <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>🔨 {cost ?? '—'} pts</div>}
+                      {needsLegendary ? (
+                        <div style={{ fontSize: 11, color: '#f9ca24', fontWeight: 800, textAlign: 'center' }}>🏆 {t('forge_shiny_need_legendary')}</div>
+                      ) : alreadyShiny ? (
                         <div style={{ fontSize: 11, color: '#00b894', fontWeight: 800 }}>{t('forge_shiny_already') || '✨ Déjà brillant'}</div>
                       ) : (
                         <button onClick={() => handleForgeShiny(card)} disabled={!canAfford}
