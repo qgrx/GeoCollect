@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
-import { RC, cardCC } from '../../data/cards.js'
+import { RC, cardCC, rarityLabel } from '../../data/cards.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
+import Card from '../../components/Card.jsx'
 import { ThumbImage } from '../quiz/QuizComponents.jsx'
 
 // ─── Achievement Toast ────────────────────────────────────────────────────────
@@ -40,6 +41,61 @@ export function AchievementToast({ achievement, cardPool, onClose }) {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Achievement Upgrade Popup ────────────────────────────────────────────────
+// Montée de palier d'un achievement évolutif : le geocoin passe d'une rareté à la
+// suivante. Affiche la carte actuelle → flèche → nouvelle carte, « Félicitations ! ».
+// Au tout premier déverrouillage (pas d'ancienne carte), affiche un déverrouillage simple.
+export function AchievementUpgradePopup({ upgrade, cardPool, onClose }) {
+  const { t } = useT()
+  if (!upgrade) return null
+
+  const find = id => (cardPool || []).find(c => c.id === id)
+  const isFirst = !upgrade.old_card_id
+  // On force la rareté du payload : le rendu reste correct même si la carte-variante
+  // n'est pas (encore) dans le cardPool local.
+  const newCard = { ...(find(upgrade.new_card_id) || { id: upgrade.new_card_id, name: upgrade.name }), rarity: upgrade.new_rarity }
+  const oldCard = isFirst ? null : { ...(find(upgrade.old_card_id) || { id: upgrade.old_card_id, name: upgrade.name }), rarity: upgrade.old_rarity }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: '#000c', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3600, backdropFilter: 'blur(6px)', fontFamily: "'Nunito',sans-serif" }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        position: 'relative', width: 'min(94vw,440px)', borderRadius: 22, padding: '26px 22px 22px',
+        background: 'linear-gradient(135deg,#1e3045,#1a2d42)', border: '1.5px solid #f9ca2455',
+        boxShadow: '0 24px 80px #000a, 0 0 0 1px #f9ca2422', textAlign: 'center',
+        animation: 'slideUp .4s cubic-bezier(.34,1.56,.64,1) both',
+      }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 14, background: 'none', border: 'none', color: '#ffffff66', fontSize: 18, cursor: 'pointer', fontWeight: 900 }}>✕</button>
+
+        <div style={{ fontSize: 34, marginBottom: 2 }}>🎉</div>
+        <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 22, color: '#f9ca24', marginBottom: 4 }}>
+          {isFirst ? t('ach_unlocked') : t('ach_upgrade_congrats')}
+        </div>
+        <div style={{ fontSize: 14, color: '#fff', fontWeight: 800, marginBottom: 16 }}>{upgrade.name}</div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
+          {oldCard && (
+            <>
+              <div style={{ opacity: .55, transform: 'scale(.92)' }}><Card card={oldCard} small /></div>
+              <div style={{ fontSize: 30, color: '#f9ca24', fontWeight: 900, flexShrink: 0 }}>→</div>
+            </>
+          )}
+          <div style={{ filter: 'drop-shadow(0 6px 20px #f9ca2455)' }}><Card card={newCard} small /></div>
+        </div>
+
+        <div style={{ fontSize: 12, color: '#a8bfcf', fontWeight: 700, marginBottom: 18 }}>
+          {oldCard
+            ? <>{rarityLabel(upgrade.old_rarity, t)} <span style={{ color: '#f9ca24' }}>→</span> {rarityLabel(upgrade.new_rarity, t)}</>
+            : rarityLabel(upgrade.new_rarity, t)}
+        </div>
+
+        <button onClick={onClose} style={{ background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', fontWeight: 900, fontSize: 14, padding: '10px 28px', borderRadius: 50, cursor: 'pointer', fontFamily: "'Nunito',sans-serif" }}>
+          {t('ach_upgrade_ok')}
+        </button>
       </div>
     </div>
   )

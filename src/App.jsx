@@ -42,7 +42,7 @@ import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
 import CgvPage from './features/cgv/CgvPage.jsx';
 import ShopModal from './features/shop/ShopModal.jsx';
-import { AchievementToast, SaleNotif, TxHistoryModal } from './features/achievements/NotifComponents.jsx';
+import { AchievementToast, AchievementUpgradePopup, SaleNotif, TxHistoryModal } from './features/achievements/NotifComponents.jsx';
 import DailyQuests from './features/quests/DailyQuests.jsx';
 import ForgeModal  from './features/forge/ForgeModal.jsx'
 import TresorPage  from './features/treasures/TresorPage.jsx';
@@ -795,6 +795,7 @@ export default function App() {
     onQuizEnd: () => setQuizSessionActive(false),
     cardPool: gs.cardPool,
     checkAchievements: gs.checkAchievements,
+    checkAchievementUpgrades: gs.checkAchievementUpgrades,
     onForgePointsEarned: gs.addForgePoints,
   })
   const { countdown, setNextQuizTime, cycleSec, applyServerSchedule, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
@@ -815,6 +816,7 @@ export default function App() {
     t,
     cardPool: gs.cardPool,
     checkAchievements: gs.checkAchievements,
+    checkAchievementUpgrades: gs.checkAchievementUpgrades,
     refreshProfile: () => {
       import('./services/api.js').then(({ apiGetProfile }) => apiGetProfile?.().then(({ data }) => {
         if (data?.profile) auth.setProfile(data.profile)
@@ -2102,6 +2104,11 @@ export default function App() {
       {/* ── Achievement toast queue ── */}
       {gs.pendingAch.length > 0 && (
         <AchievementToast achievement={gs.pendingAch[0]} cardPool={gs.cardPool} onClose={() => gs.setPendingAch(prev => prev.slice(1))} />
+      )}
+
+      {/* ── Achievement upgrade popup queue (montées de palier) ── */}
+      {gs.pendingUpgrade.length > 0 && (
+        <AchievementUpgradePopup upgrade={gs.pendingUpgrade[0]} cardPool={gs.cardPool} onClose={() => gs.setPendingUpgrade(prev => prev.slice(1))} />
       )}
 
       {/* ── Sale notifications ── */}

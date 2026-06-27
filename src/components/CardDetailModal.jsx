@@ -127,7 +127,35 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
               "{card.desc}"
             </div>
           )}
-          {card.progressInfo && card.progressInfo.threshold > 0 && card.progressInfo.type !== 'referral' && (() => {
+          {/* Achievement évolutif : échelle de paliers (commun → légendaire). */}
+          {card.progressInfo?.tiers && (() => {
+            const { progress, tier, tiers } = card.progressInfo
+            return (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 6 }}>{t('ach_tiers_title')}</div>
+                {tiers.filter(tt => tt.threshold != null).map((tt, i) => {
+                  const idx = i + 1
+                  const reached = tier >= idx
+                  const isNext  = idx === tier + 1
+                  const rcc = RC[tt.rarity] || RC.commun
+                  const pct = isNext ? Math.min(100, Math.round((progress / tt.threshold) * 100)) : reached ? 100 : 0
+                  return (
+                    <div key={tt.rarity} style={{ marginBottom: 7, opacity: reached || isNext ? 1 : 0.45 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, marginBottom: 3 }}>
+                        <span style={{ color: rcc.color }}>{reached ? '✓ ' : isNext ? '➤ ' : '🔒 '}{rarityLabel(tt.rarity, t)}</span>
+                        <span style={{ color: '#f9ca24' }}>{Math.min(progress, tt.threshold)} / {tt.threshold}</span>
+                      </div>
+                      <div style={{ background: '#ffffff14', borderRadius: 50, height: 5, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: `linear-gradient(90deg,${rcc.color},${rcc.color}aa)`, transition: 'width .5s' }}/>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
+
+          {!card.progressInfo?.tiers && card.progressInfo && card.progressInfo.threshold > 0 && card.progressInfo.type !== 'referral' && (() => {
             const { progress, threshold } = card.progressInfo
             const pct = Math.min(100, Math.round((progress / threshold) * 100))
             return (

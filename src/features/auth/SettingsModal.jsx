@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { BTN, INP } from '../../utils/styles.js'
-import { RC, ACHIEVEMENT_DEF } from '../../data/cards.js'
+import { RC } from '../../data/cards.js'
 import { rankCC, getRankLabel } from '../../utils/rankUtils.js'
 import { PSEUDO_CHANGE_DAYS } from '../../data/constants.js'
 import { apiDeleteAccount } from '../../services/api.js'
@@ -39,7 +39,9 @@ function memberSince(dateStr) {
 }
 
 // ─── SettingsModal ────────────────────────────────────────────────────────────
-export default function SettingsModal({ auth, collection = {}, shinyCollection = {}, cardPool = [], unlockedAch = [], ranks = [], limits = {}, score: scoreProp, onClose, onStartTour }) {
+export default function SettingsModal({ auth, collection = {}, shinyCollection = {}, cardPool = [], ranks = [], limits = {}, score: scoreProp, onClose, onStartTour }) {
+  // Succès = nombre de geocoins d'achievement possédés (variantes évolutives incluses).
+  const achievementsOwned = (cardPool || []).filter(c => (c.type || '').toLowerCase().startsWith('achievement') && (collection[c.id] || 0) > 0).length
   const { t, lang } = useT()
   const { theme } = useTheme()
   const { profile } = auth
@@ -168,7 +170,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
             {[
               { icon: '💰', value: profile.gold ?? 0,  label: 'Or' },
               { icon: '🃏', value: uniqueCards,          label: 'Geocoins', shiny: shinyCards },
-              { icon: '🏆', value: unlockedAch.length,  label: 'Succès' },
+              { icon: '🏆', value: achievementsOwned,  label: 'Succès' },
             ].map(({ icon, value, label, shiny }) => (
               <div key={label} style={{ background: '#00000033', borderRadius: 12,
                 padding: '10px 6px', textAlign: 'center', backdropFilter: 'blur(4px)' }}>

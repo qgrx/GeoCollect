@@ -12,9 +12,9 @@ import { getLang } from '../i18n/translations.js'
  * d'horloge client. Une resynchronisation périodique via /current répare les
  * éventuels events socket manqués (sinon le client pouvait rester sans geocoin).
  */
-export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements, refreshProfile }) {
+export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements, checkAchievementUpgrades, refreshProfile }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements, refreshProfile }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements, checkAchievementUpgrades, refreshProfile }
   const activeRef = useRef(active)
   useEffect(() => { activeRef.current = active }, [active])
 
@@ -214,6 +214,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     if (data.card_earned) earnCard(card, false)
     if (data.gold_earned) earnGoldWithFx(data.gold_earned)
     if (data.achievements?.length) cbRef.current.checkAchievements?.(data.achievements)
+    if (data.achievement_upgrades?.length) cbRef.current.checkAchievementUpgrades?.(data.achievement_upgrades)
     cbRef.current.refreshProfile?.()   // MAJ last_geocoin_* (protection inter-modes)
     showToast(data.card_earned
       ? t('toast_quiz_won').replace('{card}', card.name)

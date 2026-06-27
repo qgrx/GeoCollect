@@ -3,9 +3,9 @@ import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetCurrentQuiz, apiJoinQuiz, apiAnswerQuiz } from '../services/api.js'
 import { getLang } from '../i18n/translations.js'
 
-export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned }) {
+export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, onForgePointsEarned, limits }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, limits }
 
   const [nextQuizTime,  setNextQuizTime] = useState(Date.now() + QUIZ_INTERVAL * 1000)
   const [countdown,     setCountdown]    = useState(QUIZ_INTERVAL)
@@ -215,6 +215,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       }
       if (data.achievements?.length) {
         cbRef.current.checkAchievements?.(data.achievements)
+      }
+      if (data.achievement_upgrades?.length) {
+        cbRef.current.checkAchievementUpgrades?.(data.achievement_upgrades)
       }
       // Toujours notifier l'activité quête (même si forge_points = 0, la progression change)
       cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)

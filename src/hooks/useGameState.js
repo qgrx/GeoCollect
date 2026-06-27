@@ -11,6 +11,30 @@ import {
 } from '../services/api.js'
 
 
+// Construit la map card_id → infos de progression d'achievement, consommée par
+// CardDetailModal. Pour un achievement évolutif (threshold_rare défini), on
+// indexe CHAQUE carte-variante (commun/rare/épique/légendaire) sur la même
+// échelle de paliers, pour que le détail affiche les seuils quel que soit le
+// palier détenu/cliqué.
+function buildAchievementProgressMap(list) {
+  const map = {}
+  for (const a of (list || [])) {
+    if (a.threshold_rare != null) {
+      const tiers = [
+        { rarity: 'commun',     threshold: a.threshold,           card_id: a.card_id },
+        { rarity: 'rare',       threshold: a.threshold_rare,      card_id: a.card_id_rare },
+        { rarity: 'épique',     threshold: a.threshold_epic,      card_id: a.card_id_epic },
+        { rarity: 'légendaire', threshold: a.threshold_legendary, card_id: a.card_id_legendary },
+      ]
+      const info = { type: a.type, progress: a.progress, tier: a.tier || 0, tiers }
+      for (const tt of tiers) if (tt.card_id) map[tt.card_id] = info
+    } else if (a.card_id) {
+      map[a.card_id] = { progress: a.progress, threshold: a.threshold, type: a.type }
+    }
+  }
+  return map
+}
+
 export function useGameState(auth, { onAchievementCard } = {}) {
   const profile = auth?.profile
 
@@ -39,6 +63,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [unlockedAch,         setUnlockedAch]        = useState([])
   const [achievementProgress, setAchievementProgress] = useState({})
   const [pendingAch,          setPendingAch]         = useState([])
+  const [pendingUpgrade,      setPendingUpgrade]     = useState([])
   const [saleNotifs,          setSaleNotifs]         = useState([])
   const [unreadSales,         _setUnreadSales]       = useState(0)
   const [initialQuests,       setInitialQuests]     = useState(null)
@@ -59,9 +84,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const refreshAchievements = useCallback(() => {
     apiGetAchievements().then(({ data: achData }) => {
       if (!achData?.achievements || !mounted.current) return
-      setAchievementProgress(Object.fromEntries(
-        achData.achievements.filter(a => a.card_id).map(a => [a.card_id, { progress: a.progress, threshold: a.threshold, type: a.type }])
-      ))
+      setAchievementProgress(buildAchievementProgressMap(achData.achievements))
     }).catch(() => {})
   }, [])
 
@@ -211,9 +234,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
       apiGetAchievements().then(({ data: achData }) => {
         if (!achData?.achievements || !mounted.current) return
-        setAchievementProgress(Object.fromEntries(
-          achData.achievements.filter(a => a.card_id).map(a => [a.card_id, { progress: a.progress, threshold: a.threshold, type: a.type }])
-        ))
+        setAchievementProgress(buildAchievementProgressMap(achData.achievements))
       }).catch(() => {})
 
       apiGetMyListings().then(({ data: listData }) => {
@@ -453,6 +474,26 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
   checkAchievementsRef.current = checkAchievements
 
+  // ── Montées de palier (achievements évolutifs) ─────────────────────────────
+  // Reçoit les `achievement_upgrades` renvoyés par le serveur. Échange la carte
+  // dans la collection (ancienne rareté → nouvelle) et empile la popup
+  // « Félicitations ! » (ancienne carte → flèche → nouvelle carte).
+  const checkAchievementUpgrades = useCallback((ups = []) => {
+    if (!Array.isArray(ups) || !ups.length) return
+    ups.forEach(up => {
+      setCollection(p => {
+        const next = { ...p }
+        if (up.old_card_id) delete next[up.old_card_id]
+        if (up.new_card_id) next[up.new_card_id] = 1
+        return next
+      })
+      setPendingUpgrade(prev => [...prev, up])
+    })
+  }, [])
+
+  const checkAchievementUpgradesRef = useRef(null)
+  checkAchievementUpgradesRef.current = checkAchievementUpgrades
+
   // ── Market actions ────────────────────────────────────────────────────────
   const handleBuy = useCallback(async (listing, index) => {
     // Optimistic update
@@ -490,6 +531,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         return error
       }
       checkAchievementsRef.current?.(data?.achievements || [])
+      checkAchievementUpgradesRef.current?.(data?.achievement_upgrades || [])
       setQuestActivitySignal(s => s + 1)
       if (data?.forge_points_earned > 0) {
         setForgePoints(fp => fp + data.forge_points_earned)
@@ -559,6 +601,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       setMyListings(prev => prev.map(l => l.id === tempId ? { ...l, id: data.listing_id, seller: profile.pseudo } : l))
       setMarket(prev => prev.map(l => l.id === tempId ? { ...l, id: data.listing_id, seller: profile.pseudo } : l))
       checkAchievementsRef.current?.(data?.achievements || [])
+      checkAchievementUpgradesRef.current?.(data?.achievement_upgrades || [])
       setQuestActivitySignal(s => s + 1)
       if (data?.forge_points_earned > 0) {
         setForgePoints(fp => fp + data.forge_points_earned)
@@ -779,6 +822,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     // Player
     gold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, myListings, totalBuys, totalSells,
     streak, setStreak, transactions, setTransactions, unlockedAch, achievementProgress, pendingAch, setPendingAch,
+    pendingUpgrade, setPendingUpgrade, checkAchievementUpgrades,
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,
     // Derived
     isGuest, uniqueCards, totalUnique, myScore,

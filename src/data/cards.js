@@ -27,17 +27,10 @@ export const cardCC = (r) => {
   return { c1, c2 };
 };
 
-// Métadonnées d'affichage des achievements (icône, label) — la logique de déclenchement
-// est désormais entièrement gérée côté serveur (achievementService.js).
+// Métadonnées d'affichage des achievements NON évolutifs (toast de déverrouillage) —
+// la logique de déclenchement est gérée côté serveur (achievementService.js).
+// Les achievements ÉVOLUTIFS (L'acheteur, Le vendeur, Fidèle, Le collectionneur)
+// passent par la popup de montée de palier (achievement_upgrades), pas par ce toast.
 export const ACHIEVEMENT_DEF = [
-{ id: 'quiz_1000',       label: 'Légendaire',        icon: '🐉', cardId: 909 },
-  { id: 'collector_100',   label: 'Collectionneur',    icon: '🃏', cardId: 902 },
-  { id: 'first_buy',       label: 'Premier achat',     icon: '🛍️', cardId: 903 },
-  { id: 'buyer_50',        label: 'Acheteur vétérant', icon: '💳', cardId: 904 },
-  { id: 'buyer_100',       label: 'Super acheteur',    icon: '🏅', cardId: 905 },
-  { id: 'first_sell',      label: 'Première vente',    icon: '🏷️', cardId: 906 },
-  { id: 'seller_50',       label: 'Vendeur vétéran',   icon: '🏅', cardId: 907 },
-  { id: 'seller_100',      label: 'Super vendeur',     icon: '🏆', cardId: 908 },
-  { id: 'streak_7',        label: 'Endurant',          icon: '⚡', cardId: 910 },
-  { id: 'streak_30',       label: 'Fidèle',            icon: '🔥', cardId: 911 },
+  { id: 'quiz_1000',       label: 'Légendaire',        icon: '🐉', cardId: 909 },
 ];

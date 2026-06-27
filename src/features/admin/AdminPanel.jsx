@@ -1568,7 +1568,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <button onClick={async()=>{if(!window.confirm(`Publier ${hiddenCount} achievement(s) en brouillon ? Ils deviendront visibles et débloquables par les joueurs.`))return;const {data,error}=await apiReleaseHiddenAchievements();if(error){setMsg("❌ "+error);return;}setAchDefs(prev=>prev.map(d=>d.hidden?{...d,hidden:false}:d));setMsg(`✅ ${data?.released??hiddenCount} achievement(s) publié(s) !`);}}
                     style={{...BTN("linear-gradient(135deg,#e17055,#d63031)"),padding:"5px 12px",borderRadius:8,fontSize:11}} title="Rendre visibles tous les achievements en brouillon">🚀 Publier {hiddenCount} brouillon{hiddenCount>1?"s":""}</button>
                 );})()}
-                <button onClick={()=>setNewDef({key:'',name:'',description:'',type:'buy_count',threshold:1,card_id:'',points:0,category:'permanent',active:true,hidden:false})}
+                <button onClick={()=>setNewDef({key:'',name:'',description:'',type:'buy_count',threshold:1,card_id:'',points:0,category:'permanent',active:true,hidden:false,threshold_rare:'',threshold_epic:'',threshold_legendary:'',card_id_rare:'',card_id_epic:'',card_id_legendary:''})}
                   style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"5px 12px",borderRadius:8,fontSize:11}}>+ Nouvelle</button>
               </div>
             </div>
@@ -1596,6 +1596,17 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   </Fld>
                   <Fld lbl="Description"><input value={newDef.description} onChange={e=>setNewDef({...newDef,description:e.target.value})} style={INP}/></Fld>
                   <Fld lbl="Visibilité"><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginTop:4}}><input type="checkbox" checked={!!newDef.hidden} onChange={e=>setNewDef({...newDef,hidden:e.target.checked})} style={{width:16,height:16}}/><span style={{color:"#e17055",fontSize:12,fontWeight:700}}>🚫 Brouillon (caché jusqu'à publication)</span></label></Fld>
+                </div>
+                <div style={{marginTop:8,padding:"8px 10px",background:"#ffffff06",borderRadius:8,border:"1px solid #f9ca2433"}}>
+                  <div style={{fontWeight:800,color:"#f9ca24",fontSize:11,marginBottom:6}}>🏅 Paliers évolutifs (optionnel) — laisser vide = palier unique. Le geocoin ci-dessus = palier commun.</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    <Fld lbl="Seuil Rare"><input type="number" value={newDef.threshold_rare} onChange={e=>setNewDef({...newDef,threshold_rare:e.target.value})} min={1} style={INP}/></Fld>
+                    <Fld lbl="Geocoin Rare"><CardSelect value={newDef.card_id_rare} cards={achievementCards} onChange={v=>setNewDef({...newDef,card_id_rare:v})} style={SEL}/></Fld>
+                    <Fld lbl="Seuil Épique"><input type="number" value={newDef.threshold_epic} onChange={e=>setNewDef({...newDef,threshold_epic:e.target.value})} min={1} style={INP}/></Fld>
+                    <Fld lbl="Geocoin Épique"><CardSelect value={newDef.card_id_epic} cards={achievementCards} onChange={v=>setNewDef({...newDef,card_id_epic:v})} style={SEL}/></Fld>
+                    <Fld lbl="Seuil Légendaire"><input type="number" value={newDef.threshold_legendary} onChange={e=>setNewDef({...newDef,threshold_legendary:e.target.value})} min={1} style={INP}/></Fld>
+                    <Fld lbl="Geocoin Légendaire"><CardSelect value={newDef.card_id_legendary} cards={achievementCards} onChange={v=>setNewDef({...newDef,card_id_legendary:v})} style={SEL}/></Fld>
+                  </div>
                 </div>
                 {TRIGGER_META[newDef.type]?.help && (
                   <div style={{margin:"2px 0 8px",fontSize:10,color:"#8daacc",lineHeight:1.4,background:"#ffffff08",borderRadius:8,padding:"7px 10px"}}>
@@ -1661,6 +1672,17 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                                   <option value="1">🚫 Brouillon</option>
                                 </select>
                               </Fld>
+                            </div>
+                            <div style={{padding:"7px 9px",marginBottom:6,background:"#ffffff06",borderRadius:8,border:"1px solid #f9ca2433"}}>
+                              <div style={{fontWeight:800,color:"#f9ca24",fontSize:10,marginBottom:5}}>🏅 Paliers évolutifs (vide = palier unique)</div>
+                              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                                <Fld lbl="Seuil Rare"><input type="number" value={editDef.threshold_rare??''} onChange={e=>setEditDef({...editDef,threshold_rare:e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                                <Fld lbl="Geocoin Rare"><CardSelect value={editDef.card_id_rare??''} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id_rare:v})} style={{...SEL,fontSize:11}}/></Fld>
+                                <Fld lbl="Seuil Épique"><input type="number" value={editDef.threshold_epic??''} onChange={e=>setEditDef({...editDef,threshold_epic:e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                                <Fld lbl="Geocoin Épique"><CardSelect value={editDef.card_id_epic??''} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id_epic:v})} style={{...SEL,fontSize:11}}/></Fld>
+                                <Fld lbl="Seuil Légendaire"><input type="number" value={editDef.threshold_legendary??''} onChange={e=>setEditDef({...editDef,threshold_legendary:e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                                <Fld lbl="Geocoin Légendaire"><CardSelect value={editDef.card_id_legendary??''} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id_legendary:v})} style={{...SEL,fontSize:11}}/></Fld>
+                              </div>
                             </div>
                             <div style={{display:"flex",gap:6}}>
                               <button onClick={async()=>{
