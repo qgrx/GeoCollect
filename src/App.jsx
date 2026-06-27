@@ -1313,6 +1313,30 @@ export default function App() {
     () => new Set((demoSteps || []).map(s => s.card?.type).filter(Boolean)),
     [demoSteps]
   );
+  // Achievements évolutifs : une série = 4 cartes-variantes (commun→légendaire)
+  // mais ne doit compter et s'afficher que pour UN geocoin — celui du palier
+  // courant (ou le commun si pas encore débloqué). On masque les autres variantes
+  // de la grille et des totaux. La progression réelle (collection/score) ne porte
+  // déjà que la variante possédée ; ceci ne touche que l'affichage et le dénominateur.
+  const evolutiveHiddenIds = useMemo(() => {
+    const hide = new Set()
+    const seenSeries = new Set()
+    for (const info of Object.values(gs.achievementProgress || {})) {
+      if (!info?.tiers) continue
+      const key = info.tiers.map(t => t.card_id || 0).join(',')
+      if (seenSeries.has(key)) continue
+      seenSeries.add(key)
+      const tier = info.tier || 0
+      const activeId = tier >= 1 ? info.tiers[tier - 1]?.card_id : info.tiers[0]?.card_id
+      for (const tt of info.tiers) if (tt.card_id && tt.card_id !== activeId) hide.add(tt.card_id)
+    }
+    return hide
+  }, [gs.achievementProgress])
+  const visibleCardPool = useMemo(
+    () => gs.cardPool.filter(c => !evolutiveHiddenIds.has(c.id)),
+    [gs.cardPool, evolutiveHiddenIds]
+  )
+
   const typeTabs = useMemo(() => {
     if (auth.isDemo && demoTypeTotals?.length) {
       // « Tous » = total de TOUS les geocoins, achievements compris.
@@ -1327,14 +1351,14 @@ export default function App() {
       ];
     }
     return types.map(tp => {
-      const pool  = tp === 'Tous' ? gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement') : gs.cardPool.filter(c => c.type === tp);
+      const pool  = tp === 'Tous' ? visibleCardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement') : visibleCardPool.filter(c => c.type === tp);
       const total = pool.length;
       const owned = showShiny
         ? pool.filter(c => (gs.shinyCollection?.[c.id] || 0) > 0).length
         : pool.filter(c => (gs.collection[c.id] || 0) > 0).length;
       return { type: tp, total, owned, locked: false };
     });
-  }, [auth.isDemo, demoTypeTotals, demoUnlockedTypes, types, gs.cardPool, gs.collection, gs.shinyCollection, showShiny]);
+  }, [auth.isDemo, demoTypeTotals, demoUnlockedTypes, types, gs.cardPool, visibleCardPool, gs.collection, gs.shinyCollection, showShiny]);
   // Onglet courant verrouillé en démo : tout sauf « Tous » et le type jouable.
   const currentTabLocked = auth.isDemo && demoTypeTotals?.length > 0 && filter !== 'Tous' && !demoUnlockedTypes.has(filter);
   const displayCards = useMemo(() => {
@@ -1372,7 +1396,7 @@ export default function App() {
     // « manquant » (cardPool ne contient que ces 5).
     let normalList;
     if (showMissing || auth.isDemo) {
-      normalList = gs.cardPool
+      normalList = visibleCardPool
         .filter(c => (af || c.type === filter) && matchSearch(c))
         .map(c => ({ card: c, count: gs.collection[c.id] || 0, missing: !(gs.collection[c.id] > 0) }))
     } else {
@@ -1384,7 +1408,7 @@ export default function App() {
       // Sur l'onglet "Achievements" uniquement, afficher aussi les manquants
       // même sans le toggle "Manquants" (pas dans "Tous" ni les autres onglets)
       if (filter?.toLowerCase().startsWith('achievement')) {
-        const missingAch = gs.cardPool
+        const missingAch = visibleCardPool
           .filter(c => c.type === filter && !(gs.collection[c.id] > 0))
           .filter(matchSearch)
           .map(c => ({ card: c, cnt: 0, missing: true }))
@@ -1392,7 +1416,7 @@ export default function App() {
       }
     }
     return normalList.sort(sortFn)
-  }, [showMissing, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, gs.cardPool, gs.shinyCollection]);
+  }, [showMissing, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, gs.cardPool, visibleCardPool, gs.shinyCollection]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0
   const pseudoChanged   = pseudoChangedAt > 0 && (Date.now() - pseudoChangedAt) < PSEUDO_NOTIF_DAYS * 864e5
