@@ -660,13 +660,15 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   }, [myListings, profile])
 
   // ── Sale notification depuis WebSocket ────────────────────────────────────
-  const handleSaleNotifFromSocket = useCallback(({ cardName, buyer, price, rarity }) => {
+  const handleSaleNotifFromSocket = useCallback(({ cardName, buyer, price, rarity, achievement_upgrades }) => {
     setGold(g => g + price)
     setTotalSells(s => s + 1)
     setTransactions(prev => [{ type: 'vente', cardName, rarity: rarity || 'commun', counterpart: buyer, price, date: new Date().toLocaleDateString('fr-FR'), isNew: true }, ...prev])
     setSaleNotifs(prev => [...prev, { id: Date.now(), cardName, buyer, price }])
     setUnreadSales(n => n + 1)
-  }, [])
+    // « Le vendeur » : montée de palier validée par la vente réelle → popup + swap.
+    if (achievement_upgrades?.length) checkAchievementUpgrades(achievement_upgrades)
+  }, [checkAchievementUpgrades])
 
   // ── Admin ─────────────────────────────────────────────────────────────────
   const adminAddCard = useCallback(async (card) => {
