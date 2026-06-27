@@ -67,7 +67,9 @@ export function AchievementUpgradePopup({ upgrade, cardPool, onClose }) {
         position: 'relative', width: 'min(94vw,440px)', borderRadius: 22, padding: '26px 22px 22px',
         background: 'linear-gradient(135deg,#1e3045,#1a2d42)', border: '1.5px solid #f9ca2455',
         boxShadow: '0 24px 80px #000a, 0 0 0 1px #f9ca2422', textAlign: 'center',
-        animation: 'slideUp .4s cubic-bezier(.34,1.56,.64,1) both',
+        // NB: ne PAS utiliser slideUp ici — son keyframe finit en translateX(-50%)
+        // (prévu pour les toasts en left:50%) et décalerait la modale centrée par flex.
+        animation: 'quizIn .4s cubic-bezier(.34,1.56,.64,1) both',
       }}>
         <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 14, background: 'none', border: 'none', color: '#ffffff66', fontSize: 18, cursor: 'pointer', fontWeight: 900 }}>✕</button>
 
