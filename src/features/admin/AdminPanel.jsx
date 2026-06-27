@@ -479,6 +479,24 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [achDefs,setAchDefs]=useState([]);
   const [editDef,setEditDef]=useState(null);
   const [newDef,setNewDef]=useState(null);
+  // Variantes de paliers supérieurs (rare/épique/légendaire) d'une définition évolutive :
+  // on les masque de la grille pour ne pas afficher 4× le même geocoin (une série = 1 carte).
+  const achVariantIds=useMemo(()=>{
+    const s=new Set();
+    for(const d of achDefs){
+      if(d.card_id_rare)      s.add(d.card_id_rare);
+      if(d.card_id_epic)      s.add(d.card_id_epic);
+      if(d.card_id_legendary) s.add(d.card_id_legendary);
+    }
+    return s;
+  },[achDefs]);
+  const baseAchCards=useMemo(()=>achCards.filter(c=>!achVariantIds.has(c.id)),[achCards,achVariantIds]);
+  // Définition liée à une carte de base (card_id), pour éditer ses paliers au clic.
+  const defByCardId=useMemo(()=>{
+    const m={};
+    for(const d of achDefs){ if(d.card_id) m[d.card_id]=d; }
+    return m;
+  },[achDefs]);
   const [newAchCard,setNewAchCard]=useState(null);
   const newAchFileRef=useRef();
   const [dailyQuests,setDailyQuests]=useState([]);
@@ -1367,7 +1385,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {/* ── ACHIEVEMENTS ── */}
         {tab==="achievements"&&<div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-            <div style={{fontWeight:900,color:"#e74c3c",fontSize:14}}>🏆 Cartes Achievement ({achCards.length})</div>
+            <div style={{fontWeight:900,color:"#e74c3c",fontSize:14}}>🏆 Cartes Achievement ({baseAchCards.length})</div>
             <button onClick={()=>setNewAchCard(newAchCard?null:{name:"",description:"",rarity:"commun",image:null,trigger:"buy_count",threshold:1,category:"permanent",points:0})}
               style={{...BTN(newAchCard?"#ffffff18":"linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"6px 14px",borderRadius:8,fontSize:11}}>
               {newAchCard?"✕ Annuler":"➕ Nouvelle carte achievement"}
@@ -1484,16 +1502,20 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           })()}
           <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"flex-start"}}>
 
-            {/* Grille de cartes */}
+            {/* Grille de cartes (une série évolutive = une seule carte de base) */}
             <div style={{flex:2,minWidth:260}}>
-              <div style={{fontSize:11,color:"#8daacc",marginBottom:10}}>Clique pour éditer</div>
+              <div style={{fontSize:11,color:"#8daacc",marginBottom:10}}>Clique pour éditer le geocoin et ses paliers</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
-                {achCards.map(c=>(
-                  <div key={c.id} onClick={()=>setEditAch(editAch?.id===c.id?null:{...c})}
-                    style={{cursor:"pointer",outline:editAch?.id===c.id?"2.5px solid #f9ca24":"2.5px solid transparent",borderRadius:18,transition:"outline .15s"}}>
-                    <Card card={c} small />
-                  </div>
-                ))}
+                {baseAchCards.map(c=>{
+                  const evo=defByCardId[c.id]?.threshold_rare!=null;
+                  return(
+                    <div key={c.id} onClick={()=>setEditAch(editAch?.id===c.id?null:{...c,_def:defByCardId[c.id]||null})}
+                      style={{position:"relative",cursor:"pointer",outline:editAch?.id===c.id?"2.5px solid #f9ca24":"2.5px solid transparent",borderRadius:18,transition:"outline .15s"}}>
+                      <Card card={c} small />
+                      {evo&&<div style={{position:"absolute",top:4,left:4,zIndex:6,background:"#f9ca24cc",color:"#1e3045",fontSize:8,fontWeight:900,borderRadius:4,padding:"2px 5px"}}>ÉVOLUTIF</div>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -1555,6 +1577,43 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   </button>
                   <button onClick={()=>setEditAch(null)} style={{...BTN("#ffffff18"),padding:"10px 14px",borderRadius:10}}>Annuler</button>
                 </div>
+
+                {/* ── Paliers évolutifs du geocoin (édite la définition liée) ── */}
+                {editAch._def&&(
+                  <div style={{marginTop:16,padding:12,background:"#ffffff06",borderRadius:10,border:"1px solid #f9ca2440"}}>
+                    <div style={{fontWeight:900,color:"#f9ca24",fontSize:12,marginBottom:6}}>🏅 Paliers évolutifs</div>
+                    <div style={{fontSize:10,color:"#8daacc",marginBottom:10,lineHeight:1.4}}>
+                      Déclencheur : <b>{triggerLabel(editAch._def.type)}</b>. Ce geocoin = palier <b>commun</b>.
+                      Laisse un seuil vide pour retirer le palier (et au-dessus).
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                      <Fld lbl={`Seuil Commun (${TRIGGER_META[editAch._def.type]?.unit||'à atteindre'})`}>
+                        <input type="number" min={1} value={editAch._def.threshold??1} onChange={e=>setEditAch({...editAch,_def:{...editAch._def,threshold:+e.target.value}})} style={INP}/>
+                      </Fld>
+                      <div/>
+                      <Fld lbl="Seuil Rare"><input type="number" min={1} value={editAch._def.threshold_rare??''} onChange={e=>setEditAch({...editAch,_def:{...editAch._def,threshold_rare:e.target.value}})} style={INP}/></Fld>
+                      <Fld lbl="Geocoin Rare"><CardSelect value={editAch._def.card_id_rare??''} cards={achievementCards} onChange={v=>setEditAch({...editAch,_def:{...editAch._def,card_id_rare:v}})} style={SEL}/></Fld>
+                      <Fld lbl="Seuil Épique"><input type="number" min={1} value={editAch._def.threshold_epic??''} onChange={e=>setEditAch({...editAch,_def:{...editAch._def,threshold_epic:e.target.value}})} style={INP}/></Fld>
+                      <Fld lbl="Geocoin Épique"><CardSelect value={editAch._def.card_id_epic??''} cards={achievementCards} onChange={v=>setEditAch({...editAch,_def:{...editAch._def,card_id_epic:v}})} style={SEL}/></Fld>
+                      <Fld lbl="Seuil Légendaire"><input type="number" min={1} value={editAch._def.threshold_legendary??''} onChange={e=>setEditAch({...editAch,_def:{...editAch._def,threshold_legendary:e.target.value}})} style={INP}/></Fld>
+                      <Fld lbl="Geocoin Légendaire"><CardSelect value={editAch._def.card_id_legendary??''} cards={achievementCards} onChange={v=>setEditAch({...editAch,_def:{...editAch._def,card_id_legendary:v}})} style={SEL}/></Fld>
+                    </div>
+                    <button onClick={async()=>{
+                      const d=editAch._def;
+                      const {data,error}=await apiUpdateAchievementDef(d.id,{
+                        threshold:d.threshold,
+                        threshold_rare:d.threshold_rare||null, threshold_epic:d.threshold_epic||null, threshold_legendary:d.threshold_legendary||null,
+                        card_id_rare:d.card_id_rare||null, card_id_epic:d.card_id_epic||null, card_id_legendary:d.card_id_legendary||null,
+                      });
+                      if(error){setMsg("❌ "+error);return;}
+                      setAchDefs(prev=>prev.map(x=>x.id===d.id?data.definition:x));
+                      setEditAch(a=>({...a,_def:data.definition}));
+                      setMsg("✅ Paliers mis à jour !");
+                    }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)"),padding:"9px",borderRadius:9,marginTop:10,width:"100%",textAlign:"center",color:"#1e3045"}}>
+                      Enregistrer les paliers 🏅
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1709,7 +1768,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                           <td style={{padding:"5px 8px"}}>
                             <span title={def.type} style={{background:"#ffffff12",borderRadius:5,padding:"2px 7px",fontSize:10}}>{triggerLabel(def.type)}</span>
                           </td>
-                          <td style={{padding:"5px 8px",color:"#f9ca24",fontWeight:700}}>{def.threshold}</td>
+                          <td style={{padding:"5px 8px",color:"#f9ca24",fontWeight:700,whiteSpace:"nowrap"}}>{def.threshold_rare!=null?`${def.threshold} · ${def.threshold_rare} · ${def.threshold_epic??'—'} · ${def.threshold_legendary??'—'}`:def.threshold}</td>
                           <td style={{padding:"5px 8px",color:"#aaa"}}>{def.cards ? `#${def.card_id} ${def.cards.name}` : def.card_id ? `#${def.card_id}` : '—'}</td>
                           <td style={{padding:"5px 8px",color:"#aaa"}}>{def.points||'—'}</td>
                           <td style={{padding:"5px 8px"}}>
