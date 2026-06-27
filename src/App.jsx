@@ -1941,11 +1941,13 @@ export default function App() {
                           {slice.map(({ card, count, cnt, missing, isShiny }, idx) => {
                             const c = count || cnt || 0;
                             const isAchievement = card.type?.toLowerCase().startsWith('achievement')
+                            const isEvolutive = isAchievement && !!gs.achievementProgress?.[card.id]?.tiers
                             const anim = gridAnimKey > 0
                               ? `cardSort .4s ${Math.min(idx * 0.03, 0.5)}s cubic-bezier(.34,1.56,.64,1) both`
                               : 'slideIn .35s ease both'
                             return (
-                              <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
+                              <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ position: 'relative', animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
+                                {isEvolutive && <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 7, background: '#f9ca24cc', color: '#1e3045', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, pointerEvents: 'none' }}>ÉVOLUTIF</div>}
                                 <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
                               </div>
                             );
