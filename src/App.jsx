@@ -479,6 +479,13 @@ export default function App() {
         handleQuizExpireRef.current(null)
       })
 
+      // Teaser mis à jour sans changement de quiz (ex. admin modifie le Shiny Day) :
+      // on rafraîchit uniquement le statut brillant / la rareté du PROCHAIN quiz.
+      s.on('quiz:teaser', (data) => {
+        setQuizIsShiny(data.next_is_shiny || false)
+        if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
+      })
+
       // Mode Débutant — nouvelle manche / fin de manche / quelqu'un a répondu
       s.on('beginner:new',      (data) => beginnerRef.current?.applyBeginnerNew(data))
       s.on('beginner:closed',   (data) => beginnerRef.current?.applyBeginnerClosed(data))
@@ -535,6 +542,7 @@ export default function App() {
       socket?.off('quiz:new')
       socket?.off('quiz:solved')
       socket?.off('quiz:expired')
+      socket?.off('quiz:teaser')
       socket?.off('beginner:new')
       socket?.off('beginner:closed')
       socket?.off('beginner:answered')
