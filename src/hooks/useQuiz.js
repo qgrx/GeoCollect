@@ -189,7 +189,8 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     const card = activeQuiz.card
     const { earnCard, earnGoldWithFx, showToast, t } = cbRef.current
     if (profile && activeQuiz.id) {
-      const { data, error, status, body } = await apiAnswerQuiz(activeQuiz.id, userAnswer)
+      // Honeypot anti-bot : on renvoie le nonce émis par /current (présent via ...data.quiz).
+      const { data, error, status, body } = await apiAnswerQuiz(activeQuiz.id, userAnswer, activeQuiz.nonce)
       if (error) {
         if (status === 425) return { handicap: true, wait_ms: body?.wait_ms || 0 } // série : délai cadeau
         if (status === 423) return 'blocked' // protection inter-modes (prochaine manche)

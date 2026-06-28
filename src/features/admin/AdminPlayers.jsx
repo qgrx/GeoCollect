@@ -8,6 +8,7 @@ import {
   apiAdminSetCanSell, apiAdminReactivate, apiAdminSetGold, apiAdminSetForgePoints,
   apiAdminGetPlayerCollection, apiAdminGiveCard, apiAdminTakeCard, apiAdminSetPseudo,
 } from '../../services/api.js';
+import AdminCheatReport from './AdminCheatReport.jsx';
 
 export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMsg }) {
   const { t, lang } = useT();
@@ -153,6 +154,9 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
           <div style={{ fontSize: 12, color: '#fff', fontWeight: 700, fontFamily: lbl === 'IP' || lbl === 'UA' ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{val}</div>
         </div>
       ))}
+
+      {/* Anti-triche — stats de triche du joueur */}
+      <AdminCheatReport playerId={playerView.id} />
 
       {/* Actions */}
       <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -401,6 +405,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 1, flexWrap: 'wrap' }}>
                       {p.score != null && (() => { const ranks = limEdit.playerRanks || []; const rank = [...ranks].sort((a, b) => b.min - a.min).find(r => p.score >= r.min) || ranks[0]; return rank ? <span style={{ fontSize: 9, color: rank.color, fontWeight: 800 }}>{getRankLabel(rank, lang)} · {p.score}pts</span> : null; })()}
                       {p.gold != null && <span style={{ fontSize: 9, color: '#f9ca24', fontWeight: 700 }}>{p.gold}G</span>}
+                      {p.bot_score > 0 && (() => { const c = p.bot_score >= 70 ? '#e74c3c' : p.bot_score >= 40 ? '#e17055' : '#f9ca24'; return <span title="Score bot (anti-triche)" style={{ fontSize: 9, background: c + '22', color: c, borderRadius: 50, padding: '1px 6px', fontWeight: 800 }}>🤖 {p.bot_score}</span>; })()}
                       {p.can_sell === false && <span style={{ fontSize: 9, background: '#e74c3c22', color: '#e74c3c', borderRadius: 50, padding: '1px 6px', fontWeight: 700 }}>vente interdite</span>}
                       {p.email_confirmed === false && <span style={{ fontSize: 9, background: '#e17055aa', color: '#fff', borderRadius: 50, padding: '1px 6px', fontWeight: 700 }}>✉️ non vérifié</span>}
                     </div>

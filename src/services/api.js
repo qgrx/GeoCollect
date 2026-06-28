@@ -99,8 +99,8 @@ export const apiGetQuizHistory  = (limit = 10) => apiFetch(`/api/quiz/history?li
 export const apiJoinQuiz = (quizId) =>
   apiFetch('/api/quiz/join', { method: 'POST', body: { quiz_id: quizId } })
 
-export const apiAnswerQuiz = (quizId, answer) =>
-  apiFetch('/api/quiz/answer', { method: 'POST', body: { quiz_id: quizId, answer } })
+export const apiAnswerQuiz = (quizId, answer, nonce) =>
+  apiFetch('/api/quiz/answer', { method: 'POST', body: { quiz_id: quizId, answer, ...(nonce ? { nonce } : {}) } })
 
 // ─── Quiz — Mode Débutant ───────────────────────────────────────────────────
 export const apiGetBeginnerQuiz     = () => apiFetch('/api/quiz/beginner/current')
@@ -139,6 +139,9 @@ export const apiAdminSetGold             = (id, gold)         => apiFetch(`/api/
 export const apiAdminSetForgePoints      = (id, forge_points) => apiFetch(`/api/admin/players/${id}/forge-points`, { method: 'PATCH', body: { forge_points } })
 export const apiAdminSetPseudo           = (id, pseudo)       => apiFetch(`/api/admin/players/${id}/pseudo`, { method: 'PATCH', body: { pseudo } })
 export const apiAdminGetPlayerCollection = (id)               => apiFetch(`/api/admin/players/${id}/collection`)
+export const apiAdminGetCheatReport      = (id)               => apiFetch(`/api/admin/players/${id}/cheat-report`)
+export const apiAdminGetCheatSuspects    = (min = 1)          => apiFetch(`/api/admin/cheat/suspects?min=${min}`)
+export const apiAdminGetSharedIps        = ()                 => apiFetch('/api/admin/cheat/shared-ips')
 export const apiAdminGiveCard            = (id, card_id, quantity = 1, is_shiny = false) => apiFetch(`/api/admin/players/${id}/cards`, { method: 'POST', body: { card_id, quantity, is_shiny } })
 export const apiAdminTakeCard            = (id, card_id, quantity = 1, is_shiny = false) => apiFetch(`/api/admin/players/${id}/cards/${card_id}`, { method: 'DELETE', body: { quantity, is_shiny } })
 
