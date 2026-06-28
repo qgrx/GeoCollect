@@ -664,9 +664,7 @@ export default function App() {
       const now = new Date();
       const pad = n => String(n).padStart(2, '0');
       const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-      if (today === sd.date) {
-        setShinyDayBanner({ mode: 'active' });
-      } else if (Date.now() < dayStartMs) {
+      if (Date.now() < dayStartMs) {
         const diff = dayStartMs - Date.now();
         setShinyDayBanner({
           mode: 'teaser',
@@ -675,6 +673,8 @@ export default function App() {
           m: Math.floor((diff % 3600000) / 60000),
           s: Math.floor((diff % 60000) / 1000),
         });
+      } else if (today === sd.date) {
+        setShinyDayBanner({ mode: 'active' });
       } else {
         setShinyDayBanner(null);
       }
