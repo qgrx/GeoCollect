@@ -964,9 +964,13 @@ export default function App() {
     const anyOpen = showAuth || showSettings || showReferral || showAdmin || showMarket || showForge ||
       showLeaderboard || showShop || showTxHistory || showDocs || !!selectedCard ||
       showScoreDetail || !!seasonPopup || !!activeQuiz || !!beginner.activeQuiz || showRules || !!beginnerWinnersPopup
+    // NB : ne PAS utiliser `touch-action: none` sur le body — sur iOS Safari cela
+    // désactive tous les gestes tactiles du sous-arbre (modals inclus), rendant
+    // impossible le scroll DANS le modal et la fermeture au tap. `overflow: hidden`
+    // (+ overscroll-behavior) suffit à bloquer le scroll du fond.
     document.body.style.overflow = anyOpen ? 'hidden' : ''
-    document.body.style.touchAction = anyOpen ? 'none' : ''
-    return () => { document.body.style.overflow = ''; document.body.style.touchAction = '' }
+    document.body.style.overscrollBehavior = anyOpen ? 'none' : ''
+    return () => { document.body.style.overflow = ''; document.body.style.overscrollBehavior = '' }
   }, [showAuth, showSettings, showReferral, showAdmin, showMarket, showForge, showLeaderboard,
       showShop, showTxHistory, showDocs, selectedCard, showScoreDetail, seasonPopup, activeQuiz,
       beginner.activeQuiz, showRules, beginnerWinnersPopup])
