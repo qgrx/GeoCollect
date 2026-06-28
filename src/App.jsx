@@ -659,13 +659,16 @@ export default function App() {
       setShinyDayBanner(null); return;
     }
     const firstStart = sd.slots.reduce((mn, s) => s.start < mn ? s.start : mn, '99:99');
+    const lastEnd = sd.slots.reduce((mx, s) => s.end > mx ? s.end : mx, '00:00');
     const dayStartMs = new Date(`${sd.date}T${firstStart}:00`).getTime();
+    const dayEndMs = new Date(`${sd.date}T${lastEnd}:00`).getTime();
+    const rates = sd.slots.map(s => Math.round((s.rate ?? 0) * 100)).filter(r => r > 0);
+    const minRate = rates.length ? Math.min(...rates) : 0;
+    const maxRate = rates.length ? Math.max(...rates) : 0;
     const tick = () => {
-      const now = new Date();
-      const pad = n => String(n).padStart(2, '0');
-      const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-      if (Date.now() < dayStartMs) {
-        const diff = dayStartMs - Date.now();
+      const now = Date.now();
+      if (now < dayStartMs) {
+        const diff = dayStartMs - now;
         setShinyDayBanner({
           mode: 'teaser',
           d: Math.floor(diff / 86400000),
@@ -673,8 +676,15 @@ export default function App() {
           m: Math.floor((diff % 3600000) / 60000),
           s: Math.floor((diff % 60000) / 1000),
         });
-      } else if (today === sd.date) {
-        setShinyDayBanner({ mode: 'active' });
+      } else if (now < dayEndMs) {
+        const diff = dayEndMs - now;
+        setShinyDayBanner({
+          mode: 'active',
+          minRate, maxRate,
+          h: Math.floor(diff / 3600000),
+          m: Math.floor((diff % 3600000) / 60000),
+          s: Math.floor((diff % 60000) / 1000),
+        });
       } else {
         setShinyDayBanner(null);
       }
@@ -1549,6 +1559,11 @@ export default function App() {
             <span style={{ position: 'relative', zIndex: 2 }}>
               {shinyDayBanner.mode === 'active'
                 ? t('shiny_event_banner')
+                    .replace('{min}', shinyDayBanner.minRate)
+                    .replace('{max}', shinyDayBanner.maxRate)
+                    .replace('{h}', String(shinyDayBanner.h).padStart(2, '0'))
+                    .replace('{m}', String(shinyDayBanner.m).padStart(2, '0'))
+                    .replace('{s}', String(shinyDayBanner.s).padStart(2, '0'))
                 : t('shiny_event_teaser')
                     .replace('{d}', shinyDayBanner.d)
                     .replace('{h}', String(shinyDayBanner.h).padStart(2, '0'))
