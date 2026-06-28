@@ -1331,7 +1331,18 @@ export default function App() {
       if (seenSeries.has(key)) continue
       seenSeries.add(key)
       const tier = info.tier || 0
-      const activeId = tier >= 1 ? info.tiers[tier - 1]?.card_id : info.tiers[0]?.card_id
+      // Variante active = la carte définie la plus haute au palier atteint. Les
+      // séries évolutives incomplètes (paliers sans carte, ex. « Légendaire » qui
+      // n'a que la variante commune) ne doivent jamais faire disparaître la série :
+      // on se replie vers le bas, puis sur la 1ʳᵉ carte définie. Sans ce repli,
+      // un palier sans carte rendait activeId indéfini et masquait TOUTES les
+      // variantes → la série manquait dans « Tous » et l'onglet « Achievements ».
+      let activeId = null
+      for (let i = Math.min(tier, info.tiers.length) - 1; i >= 0; i--) {
+        if (info.tiers[i]?.card_id) { activeId = info.tiers[i].card_id; break }
+      }
+      if (!activeId) activeId = info.tiers.find(t => t.card_id)?.card_id || null
+      if (!activeId) continue
       for (const tt of info.tiers) if (tt.card_id && tt.card_id !== activeId) hide.add(tt.card_id)
     }
     return hide
