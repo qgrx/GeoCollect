@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { INP, BTN } from '../../utils/styles.js';
-import { apiGetAdminSeasons, apiCreateAdminSeason, apiUpdateAdminSeason, apiDeleteAdminSeason } from '../../services/api.js';
+import { apiGetAdminSeasons, apiCreateAdminSeason, apiUpdateAdminSeason, apiDeleteAdminSeason, apiAdminGetCards } from '../../services/api.js';
+import SeasonPopup from '../../components/SeasonPopup.jsx';
 
 function Fld({ lbl, children }) {
   return (
@@ -24,6 +25,8 @@ export default function AdminSeasons({ setMsg }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [allCards, setAllCards] = useState(null);   // cache du pool admin (cartes), chargé à la 1re prévisualisation
+  const [preview, setPreview] = useState(null);     // { season, cards } — popup d'aperçu admin
 
   useEffect(() => {
     apiGetAdminSeasons().then(({ data, error }) => {
@@ -32,6 +35,21 @@ export default function AdminSeasons({ setMsg }) {
       setSeasons(data?.seasons || []);
     });
   }, []);
+
+  // Prévisualiser la popup de saison telle qu'elle s'affiche aux utilisateurs.
+  async function handlePreview(s) {
+    let cards = allCards;
+    if (!cards) {
+      const { data, error } = await apiAdminGetCards();
+      if (error) { setMsg('❌ ' + error); return; }
+      cards = data?.cards || [];
+      setAllCards(cards);
+    }
+    const seasonCards = cards
+      .filter(c => c.season_id === s.id && c.active !== false)
+      .sort((a, b) => String(a.rarity).localeCompare(String(b.rarity)));
+    setPreview({ season: s, cards: seasonCards });
+  }
 
   function startEdit(s) {
     setEditId(s.id);
@@ -128,12 +146,22 @@ export default function AdminSeasons({ setMsg }) {
                   </div>
                   <div style={{ color: '#aaa', fontSize: 11 }}>{formatDate(s.start_date)} → {formatDate(s.end_date)}</div>
                 </div>
+                <button onClick={() => handlePreview(s)} title="Prévisualiser la popup de saison (test admin)" style={{ ...BTN('#ffffff18'), padding: '6px 12px', borderRadius: 7, fontSize: 11 }}>👁️</button>
                 <button onClick={() => startEdit(s)} style={{ ...BTN('#ffffff18'), padding: '6px 12px', borderRadius: 7, fontSize: 11 }}>✏️</button>
                 <button onClick={() => handleDelete(s)} style={{ ...BTN('linear-gradient(135deg,#e74c3c,#c0392b)'), padding: '6px 12px', borderRadius: 7, fontSize: 11 }}>🗑️</button>
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* Aperçu admin de la popup de saison (telle qu'affichée aux utilisateurs) */}
+      {preview && (
+        <SeasonPopup
+          season={preview.season}
+          cards={preview.cards}
+          onClose={() => setPreview(null)}
+        />
       )}
     </div>
   );
