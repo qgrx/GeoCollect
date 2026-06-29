@@ -187,7 +187,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     if (elapsed < 600) await new Promise(r => setTimeout(r, 600 - elapsed))
     submittingRef.current = false
     setIsSubmitting(false)
-    if (result && result.ok) { doneRef.current=true; setOutcome(result.outcome||'card'); setResultForge(result.forge||0); setStatus("won"); soundCorrect(); retryRef.current=0; }
+    if (result && result.ok) { doneRef.current=true; setOutcome(result.outcome||'card'); setResultForge(result.forge||0); setStatus(result.outcome==='glory'?"glory":"won"); soundCorrect(); retryRef.current=0; }
     else if (result && result.handicap) { setSubmitError(t('streak_handicap_wait')); } // série : délai cadeau pas encore écoulé
     else if (result === 'fast') { setSubmitError("⏱️ Réponse trop rapide ! Lis bien la question."); setIsSubmitting(false); submittingRef.current=false; return; }
     else if (result === 'blocked') { onClose?.(); }   // protection inter-modes (prochaine manche)
@@ -422,6 +422,13 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           </div>
         )}
         {status==="lost"&&<div style={{textAlign:"center",padding:"14px 0",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}><div style={{fontSize:36}}>😤</div><div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div></div>}
+        {status==="glory"&&(
+          <div style={{textAlign:"center",padding:"16px 12px",background:"linear-gradient(135deg,#f9ca2418,#e1705512)",borderRadius:13,border:"1.5px solid #f9ca2466"}}>
+            <div style={{fontSize:34,marginBottom:6}}>🏆</div>
+            <div style={{color:"#f9ca24",fontWeight:900,fontSize:17}}>{t('quiz_glory_title')}</div>
+            <div style={{color:"#ffd97a",fontWeight:700,fontSize:12,marginTop:6,lineHeight:1.5}}>{t('quiz_glory_subtitle')}</div>
+          </div>
+        )}
         </div>
       </div>
     </div>
@@ -996,11 +1003,15 @@ export function GameRulesModal({ onClose }) {
   );
 }
 
-// ─── Liste des gagnants d'une manche Entraînement (clic sur le feed) ──────────
+// ─── Liste des gagnants d'une manche (Entraînement ou PVP avec gloire) ───────
 // Carte CLAIRE (couleurs explicites, indépendantes du thème) pour une lecture nette.
-export function BeginnerWinnersModal({ card, winners = [], onClose }) {
+// gloryCount > 0 : les N premiers sont des glory winners, le dernier est le vrai gagnant.
+export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClose }) {
   const { t } = useT();
   const RANK = ['#f59e0b', '#9aa6b2', '#b45309'];   // or / argent / bronze
+  const hasGlory = gloryCount > 0 && winners.length > gloryCount;
+  const realWinner = hasGlory ? winners[winners.length - 1] : null;
+  const gloryList  = hasGlory ? winners.slice(0, gloryCount) : [];
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000b', backdropFilter: 'blur(8px)', padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 18, padding: '18px 18px', maxWidth: 360, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 24px 60px #0009', fontFamily: "'Nunito',sans-serif" }}>
@@ -1010,7 +1021,6 @@ export function BeginnerWinnersModal({ card, winners = [], onClose }) {
           </div>
           <button onClick={onClose} style={{ background: '#eef1f5', border: 'none', color: '#64748b', width: 26, height: 26, borderRadius: '50%', fontSize: 13, cursor: 'pointer', fontWeight: 900 }}>✕</button>
         </div>
-        {/* Le geocoin disputé — carte entière (comme en PVP) */}
         {card && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
             <Card card={card} />
@@ -1018,6 +1028,25 @@ export function BeginnerWinnersModal({ card, winners = [], onClose }) {
         )}
         {winners.length === 0 ? (
           <div style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center', padding: '10px 0' }}>{t('beginner_recap_none') || "Personne n'a trouvé cette fois !"}</div>
+        ) : hasGlory ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f59e0b22', border: '1px solid #f59e0b88', borderRadius: 9, padding: '9px 11px' }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>🏆</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#1a2538' }}>{realWinner}</div>
+                <div style={{ fontSize: 10, color: '#78716c', fontWeight: 700 }}>{t('glory_winner_label') || 'A remporté le geocoin'}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, color: '#a8a29e', marginTop: 2 }}>
+              {t('glory_section_title') || 'Pour la gloire'}
+            </div>
+            {gloryList.map((p, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f9ca2412', border: '1px solid #f9ca2444', borderRadius: 9, padding: '7px 11px' }}>
+                <span style={{ fontSize: 14, flexShrink: 0 }}>🎖️</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#78716c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+              </div>
+            ))}
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {winners.map((p, i) => (

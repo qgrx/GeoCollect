@@ -460,10 +460,27 @@ export default function App() {
         if (data.winner && !iSelf) {
           const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
+          const gloryPseudos = (data.glory_winners || []).map(g => g.pseudo)
           setHistory(h => {
             if (h[0]?.winner === data.winner && h[0]?.card?.name === data.card_name) return h
-            return [{ card: fullCard, winner: data.winner, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false }, ...h].slice(0, 10)
+            return [{ card: fullCard, winner: data.winner, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryPseudos }, ...h].slice(0, 10)
           })
+        } else if (iSelf && (data.glory_winners || []).length > 0) {
+          // Le gagnant lui-même : useQuiz ajoute l'entrée → on la patch avec les glory_winners
+          const gloryPseudos = (data.glory_winners || []).map(g => g.pseudo)
+          setHistory(h => {
+            if (h[0]?.won) return [{ ...h[0], glory_winners: gloryPseudos }, ...h.slice(1)]
+            return h
+          })
+        }
+      })
+
+      // Quiz — victoire « pour la gloire » (joueur à toutes les limites, quiz reste actif)
+      s.on('quiz:glory_win', (data) => {
+        const iSelf = (!!data.winner_id && data.winner_id === myIdRef.current)
+          || (!!data.winner && data.winner === myPseudoRef.current)
+        if (!iSelf && data.winner) {
+          showToast(t('toast_glory_other').replace('{pseudo}', data.winner))
         }
       })
 
@@ -541,6 +558,7 @@ export default function App() {
     return () => {
       socket?.off('quiz:new')
       socket?.off('quiz:solved')
+      socket?.off('quiz:glory_win')
       socket?.off('quiz:expired')
       socket?.off('quiz:teaser')
       socket?.off('beginner:new')
@@ -1862,14 +1880,16 @@ export default function App() {
                       // « Gagné par moi » = drapeau won OU pseudo == le mien : évite de se voir
                       // tantôt en ✓, tantôt sous son pseudo (selon la source de l'entrée).
                       // En débutant : plusieurs gagnants → on coche si je suis dans la liste.
+                      const hasGlory = !beginnerActive && (h.glory_winners || []).length > 0;
+                      const allWinners = hasGlory ? [...h.glory_winners, h.winner] : null;
                       const mine = beginnerActive
                         ? (Array.isArray(h.winners) && h.winners.includes(auth.profile?.pseudo))
                         : (h.won || (!!h.winner && h.winner === auth.profile?.pseudo));
                       return (
                         <div key={i} title={h.card?.name} onClick={() => {
                           if (!h.card) return;
-                          // Entraînement : clic → liste des gagnants. PVP : détail du geocoin.
                           if (beginnerActive) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: h.winners || [] }); return; }
+                          if (hasGlory) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: allWinners, gloryCount: h.glory_winners.length }); return; }
                           setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); setSelectedCardFromHistory(true);
                         }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, minWidth: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
@@ -1886,7 +1906,9 @@ export default function App() {
                           <div style={{ fontSize: 8, fontWeight: 700, color: mine ? '#3fb950' : theme.textSecondary, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {beginnerActive
                               ? `${mine ? '✓ ' : ''}${h.winners_count || 0}🏆`
-                              : (mine ? '✓' : h.winner)}
+                              : hasGlory
+                                ? `${mine ? '✓ ' : ''}${allWinners.length}🏆`
+                                : (mine ? '✓' : h.winner)}
                           </div>
                         </div>
                       );
@@ -2278,7 +2300,7 @@ export default function App() {
       {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
 
       {/* Liste des gagnants d'une manche Entraînement (clic sur le feed) */}
-      {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} onClose={() => setBeginnerWinnersPopup(null)} />}
+      {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} onClose={() => setBeginnerWinnersPopup(null)} />}
 
       {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {

@@ -77,6 +77,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
           apiGetCurrentQuiz().then(({ data }) => {
             if (data) cbRef.current.onStreakLeader?.(data.streak_leader ?? null)
             if (data?.quiz) {
+              if (resolvedQuizIdsRef.current.has(data.quiz.id)) { isFetchingRef.current = false; return }
               const wc = data.quiz.answer_word_count || 1
               const poolCard = cbRef.current.cardPool?.find(c => c.id === data.quiz.card?.id) || {}
               const curLang = getLang()
@@ -199,6 +200,17 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         if (status === 422) return false     // vraie mauvaise réponse
         return 'error'                        // réseau / 5xx / inconnu : la réponse a pu aboutir serveur
       }
+      // Victoire « pour la gloire » — toutes limites atteintes : le quiz reste actif
+      // pour les autres joueurs. On ferme la modale avec un résultat spécial,
+      // SANS avancer le cycle (quiz toujours en cours). Le quiz:solved des autres
+      // déclenchera le prochain quiz via handleQuizExpire.
+      if (data.glory) {
+        resolvedQuizIdsRef.current.add(activeQuiz.id)
+        showToast(t('toast_glory_win'))
+        setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 3500)
+        return { ok: true, outcome: 'glory', forge: 0 }
+      }
+
       resolvedQuizIdsRef.current.add(activeQuiz.id)  // gagné → ne plus jamais le re-pender
 
       // Re-tentative après une réponse gagnante dont la réponse HTTP avait été perdue :
