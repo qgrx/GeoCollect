@@ -646,13 +646,13 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
   const rc = holdCard ? RC[holdCard.rarity] : null
 
   // État du dépôt
-  const nonRented   = holds.filter(h => !h.rented)
-  const permFull    = nonRented.length >= holdSlots
-  const rentSlotFree = holdRentActive && !holds.some(h => h.rented)
-  const hasFreeSlot = !permFull || rentSlotFree                 // un slot libre (gratuit)
-  const canRent     = permFull && !holdRentActive               // location possible (emplacement 4)
-  const canReplace  = !hasFreeSlot && holds.length > 0          // remplacer un geocoin déjà déposé
-  const rentTooPoor = gold < rentPrice
+  const nonRented     = holds.filter(h => !h.rented)
+  const freePermSlot  = nonRented.length < holdSlots            // emplacement permanent libre (gratuit)
+  const rentSlotFree  = holdRentActive && !holds.some(h => h.rented)  // slot loué déjà payé, libre
+  const canStoreRented = !freePermSlot && rentSlotFree          // stocker (gratuit) dans le slot loué
+  const canReplace    = !freePermSlot && holds.length > 0       // remplacer un geocoin déjà déposé
+  const canRent       = !freePermSlot && !holdRentActive        // louer un emplacement (emplacement 4)
+  const rentTooPoor   = gold < rentPrice
 
   const doStore = useCallback(async (rent = false, replaceId = null) => {
     if (!holdCard || loading) return
@@ -752,8 +752,8 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
           </>
         ) : (
           <>
-            {/* Avertissement : aucun emplacement libre */}
-            {!hasFreeSlot && (
+            {/* Avertissement : aucun emplacement permanent libre */}
+            {!freePermSlot && (
               <div style={{ fontSize: 11, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2433', borderRadius: 9, padding: '7px 11px', marginBottom: 12 }}>
                 {t('hold_popup_full_warning')}
               </div>
@@ -765,15 +765,21 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
               <span>{t('hold_popup_note')}</span>
             </div>
 
-            {/* Boutons : Dépôt gratuit si slot libre ; sinon Remplacer / Louer ; puis 1 Point de Forge */}
+            {/* Boutons : Dépôt gratuit si slot permanent libre ; sinon slot loué / Remplacer / Louer ; puis 1 Point de Forge */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {hasFreeSlot ? (
+              {freePermSlot ? (
                 <button onClick={() => doStore(false)} disabled={loading}
                   style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: loading ? 0.7 : 1 }}>
                   🗄️ {t('hold_popup_store')}
                 </button>
               ) : (
                 <>
+                  {canStoreRented && (
+                    <button onClick={() => doStore(false)} disabled={loading}
+                      style={{ ...BTN('linear-gradient(135deg,#00b894,#55efc4)'), padding: '12px 0', borderRadius: 11, fontSize: 13.5, color: '#1e3045', opacity: loading ? 0.7 : 1 }}>
+                      🔑 {t('hold_popup_store_rented')}
+                    </button>
+                  )}
                   {canReplace && (
                     <button onClick={handleStoreClick} disabled={loading}
                       style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: loading ? 0.7 : 1 }}>
