@@ -22,7 +22,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
   const [playerPseudoEdit, setPlayerPseudoEdit] = useState('');
   const [playerCollection, setPlayerCollection] = useState(null);
   const [playerShinyCollection, setPlayerShinyCollection] = useState(null);
-  const [playerAchievements, setPlayerAchievements] = useState(null);
+  const [playerAchievements, setPlayerAchievements] = useState(null);  // array of achievement defs + progress
   const [playerScore, setPlayerScore]           = useState(null);
   const [cardSearch, setCardSearch]             = useState('');
   const [shinyMode, setShinyMode]               = useState(false);
@@ -70,9 +70,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
     apiAdminGetPlayerCollection(playerView.id).then(({ data }) => {
       setPlayerCollection(data?.collection || []);
       setPlayerShinyCollection(data?.shiny_collection || []);
-      setPlayerAchievements(Object.fromEntries(
-        (data?.achievements || []).map(a => [a.card_id, a])
-      ));
+      setPlayerAchievements(data?.achievements || []);
     });
   }, [playerView?.id]);
 
@@ -87,11 +85,8 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
     return base.filter(c => c.name.toLowerCase().includes(q));
   }, [cardPool, cardSearch]);
 
-  // ── Geocoins de type achievement, avec leur progression pour le joueur ──────
-  const achievementCards = useMemo(
-    () => cardPool.filter(c => c.type?.toLowerCase().includes('achievement')),
-    [cardPool]
-  );
+  const TIER_LABELS = ['', 'Commun', 'Rare', 'Épique', 'Légendaire'];
+  const TIER_COLORS = ['', '#a8bfcf', '#3498db', '#9b59b6', '#f39c12'];
 
   // Ajoute (sign > 0) ou retire (sign < 0) `cardQty` exemplaires d'une carte (normale ou shiny selon shinyMode)
   async function handleAdjustCard(card, sign) {
@@ -392,31 +387,55 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
           <div style={{ color: '#8daacc', fontSize: 11, textAlign: 'center', padding: '14px 0' }}>Chargement…</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {achievementCards.map(card => {
-              const prog = playerAchievements[card.id];
-              const threshold = prog?.threshold || 0;
-              const progress = Math.min(prog?.progress || 0, threshold);
-              const done = !!prog?.completed_at;
-              const pct = threshold > 0 ? Math.round((progress / threshold) * 100) : 0;
-              const { c1 } = cardCC(card.rarity);
+            {playerAchievements.map(ach => {
+              const card = cardPool.find(c => c.id === ach.card_id);
+              const isEvolutive = ach.threshold_rare != null;
+              const maxThreshold = isEvolutive
+                ? (ach.threshold_legendary || ach.threshold_epic || ach.threshold_rare || ach.threshold)
+                : ach.threshold;
+              const progress = ach.progress || 0;
+              const done = isEvolutive ? ach.tier >= 4 : !!ach.completed_at;
+              const pct = maxThreshold > 0 ? Math.round(Math.min(progress / maxThreshold, 1) * 100) : 0;
+              const { c1 } = card ? cardCC(card.rarity) : { c1: '#888' };
               return (
-                <div key={card.id} style={{ padding: '8px 10px', borderRadius: 8, background: '#ffffff05', border: `1px solid ${done ? '#00b89466' : '#ffffff10'}` }}>
+                <div key={ach.def_id} style={{ padding: '8px 10px', borderRadius: 8, background: '#ffffff05', border: `1px solid ${done ? '#00b89466' : '#ffffff10'}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 12, fontWeight: 800, color: done ? '#00b894' : '#fff' }}>
-                      {done && '✅ '}{card.name}
+                      {done && '✅ '}{ach.name || card?.name || '?'}
+                      {isEvolutive && ach.tier > 0 && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: TIER_COLORS[ach.tier], marginLeft: 6 }}>
+                          ({TIER_LABELS[ach.tier]})
+                        </span>
+                      )}
                     </span>
-                    {threshold > 0 && <span style={{ fontSize: 11, color: '#f9ca24', fontWeight: 700, whiteSpace: 'nowrap' }}>{progress} / {threshold}</span>}
+                    {maxThreshold > 0 && <span style={{ fontSize: 11, color: '#f9ca24', fontWeight: 700, whiteSpace: 'nowrap' }}>{progress} / {maxThreshold}</span>}
                   </div>
-                  {card.desc && <div style={{ fontSize: 11, color: '#8daacc', fontStyle: 'italic', marginBottom: threshold > 0 ? 6 : 0 }}>{card.desc}</div>}
-                  {threshold > 0 && (
+                  {ach.description && <div style={{ fontSize: 11, color: '#8daacc', fontStyle: 'italic', marginBottom: maxThreshold > 0 ? 6 : 0 }}>{ach.description}</div>}
+                  {maxThreshold > 0 && (
                     <div style={{ background: '#ffffff14', borderRadius: 50, height: 6, overflow: 'hidden' }}>
                       <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: done ? 'linear-gradient(90deg,#00b894,#00cec9)' : `linear-gradient(90deg,${c1},#f9ca24)`, transition: 'width .5s' }} />
+                    </div>
+                  )}
+                  {isEvolutive && maxThreshold > 0 && (
+                    <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
+                      {[
+                        { t: ach.threshold, tier: 1 },
+                        { t: ach.threshold_rare, tier: 2 },
+                        { t: ach.threshold_epic, tier: 3 },
+                        { t: ach.threshold_legendary, tier: 4 },
+                      ].filter(s => s.t != null).map(s => (
+                        <span key={s.tier} style={{
+                          fontSize: 9, fontWeight: 800, borderRadius: 50, padding: '1px 6px',
+                          background: progress >= s.t ? TIER_COLORS[s.tier] + '33' : '#ffffff0a',
+                          color: progress >= s.t ? TIER_COLORS[s.tier] : '#555',
+                        }}>{s.t}</span>
+                      ))}
                     </div>
                   )}
                 </div>
               );
             })}
-            {achievementCards.length === 0 && <div style={{ fontSize: 11, color: '#a8bfcf' }}>Aucun achievement.</div>}
+            {playerAchievements.length === 0 && <div style={{ fontSize: 11, color: '#a8bfcf' }}>Aucun achievement.</div>}
           </div>
         )}
       </div>
