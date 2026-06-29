@@ -17,7 +17,7 @@ import { isCorrectAnswer } from './utils/answer.js';
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
 import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiTakeForgeInsteadOfHold, apiPingProfile, apiGetDemo, apiDemoClaim } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiPingProfile, apiGetDemo, apiDemoClaim } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -625,7 +625,9 @@ export default function App() {
   const [collPage,        setCollPage]        = useState(0);
   const [quizSessionActive, setQuizSessionActive] = useState(false);
   const [dailyOffer, setDailyOffer] = useState(null);
-  const [hold,       setHold]       = useState(null);
+  const [holds,      setHolds]      = useState([]);          // geocoins en attente (multi-emplacements)
+  const [holdSlots,  setHoldSlots]  = useState(1);           // emplacements permanents débloqués (1→3)
+  const [holdRentActive, setHoldRentActive] = useState(false); // emplacement 4 loué actif
   const [seasonPopup, setSeasonPopup] = useState(null); // { season, cards }
   const COLL_PAGE_SIZE = 24;
   const [menuOpen,        setMenuOpen]        = useState(false);
@@ -759,8 +761,17 @@ export default function App() {
   useEffect(() => {
     if (!auth.profile || auth.isDemo) return  // démo : pas de trésor/dépôt (routes verrouillées)
     apiGetDailyTreasure().then(({ data }) => { if (data) setDailyOffer(data) })
-    apiGetHold().then(({ data }) => { setHold(data?.hold ?? null) })
+    apiGetHold().then(({ data }) => {
+      setHolds(data?.holds ?? [])
+      setHoldSlots(data?.slots_unlocked ?? 1)
+      setHoldRentActive(!!data?.rent_active)
+    })
   }, [auth.profile?.id, activeTab === 'tresors'])
+
+  // Rafraîchir l'état du dépôt à l'ouverture de la HoldModal (boutons store/location à jour)
+  useEffect(() => {
+    if (holdOffer && auth.profile && !auth.isDemo) refreshHold()
+  }, [!!holdOffer])
 
   // Vérifier la saison en cours à la connexion — afficher la popup si nouvelle saison
   useEffect(() => {
@@ -1027,14 +1038,42 @@ export default function App() {
     showToast(t('toast_daily_claimed').replace('{card}', data.card.name))
   }
 
-  // ── Réclamer le dépôt d'attente ─────────────────────────────────────────────
-  async function handleClaimHold() {
-    const { data, error } = await apiClaimHold()
+  // ── Recharger l'état du dépôt depuis le serveur ─────────────────────────────
+  async function refreshHold() {
+    const { data } = await apiGetHold()
+    setHolds(data?.holds ?? [])
+    setHoldSlots(data?.slots_unlocked ?? 1)
+    setHoldRentActive(!!data?.rent_active)
+  }
+
+  // ── Réclamer un geocoin précis du dépôt d'attente ───────────────────────────
+  async function handleClaimHold(holdId) {
+    const claimed = holds.find(h => h.id === holdId)
+    const { data, error } = await apiClaimHold(holdId)
     if (error) { showToast(error, 'error'); return }
-    setHold(null)
+    setHolds(prev => prev.filter(h => h.id !== holdId))
+    if (claimed?.rented) setHoldRentActive(false)
     gs.earnCard(data.card, data.is_shiny || false)
     gs.triggerQuestRefresh?.()
     showToast(t('toast_hold_claimed').replace('{card}', data.card.name))
+  }
+
+  // ── Acheter un emplacement permanent (2 ou 3) ───────────────────────────────
+  async function handleBuyHoldSlot() {
+    const { data, error } = await apiBuyHoldSlot()
+    if (error) { showToast(error, 'error'); return }
+    setHoldSlots(data.hold_slots)
+    if (typeof data.gold === 'number') gs.setGold(data.gold)
+    showToast(t('toast_hold_slot_bought'))
+  }
+
+  // ── Louer l'emplacement 4 (temporaire) ──────────────────────────────────────
+  async function handleRentHoldSlot() {
+    const { data, error } = await apiRentHoldSlot()
+    if (error) { showToast(error, 'error'); return }
+    setHoldRentActive(true)
+    if (typeof data.gold === 'number') gs.setGold(data.gold)
+    showToast(t('toast_hold_slot_rented'))
   }
 
   // Wrapper — bloque la soumission pour les non-connectés et propose l'inscription
@@ -2104,8 +2143,15 @@ export default function App() {
                   packsLoading={gs.loadingData}
                   dailyOfferGold={gs.limits?.dailyOfferGold ?? 5}
                   onOpenCgv={null}
-                  hold={hold}
+                  holds={holds}
+                  holdSlots={holdSlots}
+                  holdRentActive={holdRentActive}
+                  holdSlotPrices={gs.limits?.holdSlotPrices ?? [150, 400]}
+                  holdRentPrice={gs.limits?.holdRentPrice ?? 80}
+                  gold={gs.gold}
                   onClaimHold={handleClaimHold}
+                  onBuyHoldSlot={handleBuyHoldSlot}
+                  onRentHoldSlot={handleRentHoldSlot}
                 />
               )}
 
@@ -2195,14 +2241,20 @@ export default function App() {
       {holdOffer && (
         <HoldModal
           holdCard={holdOffer}
-          existingHold={hold}
+          holds={holds}
+          holdSlots={holdSlots}
+          holdRentActive={holdRentActive}
+          rentPrice={gs.limits?.holdRentPrice ?? 80}
+          gold={gs.gold}
           owned={holdOffer.is_shiny ? (gs.shinyCollection?.[holdOffer.id] || 0) > 0 : (gs.collection?.[holdOffer.id] || 0) > 0}
           forgeCapped={computeCardLimitStatus(auth.profile, gs.limits).forgeCapped}
           onClose={() => setHoldOffer(null)}
-          onStored={(card, forgePoints = 0) => {
-            setHold({ card, is_shiny: card.is_shiny || false, held_at: new Date().toISOString(), claimable: false })
+          onStored={(card, data = {}) => {
+            const forgePoints = data.forge_points_earned || 0
             setHoldOffer(null)
+            if (typeof data.gold === 'number') gs.setGold(data.gold)
             if (forgePoints > 0) gs.addForgePoints(forgePoints)
+            refreshHold()
             showToast(forgePoints > 0
               ? `${t('toast_hold_stored').replace('{card}', card.name)} ${t('toast_hold_replaced_forge').replace('{n}', forgePoints)}`
               : t('toast_hold_stored').replace('{card}', card.name))
@@ -2576,6 +2628,8 @@ export default function App() {
                 apiSetConfig('quiz_daily_forge_cap',   limEdit.quizDailyForgeCap    ?? 0),
                 apiSetConfig('beginner_quiz_enabled',  limEdit.beginnerEnabled  !== false),
                 apiSetConfig('beginner_quiz_duration', limEdit.beginnerDuration ?? 60),
+                apiSetConfig('hold_slot_prices',       limEdit.holdSlotPrices   ?? [150, 400]),
+                apiSetConfig('hold_rent_price',        limEdit.holdRentPrice    ?? 80),
                 apiSetConfig('forge_cost_by_rarity',   limEdit.forgeCostByRarity   ?? { commun:60,rare:180,épique:600,légendaire:1800 }),
                 apiSetConfig('melt_points_by_rarity',  limEdit.meltPointsByRarity  ?? {}),
                 apiSetConfig('melt_points_by_rarity_shiny', limEdit.meltPointsByRarityShiny ?? {}),

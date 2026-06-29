@@ -34,12 +34,14 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Pack Légendaire',  defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
-export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = null, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5, onOpenCgv, hold = null, onClaimHold }) {
+export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = null, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5, onOpenCgv, holds = [], holdSlots = 1, holdRentActive = false, holdSlotPrices = [150, 400], holdRentPrice = 80, gold = 0, onClaimHold, onBuyHoldSlot, onRentHoldSlot }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [claiming, setClaiming]             = useState(false)
   const [localClaimed, setLocalClaimed]     = useState(false)
-  const [claimingHold, setClaimingHold]     = useState(false)
+  const [claimingHoldId, setClaimingHoldId] = useState(null)
+  const [holdBusy, setHoldBusy]             = useState(false)   // achat / location en cours
+  const [confirmSlot, setConfirmSlot]       = useState(null)    // 'buy' | 'rent' | null
   const [countdown, setCountdown]     = useState('--:--:--')
   const [cgvAccepted,    setCgvAccepted]    = useState(false)
   const [selectedPack,   setSelectedPack]   = useState(null)  // Premier Clic — écran récapitulatif
@@ -188,49 +190,119 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 18, color: theme.gold }}>{t('hold_title')}</div>
         </div>
 
-        {hold ? (() => {
-          const hCard = hold.card
-          const { c1, c2 } = cardCC(hCard?.rarity || 'commun')
-          const hRc = hCard ? RC[hCard.rarity] : null
-          return (
-            <div style={{ background: `linear-gradient(135deg,${c1}18,${c2}12)`, border: `1.5px solid ${c1}55`, borderRadius: 16, padding: '16px', transition: 'all .4s' }}>
-              <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                <div style={{ width: 56, height: 56, borderRadius: 10, overflow: 'hidden', flexShrink: 0, border: `2px solid ${c1}`, background: '#1e3045', boxShadow: hold.claimable ? `0 0 14px ${c1}44` : 'none', opacity: hold.claimable ? 1 : 0.7 }}>
+        {(() => {
+          const TILE = 100
+          const RENT_C1 = '#00b894', RENT_C2 = '#55efc4'   // couleur distincte pour la location
+          const nonRented = holds.filter(h => !h.rented)
+          const rentedHold = holds.find(h => h.rented) || null
+          const permFull = nonRented.length >= holdSlots
+          const nextBuyPrice = holdSlots < 3 ? Number(holdSlotPrices?.[holdSlots - 1] ?? 0) : 0
+          const canBuy  = holdSlots < 3 && gold >= nextBuyPrice
+          const canRent = permFull && !holdRentActive && gold >= holdRentPrice
+
+          // Tuile d'un emplacement (occupé ou vide). `rented` colore différemment.
+          const renderSlot = (h, rented, key) => {
+            const accent = rented ? { c1: RENT_C1, c2: RENT_C2 } : null
+            if (!h) {
+              const c1 = rented ? RENT_C1 : theme.border
+              return (
+                <div key={key} style={{ width: TILE, flexShrink: 0, height: TILE + 34, borderRadius: 14, border: `1.5px dashed ${c1}${rented ? '88' : ''}`, background: theme.overlay, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                  <div style={{ fontSize: 26, opacity: 0.4 }}>{rented ? '🔑' : '🗄️'}</div>
+                  <div style={{ fontSize: 10, color: theme.textMuted, fontWeight: 700 }}>{rented ? t('hold_rented_empty') : t('hold_slot_free')}</div>
+                </div>
+              )
+            }
+            const hCard = h.card
+            const cc = accent || cardCC(hCard?.rarity || 'commun')
+            const hRc = hCard ? RC[hCard.rarity] : null
+            const busy = claimingHoldId === h.id
+            return (
+              <div key={key} style={{ width: TILE, flexShrink: 0, borderRadius: 14, border: `1.5px solid ${cc.c1}66`, background: `linear-gradient(135deg,${cc.c1}18,${cc.c2}12)`, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                <div style={{ position: 'relative', width: TILE - 24, height: TILE - 24, borderRadius: 9, overflow: 'hidden', border: `2px solid ${cc.c1}`, background: '#1e3045', boxShadow: h.claimable ? `0 0 12px ${cc.c1}55` : 'none', opacity: h.claimable ? 1 : 0.75 }}>
                   {hCard?.image_url
                     ? <ThumbImage src={hCard.image_url} alt={cardName(hCard, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{hCard?.name?.[0] || '?'}</div>
-                  }
+                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${cc.c1},${cc.c2})` }}>{hCard?.name?.[0] || '?'}</div>}
+                  {rented && <div title={t('hold_rented_badge')} style={{ position: 'absolute', top: -2, right: -2, fontSize: 12 }}>🔑</div>}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 900, fontSize: 14, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {hold.is_shiny && <span style={{ marginRight: 4 }}>✨</span>}
-                    {cardName(hCard, getLang())}
-                  </div>
-                  <div style={{ fontSize: 11, color: hRc?.color, fontWeight: 800, marginTop: 2 }}>{rarityLabel(hCard?.rarity, t)}</div>
-                  <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 3 }}>
-                    {t('hold_held_since').replace('{date}', new Date(hold.held_at).toLocaleDateString(getLang()))}
-                  </div>
-                  {!hold.claimable && (
-                    <div style={{ fontSize: 10, color: '#e17055', fontWeight: 700, marginTop: 3 }}>{t('hold_claimable_tomorrow')}</div>
-                  )}
+                <div style={{ width: '100%', textAlign: 'center', fontWeight: 800, fontSize: 11, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {h.is_shiny && '✨'}{cardName(hCard, getLang())}
                 </div>
-                {hold.claimable && (
+                <div style={{ fontSize: 9, color: hRc?.color, fontWeight: 800 }}>{rarityLabel(hCard?.rarity, t)}</div>
+                {h.claimable ? (
                   <button
-                    onClick={claimingHold ? undefined : async () => { setClaimingHold(true); try { await onClaimHold?.() } finally { setClaimingHold(false) } }}
-                    style={{ background: `linear-gradient(135deg,${c1},${c2})`, border: 'none', color: '#1e3045', padding: '9px 15px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: claimingHold ? 'default' : 'pointer', flexShrink: 0, opacity: claimingHold ? 0.6 : 1 }}>
-                    {claimingHold ? '…' : t('hold_claim_btn')}
+                    onClick={busy ? undefined : async () => { setClaimingHoldId(h.id); try { await onClaimHold?.(h.id) } finally { setClaimingHoldId(null) } }}
+                    style={{ width: '100%', background: `linear-gradient(135deg,${cc.c1},${cc.c2})`, border: 'none', color: '#1e3045', padding: '6px 0', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 11, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+                    {busy ? '…' : t('hold_claim_btn')}
                   </button>
+                ) : (
+                  <div style={{ fontSize: 9, color: '#e17055', fontWeight: 700, textAlign: 'center' }}>{t('hold_claimable_tomorrow')}</div>
                 )}
               </div>
-            </div>
+            )
+          }
+
+          const tiles = []
+          // Carré « + » d'achat permanent (collé à gauche), tant que < 3 emplacements
+          if (holdSlots < 3) {
+            tiles.push(
+              <div key="buy" style={{ width: TILE, flexShrink: 0, height: TILE + 34, borderRadius: 14, border: `2px solid ${theme.gold}55`, background: `${theme.gold}10`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, opacity: canBuy ? 1 : 0.5, cursor: canBuy && !holdBusy ? 'pointer' : 'default' }}
+                onClick={canBuy && !holdBusy ? () => setConfirmSlot('buy') : undefined}>
+                <div style={{ fontSize: 38, fontWeight: 900, color: theme.gold, lineHeight: 1 }}>+</div>
+                <div style={{ fontSize: 10, color: theme.textSecondary, fontWeight: 800, textAlign: 'center' }}>{t('hold_buy_slot')}</div>
+                <div style={{ fontSize: 12, color: theme.gold, fontWeight: 900 }}>{nextBuyPrice} G</div>
+              </div>
+            )
+          }
+          // Emplacements permanents
+          for (let i = 0; i < holdSlots; i++) tiles.push(renderSlot(nonRented[i] || null, false, `perm-${i}`))
+          // Emplacement loué (si actif) OU bouton de location (si dépôt permanent plein)
+          if (holdRentActive) {
+            tiles.push(renderSlot(rentedHold, true, 'rent-slot'))
+          } else if (permFull) {
+            tiles.push(
+              <div key="rent" style={{ width: TILE, flexShrink: 0, height: TILE + 34, borderRadius: 14, border: `2px solid ${RENT_C1}66`, background: `${RENT_C1}12`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, opacity: canRent ? 1 : 0.5, cursor: canRent && !holdBusy ? 'pointer' : 'default' }}
+                onClick={canRent && !holdBusy ? () => setConfirmSlot('rent') : undefined}>
+                <div style={{ fontSize: 30, lineHeight: 1 }}>🔑</div>
+                <div style={{ fontSize: 10, color: theme.textSecondary, fontWeight: 800, textAlign: 'center' }}>{t('hold_rent_slot')}</div>
+                <div style={{ fontSize: 12, color: RENT_C1, fontWeight: 900 }}>{holdRentPrice} G</div>
+              </div>
+            )
+          }
+
+          return (
+            <>
+              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>{tiles}</div>
+
+              {/* Confirmation d'achat / location */}
+              {confirmSlot && (
+                <div style={{ marginTop: 10, background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 10, lineHeight: 1.5 }}>
+                    {confirmSlot === 'buy'
+                      ? t('hold_buy_confirm').replace('{price}', nextBuyPrice)
+                      : t('hold_rent_confirm').replace('{price}', holdRentPrice)}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button disabled={holdBusy}
+                      onClick={async () => {
+                        setHoldBusy(true)
+                        try { confirmSlot === 'buy' ? await onBuyHoldSlot?.() : await onRentHoldSlot?.() }
+                        finally { setHoldBusy(false); setConfirmSlot(null) }
+                      }}
+                      style={{ flex: 1, background: confirmSlot === 'buy' ? `linear-gradient(135deg,${theme.gold},#f1c40f)` : `linear-gradient(135deg,${RENT_C1},${RENT_C2})`, border: 'none', color: '#1e3045', padding: '10px 0', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: holdBusy ? 'default' : 'pointer', opacity: holdBusy ? 0.6 : 1 }}>
+                      {holdBusy ? '…' : t('hold_confirm_pay')}
+                    </button>
+                    <button disabled={holdBusy} onClick={() => setConfirmSlot(null)}
+                      style={{ flex: 1, background: '#ffffff18', border: 'none', color: theme.textSecondary, padding: '10px 0', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>
+                      {t('cancel') || 'Annuler'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 8, lineHeight: 1.5 }}>{t('hold_slots_hint')}</div>
+            </>
           )
-        })() : (
-          <div style={{ background: theme.overlay, border: `1.5px dashed ${theme.border}`, borderRadius: 16, padding: '20px 16px', textAlign: 'center' }}>
-            <div style={{ fontSize: 28, marginBottom: 6, opacity: 0.4 }}>🗄️</div>
-            <div style={{ fontWeight: 800, fontSize: 13, color: theme.textSecondary }}>{t('hold_empty_title')}</div>
-            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4, lineHeight: 1.5 }}>{t('hold_empty_desc')}</div>
-          </div>
-        )}
+        })()}
 
       </div>
 

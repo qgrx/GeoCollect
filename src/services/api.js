@@ -180,7 +180,7 @@ export const apiClaimDailyTreasure = () => apiFetch('/api/treasures/daily/claim'
 
 // ─── Dépôt d'Attente ─────────────────────────────────────────────────────────
 export const apiGetHold   = ()                          => apiFetch('/api/hold')
-export const apiStoreHold = (card_id, is_shiny, rent)   => apiFetch('/api/hold', { method: 'POST', body: { card_id, is_shiny, rent } })
+export const apiStoreHold = (card_id, is_shiny, rent, replace_id) => apiFetch('/api/hold', { method: 'POST', body: { card_id, is_shiny, rent, replace_id } })
 export const apiClaimHold = (hold_id)                   => apiFetch('/api/hold/claim', { method: 'POST', body: { hold_id } })
 export const apiBuyHoldSlot  = ()                       => apiFetch('/api/hold/slots/buy', { method: 'POST' })
 export const apiRentHoldSlot = ()                       => apiFetch('/api/hold/slots/rent', { method: 'POST' })

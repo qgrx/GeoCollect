@@ -629,28 +629,37 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
 }
 
 // ── HoldModal — choix après quiz hors-limite : Dépôt OU 1 Point de Forge ──────
-export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, onClose, forgeCapped = false, owned = false }) {
+export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive = false, rentPrice = 80, gold = 0, onStored, onTakeForgePoint, onClose, forgeCapped = false, owned = false }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [loading, setLoading] = useState(false)
-  const [confirmReplace, setConfirmReplace] = useState(false)  // étape de confirmation si dépôt occupé
+  const [confirmReplace, setConfirmReplace] = useState(false)  // mode sélection du geocoin à remplacer
+  const [selectedReplaceId, setSelectedReplaceId] = useState(null)
   const { c1, c2 } = holdCard ? cardCC(holdCard.rarity) : { c1: '#6c5ce7', c2: '#a29bfe' }
   const rc = holdCard ? RC[holdCard.rarity] : null
-  const hasExisting = !!existingHold?.card
 
-  const doStore = useCallback(async () => {
+  // État du dépôt
+  const nonRented   = holds.filter(h => !h.rented)
+  const permFull    = nonRented.length >= holdSlots
+  const rentSlotFree = holdRentActive && !holds.some(h => h.rented)
+  const hasFreeSlot = !permFull || rentSlotFree                 // un slot libre (gratuit)
+  const canRent     = permFull && !holdRentActive               // location possible (emplacement 4)
+  const fullyFull   = permFull && holdRentActive && holds.some(h => h.rented)
+  const rentTooPoor = gold < rentPrice
+
+  const doStore = useCallback(async (rent = false, replaceId = null) => {
     if (!holdCard || loading) return
     setLoading(true)
-    const { data } = await apiStoreHold(holdCard.id, holdCard.is_shiny || false)
+    const { data } = await apiStoreHold(holdCard.id, holdCard.is_shiny || false, rent, replaceId)
     setLoading(false)
-    onStored(holdCard, data?.forge_points_earned || 0)  // PF si un dépôt a été remplacé
+    onStored(holdCard, data || {})
   }, [holdCard, loading, onStored])
 
-  // Clic sur "Mettre au dépôt" : si un objet est déjà déposé, demander confirmation.
+  // Clic sur "Mettre au dépôt" : si tout est plein, passer en sélection du geocoin à remplacer.
   const handleStoreClick = useCallback(() => {
-    if (hasExisting && !confirmReplace) { setConfirmReplace(true); return }
-    doStore()
-  }, [hasExisting, confirmReplace, doStore])
+    if (fullyFull && !confirmReplace) { setConfirmReplace(true); return }
+    doStore(false)
+  }, [fullyFull, confirmReplace, doStore])
 
   const handleTakeForge = useCallback(async () => {
     if (loading) return
@@ -660,8 +669,6 @@ export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, 
   }, [loading, onTakeForgePoint])
 
   if (!holdCard) return null
-
-  const existCard = existingHold?.card
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000a', padding: 20 }}>
@@ -698,19 +705,39 @@ export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, 
           </div>
         </div>
 
-        {/* Étape de confirmation de remplacement — rappelle le geocoin déjà déposé */}
-        {confirmReplace && hasExisting ? (
+        {/* Étape de sélection du geocoin à remplacer — dépôt entièrement plein */}
+        {confirmReplace && fullyFull ? (
           <>
-            <div style={{ fontSize: 12, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2444', borderRadius: 9, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
-              {t('hold_popup_replace_named')
-                .replace('{card}', cardName(existCard, getLang()) + (existingHold.is_shiny ? ' ✨' : ''))}
+            <div style={{ fontSize: 12, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2444', borderRadius: 9, padding: '10px 12px', marginBottom: 12, lineHeight: 1.5 }}>
+              {t('hold_popup_replace_choose')}
+            </div>
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 14, paddingBottom: 4 }}>
+              {holds.map(h => {
+                const hCard = h.card
+                const cc = cardCC(hCard?.rarity || 'commun')
+                const sel = selectedReplaceId === h.id
+                return (
+                  <button key={h.id} onClick={() => setSelectedReplaceId(h.id)} disabled={loading}
+                    style={{ flexShrink: 0, width: 84, background: sel ? `linear-gradient(135deg,${cc.c1}33,${cc.c2}22)` : '#ffffff08', border: sel ? `2px solid ${cc.c1}` : `1.5px solid ${theme.border}`, borderRadius: 11, padding: 7, cursor: loading ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <div style={{ position: 'relative', width: 60, height: 60, borderRadius: 8, overflow: 'hidden', border: `2px solid ${cc.c1}`, background: '#1e3045' }}>
+                      {hCard?.image_url
+                        ? <ThumbImage src={hCard.image_url} alt={cardName(hCard, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${cc.c1},${cc.c2})` }}>{hCard?.name?.[0] || '?'}</div>}
+                      {h.rented && <div title={t('hold_rented_badge')} style={{ position: 'absolute', top: -2, right: -2, fontSize: 12 }}>🔑</div>}
+                    </div>
+                    <div style={{ width: '100%', textAlign: 'center', fontSize: 10, fontWeight: 800, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {h.is_shiny && '✨'}{cardName(hCard, getLang())}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={doStore} disabled={loading}
-                style={{ ...BTN('linear-gradient(135deg,#e74c3c,#c0392b)'), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, opacity: loading ? 0.7 : 1 }}>
+              <button onClick={selectedReplaceId ? () => doStore(false, selectedReplaceId) : undefined} disabled={loading || !selectedReplaceId}
+                style={{ ...BTN('linear-gradient(135deg,#e74c3c,#c0392b)'), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, opacity: (loading || !selectedReplaceId) ? 0.5 : 1, cursor: selectedReplaceId ? 'pointer' : 'default' }}>
                 {loading ? '…' : t('hold_popup_replace_confirm')}
               </button>
-              <button onClick={() => setConfirmReplace(false)} disabled={loading}
+              <button onClick={() => { setConfirmReplace(false); setSelectedReplaceId(null) }} disabled={loading}
                 style={{ ...BTN('#ffffff18'), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, color: theme.textSecondary }}>
                 {t('cancel') || 'Annuler'}
               </button>
@@ -718,11 +745,10 @@ export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, 
           </>
         ) : (
           <>
-            {/* Avertissement remplacement (avant confirmation) */}
-            {hasExisting && (
+            {/* Avertissement : dépôt plein (un geocoin à choisir sera libéré contre 1 PF) */}
+            {fullyFull && (
               <div style={{ fontSize: 11, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2433', borderRadius: 9, padding: '7px 11px', marginBottom: 12 }}>
-                {t('hold_popup_replace_named')
-                  .replace('{card}', cardName(existCard, getLang()) + (existingHold.is_shiny ? ' ✨' : ''))}
+                {t('hold_popup_full_warning')}
               </div>
             )}
 
@@ -732,12 +758,27 @@ export function HoldModal({ holdCard, existingHold, onStored, onTakeForgePoint, 
               <span>{t('hold_popup_note')}</span>
             </div>
 
-            {/* Boutons : Dépôt OU 1 Point de Forge (PF désactivé si cap PF atteint) */}
+            {/* Boutons : Dépôt (gratuit si slot libre) OU Location (si plein) OU 1 Point de Forge */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              <button onClick={handleStoreClick} disabled={loading}
-                style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: loading ? 0.7 : 1 }}>
-                🗄️ {t('hold_popup_store')}
-              </button>
+              {hasFreeSlot ? (
+                <button onClick={() => doStore(false)} disabled={loading}
+                  style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: loading ? 0.7 : 1 }}>
+                  🗄️ {t('hold_popup_store')}
+                </button>
+              ) : canRent ? (
+                <button onClick={rentTooPoor ? undefined : () => doStore(true)} disabled={loading || rentTooPoor}
+                  style={{ ...BTN('linear-gradient(135deg,#00b894,#55efc4)'), padding: '12px 0', borderRadius: 11, fontSize: 13.5, color: '#1e3045', opacity: (loading || rentTooPoor) ? 0.5 : 1, cursor: rentTooPoor ? 'default' : 'pointer' }}>
+                  🔑 {t('hold_popup_rent').replace('{price}', rentPrice)}
+                </button>
+              ) : (
+                <button onClick={handleStoreClick} disabled={loading}
+                  style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: loading ? 0.7 : 1 }}>
+                  🔄 {t('hold_popup_replace_open')}
+                </button>
+              )}
+              {canRent && rentTooPoor && (
+                <div style={{ textAlign: 'center', fontSize: 10, color: '#e17055', fontWeight: 700 }}>{t('hold_rent_too_poor')}</div>
+              )}
               {forgeCapped ? (
                 <div style={{ textAlign: 'center', fontSize: 11, color: theme.textMuted, padding: '8px 0', fontWeight: 700 }}>
                   ⚒️ {t('hold_forge_capped_note')}

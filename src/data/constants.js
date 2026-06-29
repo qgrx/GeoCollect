@@ -68,6 +68,8 @@ export const INIT_LIMITS = {
   marketListingFee:     1,
   marketSaleTax:        0.05,
   dailyOfferGold:       5,
+  holdSlotPrices:       [150, 400],
+  holdRentPrice:        80,
   referralRequiredCount: 1,
   referralMinGeocoins:   50,
   referralMaxJoinGeocoins: 10,
