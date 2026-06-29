@@ -768,11 +768,6 @@ export default function App() {
     })
   }, [auth.profile?.id, activeTab === 'tresors'])
 
-  // Rafraîchir l'état du dépôt à l'ouverture de la HoldModal (boutons store/location à jour)
-  useEffect(() => {
-    if (holdOffer && auth.profile && !auth.isDemo) refreshHold()
-  }, [!!holdOffer])
-
   // Vérifier la saison en cours à la connexion — afficher la popup si nouvelle saison
   useEffect(() => {
     if (!auth.profile || auth.isDemo) return
@@ -833,6 +828,11 @@ export default function App() {
     lostToWinner, setLostToWinner,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
+
+  // Rafraîchir l'état du dépôt à l'ouverture de la HoldModal (boutons store/location à jour)
+  useEffect(() => {
+    if (holdOffer && auth.profile && !auth.isDemo) refreshHold()
+  }, [!!holdOffer])
 
   // ── Mode Débutant (piste parallèle) ─────────────────────────────────────────
   const beginnerActive = quizMode === 'beginner' && !auth.isDemo && !!auth.profile
