@@ -644,7 +644,7 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
   const rentSlotFree = holdRentActive && !holds.some(h => h.rented)
   const hasFreeSlot = !permFull || rentSlotFree                 // un slot libre (gratuit)
   const canRent     = permFull && !holdRentActive               // location possible (emplacement 4)
-  const fullyFull   = permFull && holdRentActive && holds.some(h => h.rented)
+  const canReplace  = !hasFreeSlot && holds.length > 0          // remplacer un geocoin déjà déposé
   const rentTooPoor = gold < rentPrice
 
   const doStore = useCallback(async (rent = false, replaceId = null) => {
@@ -655,11 +655,11 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
     onStored(holdCard, data || {})
   }, [holdCard, loading, onStored])
 
-  // Clic sur "Mettre au dépôt" : si tout est plein, passer en sélection du geocoin à remplacer.
+  // Clic sur "Remplacer un geocoin" : passer en sélection du geocoin à remplacer.
   const handleStoreClick = useCallback(() => {
-    if (fullyFull && !confirmReplace) { setConfirmReplace(true); return }
+    if (canReplace && !confirmReplace) { setConfirmReplace(true); return }
     doStore(false)
-  }, [fullyFull, confirmReplace, doStore])
+  }, [canReplace, confirmReplace, doStore])
 
   const handleTakeForge = useCallback(async () => {
     if (loading) return
@@ -705,8 +705,8 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
           </div>
         </div>
 
-        {/* Étape de sélection du geocoin à remplacer — dépôt entièrement plein */}
-        {confirmReplace && fullyFull ? (
+        {/* Étape de sélection du geocoin à remplacer — aucun emplacement libre */}
+        {confirmReplace && canReplace ? (
           <>
             <div style={{ fontSize: 12, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2444', borderRadius: 9, padding: '10px 12px', marginBottom: 12, lineHeight: 1.5 }}>
               {t('hold_popup_replace_choose')}
@@ -745,8 +745,8 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
           </>
         ) : (
           <>
-            {/* Avertissement : dépôt plein (un geocoin à choisir sera libéré contre 1 PF) */}
-            {fullyFull && (
+            {/* Avertissement : aucun emplacement libre */}
+            {!hasFreeSlot && (
               <div style={{ fontSize: 11, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2433', borderRadius: 9, padding: '7px 11px', marginBottom: 12 }}>
                 {t('hold_popup_full_warning')}
               </div>
@@ -758,23 +758,28 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
               <span>{t('hold_popup_note')}</span>
             </div>
 
-            {/* Boutons : Dépôt (gratuit si slot libre) OU Location (si plein) OU 1 Point de Forge */}
+            {/* Boutons : Dépôt gratuit si slot libre ; sinon Remplacer / Louer ; puis 1 Point de Forge */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
               {hasFreeSlot ? (
                 <button onClick={() => doStore(false)} disabled={loading}
                   style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: loading ? 0.7 : 1 }}>
                   🗄️ {t('hold_popup_store')}
                 </button>
-              ) : canRent ? (
-                <button onClick={rentTooPoor ? undefined : () => doStore(true)} disabled={loading || rentTooPoor}
-                  style={{ ...BTN('linear-gradient(135deg,#00b894,#55efc4)'), padding: '12px 0', borderRadius: 11, fontSize: 13.5, color: '#1e3045', opacity: (loading || rentTooPoor) ? 0.5 : 1, cursor: rentTooPoor ? 'default' : 'pointer' }}>
-                  🔑 {t('hold_popup_rent').replace('{price}', rentPrice)}
-                </button>
               ) : (
-                <button onClick={handleStoreClick} disabled={loading}
-                  style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: loading ? 0.7 : 1 }}>
-                  🔄 {t('hold_popup_replace_open')}
-                </button>
+                <>
+                  {canReplace && (
+                    <button onClick={handleStoreClick} disabled={loading}
+                      style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: loading ? 0.7 : 1 }}>
+                      🔄 {t('hold_popup_replace_open')}
+                    </button>
+                  )}
+                  {canRent && (
+                    <button onClick={rentTooPoor ? undefined : () => doStore(true)} disabled={loading || rentTooPoor}
+                      style={{ ...BTN('linear-gradient(135deg,#00b894,#55efc4)'), padding: '12px 0', borderRadius: 11, fontSize: 13.5, color: '#1e3045', opacity: (loading || rentTooPoor) ? 0.5 : 1, cursor: rentTooPoor ? 'default' : 'pointer' }}>
+                      🔑 {t('hold_popup_rent').replace('{price}', rentPrice)}
+                    </button>
+                  )}
+                </>
               )}
               {canRent && rentTooPoor && (
                 <div style={{ textAlign: 'center', fontSize: 10, color: '#e17055', fontWeight: 700 }}>{t('hold_rent_too_poor')}</div>
