@@ -206,6 +206,8 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // déclenchera le prochain quiz via handleQuizExpire.
       if (data.glory) {
         resolvedQuizIdsRef.current.add(activeQuiz.id)
+        if (data.achievements?.length) cbRef.current.checkAchievements?.(data.achievements)
+        if (data.achievement_upgrades?.length) cbRef.current.checkAchievementUpgrades?.(data.achievement_upgrades)
         showToast(t('toast_glory_win'))
         setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 3500)
         return { ok: true, outcome: 'glory', forge: 0 }
