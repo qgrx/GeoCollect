@@ -67,6 +67,7 @@ const TRIGGER_META = {
   forge_count:     { label:"Cartes forgées",           unit:"cartes forgées",      help:"Nombre de cartes forgées : rendre brillant ou forger une carte." },
   rank_reached:    { label:"Rang atteint",             unit:"points de score",     help:"Score de rang minimum à atteindre." },
   referral:        { label:"Parrainage « Le parrain »", unit:"filleuls qualifiés", help:"Nombre de filleuls devant chacun récolter assez de geocoins. Le seuil de geocoins par filleul et le max à l'inscription se règlent dans Limites & Prix → Parrainage." },
+  glory_win:       { label:"Victoires de gloire",      unit:"victoires de gloire", help:"Nombre de victoires « pour la gloire » (bonne réponse alors que toutes les limites quotidiennes sont atteintes)." },
 };
 const TRIGGER_KEYS = Object.keys(TRIGGER_META);
 const triggerLabel = t => TRIGGER_META[t]?.label || t;
@@ -479,24 +480,6 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [achDefs,setAchDefs]=useState([]);
   const [editDef,setEditDef]=useState(null);
   const [newDef,setNewDef]=useState(null);
-  // Variantes de paliers supérieurs (rare/épique/légendaire) d'une définition évolutive :
-  // on les masque de la grille pour ne pas afficher 4× le même geocoin (une série = 1 carte).
-  const achVariantIds=useMemo(()=>{
-    const s=new Set();
-    for(const d of achDefs){
-      if(d.card_id_rare)      s.add(d.card_id_rare);
-      if(d.card_id_epic)      s.add(d.card_id_epic);
-      if(d.card_id_legendary) s.add(d.card_id_legendary);
-    }
-    return s;
-  },[achDefs]);
-  const baseAchCards=useMemo(()=>achCards.filter(c=>!achVariantIds.has(c.id)),[achCards,achVariantIds]);
-  // Définition liée à une carte de base (card_id), pour éditer ses paliers au clic.
-  const defByCardId=useMemo(()=>{
-    const m={};
-    for(const d of achDefs){ if(d.card_id) m[d.card_id]=d; }
-    return m;
-  },[achDefs]);
   const [newAchCard,setNewAchCard]=useState(null);
   const newAchFileRef=useRef();
   const [dailyQuests,setDailyQuests]=useState([]);
@@ -1387,7 +1370,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {/* ── ACHIEVEMENTS ── */}
         {tab==="achievements"&&<div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-            <div style={{fontWeight:900,color:"#e74c3c",fontSize:14}}>🏆 Cartes Achievement ({baseAchCards.length})</div>
+            <div style={{fontWeight:900,color:"#e74c3c",fontSize:14}}>🏆 Cartes Achievement ({achCards.length})</div>
             <button onClick={()=>setNewAchCard(newAchCard?null:{name:"",description:"",rarity:"commun",image:null,trigger:"buy_count",threshold:1,category:"permanent",points:0})}
               style={{...BTN(newAchCard?"#ffffff18":"linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"6px 14px",borderRadius:8,fontSize:11}}>
               {newAchCard?"✕ Annuler":"➕ Nouvelle carte achievement"}
@@ -1432,7 +1415,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                     <div style={{fontWeight:800,color:"#aaa",fontSize:10,textTransform:"uppercase",letterSpacing:.8,marginBottom:10,marginTop:6}}>🎯 Condition achievement</div>
                     <Fld lbl="Trigger">
                       <select value={newAchCard.trigger} onChange={e=>setNewAchCard({...newAchCard,trigger:e.target.value})} style={SEL}>
-                        {['buy_count','sell_count','quiz_win','new_card','streak','win_streak','collection_size','shiny_count','legendary_count','streak_break','melt_count','forge_count','rank_reached'].map(t=><option key={t} value={t}>{t}</option>)}
+                        {TRIGGER_KEYS.map(t=><option key={t} value={t}>{triggerLabel(t)}</option>)}
                       </select>
                     </Fld>
                     <Fld lbl="Seuil (nombre d'événements)">
@@ -1502,135 +1485,17 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>
             );
           })()}
-          <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"flex-start"}}>
-
-            {/* Grille de cartes (une série évolutive = une seule carte de base) */}
-            <div style={{flex:2,minWidth:260}}>
-              <div style={{fontSize:11,color:"#8daacc",marginBottom:10}}>Clique pour éditer le geocoin et ses paliers</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
-                {baseAchCards.map(c=>{
-                  const evo=defByCardId[c.id]?.threshold_rare!=null;
-                  return(
-                    <div key={c.id} onClick={()=>setEditAch(editAch?.id===c.id?null:{...c,_def:defByCardId[c.id]||null})}
-                      style={{position:"relative",cursor:"pointer",outline:editAch?.id===c.id?"2.5px solid #f9ca24":"2.5px solid transparent",borderRadius:18,transition:"outline .15s"}}>
-                      <Card card={c} small />
-                      {evo&&<div style={{position:"absolute",top:4,left:4,zIndex:6,background:"#f9ca24cc",color:"#1e3045",fontSize:8,fontWeight:900,borderRadius:4,padding:"2px 5px"}}>ÉVOLUTIF</div>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Formulaire d'édition */}
-            {editAch&&(
-              <div style={{flex:1,minWidth:260}}>
-                <div style={{fontWeight:800,color:"#f9ca24",marginBottom:12,fontSize:13}}>✏️ {editAch.name}</div>
-
-                {/* Aperçu pleine taille */}
-                <div style={{display:"flex",justifyContent:"center",marginBottom:14}}>
-                  <Card card={editAch} />
-                </div>
-
-                <Fld lbl="Nom">
-                  <input value={editAch.name} onChange={e=>setEditAch({...editAch,name:e.target.value})} style={INP}/>
-                </Fld>
-                <Fld lbl="Description (condition d'obtention)">
-                  <textarea value={editAch.desc??editAch.description??''} onChange={e=>setEditAch({...editAch,desc:e.target.value,description:e.target.value})} style={{...INP,height:64,resize:'vertical'}}/>
-                </Fld>
-                <Fld lbl="Type">
-                  <select value={editAch.type==='Achievement'||!editAch.type ? (cardTypes[0]||'Normal') : editAch.type} onChange={e=>setEditAch({...editAch,type:e.target.value})} style={SEL}>
-                    {cardTypes.filter(t=>t!=='Achievement').map(t=><option key={t} value={t}>{t}</option>)}
-                  </select>
-                </Fld>
-                <Fld lbl="Rareté">
-                  <select value={editAch.rarity} onChange={e=>setEditAch({...editAch,rarity:e.target.value})} style={SEL}>
-                    {["commun","rare","épique","légendaire"].map(r=><option key={r} value={r}>{RC[r].label}</option>)}
-                  </select>
-                  {(()=>{const {c1,c2}=cardCC(editAch.rarity);return<div style={{marginTop:5,height:5,borderRadius:3,background:`linear-gradient(90deg,${c1},${c2})`}}/>;})()}
-                </Fld>
-                <Fld lbl="Image PNG">
-                  <div onClick={()=>achFileRef.current.click()} style={{border:"2px dashed #ffffff33",borderRadius:9,padding:"11px",textAlign:"center",cursor:"pointer",background:"#ffffff08"}}
-                    onMouseEnter={e=>e.currentTarget.style.borderColor="#f9ca2466"}
-                    onMouseLeave={e=>e.currentTarget.style.borderColor="#ffffff33"}>
-                    <div style={{color:"#8daacc",fontSize:12}}>📁 Changer l'image PNG</div>
-                  </div>
-                  <input ref={achFileRef} type="file" accept=".png,image/png" onChange={e => imgUpload(e, ({ imageBase64 }) => {
-                    if (imageBase64) setEditAch(ach => ({ ...ach, image_url: imageBase64, image: imageBase64 }));
-                  }, { name: editAch?.name || '', type: editAch?.type || 'Achievement', rarity: editAch?.rarity || '' })} style={{display:"none"}}/>
-                </Fld>
-                <div style={{display:"flex",gap:8,marginTop:4}}>
-                  <button onClick={async()=>{
-                    if(!editAch.name.trim()){setMsg("❌ Nom requis.");return;}
-                    const finalType = editAch.type==='Achievement'||!editAch.type ? (cardTypes[0]||'Normal') : editAch.type;
-                    const optimisticUpdated = { ...editAch, type:finalType, image_url:editAch.image_url||editAch.image||null };
-                    const prevAch = achCards.find(c=>c.id===editAch.id);
-                    setAchCards(prev=>prev.map(c=>c.id===editAch.id?optimisticUpdated:c));
-                    setEditAch(optimisticUpdated);
-                    onUpdateCardInPool?.(optimisticUpdated);
-                    const {data,error}=await apiEditAchievementCard(editAch.id,{name:editAch.name,desc:editAch.desc,rarity:editAch.rarity,type:finalType,image:editAch.image_url||editAch.image||null});
-                    if(error){setAchCards(prev=>prev.map(c=>c.id===editAch.id?prevAch:c));setEditAch(prevAch);onUpdateCardInPool?.(prevAch);setMsg("❌ "+error);return;}
-                    const updated = data?.card ? {...data.card, desc: data.card.desc??data.card.description??''} : optimisticUpdated;
-                    setAchCards(prev=>prev.map(c=>c.id===editAch.id?updated:c));
-                    setEditAch(updated);
-                    onUpdateCardInPool?.(updated);
-                    setMsg(`✅ "${editAch.name}" mis à jour !`);
-                  }} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"10px",borderRadius:10,textAlign:"center"}}>
-                    Enregistrer ✏️
-                  </button>
-                  <button onClick={()=>setEditAch(null)} style={{...BTN("#ffffff18"),padding:"10px 14px",borderRadius:10}}>Annuler</button>
-                </div>
-
-                {/* ── Paliers évolutifs du geocoin (édite la définition liée) ── */}
-                {editAch._def&&(
-                  <div style={{marginTop:16,padding:12,background:"#ffffff06",borderRadius:10,border:"1px solid #f9ca2440"}}>
-                    <div style={{fontWeight:900,color:"#f9ca24",fontSize:12,marginBottom:6}}>🏅 Paliers évolutifs</div>
-                    <div style={{fontSize:10,color:"#8daacc",marginBottom:10,lineHeight:1.4}}>
-                      Déclencheur : <b>{triggerLabel(editAch._def.type)}</b>. Ce geocoin = palier <b>commun</b>.
-                      Laisse un seuil vide pour retirer le palier (et au-dessus).
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                      <Fld lbl={`Seuil Commun (${TRIGGER_META[editAch._def.type]?.unit||'à atteindre'})`}>
-                        <input type="number" min={1} value={editAch._def.threshold??1} onChange={e=>setEditAch({...editAch,_def:{...editAch._def,threshold:+e.target.value}})} style={INP}/>
-                      </Fld>
-                      <div/>
-                      <Fld lbl="Seuil Rare"><input type="number" min={1} value={editAch._def.threshold_rare??''} onChange={e=>setEditAch({...editAch,_def:{...editAch._def,threshold_rare:e.target.value}})} style={INP}/></Fld>
-                      <Fld lbl="Geocoin Rare"><CardSelect value={editAch._def.card_id_rare??''} cards={achievementCards} onChange={v=>setEditAch({...editAch,_def:{...editAch._def,card_id_rare:v}})} style={SEL}/></Fld>
-                      <Fld lbl="Seuil Épique"><input type="number" min={1} value={editAch._def.threshold_epic??''} onChange={e=>setEditAch({...editAch,_def:{...editAch._def,threshold_epic:e.target.value}})} style={INP}/></Fld>
-                      <Fld lbl="Geocoin Épique"><CardSelect value={editAch._def.card_id_epic??''} cards={achievementCards} onChange={v=>setEditAch({...editAch,_def:{...editAch._def,card_id_epic:v}})} style={SEL}/></Fld>
-                      <Fld lbl="Seuil Légendaire"><input type="number" min={1} value={editAch._def.threshold_legendary??''} onChange={e=>setEditAch({...editAch,_def:{...editAch._def,threshold_legendary:e.target.value}})} style={INP}/></Fld>
-                      <Fld lbl="Geocoin Légendaire"><CardSelect value={editAch._def.card_id_legendary??''} cards={achievementCards} onChange={v=>setEditAch({...editAch,_def:{...editAch._def,card_id_legendary:v}})} style={SEL}/></Fld>
-                    </div>
-                    <button onClick={async()=>{
-                      const d=editAch._def;
-                      const {data,error}=await apiUpdateAchievementDef(d.id,{
-                        threshold:d.threshold,
-                        threshold_rare:d.threshold_rare||null, threshold_epic:d.threshold_epic||null, threshold_legendary:d.threshold_legendary||null,
-                        card_id_rare:d.card_id_rare||null, card_id_epic:d.card_id_epic||null, card_id_legendary:d.card_id_legendary||null,
-                      });
-                      if(error){setMsg("❌ "+error);return;}
-                      setAchDefs(prev=>prev.map(x=>x.id===d.id?data.definition:x));
-                      setEditAch(a=>({...a,_def:data.definition}));
-                      setMsg("✅ Paliers mis à jour !");
-                    }} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)"),padding:"9px",borderRadius:9,marginTop:10,width:"100%",textAlign:"center",color:"#1e3045"}}>
-                      Enregistrer les paliers 🏅
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── Conditions (achievement_definitions) ── */}
-          <div style={{marginTop:22,background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:12,padding:14}}>
+          {/* ── Liste unifiée (une ligne = une définition + sa carte) ── */}
+          <div style={{marginTop:4}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-              <div style={{fontWeight:900,color:"#f9ca24",fontSize:13}}>⚙️ Conditions déclenchantes</div>
+              <div style={{fontWeight:900,color:"#f9ca24",fontSize:13}}>⚙️ Achievements ({achDefs.length})</div>
               <div style={{display:"flex",gap:6}}>
                 {(()=>{const hiddenCount=achDefs.filter(d=>d.hidden).length;return hiddenCount>0&&(
                   <button onClick={async()=>{if(!window.confirm(`Publier ${hiddenCount} achievement(s) en brouillon ? Ils deviendront visibles et débloquables par les joueurs.`))return;const {data,error}=await apiReleaseHiddenAchievements();if(error){setMsg("❌ "+error);return;}setAchDefs(prev=>prev.map(d=>d.hidden?{...d,hidden:false}:d));setMsg(`✅ ${data?.released??hiddenCount} achievement(s) publié(s) !`);}}
                     style={{...BTN("linear-gradient(135deg,#e17055,#d63031)"),padding:"5px 12px",borderRadius:8,fontSize:11}} title="Rendre visibles tous les achievements en brouillon">🚀 Publier {hiddenCount} brouillon{hiddenCount>1?"s":""}</button>
                 );})()}
                 <button onClick={()=>setNewDef({key:'',name:'',description:'',type:'buy_count',threshold:1,card_id:'',points:0,category:'permanent',active:true,hidden:false,threshold_rare:'',threshold_epic:'',threshold_legendary:'',card_id_rare:'',card_id_epic:'',card_id_legendary:''})}
-                  style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"5px 12px",borderRadius:8,fontSize:11}}>+ Nouvelle</button>
+                  style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"5px 12px",borderRadius:8,fontSize:11}}>+ Nouvelle condition</button>
               </div>
             </div>
 
@@ -1651,15 +1516,14 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   <Fld lbl="Points bonus"><input type="number" value={newDef.points} onChange={e=>setNewDef({...newDef,points:+e.target.value})} min={0} style={INP}/></Fld>
                   <Fld lbl="Catégorie">
                     <select value={newDef.category} onChange={e=>setNewDef({...newDef,category:e.target.value})} style={SEL}>
-                      <option value="permanent">permanent</option>
-                      <option value="daily">daily</option>
+                      <option value="permanent">permanent</option><option value="daily">daily</option>
                     </select>
                   </Fld>
                   <Fld lbl="Description"><input value={newDef.description} onChange={e=>setNewDef({...newDef,description:e.target.value})} style={INP}/></Fld>
                   <Fld lbl="Visibilité"><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginTop:4}}><input type="checkbox" checked={!!newDef.hidden} onChange={e=>setNewDef({...newDef,hidden:e.target.checked})} style={{width:16,height:16}}/><span style={{color:"#e17055",fontSize:12,fontWeight:700}}>🚫 Brouillon (caché jusqu'à publication)</span></label></Fld>
                 </div>
                 <div style={{marginTop:8,padding:"8px 10px",background:"#ffffff06",borderRadius:8,border:"1px solid #f9ca2433"}}>
-                  <div style={{fontWeight:800,color:"#f9ca24",fontSize:11,marginBottom:6}}>🏅 Paliers évolutifs (optionnel) — laisser vide = palier unique. Le geocoin ci-dessus = palier commun.</div>
+                  <div style={{fontWeight:800,color:"#f9ca24",fontSize:11,marginBottom:6}}>🏅 Paliers évolutifs (optionnel) — laisser vide = palier unique</div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                     <Fld lbl="Seuil Rare"><input type="number" value={newDef.threshold_rare} onChange={e=>setNewDef({...newDef,threshold_rare:e.target.value})} min={1} style={INP}/></Fld>
                     <Fld lbl="Geocoin Rare"><CardSelect value={newDef.card_id_rare} cards={achievementCards} onChange={v=>setNewDef({...newDef,card_id_rare:v})} style={SEL}/></Fld>
@@ -1687,108 +1551,109 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>
             )}
 
-            {/* Tableau des définitions */}
-            <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:"'Nunito',sans-serif"}}>
-                <thead>
-                  <tr style={{color:"#8daacc",textAlign:"left"}}>
-                    {["Clé","Trigger","Seuil","Carte","Points","Catégorie","Actif",""].map(h=>(
-                      <th key={h} style={{padding:"4px 8px",borderBottom:"1px solid #ffffff10",fontWeight:700}}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {achDefs.map(def=>(
-                    <tr key={def.id} style={{borderBottom:"1px solid #ffffff08",background:editDef?.id===def.id?"#ffffff0a":"transparent"}}>
-                      {editDef?.id===def.id ? (
-                        // ── Ligne d'édition inline ──
-                        <>
-                          <td style={{padding:"6px 8px"}} colSpan={7}>
-                            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:6}}>
-                              <Fld lbl="Nom"><input value={editDef.name} onChange={e=>setEditDef({...editDef,name:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
-                              <Fld lbl="Trigger">
-                                <select value={editDef.type} onChange={e=>setEditDef({...editDef,type:e.target.value})} style={{...SEL,fontSize:11}}>
-                                  {TRIGGER_KEYS.map(t=><option key={t} value={t}>{triggerLabel(t)}</option>)}
-                                </select>
-                              </Fld>
-                              <Fld lbl={`Seuil (${TRIGGER_META[editDef.type]?.unit||'à atteindre'})`}><input type="number" value={editDef.threshold} onChange={e=>setEditDef({...editDef,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
-                              <Fld lbl="Geocoin à débloquer"><CardSelect value={editDef.card_id} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id:v})} style={{...SEL,fontSize:11}}/></Fld>
-                              <Fld lbl="Points"><input type="number" value={editDef.points} onChange={e=>setEditDef({...editDef,points:+e.target.value})} min={0} style={{...INP,fontSize:11}}/></Fld>
-                              <Fld lbl="Catégorie">
-                                <select value={editDef.category} onChange={e=>setEditDef({...editDef,category:e.target.value})} style={{...SEL,fontSize:11}}>
-                                  <option value="permanent">permanent</option>
-                                  <option value="daily">daily</option>
-                                </select>
-                              </Fld>
-                              <Fld lbl="Description"><input value={editDef.description??''} onChange={e=>setEditDef({...editDef,description:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
-                              <Fld lbl="Actif">
-                                <select value={editDef.active?"1":"0"} onChange={e=>setEditDef({...editDef,active:e.target.value==="1"})} style={{...SEL,fontSize:11}}>
-                                  <option value="1">✅ Actif</option>
-                                  <option value="0">⏸ Inactif</option>
-                                </select>
-                              </Fld>
-                              <Fld lbl="Visibilité">
-                                <select value={editDef.hidden?"1":"0"} onChange={e=>setEditDef({...editDef,hidden:e.target.value==="1"})} style={{...SEL,fontSize:11}}>
-                                  <option value="0">👁 Publié</option>
-                                  <option value="1">🚫 Brouillon</option>
-                                </select>
-                              </Fld>
-                            </div>
-                            <div style={{padding:"7px 9px",marginBottom:6,background:"#ffffff06",borderRadius:8,border:"1px solid #f9ca2433"}}>
-                              <div style={{fontWeight:800,color:"#f9ca24",fontSize:10,marginBottom:5}}>🏅 Paliers évolutifs (vide = palier unique)</div>
-                              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
-                                <Fld lbl="Seuil Rare"><input type="number" value={editDef.threshold_rare??''} onChange={e=>setEditDef({...editDef,threshold_rare:e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
-                                <Fld lbl="Geocoin Rare"><CardSelect value={editDef.card_id_rare??''} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id_rare:v})} style={{...SEL,fontSize:11}}/></Fld>
-                                <Fld lbl="Seuil Épique"><input type="number" value={editDef.threshold_epic??''} onChange={e=>setEditDef({...editDef,threshold_epic:e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
-                                <Fld lbl="Geocoin Épique"><CardSelect value={editDef.card_id_epic??''} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id_epic:v})} style={{...SEL,fontSize:11}}/></Fld>
-                                <Fld lbl="Seuil Légendaire"><input type="number" value={editDef.threshold_legendary??''} onChange={e=>setEditDef({...editDef,threshold_legendary:e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
-                                <Fld lbl="Geocoin Légendaire"><CardSelect value={editDef.card_id_legendary??''} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id_legendary:v})} style={{...SEL,fontSize:11}}/></Fld>
-                              </div>
-                            </div>
-                            <div style={{display:"flex",gap:6}}>
-                              <button onClick={async()=>{
-                                const {data,error}=await apiUpdateAchievementDef(editDef.id,editDef);
-                                if(error){setMsg("❌ "+error);return;}
-                                setAchDefs(prev=>prev.map(d=>d.id===editDef.id?data.definition:d));
-                                setEditDef(null);setMsg("✅ Mis à jour !");
-                              }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"5px 12px",borderRadius:7,fontSize:11}}>Enregistrer</button>
-                              <button onClick={()=>setEditDef(null)} style={{...BTN("#ffffff18"),padding:"5px 10px",borderRadius:7,fontSize:11}}>Annuler</button>
-                              <button onClick={async()=>{
-                                if(!window.confirm(`Supprimer "${def.key}" ?`)) return;
-                                const {error}=await apiDeleteAchievementDef(def.id);
-                                if(error){setMsg("❌ "+error);return;}
-                                setAchDefs(prev=>prev.filter(d=>d.id!==def.id));
-                                setEditDef(null);setMsg("✅ Supprimé.");
-                              }} style={{...BTN("#e74c3c22"),border:"1px solid #e74c3c44",color:"#e74c3c",padding:"5px 10px",borderRadius:7,fontSize:11,marginLeft:"auto"}}>🗑 Supprimer</button>
-                            </div>
-                          </td>
-                        </>
-                      ) : (
-                        // ── Ligne normale ──
-                        <>
-                          <td style={{padding:"5px 8px",color:"#aaa",fontFamily:"monospace"}}>{def.key}</td>
-                          <td style={{padding:"5px 8px"}}>
-                            <span title={def.type} style={{background:"#ffffff12",borderRadius:5,padding:"2px 7px",fontSize:10}}>{triggerLabel(def.type)}</span>
-                          </td>
-                          <td style={{padding:"5px 8px",color:"#f9ca24",fontWeight:700,whiteSpace:"nowrap"}}>{def.threshold_rare!=null?`${def.threshold} · ${def.threshold_rare} · ${def.threshold_epic??'—'} · ${def.threshold_legendary??'—'}`:def.threshold}</td>
-                          <td style={{padding:"5px 8px",color:"#aaa"}}>{def.cards ? `#${def.card_id} ${def.cards.name}` : def.card_id ? `#${def.card_id}` : '—'}</td>
-                          <td style={{padding:"5px 8px",color:"#aaa"}}>{def.points||'—'}</td>
-                          <td style={{padding:"5px 8px"}}>
-                            <span style={{background:def.category==="daily"?"#f9ca2422":"#ffffff10",color:def.category==="daily"?"#f9ca24":"#aaa",borderRadius:5,padding:"2px 7px",fontSize:10}}>{def.category}</span>
-                          </td>
-                          <td style={{padding:"5px 8px",whiteSpace:"nowrap"}}>
-                            <span style={{color:def.active?"#00b894":"#e74c3c",fontWeight:800,fontSize:12}}>{def.active?"●":"○"}</span>
-                            {def.hidden&&<span title="Brouillon — masqué aux joueurs" style={{marginLeft:5,background:"#e17055cc",color:"#fff",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:800}}>🚫 BR</span>}
-                          </td>
-                          <td style={{padding:"5px 8px"}}>
-                            <button onClick={()=>setEditDef({...def})} style={{...BTN("#ffffff12"),padding:"3px 10px",borderRadius:6,fontSize:10,cursor:"pointer"}}>✏️</button>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Liste des achievements */}
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {achDefs.map(def=>{
+                const card=achCards.find(c=>c.id===def.card_id);
+                const thumb=card?.image_url_thumb||card?.thumbnail||card?.image_url||card?.image;
+                const {c1}=card?cardCC(card.rarity):{c1:'#888'};
+                const evo=def.threshold_rare!=null;
+                const isEditing=editDef?.id===def.id;
+                return(
+                  <div key={def.id} style={{background:isEditing?'#ffffff0a':'#ffffff05',border:`1px solid ${def.hidden?'#e1705544':def.active?'#ffffff10':'#e74c3c33'}`,borderRadius:10,overflow:'hidden',transition:'background .15s'}}>
+                    {/* Ligne résumé */}
+                    <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',cursor:'pointer'}} onClick={()=>setEditDef(isEditing?null:{...def})}>
+                      {/* Thumbnail */}
+                      <div style={{width:40,height:52,borderRadius:7,overflow:'hidden',border:`2px solid ${c1}66`,flexShrink:0,background:thumb?'transparent':`linear-gradient(135deg,${c1}44,${c1}22)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        {thumb?<img src={thumb} alt="" style={{width:'100%',height:'100%',objectFit:'contain'}}/>:<span style={{fontSize:16,opacity:.4}}>🏆</span>}
+                      </div>
+                      {/* Infos */}
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:'flex',alignItems:'baseline',gap:6,flexWrap:'wrap'}}>
+                          <span style={{fontWeight:800,fontSize:12,color:def.active?'#fff':'#666'}}>{def.name||card?.name||'?'}</span>
+                          {evo&&<span style={{fontSize:8,fontWeight:900,background:'#f9ca2433',color:'#f9ca24',borderRadius:4,padding:'1px 5px'}}>ÉVOLUTIF</span>}
+                          <span style={{fontSize:10,color:'#8daacc',fontFamily:'monospace'}}>{def.key}</span>
+                        </div>
+                        <div style={{display:'flex',gap:8,alignItems:'center',marginTop:2,flexWrap:'wrap'}}>
+                          <span style={{background:'#ffffff12',borderRadius:5,padding:'1px 6px',fontSize:9}}>{triggerLabel(def.type)}</span>
+                          <span style={{fontSize:10,color:'#f9ca24',fontWeight:700}}>{evo?`${def.threshold} · ${def.threshold_rare} · ${def.threshold_epic??'—'} · ${def.threshold_legendary??'—'}`:def.threshold}</span>
+                          {def.description&&<span style={{fontSize:10,color:'#8daacc',fontStyle:'italic'}}>{def.description}</span>}
+                        </div>
+                      </div>
+                      {/* Statut + toggles */}
+                      <div style={{display:'flex',gap:5,alignItems:'center',flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                        <button onClick={async()=>{
+                          const next=!def.active;
+                          setAchDefs(prev=>prev.map(d=>d.id===def.id?{...d,active:next}:d));
+                          const {error}=await apiUpdateAchievementDef(def.id,{active:next});
+                          if(error){setAchDefs(prev=>prev.map(d=>d.id===def.id?{...d,active:def.active}:d));setMsg("❌ "+error);}
+                        }} title={def.active?"Désactiver":"Activer"}
+                          style={{background:def.active?'#00b89422':'#e74c3c22',border:`1px solid ${def.active?'#00b89444':'#e74c3c44'}`,color:def.active?'#00b894':'#e74c3c',padding:'3px 8px',borderRadius:6,fontSize:10,fontWeight:800,cursor:'pointer',fontFamily:"'Nunito',sans-serif"}}>
+                          {def.active?'● Actif':'○ Inactif'}
+                        </button>
+                        <button onClick={async()=>{
+                          const next=!def.hidden;
+                          setAchDefs(prev=>prev.map(d=>d.id===def.id?{...d,hidden:next}:d));
+                          const {error}=await apiUpdateAchievementDef(def.id,{hidden:next});
+                          if(error){setAchDefs(prev=>prev.map(d=>d.id===def.id?{...d,hidden:def.hidden}:d));setMsg("❌ "+error);}
+                        }} title={def.hidden?"Publier":"Mettre en brouillon"}
+                          style={{background:def.hidden?'#e1705522':'#ffffff0a',border:`1px solid ${def.hidden?'#e1705544':'#ffffff15'}`,color:def.hidden?'#e17055':'#8daacc',padding:'3px 8px',borderRadius:6,fontSize:10,fontWeight:800,cursor:'pointer',fontFamily:"'Nunito',sans-serif"}}>
+                          {def.hidden?'🚫 Brouillon':'👁 Publié'}
+                        </button>
+                      </div>
+                    </div>
+                    {/* Panneau d'édition (déplié au clic) */}
+                    {isEditing&&(
+                      <div style={{padding:'10px 14px 14px',borderTop:'1px solid #ffffff10',background:'#ffffff06'}}>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:6}}>
+                          <Fld lbl="Nom"><input value={editDef.name} onChange={e=>setEditDef({...editDef,name:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
+                          <Fld lbl="Trigger">
+                            <select value={editDef.type} onChange={e=>setEditDef({...editDef,type:e.target.value})} style={{...SEL,fontSize:11}}>
+                              {TRIGGER_KEYS.map(t=><option key={t} value={t}>{triggerLabel(t)}</option>)}
+                            </select>
+                          </Fld>
+                          <Fld lbl={`Seuil (${TRIGGER_META[editDef.type]?.unit||'à atteindre'})`}><input type="number" value={editDef.threshold} onChange={e=>setEditDef({...editDef,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                          <Fld lbl="Geocoin"><CardSelect value={editDef.card_id} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id:v})} style={{...SEL,fontSize:11}}/></Fld>
+                          <Fld lbl="Points"><input type="number" value={editDef.points} onChange={e=>setEditDef({...editDef,points:+e.target.value})} min={0} style={{...INP,fontSize:11}}/></Fld>
+                          <Fld lbl="Catégorie">
+                            <select value={editDef.category} onChange={e=>setEditDef({...editDef,category:e.target.value})} style={{...SEL,fontSize:11}}>
+                              <option value="permanent">permanent</option><option value="daily">daily</option>
+                            </select>
+                          </Fld>
+                          <Fld lbl="Description"><input value={editDef.description??''} onChange={e=>setEditDef({...editDef,description:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
+                        </div>
+                        <div style={{padding:"7px 9px",marginBottom:6,background:"#ffffff06",borderRadius:8,border:"1px solid #f9ca2433"}}>
+                          <div style={{fontWeight:800,color:"#f9ca24",fontSize:10,marginBottom:5}}>🏅 Paliers évolutifs (vide = palier unique)</div>
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                            <Fld lbl="Seuil Rare"><input type="number" value={editDef.threshold_rare??''} onChange={e=>setEditDef({...editDef,threshold_rare:e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                            <Fld lbl="Geocoin Rare"><CardSelect value={editDef.card_id_rare??''} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id_rare:v})} style={{...SEL,fontSize:11}}/></Fld>
+                            <Fld lbl="Seuil Épique"><input type="number" value={editDef.threshold_epic??''} onChange={e=>setEditDef({...editDef,threshold_epic:e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                            <Fld lbl="Geocoin Épique"><CardSelect value={editDef.card_id_epic??''} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id_epic:v})} style={{...SEL,fontSize:11}}/></Fld>
+                            <Fld lbl="Seuil Légendaire"><input type="number" value={editDef.threshold_legendary??''} onChange={e=>setEditDef({...editDef,threshold_legendary:e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
+                            <Fld lbl="Geocoin Légendaire"><CardSelect value={editDef.card_id_legendary??''} cards={achievementCards} onChange={v=>setEditDef({...editDef,card_id_legendary:v})} style={{...SEL,fontSize:11}}/></Fld>
+                          </div>
+                        </div>
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={async()=>{
+                            const {data,error}=await apiUpdateAchievementDef(editDef.id,editDef);
+                            if(error){setMsg("❌ "+error);return;}
+                            setAchDefs(prev=>prev.map(d=>d.id===editDef.id?data.definition:d));
+                            setEditDef(null);setMsg("✅ Mis à jour !");
+                          }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"5px 12px",borderRadius:7,fontSize:11}}>Enregistrer</button>
+                          <button onClick={()=>setEditDef(null)} style={{...BTN("#ffffff18"),padding:"5px 10px",borderRadius:7,fontSize:11}}>Annuler</button>
+                          <button onClick={async()=>{
+                            if(!window.confirm(`Supprimer "${def.key}" ?`)) return;
+                            const {error}=await apiDeleteAchievementDef(def.id);
+                            if(error){setMsg("❌ "+error);return;}
+                            setAchDefs(prev=>prev.filter(d=>d.id!==def.id));
+                            setEditDef(null);setMsg("✅ Supprimé.");
+                          }} style={{...BTN("#e74c3c22"),border:"1px solid #e74c3c44",color:"#e74c3c",padding:"5px 10px",borderRadius:7,fontSize:11,marginLeft:"auto"}}>🗑 Supprimer</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {achDefs.length===0&&<div style={{color:"#a8bfcf",fontSize:11,textAlign:"center",padding:16}}>Aucune définition chargée.</div>}
             </div>
           </div>
