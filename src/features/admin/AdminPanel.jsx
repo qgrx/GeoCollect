@@ -58,7 +58,7 @@ const TRIGGER_META = {
   buy_count:       { label:"Achats au marché",         unit:"achats",              help:"Nombre total d'achats réalisés au marché." },
   sell_count:      { label:"Mises en vente",           unit:"mises en vente",      help:"Nombre total de mises en vente au marché." },
   quiz_win:        { label:"Quiz gagnés",              unit:"victoires",           help:"Nombre total de quiz gagnés (cumulé)." },
-  win_streak:      { label:"Quiz gagnés d'affilée",    unit:"victoires d'affilée", help:"Victoires consécutives dans la journée, remises à zéro en cas de défaite." },
+  win_streak:      { label:"Passages en feu",           unit:"passages en feu",     help:"Nombre de fois que le joueur est entré en état « en feu » (série de victoires atteignant le seuil de handicap)." },
   streak:          { label:"Série de connexion",       unit:"jours",               help:"Jours de connexion consécutifs." },
   shiny_count:     { label:"Geocoins brillants",       unit:"shiny uniques",       help:"Nombre de geocoins brillants uniques possédés." },
   legendary_count: { label:"Cartes légendaires",       unit:"légendaires uniques", help:"Nombre de cartes légendaires uniques possédées (ex. « Première légendaire » = seuil 1)." },
