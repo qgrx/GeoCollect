@@ -144,6 +144,7 @@ export const apiAdminGetCheatSuspects    = (min = 1)          => apiFetch(`/api/
 export const apiAdminGetSharedIps        = ()                 => apiFetch('/api/admin/cheat/shared-ips')
 export const apiAdminGiveCard            = (id, card_id, quantity = 1, is_shiny = false) => apiFetch(`/api/admin/players/${id}/cards`, { method: 'POST', body: { card_id, quantity, is_shiny } })
 export const apiAdminTakeCard            = (id, card_id, quantity = 1, is_shiny = false) => apiFetch(`/api/admin/players/${id}/cards/${card_id}`, { method: 'DELETE', body: { quantity, is_shiny } })
+export const apiAdminUndoForgeShiny      = (id, card_id) => apiFetch(`/api/admin/players/${id}/undo-forge-shiny`, { method: 'POST', body: { card_id } })
 
 // ─── Leaderboard ─────────────────────────────────────────────────────────────
 export const apiGetLeaderboard = (page = 0, q) => apiFetch(`/api/leaderboard?page=${page}${q ? '&q=' + encodeURIComponent(q) : ''}`)
@@ -178,10 +179,12 @@ export const apiGetDailyTreasure   = () => apiFetch('/api/treasures/daily')
 export const apiClaimDailyTreasure = () => apiFetch('/api/treasures/daily/claim', { method: 'POST' })
 
 // ─── Dépôt d'Attente ─────────────────────────────────────────────────────────
-export const apiGetHold   = ()                    => apiFetch('/api/hold')
-export const apiStoreHold = (card_id, is_shiny)   => apiFetch('/api/hold', { method: 'POST', body: { card_id, is_shiny } })
-export const apiClaimHold = ()                    => apiFetch('/api/hold/claim', { method: 'POST' })
-export const apiTakeForgeInsteadOfHold = ()       => apiFetch('/api/hold/forge-point', { method: 'POST' })
+export const apiGetHold   = ()                          => apiFetch('/api/hold')
+export const apiStoreHold = (card_id, is_shiny, rent)   => apiFetch('/api/hold', { method: 'POST', body: { card_id, is_shiny, rent } })
+export const apiClaimHold = (hold_id)                   => apiFetch('/api/hold/claim', { method: 'POST', body: { hold_id } })
+export const apiBuyHoldSlot  = ()                       => apiFetch('/api/hold/slots/buy', { method: 'POST' })
+export const apiRentHoldSlot = ()                       => apiFetch('/api/hold/slots/rent', { method: 'POST' })
+export const apiTakeForgeInsteadOfHold = ()             => apiFetch('/api/hold/forge-point', { method: 'POST' })
 export const apiAdminGetStats         = () => apiFetch('/api/admin/stats')
 export const apiAdminGetBots          = () => apiFetch('/api/admin/bots')
 export const apiAdminCreateBot        = (body) => apiFetch('/api/admin/bots', { method: 'POST', body })

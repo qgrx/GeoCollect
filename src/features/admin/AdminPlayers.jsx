@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase.js';
 import {
   apiAdminSetCanSell, apiAdminReactivate, apiAdminSetGold, apiAdminSetForgePoints,
   apiAdminGetPlayerCollection, apiAdminGiveCard, apiAdminTakeCard, apiAdminSetPseudo,
+  apiAdminUndoForgeShiny,
 } from '../../services/api.js';
 import AdminCheatReport from './AdminCheatReport.jsx';
 
@@ -342,6 +343,45 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
           );
         })()}
       </div>
+
+      {/* Annuler forge shiny */}
+      {playerShinyCollection && playerShinyCollection.length > 0 && (
+        <div style={{ marginTop: 12, background: '#ffffff08', borderRadius: 10, padding: '12px 14px', border: '1px solid #f9ca2433' }}>
+          <div style={{ fontWeight: 800, color: '#f9ca24', fontSize: 12, marginBottom: 8 }}>
+            ✨ Annuler une forge shiny
+            <span style={{ color: '#8daacc', fontWeight: 600, marginLeft: 8, fontSize: 11 }}>
+              Retire le shiny et rembourse les PF
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {playerShinyCollection.map(sc => {
+              const card = cardPool.find(c => c.id === sc.card_id);
+              if (!card) return null;
+              return (
+                <button key={sc.card_id}
+                  onClick={async () => {
+                    if (!window.confirm(`Annuler la forge shiny de « ${card.name} » pour ${playerView.name} ? Le shiny sera retiré et les PF remboursés.`)) return;
+                    const { data, error } = await apiAdminUndoForgeShiny(playerView.id, sc.card_id);
+                    if (error) { setMsg('❌ ' + error); return; }
+                    setPlayerShinyCollection(prev => {
+                      if (sc.quantity <= 1) return prev.filter(x => x.card_id !== sc.card_id);
+                      return prev.map(x => x.card_id === sc.card_id ? { ...x, quantity: x.quantity - 1 } : x);
+                    });
+                    if (data?.forge_points != null) setPlayerView(v => ({ ...v, forge_points: data.forge_points }));
+                    if (data?.score != null) setPlayerScore(data.score);
+                    setMsg(`✅ Shiny « ${card.name} » retiré, +${data?.refunded ?? '?'} PF remboursés.`);
+                  }}
+                  style={{
+                    ...BTN('linear-gradient(135deg,#f9ca24,#e17055)', '#1e3045'),
+                    padding: '5px 10px', borderRadius: 8, fontSize: 11,
+                  }}>
+                  ✨ {card.name} {sc.quantity > 1 ? `(×${sc.quantity})` : ''}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Achievements */}
       <div style={{ marginTop: 12, background: '#ffffff08', borderRadius: 10, padding: '12px 14px', border: '1px solid #ffffff10' }}>

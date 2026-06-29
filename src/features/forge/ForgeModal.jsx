@@ -867,7 +867,9 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                     </div>
                   ) : (
                     <button
-                      onClick={() => handleForge(card)}
+                      onClick={() => {
+                        if (window.confirm(t('forge_confirm').replace('{card}', card.name).replace('{cost}', effectiveCost))) handleForge(card)
+                      }}
                       disabled={!canAfford || effectiveCost == null}
                       style={{
                         width: '100%',
@@ -932,7 +934,9 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                       ) : alreadyShiny ? (
                         <div style={{ fontSize: 11, color: '#00b894', fontWeight: 800 }}>{t('forge_shiny_already') || '✨ Déjà brillant'}</div>
                       ) : (
-                        <button onClick={() => handleForgeShiny(card)} disabled={!canAfford}
+                        <button onClick={() => {
+                          if (window.confirm(t('forge_shiny_confirm').replace('{card}', card.name).replace('{cost}', cost))) handleForgeShiny(card)
+                        }} disabled={!canAfford}
                           style={{ width: '100%', padding: '8px 0', borderRadius: 10, border: 'none',
                             background: canAfford ? 'linear-gradient(135deg,#f9ca24,#e17055)' : theme.overlay,
                             color: canAfford ? '#1e3045' : theme.textMuted,
