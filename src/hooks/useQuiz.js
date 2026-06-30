@@ -259,7 +259,14 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       }
 
       const solvedAt = Date.now()
-      setTimeout(() => advanceQuiz(solvedAt), outcome === 'hold' ? 600 : 2200)
+      if (data.final === false) {
+        // Round multi-prix non terminé : je referme MA modale (j'ai déjà mon geocoin) mais
+        // je n'avance PAS le cycle global — le prochain quiz est piloté par quiz:solved
+        // (quand le dernier prix est pris ou la fenêtre de grâce écoulée).
+        setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, outcome === 'hold' ? 600 : 2200)
+      } else {
+        setTimeout(() => advanceQuiz(solvedAt), outcome === 'hold' ? 600 : 2200)
+      }
       return { ok: true, outcome, forge, forgeCapped: !!data.forge_capped, card }
     }
     return false

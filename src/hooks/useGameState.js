@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { ACHIEVEMENT_DEF } from '../data/cards.js'
-import { INIT_LIMITS, normalizeIntervalTiers } from '../data/constants.js'
+import { INIT_LIMITS, normalizeIntervalTiers, normalizePrizeTiers } from '../data/constants.js'
 import { collScore } from '../utils/gameUtils.js'
 import {
   apiGetCards, apiGetCollection, apiGetMarket, apiGetMyListings,
@@ -117,6 +117,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           quizInterval:      cfg.quiz_interval       ?? prev.quizInterval,
           quizIntervalTiers: normalizeIntervalTiers(cfg.quiz_interval_tiers ?? prev.quizIntervalTiers),
           quizStreakHandicap: cfg.quiz_streak_handicap ? { ...prev.quizStreakHandicap, ...cfg.quiz_streak_handicap } : prev.quizStreakHandicap,
+          quizPrizeTiers:    normalizePrizeTiers(cfg.quiz_prize_tiers ?? prev.quizPrizeTiers),
+          quizExtraPrizeGrace: cfg.quiz_extra_prize_grace !== undefined ? +cfg.quiz_extra_prize_grace : prev.quizExtraPrizeGrace,
           beginnerEnabled:   cfg.beginner_quiz_enabled !== undefined ? (cfg.beginner_quiz_enabled === 'true' || cfg.beginner_quiz_enabled === true) : prev.beginnerEnabled,
           beginnerDuration:  cfg.beginner_quiz_duration !== undefined ? +cfg.beginner_quiz_duration : prev.beginnerDuration,
           quizRarityRates:   cfg.quiz_rarity_rates   ?? prev.quizRarityRates,
@@ -281,6 +283,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
             quizInterval:      cfg.quiz_interval       ?? prev.quizInterval,
             quizIntervalTiers: normalizeIntervalTiers(cfg.quiz_interval_tiers ?? prev.quizIntervalTiers),
             quizStreakHandicap: cfg.quiz_streak_handicap ? { ...prev.quizStreakHandicap, ...cfg.quiz_streak_handicap } : prev.quizStreakHandicap,
+            quizPrizeTiers:    normalizePrizeTiers(cfg.quiz_prize_tiers ?? prev.quizPrizeTiers),
+            quizExtraPrizeGrace: cfg.quiz_extra_prize_grace !== undefined ? +cfg.quiz_extra_prize_grace : prev.quizExtraPrizeGrace,
             beginnerEnabled:   cfg.beginner_quiz_enabled !== undefined ? (cfg.beginner_quiz_enabled === 'true' || cfg.beginner_quiz_enabled === true) : prev.beginnerEnabled,
             beginnerDuration:  cfg.beginner_quiz_duration !== undefined ? +cfg.beginner_quiz_duration : prev.beginnerDuration,
             quizDuration:      cfg.quiz_duration       ?? prev.quizDuration,
@@ -342,6 +346,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
               quizInterval:          cfg.quiz_interval             ?? prev.quizInterval,
               quizIntervalTiers:     normalizeIntervalTiers(cfg.quiz_interval_tiers ?? prev.quizIntervalTiers),
               quizStreakHandicap:    cfg.quiz_streak_handicap ? { ...prev.quizStreakHandicap, ...cfg.quiz_streak_handicap } : prev.quizStreakHandicap,
+              quizPrizeTiers:        normalizePrizeTiers(cfg.quiz_prize_tiers ?? prev.quizPrizeTiers),
+              quizExtraPrizeGrace:   cfg.quiz_extra_prize_grace !== undefined ? +cfg.quiz_extra_prize_grace : prev.quizExtraPrizeGrace,
               beginnerEnabled:       cfg.beginner_quiz_enabled !== undefined ? (cfg.beginner_quiz_enabled === 'true' || cfg.beginner_quiz_enabled === true) : prev.beginnerEnabled,
               beginnerDuration:      cfg.beginner_quiz_duration !== undefined ? +cfg.beginner_quiz_duration : prev.beginnerDuration,
               quizRarityRates:       cfg.quiz_rarity_rates         ?? prev.quizRarityRates,

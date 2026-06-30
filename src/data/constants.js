@@ -13,6 +13,20 @@ export function normalizeIntervalTiers(v) {
   arr = (arr || []).filter(t => t.players >= 1 && t.seconds >= 1);
   return arr.length ? arr.sort((a, b) => a.players - b.players) : DEFAULT;
 }
+
+// Normalise les paliers de geocoins multiples en liste [{ players, prizes }] triée.
+// ≥ players en ligne → prizes geocoins à gagner. Sous tout palier : 1 (round classique).
+export function normalizePrizeTiers(v) {
+  const DEFAULT = [{ players: 10, prizes: 2 }, { players: 20, prizes: 3 }, { players: 30, prizes: 4 }];
+  let arr = null;
+  if (Array.isArray(v)) {
+    arr = v.filter(t => t && t.players != null && t.prizes != null).map(t => ({ players: +t.players, prizes: +t.prizes }));
+  } else if (v && typeof v === 'object') {
+    arr = Object.entries(v).filter(([k]) => /^\d+$/.test(k)).map(([k, p]) => ({ players: +k, prizes: +p }));
+  }
+  arr = (arr || []).filter(t => t.players >= 1 && t.prizes >= 1);
+  return arr.length ? arr.sort((a, b) => a.players - b.players) : DEFAULT;
+}
 export const PAGE_SIZE          = 10;   // items per admin page
 export const PSEUDO_CHANGE_DAYS = 30;   // days between pseudo changes
 export const PSEUDO_NOTIF_DAYS  = 15;   // days to show "new pseudo" badge
@@ -59,6 +73,8 @@ export const INIT_LIMITS = {
   quizDailyForgeCap:    0,
   quizIntervalTiers:    [{ players: 1, seconds: 300 }, { players: 2, seconds: 90 }, { players: 3, seconds: 60 }, { players: 4, seconds: 30 }],
   quizStreakHandicap:   { enabled: true, threshold: 3, step_seconds: 1.5, max_seconds: 8, min_players: 2 },
+  quizPrizeTiers:       [{ players: 10, prizes: 2 }, { players: 20, prizes: 3 }, { players: 30, prizes: 4 }],
+  quizExtraPrizeGrace:  10,
   beginnerEnabled:      true,
   beginnerDuration:     60,
   forgeCostByRarity:    { commun: 60, rare: 180, épique: 600, légendaire: 1800 },

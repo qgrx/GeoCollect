@@ -849,6 +849,32 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       </div>
                     ))}
                   </div>, "Délai avant le prochain quiz selon le nb de joueurs en ligne. Le palier le plus élevé atteint (≥ N joueurs) s'applique."],
+                  ["🎁 Geocoins multiples (PvP)", <div key="prize-tiers" style={{display:"flex",flexDirection:"column",gap:5}}>
+                    {(Array.isArray(limEdit.quizPrizeTiers)?limEdit.quizPrizeTiers:[]).map((tier,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{color:"#aaa",fontSize:10}}>≥</span>
+                        <input type="number" min={1} max={9999} value={tier.players??''}
+                          onChange={e=>setLimEdit(p=>{const arr=[...(p.quizPrizeTiers||[])];arr[i]={...arr[i],players:Math.max(1,+e.target.value)};return{...p,quizPrizeTiers:arr}})}
+                          style={{...INP,width:48,padding:"4px 6px"}}/>
+                        <span style={{color:"#aaa",fontSize:10}}>j. →</span>
+                        <input type="number" min={1} max={50} value={tier.prizes??''}
+                          onChange={e=>setLimEdit(p=>{const arr=[...(p.quizPrizeTiers||[])];arr[i]={...arr[i],prizes:Math.max(1,+e.target.value)};return{...p,quizPrizeTiers:arr}})}
+                          style={{...INP,width:40,padding:"4px 6px"}}/>
+                        <span style={{color:"#aaa",fontSize:10}}>🪙</span>
+                        <button onClick={()=>setLimEdit(p=>({...p,quizPrizeTiers:(p.quizPrizeTiers||[]).filter((_,j)=>j!==i)}))}
+                          style={{background:"#e74c3c22",border:"1px solid #e74c3c55",color:"#e74c3c",width:22,height:22,borderRadius:6,cursor:"pointer",fontWeight:900,lineHeight:1,padding:0}} title="Retirer ce palier">−</button>
+                      </div>
+                    ))}
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginTop:2,flexWrap:"wrap"}}>
+                      <button onClick={()=>setLimEdit(p=>({...p,quizPrizeTiers:[...(p.quizPrizeTiers||[]),{players:20,prizes:3}]}))}
+                        style={{background:"#6c5ce722",border:"1px solid #6c5ce755",color:"#a29bfe",padding:"3px 10px",borderRadius:7,cursor:"pointer",fontWeight:800,fontSize:11}}>+ Palier</button>
+                      <span style={{color:"#aaa",fontSize:10}}>grâce</span>
+                      <input type="number" min={1} max={120} value={limEdit.quizExtraPrizeGrace??10}
+                        onChange={e=>setLimEdit(p=>({...p,quizExtraPrizeGrace:Math.max(1,+e.target.value)}))}
+                        style={{...INP,width:46,padding:"4px 6px"}}/>
+                      <span style={{color:"#aaa",fontSize:10}}>s</span>
+                    </div>
+                  </div>, "≥ N joueurs en ligne → N geocoins identiques à gagner (plusieurs gagnants). « grâce » = secondes laissées pour décrocher le geocoin suivant après une 1ʳᵉ bonne réponse. Le palier le plus élevé atteint s'applique (vide = 1 seul gagnant)."],
                   ["Anti-domination (série)", (()=>{const h=limEdit.quizStreakHandicap||{};const set=(k,v)=>setLimEdit(p=>({...p,quizStreakHandicap:{...(p.quizStreakHandicap||{}),[k]:v}}));return <div key="anti-dom" style={{display:"flex",flexDirection:"column",gap:4}}>
                     <label style={{display:"flex",alignItems:"center",gap:6,color:"#ddd",fontSize:11}}>
                       <input type="checkbox" checked={h.enabled!==false} onChange={e=>set('enabled',e.target.checked)} style={{width:14,height:14}}/> Activer

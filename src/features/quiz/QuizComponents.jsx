@@ -100,7 +100,7 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
 }
 
 // ─── Quiz Modal ───────────────────────────────────────────────────────────────
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
   const [outcome,setOutcome]=useState("card");  // 'card' | 'consolation' | 'hold'
@@ -111,7 +111,13 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   });
   const [elapsed,setElapsed]=useState(()=>{
     if(!quiz.started_at) return 0;
-    return Math.floor((Date.now()-new Date(quiz.started_at).getTime())/1000);
+    // Ancrage sur l'horloge serveur (server_time) plutôt que Date.now() brut : un
+    // décalage d'horloge du device fait démarrer `elapsed` en négatif, ce qui gonfle
+    // le décompte du handicap « cadeau aux autres » au-dessus du plafond annoncé
+    // (ex. +8s affiché en décompte de 10s). started_at et server_time sont tous deux
+    // en horloge serveur → leur différence est exempte de skew.
+    const srvSkew=quiz.server_time?(Date.now()-new Date(quiz.server_time).getTime()):0;
+    return Math.floor((Date.now()-srvSkew-new Date(quiz.started_at).getTime())/1000);
   });
   const [shake,setShake]=useState(false);
   const [npc,setNpc]=useState(null);
@@ -134,7 +140,12 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   const wc=wordCount(revealed?.a ?? quiz.a);
   // Mode Débutant : décompte de la manche (durée fixe). À 0 → « Trop tard » + réponse bloquée.
   const timeLeft=(beginner&&roundDuration!=null)?Math.max(0,Math.ceil(roundDuration-elapsed)):null;
-  const tooLate=beginner&&timeLeft!=null&&timeLeft<=0&&status==="open";
+  // Round multi-prix : un geocoin a été pris mais il en reste → décompte de grâce affiché
+  // à tous (« encore Ns pour répondre »). À 0, la réponse est bloquée (round bientôt clos).
+  // graceLeft se recalcule à chaque tick de `elapsed` (ticker actif tant que status='open').
+  const graceLeft=(!beginner&&graceDeadline)?Math.max(0,Math.ceil((graceDeadline-Date.now())/1000)):null;
+  const graceOver=graceLeft!=null&&graceLeft<=0;
+  const tooLate=(beginner&&timeLeft!=null&&timeLeft<=0&&status==="open")||(graceOver&&status==="open");
 
   useEffect(() => {
     if (quiz.winner && status === "open" && !doneRef.current) {
@@ -225,7 +236,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   const cardExempt     = isHandicapExemptCard(quiz.card.rarity, isShinyFrozen);
   const isStreakLeader = !!(streakLeader && myId && streakLeader.id === myId) && !cardExempt;
   const myHandicap     = isStreakLeader ? (streakLeader.handicap_seconds || 0) : 0;
-  const handicapLeft   = Math.max(0, Math.ceil(myHandicap - elapsed));
+  // Plafonné à myHandicap : le décompte affiché ne doit jamais dépasser la pénalité
+  // annoncée (« +8s »), même en cas de skew résiduel ou de server_time absent.
+  const handicapLeft   = Math.max(0, Math.min(myHandicap, Math.ceil(myHandicap - elapsed)));
   // Pénalité du joueur en série : la question lui est retenue (côté serveur) ET la
   // saisie/bouton bloqués pendant le délai cadeau → vraie longueur d'avance pour
   // les autres. displayedQ = question révélée (récupérée après le délai) ou celle
@@ -271,17 +284,26 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
       <style>{`@keyframes shakeIt{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}} @keyframes winGlow{0%,100%{box-shadow:0 0 0 0 #00b89400}50%{box-shadow:0 0 32px 8px #00b89466}} @keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.5)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}`}</style>
       <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(calc(100vw - 40px),520px)",maxHeight:vv?`${Math.max(0,vv.height-(compact?20:40))}px`:"calc(100dvh - 100px)",display:"flex",flexDirection:"column",boxSizing:"border-box",border:isShinyFrozen?"2px solid #f9ca24aa":"2px solid #f9ca2444",boxShadow:isShinyFrozen?"0 24px 60px #000c,0 0 40px #f9ca2433":"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexShrink:0}}>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
             <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:17,color:"#f9ca24"}}>{t("quiz_title")}</div>
+            {quiz.prizes_total>1 && (
+              <span style={{display:"inline-flex",alignItems:"center",gap:3,background:"linear-gradient(135deg,#6c5ce7,#a29bfe)",color:"#fff",fontSize:10,fontWeight:900,padding:"3px 8px",borderRadius:20,boxShadow:"0 2px 8px #6c5ce755"}}>
+                🎁 {(t('quiz_prizes_to_win')||'{n} à gagner').replace('{n}',quiz.prizes_total)}
+              </span>
+            )}
             {status==="open" && (
               (beginner && timeLeft!=null)
                 ? <div style={{display:"flex",alignItems:"center",gap:4,color:tooLate?"#e74c3c":(timeLeft<=10?"#e17055":"#00b894"),fontSize:11,fontWeight:900}}>
                     {tooLate ? `⏰ ${t('quiz_too_late')||'Trop tard'}` : `⏳ ${(t('beginner_time_left')||'Il reste {n}s pour répondre').replace('{n}',timeLeft)}`}
                   </div>
-                : <div style={{display:"flex",alignItems:"center",gap:4,color:"#00b894",fontSize:10,fontWeight:800}}>
-                    <span style={{display:"inline-block",width:6,height:6,background:"#00b894",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/>
-                    Live
-                  </div>
+                : graceLeft!=null
+                  ? <div style={{display:"flex",alignItems:"center",gap:4,color:graceOver?"#e74c3c":(graceLeft<=5?"#e74c3c":"#e17055"),fontSize:11,fontWeight:900,animation:"pulse 1s infinite"}}>
+                      {graceOver ? `⏰ ${t('quiz_too_late')||'Trop tard'}` : `⏳ ${(t('quiz_grace_left')||'encore {n}s pour répondre').replace('{n}',graceLeft)}`}
+                    </div>
+                  : <div style={{display:"flex",alignItems:"center",gap:4,color:"#00b894",fontSize:10,fontWeight:800}}>
+                      <span style={{display:"inline-block",width:6,height:6,background:"#00b894",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/>
+                      Live
+                    </div>
             )}
           </div>
           {status==="open"&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:26,height:26,borderRadius:"50%",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
@@ -460,7 +482,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1}){
   const {t}=useT(); const {theme}=useTheme();
   const pct        = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
   const urgent     = !hasPendingQuiz && !lostTo && secondsLeft <= 10
@@ -601,7 +623,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
           {!urgent&&(
             <div style={{fontSize:10,color:'#666',display:'flex',alignItems:'center',gap:4}}>
               {hasCard
-                ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}</>
+                ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}{prizesTotal>1&&<span style={{color:'#a29bfe',fontWeight:900,marginLeft:6}}>🎁 {(t('quiz_prizes_to_win')||'{n} à gagner').replace('{n}',prizesTotal)}</span>}</>
                 : onFire
                   ? <span style={{color:'#ff8a5c',fontWeight:800}}>🔥 {t('streak_bar_small').replace('{pseudo}',streakLeader.pseudo).replace('{n}',streakLeader.streak).replace('{x}',streakLeader.handicap_seconds)}</span>
                   : <span style={{color:theme.textMuted,fontStyle:'italic'}}>{t('next_card')}</span>}
@@ -988,10 +1010,11 @@ export function GameRulesModal({ onClose }) {
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <Col accent="#f9ca24" emoji="⚔️" title={t('mode_pvp') || 'PVP'} rules={[
-            t('rules_pvp_1') || 'Un seul gagnant par geocoin : le premier à répondre juste l\'emporte.',
+            t('rules_pvp_1') || 'Le premier à répondre juste remporte un geocoin.',
             t('rules_pvp_2') || 'Toutes les raretés, et parfois des geocoins brillants (shiny).',
             t('rules_pvp_3') || 'Cadence variable selon le nombre de joueurs en ligne.',
             t('rules_pvp_4') || 'Or, points de forge et bonus de série à gagner.',
+            t('rules_pvp_5') || 'Plus il y a de joueurs, plus il y a de geocoins identiques à gagner : 2 dès 10 joueurs en ligne, 3 à 20, 4 à 30… Si une seule personne répond, les autres ont quelques secondes de plus pour décrocher le suivant.',
           ]} />
           <Col accent="#00b894" emoji="🌱" title={t('mode_beginner') || 'Entraînement'} rules={[
             t('rules_beginner_1') || 'Plusieurs gagnants : tout le monde a une minute pour répondre.',

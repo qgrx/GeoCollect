@@ -334,6 +334,7 @@ export default function App() {
         const initTrans = data.quiz.translations?.[initLang]
         setPendingQuiz({
           ...data.quiz,
+          server_time: data.server_time,   // ancrage horloge pour le décompte handicap (skew device)
           card,
           id: data.quiz.id,
           q:  initTrans?.question || data.quiz.question,
@@ -422,10 +423,14 @@ export default function App() {
         setQuizIsShiny(data.next_is_shiny || false)
         if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
 
-        // Série de victoires → annonce « en feu » en grand pendant 10 s (handicap bienveillant)
+        // Série de victoires → annonce « en feu » en grand pendant 10 s (handicap bienveillant).
+        // En round multi-prix, l'animation a déjà été déclenchée au quiz:prize_won (1er gagnant)
+        // → on ne la rejoue pas et on ne réinitialise pas le leader ici.
         const hCfg = gs.limits?.quizStreakHandicap
         const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
-        if (data.winner_streak >= threshold && hCfg?.enabled !== false) {
+        if (data.multi) {
+          // « en feu » géré au prize_won — ne rien faire
+        } else if (data.winner_streak >= threshold && hCfg?.enabled !== false) {
           // Délai fourni par le serveur (config fraîche) ; repli sur calcul client si absent
           const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
           // Prochaine carte exemptée (légendaire / épique brillante) → pas de « cadeau » annoncé
@@ -443,9 +448,12 @@ export default function App() {
           setStreakLeader(null) // série cassée (gagnant sous le seuil)
         }
 
-        // winner_id (id exact) prioritaire ; repli pseudo. Via refs → jamais périmé.
+        // winner_id (id exact) prioritaire ; repli pseudo. En multi-prix, je suis « gagnant »
+        // si je figure dans prize_winners (je peux avoir pris le 2e prix). Via refs → jamais périmé.
+        const winnersList = Array.isArray(data.prize_winners) ? data.prize_winners : []
         const iSelf = (!!data.winner_id && data.winner_id === myIdRef.current)
           || (!!data.winner && data.winner === myPseudoRef.current)
+          || winnersList.some(w => (w.id && w.id === myIdRef.current) || (w.pseudo && w.pseudo === myPseudoRef.current))
 
         if (!iSelf) {
           handleQuizExpireRef.current(data.winner, data.is_bot)
@@ -457,7 +465,20 @@ export default function App() {
 
         // Mettre à jour l'historique uniquement si ce n'est pas le joueur lui-même
         // (handleQuizAnswer ajoute déjà l'entrée { winner: 'Moi' } côté gagnant)
-        if (data.winner && !iSelf) {
+        if (data.multi && winnersList.length) {
+          // Round multi-prix : ajouter chaque gagnant SAUF moi (déjà ajouté par handleQuizAnswer),
+          // sans doublonner une entrée déjà présente.
+          const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
+            || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
+          const gloryPseudos = (data.glory_winners || []).map(g => g.pseudo)
+          const others = winnersList.filter(w => !((w.id && w.id === myIdRef.current) || (w.pseudo && w.pseudo === myPseudoRef.current)))
+          if (others.length) setHistory(h => {
+            const additions = others
+              .filter(w => !h.some(e => e.winner === w.pseudo && e.card?.name === data.card_name))
+              .map(w => ({ card: fullCard, winner: w.pseudo, won: false, isBot: !!w.is_bot, isShiny: data.is_shiny || false, glory_winners: gloryPseudos }))
+            return additions.length ? [...additions, ...h].slice(0, 10) : h
+          })
+        } else if (data.winner && !iSelf) {
           const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
           const gloryPseudos = (data.glory_winners || []).map(g => g.pseudo)
@@ -472,6 +493,51 @@ export default function App() {
             if (h[0]?.won) return [{ ...h[0], glory_winners: gloryPseudos }, ...h.slice(1)]
             return h
           })
+        }
+      })
+
+      // Quiz — un geocoin pris dans un round multi-prix, mais il en RESTE : ouvrir/ré-armer
+      // le décompte de grâce chez tous et signaler la prise. NE termine PAS le cycle (le
+      // prochain quiz attend la résolution complète, diffusée via quiz:solved).
+      s.on('quiz:prize_won', (data) => {
+        if (!data.quiz_id) return
+        const iSelf = (!!data.winner_id && data.winner_id === myIdRef.current)
+          || (!!data.winner && data.winner === myPseudoRef.current)
+
+        // Deadline de grâce locale, corrigée du décalage d'horloge serveur/client.
+        let graceDeadline = null
+        if (data.grace_until && data.server_time) {
+          const msLeft = Math.max(0, new Date(data.grace_until).getTime() - new Date(data.server_time).getTime())
+          graceDeadline = Date.now() + msLeft
+        }
+        const patch = q => (q && q.id === data.quiz_id)
+          ? { ...q, graceDeadline, prizes_remaining: data.prizes_remaining }
+          : q
+        setActiveQuiz(patch)
+        if (activeQuizRef.current?.id === data.quiz_id) {
+          activeQuizRef.current = { ...activeQuizRef.current, graceDeadline, prizes_remaining: data.prizes_remaining }
+        }
+        setPendingQuiz(patch)
+
+        if (iSelf) return  // le gagnant a déjà refermé sa modale (handleQuizAnswer, final=false)
+
+        // Toast « X a décroché un geocoin — encore Ns ! »
+        const secLeft = graceDeadline ? Math.max(1, Math.ceil((graceDeadline - Date.now()) / 1000)) : (data.prizes_remaining || 1)
+        showToast(t('quiz_prize_taken_toast').replace('{pseudo}', data.winner || '?').replace('{n}', secLeft))
+
+        // « En feu » : seul le 1er gagnant (prize_index 0) porte la série → MAJ leader (handicap)
+        // + animation. Le quiz:solved multi ne la rejouera pas (guard data.multi).
+        const hCfg = gs.limits?.quizStreakHandicap
+        const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
+        if (data.prize_index === 0 && data.winner_streak != null && data.winner_streak >= threshold && hCfg?.enabled !== false) {
+          const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
+          setStreakLeader({ id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
+          setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: false })
+          if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
+          streakHypeTimerRef.current = setTimeout(() => {
+            setStreakHype(h => h ? { ...h, fading: true } : h)
+            streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 420)
+          }, 10000)
         }
       })
 
@@ -558,6 +624,7 @@ export default function App() {
     return () => {
       socket?.off('quiz:new')
       socket?.off('quiz:solved')
+      socket?.off('quiz:prize_won')
       socket?.off('quiz:glory_win')
       socket?.off('quiz:expired')
       socket?.off('quiz:teaser')
@@ -945,7 +1012,7 @@ export default function App() {
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
-      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
     // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
     // → barre floutée + message + timer. Dans les deux cas, interaction impossible.
     const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown
@@ -2302,7 +2369,7 @@ export default function App() {
       {/* Liste des gagnants d'une manche Entraînement (clic sur le feed) */}
       {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} onClose={() => setBeginnerWinnersPopup(null)} />}
 
-      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
+      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {
           // Délai cadeau écoulé : le serveur autorise enfin la question au leader.
           const { data } = await apiGetCurrentQuiz().catch(() => ({ data: null }))
@@ -2640,6 +2707,8 @@ export default function App() {
                 apiSetConfig('limits_connected', limEdit.connected),
                 apiSetConfig('quiz_interval_tiers', limEdit.quizIntervalTiers ?? [{ players: 1, seconds: 300 }, { players: 2, seconds: 90 }, { players: 3, seconds: 60 }, { players: 4, seconds: 30 }]),
                 apiSetConfig('quiz_streak_handicap', limEdit.quizStreakHandicap ?? { enabled: true, threshold: 3, step_seconds: 1.5, max_seconds: 8, min_players: 2 }),
+                apiSetConfig('quiz_prize_tiers', limEdit.quizPrizeTiers ?? [{ players: 10, prizes: 2 }, { players: 20, prizes: 3 }, { players: 30, prizes: 4 }]),
+                apiSetConfig('quiz_extra_prize_grace', limEdit.quizExtraPrizeGrace ?? 10),
                 apiSetConfig('quiz_join_gold',       limEdit.quizJoinGold      ?? 1),
                 apiSetConfig('quiz_win_gold',        limEdit.quizWinGold       ?? 5),
                 apiSetConfig('quiz_daily_card_cap',    limEdit.quizDailyCardCap    ?? 20),

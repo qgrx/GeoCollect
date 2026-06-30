@@ -8,7 +8,7 @@ import { useT } from '../../i18n/translations.js'
 // NB : volontairement aucun seed pour « release-notes » — son contenu vit en base.
 const DEFAULTS = {
   faq: [
-    { q: 'Comment gagner des geocoins ?', a: "Répondez correctement aux quiz qui apparaissent toutes les 60 secondes. Le premier joueur à donner la bonne réponse remporte le geocoin en jeu. Vous pouvez aussi acheter des packs dans l'onglet Trésors." },
+    { q: 'Comment gagner des geocoins ?', a: "Répondez correctement aux quiz qui apparaissent régulièrement. Le premier joueur à donner la bonne réponse remporte un geocoin — et quand beaucoup de joueurs sont connectés, plusieurs geocoins identiques sont à gagner (2 dès 10 joueurs en ligne, 3 à 20, 4 à 30…), avec quelques secondes de plus pour décrocher le suivant. Vous pouvez aussi acheter des packs dans l'onglet Trésors." },
     { q: 'Comment fonctionne le quiz ?', a: "Un décompte s'affiche en bas de l'écran. Quand il atteint zéro, un geocoin est disponible. Cliquez sur « Participer » et soyez le premier à donner la bonne réponse !" },
     { q: 'Les geocoins achetés sont-ils définitifs ?', a: "Oui, tous les geocoins achetés sont immédiatement ajoutés à votre collection et sauvegardés. Ils ne peuvent pas expirer ni être supprimés." },
     { q: 'Comment fonctionne le marché ?', a: "Vous pouvez vendre vos geocoins en double sur le marché et en acheter d'autres. Le prix est fixé librement par le vendeur." },

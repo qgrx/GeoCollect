@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { countOwnedUnique, computeCardLimitStatus, computeStreakHandicap, isHandicapExemptCard, todayParis } from '../utils/gameUtils.js'
-import { normalizeIntervalTiers } from '../data/constants.js'
+import { normalizeIntervalTiers, normalizePrizeTiers } from '../data/constants.js'
 
 // ─── Comptage geocoins uniques ────────────────────────────────────────────────
 describe('countOwnedUnique', () => {
@@ -33,6 +33,24 @@ describe('normalizeIntervalTiers', () => {
   it('valeur invalide → défaut', () => {
     expect(normalizeIntervalTiers(null)).toEqual(DEFAULT)
     expect(normalizeIntervalTiers([])).toEqual(DEFAULT)
+  })
+})
+
+// ─── Geocoins multiples (normalisation des paliers de prix) ─────────────────────
+describe('normalizePrizeTiers', () => {
+  const DEFAULT = [{ players: 10, prizes: 2 }, { players: 20, prizes: 3 }, { players: 30, prizes: 4 }]
+
+  it('liste valide → triée par players', () => {
+    expect(normalizePrizeTiers([{ players: 20, prizes: 3 }, { players: 10, prizes: 2 }]))
+      .toEqual([{ players: 10, prizes: 2 }, { players: 20, prizes: 3 }])
+  })
+  it('ancien format objet toléré', () => {
+    expect(normalizePrizeTiers({ 10: 2, 20: 3 })).toEqual([{ players: 10, prizes: 2 }, { players: 20, prizes: 3 }])
+  })
+  it('valeur invalide / hors bornes → défaut ou filtré', () => {
+    expect(normalizePrizeTiers(null)).toEqual(DEFAULT)
+    expect(normalizePrizeTiers([])).toEqual(DEFAULT)
+    expect(normalizePrizeTiers([{ players: 0, prizes: 2 }, { players: 10, prizes: 2 }])).toEqual([{ players: 10, prizes: 2 }])
   })
 })
 
