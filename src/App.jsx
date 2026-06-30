@@ -553,6 +553,17 @@ export default function App() {
       // Quiz — expiré sans réponse
       s.on('quiz:expired', (data) => {
         setQuizSessionActive(false)
+        // Geocoin joué « pour la gloire » mais que personne n'a remporté → l'ajouter au strip
+        // des derniers geocoins disputés (winner null, glory_winners renseignés).
+        if ((data.glory_winners || []).length > 0 && data.card_name) {
+          const fullCard = cardPoolRef.current?.find(c => c.id === data.card_id || c.name === data.card_name)
+            || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: data.card_id || 0 }
+          const gloryPseudos = (data.glory_winners || []).map(g => g.pseudo)
+          setHistory(h => {
+            if (h[0]?.glory_only && h[0]?.card?.name === data.card_name) return h
+            return [{ card: fullCard, winner: null, won: false, isBot: false, isShiny: data.is_shiny || false, glory_only: true, glory_winners: gloryPseudos }, ...h].slice(0, 10)
+          })
+        }
         if (data.next_quiz_at && data.server_time) {
           const msLeft = Math.max(0, new Date(data.next_quiz_at).getTime() - new Date(data.server_time).getTime())
           applyServerSchedule(Date.now() + msLeft, Math.round(msLeft / 1000))
@@ -1948,7 +1959,8 @@ export default function App() {
                       // tantôt en ✓, tantôt sous son pseudo (selon la source de l'entrée).
                       // En débutant : plusieurs gagnants → on coche si je suis dans la liste.
                       const hasGlory = !beginnerActive && (h.glory_winners || []).length > 0;
-                      const allWinners = hasGlory ? [...h.glory_winners, h.winner] : null;
+                      // Geocoin joué pour la gloire sans gagnant (winner null) → ne pas ajouter un gagnant fantôme.
+                      const allWinners = hasGlory ? (h.winner ? [...h.glory_winners, h.winner] : [...h.glory_winners]) : null;
                       const mine = beginnerActive
                         ? (Array.isArray(h.winners) && h.winners.includes(auth.profile?.pseudo))
                         : (h.won || (!!h.winner && h.winner === auth.profile?.pseudo));
