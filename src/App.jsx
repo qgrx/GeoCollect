@@ -1311,14 +1311,14 @@ export default function App() {
     return () => clearInterval(id)
   }, [auth.isDemo, demoSocial, setHistory])
 
-  const wrappedHandleQuizAnswer = async (_userAnswer, _turnstileToken) => {
+  const wrappedHandleQuizAnswer = async (_userAnswer, _choice) => {
     if (!auth.profile) {
       setShowRegisterPrompt(true)
       return false
     }
     // Démo : ne pas passer par le quiz global, valider côté client (sans compte).
     if (auth.isDemo) return demoAnswer(_userAnswer)
-    const result = await handleQuizAnswer(_userAnswer, _turnstileToken)
+    const result = await handleQuizAnswer(_userAnswer, _choice)
     // Filet de sécurité (course rare avant le 1er poll) : un refus serveur affiche le
     // blocage ; le poll /current confirmera/effacera ensuite.
     if (result === 'blocked') { crossServedRef.current = false; setCrossBlocked(true) }
@@ -2395,7 +2395,7 @@ export default function App() {
       {/* Liste des gagnants d'une manche Entraînement (clic sur le feed) */}
       {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} onClose={() => setBeginnerWinnersPopup(null)} />}
 
-      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
+      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} alreadyOwned={!!activeQuiz?.card?.id && ((activeQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[activeQuiz.card.id] || 0) > 0 : (gs.collection?.[activeQuiz.card.id] || 0) > 0)} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {
           // Délai cadeau écoulé : le serveur autorise enfin la question au leader.
           const { data } = await apiGetCurrentQuiz().catch(() => ({ data: null }))

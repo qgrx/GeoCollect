@@ -185,13 +185,13 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     if (snoozeMs > 0) snoozedUntilRef.current = Date.now() + snoozeMs
   }, [pendingQuiz, limits])
 
-  const handleQuizAnswer = useCallback(async (userAnswer) => {
+  const handleQuizAnswer = useCallback(async (userAnswer, choice) => {
     if (!activeQuiz) return 'error'  // fenêtre fermée entre-temps (ex. revalidation tardive)
     const card = activeQuiz.card
     const { earnCard, earnGoldWithFx, showToast, t } = cbRef.current
     if (profile && activeQuiz.id) {
       // Honeypot anti-bot : on renvoie le nonce émis par /current (présent via ...data.quiz).
-      const { data, error, status, body } = await apiAnswerQuiz(activeQuiz.id, userAnswer, activeQuiz.nonce)
+      const { data, error, status, body } = await apiAnswerQuiz(activeQuiz.id, userAnswer, activeQuiz.nonce, choice)
       if (error) {
         if (status === 425) return { handicap: true, wait_ms: body?.wait_ms || 0 } // série : délai cadeau
         if (status === 423) return 'blocked' // protection inter-modes (prochaine manche)
@@ -211,7 +211,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         // Gloire : pas de geocoin, mais on crédite les consolations cumulées (or + PF).
         if (data.gold_earned) earnGoldWithFx(data.gold_earned)
         cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
-        showToast(t('toast_glory_win'))
+        showToast(data.hold ? (t('toast_deposit_win') || '📥 Geocoin mis au dépôt !') : t('toast_glory_win'))
         // Fenêtre de grâce « les autres ont N s pour répondre » : on pose la deadline sur le
         // quiz (pour le décompte affiché dans la modale) et on garde la modale ouverte jusqu'à
         // sa fin (au lieu d'un délai fixe), corrigée du décalage d'horloge serveur/client.

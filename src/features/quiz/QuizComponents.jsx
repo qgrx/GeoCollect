@@ -100,7 +100,7 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
 }
 
 // ─── Quiz Modal ───────────────────────────────────────────────────────────────
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
   const [outcome,setOutcome]=useState("card");  // 'card' | 'consolation' | 'hold'
@@ -146,6 +146,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   const graceLeft=(!beginner&&graceDeadline)?Math.max(0,Math.ceil((graceDeadline-Date.now())/1000)):null;
   const graceOver=graceLeft!=null&&graceLeft<=0;
   const tooLate=(beginner&&timeLeft!=null&&timeLeft<=0&&status==="open")||(graceOver&&status==="open");
+  // Geocoin précieux déjà possédé ET hors-limite → proposer le CHOIX dépôt / gloire (double bouton).
+  const isPreciousCard=quiz.card?.rarity==='légendaire'||quiz.card?.rarity==='épique'||isShiny;
+  const showDepositChoice=status==="open"&&!beginner&&isPreciousCard&&!!limitStatus?.over&&alreadyOwned;
 
   useEffect(() => {
     if (quiz.winner && status === "open" && !doneRef.current) {
@@ -187,7 +190,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     setReportStatus('done');
   }
   function finish(n){if(doneRef.current)return;doneRef.current=true;setNpc(n || 'Un autre joueur');setStatus("lost");onExpire(n || 'Un autre joueur');}
-    async function submit(){
+    async function submit(choiceArg){
     if(status!=="open") return;
     if(tooLate) return;  // mode débutant : décompte terminé, réponse bloquée
     if(handicapLeft>0) return;  // série : cadeau aux autres, envoi bloqué côté client
@@ -195,7 +198,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     submittingRef.current = true
     setIsSubmitting(true)
     const startedAt = Date.now()
-    const result = await onAnswer(inp)
+    const result = await onAnswer(inp, choiceArg)
     const elapsed = Date.now() - startedAt
     if (elapsed < 600) await new Promise(r => setTimeout(r, 600 - elapsed))
     submittingRef.current = false
@@ -213,7 +216,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
         retryRef.current += 1;
         setSubmitError(t('quiz_answer_checking'));
         setIsSubmitting(true); submittingRef.current = true;
-        setTimeout(() => { submittingRef.current = false; submit(); }, 1500);
+        setTimeout(() => { submittingRef.current = false; submit(choiceArg); }, 1500);
         return;
       }
       retryRef.current = 0; setSubmitError(t('quiz_answer_retry'));
@@ -399,11 +402,22 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           )}
           <div style={{display:"flex",gap:9}}>
             {submitError&&<div style={{fontSize:12,color:"#f39c12",fontWeight:700,padding:"7px 10px",background:"#f39c1218",borderRadius:9,marginBottom:6,border:"1px solid #f39c1233"}}>{submitError}</div>}
-            <input ref={ref} value={inp} disabled={isSubmitting||questionMasked} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0&&!questionMasked)submit()}} placeholder={questionMasked ? (handicapLeft>0?`🎁 ${handicapLeft}s`:"…") : (wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc))}
+            <input ref={ref} value={inp} disabled={isSubmitting||questionMasked} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0&&!questionMasked)submit(showDepositChoice?'glory':undefined)}} placeholder={questionMasked ? (handicapLeft>0?`🎁 ${handicapLeft}s`:"…") : (wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc))}
               style={{flex:1,background:(isSubmitting||questionMasked)?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":(isSubmitting||questionMasked)?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:(isSubmitting||questionMasked)?0.6:1}}/>
-          <button onClick={submit} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked} style={{...BTN(handicapLeft>0?"linear-gradient(135deg,#ff7043,#e17055)":"linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 16px",borderRadius:11,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?"not-allowed":"pointer",minWidth:90,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          {showDepositChoice ? (
+            <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
+              <button onClick={()=>submit('hold')} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked} title={t("quiz_choice_deposit_hint")||"Mettre un exemplaire au dépôt"} style={{...BTN("linear-gradient(135deg,#6c5ce7,#4834d4)","#fff"),padding:"6px 14px",borderRadius:10,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?"not-allowed":"pointer",minWidth:98,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.05}}>
+                <span style={{fontSize:12,fontWeight:900}}>{t("quiz_submit")}</span><span style={{fontSize:9,fontWeight:800,opacity:.9}}>📥 {t("quiz_choice_deposit")||'dépôt'}</span>
+              </button>
+              <button onClick={()=>submit('glory')} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked} title={t("quiz_choice_glory_hint")||"Jouer pour la gloire (or + PF)"} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"6px 14px",borderRadius:10,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?"not-allowed":"pointer",minWidth:98,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.05}}>
+                <span style={{fontSize:12,fontWeight:900}}>{t("quiz_submit")}</span><span style={{fontSize:9,fontWeight:800,opacity:.9}}>🏆 {t("quiz_choice_glory")||'gloire'}</span>
+              </button>
+            </div>
+          ) : (
+          <button onClick={()=>submit()} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked} style={{...BTN(handicapLeft>0?"linear-gradient(135deg,#ff7043,#e17055)":"linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 16px",borderRadius:11,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?"not-allowed":"pointer",minWidth:90,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {handicapLeft>0 ? `🎁 ${handicapLeft}s` : isSubmitting ? (<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #1e3045",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.6s linear infinite"}}/>{t("quiz_validating") || "Validation…"}</>) : t("quiz_submit")}
             </button>
+          )}
           </div>
           <style>{`@keyframes spin{to{transform:rotate(360deg)} } @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}`}</style>
         </>}
