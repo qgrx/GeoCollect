@@ -874,7 +874,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         style={{...INP,width:46,padding:"4px 6px"}}/>
                       <span style={{color:"#aaa",fontSize:10}}>s</span>
                     </div>
-                  </div>, "≥ N joueurs en ligne → N geocoins identiques à gagner (plusieurs gagnants). « grâce » = secondes laissées pour décrocher le geocoin suivant après une 1ʳᵉ bonne réponse. Le palier le plus élevé atteint s'applique (vide = 1 seul gagnant)."],
+                  </div>, "≥ N joueurs en ligne → N geocoins identiques à gagner (plusieurs gagnants). « grâce » = secondes laissées pour décrocher le geocoin suivant après une 1ʳᵉ bonne réponse — ET délai après une victoire « pour la gloire » avant que le quiz se termine si personne ne rafle le geocoin. Le palier le plus élevé atteint s'applique (vide = 1 seul gagnant)."],
                   ["Anti-domination (série)", (()=>{const h=limEdit.quizStreakHandicap||{};const set=(k,v)=>setLimEdit(p=>({...p,quizStreakHandicap:{...(p.quizStreakHandicap||{}),[k]:v}}));return <div key="anti-dom" style={{display:"flex",flexDirection:"column",gap:4}}>
                     <label style={{display:"flex",alignItems:"center",gap:6,color:"#ddd",fontSize:11}}>
                       <input type="checkbox" checked={h.enabled!==false} onChange={e=>set('enabled',e.target.checked)} style={{width:14,height:14}}/> Activer
