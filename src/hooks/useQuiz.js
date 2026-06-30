@@ -208,6 +208,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         resolvedQuizIdsRef.current.add(activeQuiz.id)
         if (data.achievements?.length) cbRef.current.checkAchievements?.(data.achievements)
         if (data.achievement_upgrades?.length) cbRef.current.checkAchievementUpgrades?.(data.achievement_upgrades)
+        // Gloire : pas de geocoin, mais on crédite les consolations cumulées (or + PF).
+        if (data.gold_earned) earnGoldWithFx(data.gold_earned)
+        cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
         showToast(t('toast_glory_win'))
         // Fenêtre de grâce « les autres ont N s pour répondre » : on pose la deadline sur le
         // quiz (pour le décompte affiché dans la modale) et on garde la modale ouverte jusqu'à
@@ -221,7 +224,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         }
         const closeIn = graceDeadline ? Math.max(2000, graceDeadline - Date.now() + 1200) : 3500
         setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, closeIn)
-        return { ok: true, outcome: 'glory', forge: 0 }
+        return { ok: true, outcome: 'glory', forge: data.forge_points_earned || 0 }
       }
 
       resolvedQuizIdsRef.current.add(activeQuiz.id)  // gagné → ne plus jamais le re-pender
