@@ -209,7 +209,18 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         if (data.achievements?.length) cbRef.current.checkAchievements?.(data.achievements)
         if (data.achievement_upgrades?.length) cbRef.current.checkAchievementUpgrades?.(data.achievement_upgrades)
         showToast(t('toast_glory_win'))
-        setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 3500)
+        // Fenêtre de grâce « les autres ont N s pour répondre » : on pose la deadline sur le
+        // quiz (pour le décompte affiché dans la modale) et on garde la modale ouverte jusqu'à
+        // sa fin (au lieu d'un délai fixe), corrigée du décalage d'horloge serveur/client.
+        const graceDeadline = (data.grace_until && data.server_time)
+          ? Date.now() + Math.max(0, new Date(data.grace_until).getTime() - new Date(data.server_time).getTime())
+          : null
+        if (graceDeadline) {
+          setActiveQuiz(q => q ? { ...q, graceDeadline } : q)
+          if (activeQuizRef.current) activeQuizRef.current = { ...activeQuizRef.current, graceDeadline }
+        }
+        const closeIn = graceDeadline ? Math.max(2000, graceDeadline - Date.now() + 1200) : 3500
+        setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, closeIn)
         return { ok: true, outcome: 'glory', forge: 0 }
       }
 

@@ -169,10 +169,12 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   },[]);
 
   useEffect(()=>{
-    if(status!=="open") return;
-    // Indices progressifs : révéler des lettres de la réponse
-    if(elapsed===15) setRevealedLetters(1);      // après 15s
-    else if(elapsed===30) setRevealedLetters(2); // après 30s
+    if(status!=="open"&&status!=="glory") return;  // glory : on continue de ticker pour rafraîchir le décompte de grâce
+    if(status==="open"){
+      // Indices progressifs : révéler des lettres de la réponse
+      if(elapsed===15) setRevealedLetters(1);      // après 15s
+      else if(elapsed===30) setRevealedLetters(2); // après 30s
+    }
     const t=setTimeout(()=>setElapsed(v=>v+1),1000);
     return()=>clearTimeout(t);
   },[elapsed,status]);
@@ -449,6 +451,11 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             <div style={{fontSize:34,marginBottom:6}}>🏆</div>
             <div style={{color:"#f9ca24",fontWeight:900,fontSize:17}}>{t('quiz_glory_title')}</div>
             <div style={{color:"#ffd97a",fontWeight:700,fontSize:12,marginTop:6,lineHeight:1.5}}>{t('quiz_glory_subtitle')}</div>
+            {graceLeft!=null&&graceLeft>0&&(
+              <div style={{color:"#ffd97a",fontWeight:900,fontSize:13,marginTop:11,animation:"pulse 1s infinite"}}>
+                ⏳ {(t('quiz_glory_grace_countdown')||'Les autres joueurs ont encore {n}s pour répondre à la question.').replace('{n}',graceLeft)}
+              </div>
+            )}
           </div>
         )}
         </div>
