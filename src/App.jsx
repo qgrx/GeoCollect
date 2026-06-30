@@ -470,7 +470,7 @@ export default function App() {
           // sans doublonner une entrée déjà présente.
           const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
-          const gloryPseudos = (data.glory_winners || []).map(g => g.pseudo)
+          const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           const others = winnersList.filter(w => !((w.id && w.id === myIdRef.current) || (w.pseudo && w.pseudo === myPseudoRef.current)))
           if (others.length) setHistory(h => {
             const additions = others
@@ -481,14 +481,14 @@ export default function App() {
         } else if (data.winner && !iSelf) {
           const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
-          const gloryPseudos = (data.glory_winners || []).map(g => g.pseudo)
+          const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           setHistory(h => {
             if (h[0]?.winner === data.winner && h[0]?.card?.name === data.card_name) return h
             return [{ card: fullCard, winner: data.winner, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryPseudos }, ...h].slice(0, 10)
           })
         } else if (iSelf && (data.glory_winners || []).length > 0) {
           // Le gagnant lui-même : useQuiz ajoute l'entrée → on la patch avec les glory_winners
-          const gloryPseudos = (data.glory_winners || []).map(g => g.pseudo)
+          const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           setHistory(h => {
             if (h[0]?.won) return [{ ...h[0], glory_winners: gloryPseudos }, ...h.slice(1)]
             return h
@@ -570,7 +570,7 @@ export default function App() {
         if ((data.glory_winners || []).length > 0 && data.card_name) {
           const fullCard = cardPoolRef.current?.find(c => c.id === data.card_id || c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: data.card_id || 0 }
-          const gloryPseudos = (data.glory_winners || []).map(g => g.pseudo)
+          const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           setHistory(h => {
             if (h[0]?.glory_only && h[0]?.card?.name === data.card_name) return h
             return [{ card: fullCard, winner: null, won: false, isBot: false, isShiny: data.is_shiny || false, glory_only: true, glory_winners: gloryPseudos }, ...h].slice(0, 10)
