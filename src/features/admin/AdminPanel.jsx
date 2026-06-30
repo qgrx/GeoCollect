@@ -1553,14 +1553,18 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
             {/* Liste des achievements */}
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {achDefs.map(def=>{
+              {(()=>{
+                const typeCount={};
+                achDefs.forEach(d=>{ if(!d.hidden&&d.active) typeCount[d.type]=(typeCount[d.type]||0)+1; });
+                return achDefs.map(def=>{
                 const card=achCards.find(c=>c.id===def.card_id);
                 const thumb=card?.image_url_thumb||card?.thumbnail||card?.image_url||card?.image;
                 const {c1}=card?cardCC(card.rarity):{c1:'#888'};
                 const evo=def.threshold_rare!=null;
                 const isEditing=editDef?.id===def.id;
+                const isDup=!def.hidden&&def.active&&(typeCount[def.type]||0)>1;
                 return(
-                  <div key={def.id} style={{background:isEditing?'#ffffff0a':'#ffffff05',border:`1px solid ${def.hidden?'#e1705544':def.active?'#ffffff10':'#e74c3c33'}`,borderRadius:10,overflow:'hidden',transition:'background .15s'}}>
+                  <div key={def.id} style={{background:isEditing?'#ffffff0a':'#ffffff05',border:`1px solid ${isDup?'#f9ca2466':def.hidden?'#e1705544':def.active?'#ffffff10':'#e74c3c33'}`,borderRadius:10,overflow:'hidden',transition:'background .15s'}}>
                     {/* Ligne résumé */}
                     <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',cursor:'pointer'}} onClick={()=>setEditDef(isEditing?null:{...def})}>
                       {/* Thumbnail */}
@@ -1572,6 +1576,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         <div style={{display:'flex',alignItems:'baseline',gap:6,flexWrap:'wrap'}}>
                           <span style={{fontWeight:800,fontSize:12,color:def.active?'#fff':'#666'}}>{def.name||card?.name||'?'}</span>
                           {evo&&<span style={{fontSize:8,fontWeight:900,background:'#f9ca2433',color:'#f9ca24',borderRadius:4,padding:'1px 5px'}}>ÉVOLUTIF</span>}
+                          {isDup&&<span style={{fontSize:8,fontWeight:900,background:'#f9ca2422',color:'#f9ca24',borderRadius:4,padding:'1px 5px'}}>⚠️ DOUBLON</span>}
                           <span style={{fontSize:10,color:'#8daacc',fontFamily:'monospace'}}>{def.key}</span>
                         </div>
                         <div style={{display:'flex',gap:8,alignItems:'center',marginTop:2,flexWrap:'wrap'}}>
@@ -1600,6 +1605,14 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                           style={{background:def.hidden?'#e1705522':'#ffffff0a',border:`1px solid ${def.hidden?'#e1705544':'#ffffff15'}`,color:def.hidden?'#e17055':'#8daacc',padding:'3px 8px',borderRadius:6,fontSize:10,fontWeight:800,cursor:'pointer',fontFamily:"'Nunito',sans-serif"}}>
                           {def.hidden?'🚫 Brouillon':'👁 Publié'}
                         </button>
+                        <button onClick={async()=>{
+                          if(!window.confirm(`Supprimer "${def.name||def.key}" ?`))return;
+                          const {error}=await apiDeleteAchievementDef(def.id);
+                          if(error){setMsg("❌ "+error);return;}
+                          setAchDefs(prev=>prev.filter(d=>d.id!==def.id));
+                          setEditDef(null);setMsg("✅ Supprimé.");
+                        }} title="Supprimer"
+                          style={{background:'#e74c3c11',border:'1px solid #e74c3c33',color:'#e74c3c99',padding:'3px 7px',borderRadius:6,fontSize:11,cursor:'pointer'}}>🗑</button>
                       </div>
                     </div>
                     {/* Panneau d'édition (déplié au clic) */}
@@ -1641,19 +1654,12 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                             setEditDef(null);setMsg("✅ Mis à jour !");
                           }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"5px 12px",borderRadius:7,fontSize:11}}>Enregistrer</button>
                           <button onClick={()=>setEditDef(null)} style={{...BTN("#ffffff18"),padding:"5px 10px",borderRadius:7,fontSize:11}}>Annuler</button>
-                          <button onClick={async()=>{
-                            if(!window.confirm(`Supprimer "${def.key}" ?`)) return;
-                            const {error}=await apiDeleteAchievementDef(def.id);
-                            if(error){setMsg("❌ "+error);return;}
-                            setAchDefs(prev=>prev.filter(d=>d.id!==def.id));
-                            setEditDef(null);setMsg("✅ Supprimé.");
-                          }} style={{...BTN("#e74c3c22"),border:"1px solid #e74c3c44",color:"#e74c3c",padding:"5px 10px",borderRadius:7,fontSize:11,marginLeft:"auto"}}>🗑 Supprimer</button>
                         </div>
                       </div>
                     )}
                   </div>
                 );
-              })}
+              });})()}
               {achDefs.length===0&&<div style={{color:"#a8bfcf",fontSize:11,textAlign:"center",padding:16}}>Aucune définition chargée.</div>}
             </div>
           </div>
