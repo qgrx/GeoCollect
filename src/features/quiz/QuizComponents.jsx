@@ -489,8 +489,12 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1,graceDeadline=null}){
   const {t}=useT(); const {theme}=useTheme();
+  // Décompte de grâce « encore Ns pour répondre » (gloire / multi-prix) — ticker local 1 s.
+  const [,graceTick]=useState(0)
+  useEffect(()=>{ if(!graceDeadline) return; const i=setInterval(()=>graceTick(v=>v+1),1000); return()=>clearInterval(i) },[graceDeadline])
+  const graceLeft  = graceDeadline ? Math.max(0, Math.ceil((graceDeadline-Date.now())/1000)) : null
   const pct        = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
   const urgent     = !hasPendingQuiz && !lostTo && secondsLeft <= 10
   const veryUrgent = urgent && secondsLeft <= 5 && secondsLeft > 0
@@ -629,7 +633,9 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
               « joueur en feu » remplace le texte « Geocoin mystère ». */}
           {!urgent&&(
             <div style={{fontSize:10,color:'#666',display:'flex',alignItems:'center',gap:4}}>
-              {hasCard
+              {graceLeft!=null&&graceLeft>0
+                ? <span style={{color:'#e17055',fontWeight:900,animation:'pulse 1s infinite'}}>⏳ {(t('quiz_grace_left')||'encore {n}s pour répondre').replace('{n}',graceLeft)}</span>
+                : hasCard
                 ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}{prizesTotal>1&&<span style={{color:'#a29bfe',fontWeight:900,marginLeft:6}}>🎁 {(t('quiz_prizes_to_win')||'{n} à gagner').replace('{n}',prizesTotal)}</span>}</>
                 : onFire
                   ? <span style={{color:'#ff8a5c',fontWeight:800}}>🔥 {t('streak_bar_small').replace('{pseudo}',streakLeader.pseudo).replace('{n}',streakLeader.streak).replace('{x}',streakLeader.handicap_seconds)}</span>

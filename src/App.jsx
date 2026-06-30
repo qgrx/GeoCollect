@@ -545,6 +545,18 @@ export default function App() {
       s.on('quiz:glory_win', (data) => {
         const iSelf = (!!data.winner_id && data.winner_id === myIdRef.current)
           || (!!data.winner && data.winner === myPseudoRef.current)
+        // Fenêtre de grâce « encore Ns pour répondre » : la poser chez TOUS les joueurs qui ont
+        // le quiz ouvert (comme le multi-prix), pour les prévenir qu'il ne reste plus longtemps.
+        if (data.grace_until && data.server_time && data.quiz_id) {
+          const msLeft = Math.max(0, new Date(data.grace_until).getTime() - new Date(data.server_time).getTime())
+          const graceDeadline = Date.now() + msLeft
+          const patch = q => (q && q.id === data.quiz_id) ? { ...q, graceDeadline } : q
+          setActiveQuiz(patch)
+          if (activeQuizRef.current?.id === data.quiz_id) {
+            activeQuizRef.current = { ...activeQuizRef.current, graceDeadline }
+          }
+          setPendingQuiz(patch)
+        }
         if (!iSelf && data.winner) {
           showToast(t('toast_glory_other').replace('{pseudo}', data.winner))
         }
@@ -570,7 +582,9 @@ export default function App() {
         }
         setQuizIsShiny(data.next_is_shiny || false)
         if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
-        handleQuizExpireRef.current(null)
+        // Personne n'a raflé le geocoin ; s'il a été joué pour la gloire, afficher le 1er
+        // gagnant-gloire dans la barre (« Félicitations à … »), comme un gagnant normal.
+        handleQuizExpireRef.current((data.glory_winners || [])[0]?.pseudo || null)
       })
 
       // Teaser mis à jour sans changement de quiz (ex. admin modifie le Shiny Day) :
@@ -1023,7 +1037,7 @@ export default function App() {
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
-      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} />
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
     // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
     // → barre floutée + message + timer. Dans les deux cas, interaction impossible.
     const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown
@@ -1985,9 +1999,9 @@ export default function App() {
                           <div style={{ fontSize: 8, fontWeight: 700, color: mine ? '#3fb950' : theme.textSecondary, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {beginnerActive
                               ? `${mine ? '✓ ' : ''}${h.winners_count || 0}🏆`
-                              : hasGlory
-                                ? `${mine ? '✓ ' : ''}${allWinners.length}🏆`
-                                : (mine ? '✓' : h.winner)}
+                              : mine
+                                ? `✓${hasGlory ? ` (${(h.glory_winners || []).length}🏆)` : ''}`
+                                : hasGlory ? `${allWinners.length}🏆` : h.winner}
                           </div>
                         </div>
                       );

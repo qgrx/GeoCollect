@@ -321,13 +321,17 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       return
     }
     // Quiz actif résolu par un autre → marqué résolu (fermer ne le re-pend pas).
+    // Si CE joueur avait déjà répondu « pour la gloire » (quiz déjà dans resolvedQuizIds), il a
+    // eu son écran de gloire : dès qu'un autre rafle le geocoin pendant le décompte, on ferme
+    // vite (1,5 s) au lieu d'attendre la fin de la fenêtre de grâce.
+    const wasResolvedByMe = !!activeQuizRef.current?.id && resolvedQuizIdsRef.current.has(activeQuizRef.current.id)
     if (activeQuizRef.current?.id) resolvedQuizIdsRef.current.add(activeQuizRef.current.id)
     // N'ajouter que si quelqu'un a vraiment gagné (npc = nom du gagnant)
     if (npc) {
       // Histoire gérée par quiz:solved — ici on met juste à jour l'UI de la modale active
       setActiveQuiz(q => q ? { ...q, winner: npc } : null)
     }
-    setTimeout(() => advanceQuiz(solvedAt), 5000)
+    setTimeout(() => advanceQuiz(solvedAt), wasResolvedByMe ? 1500 : 5000)
   }, [limits])
 
   return {
