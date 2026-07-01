@@ -2773,6 +2773,7 @@ export default function App() {
                 ...(limEdit.typeTranslations != null ? [apiSetConfig('type_translations', limEdit.typeTranslations)] : []),
                 ...(limEdit.registrationWhitelist != null ? [apiSetConfig('registration_whitelist', limEdit.registrationWhitelist)] : []),
                 apiSetConfig('shiny_rate',        limEdit.shinyRate        ?? 0.1),
+                apiSetConfig('force_shiny_count', Math.max(0, limEdit.forceShinyCount ?? 0)),
                 apiSetConfig('shiny_forge_open',  limEdit.shinyForgeOpen   ?? true),
                 apiSetConfig('score_rules',       limEdit.scoreRules       ?? { commun:1, rare:3, épique:7, légendaire:20 }),
                 apiSetConfig('shiny_score_rules',  limEdit.shinyScoreRules  ?? { commun:2, rare:6, épique:14, légendaire:40 }),

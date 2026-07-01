@@ -5,7 +5,7 @@ import { getRankLabel } from '../../utils/rankUtils.js';
 import { cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
 import {
-  apiAdminSetCanSell, apiAdminReactivate, apiAdminSetGold, apiAdminSetForgePoints,
+  apiAdminSetCanSell, apiAdminReactivate, apiAdminSetGold, apiAdminSetForgePoints, apiAdminSetPlayerLimits,
   apiAdminGetPlayerCollection, apiAdminGiveCard, apiAdminTakeCard, apiAdminSetPseudo,
   apiAdminUndoForgeShiny,
 } from '../../services/api.js';
@@ -20,6 +20,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
   const [playerGoldEdit, setPlayerGoldEdit]     = useState('');
   const [playerForgeEdit, setPlayerForgeEdit]   = useState('');
   const [playerPseudoEdit, setPlayerPseudoEdit] = useState('');
+  const [playerLimitsEdit, setPlayerLimitsEdit] = useState({});
   const [playerCollection, setPlayerCollection] = useState(null);
   const [playerShinyCollection, setPlayerShinyCollection] = useState(null);
   const [playerAchievements, setPlayerAchievements] = useState(null);  // array of achievement defs + progress
@@ -248,6 +249,25 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
               setMsg('✅ Ressources mises à jour.');
             } catch (e) { setMsg('❌ ' + e.message); }
           }} style={{ ...BTN('linear-gradient(135deg,#f9ca24,#e17055)', '#1e3045'), padding: '7px 14px', borderRadius: 8, fontSize: 12 }}>Appliquer</button>
+        </div>
+        {/* Limites du jour (outil de test) — vide = inchangé. Les compteurs sont ancrés sur aujourd'hui. */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, paddingTop: 8, borderTop: '1px solid #ffffff10' }}>
+          <span style={{ color: '#8daacc', fontSize: 10, fontWeight: 800, width: '100%' }}>⏱️ Limites du jour (vide = inchangé)</span>
+          {[['daily_cards', 'geocoins/j'], ['hourly_cards', 'geocoins/h'], ['daily_gold', 'or/j'], ['daily_forge_consolation', 'PF conso/j'], ['daily_shiny', 'shiny/j']].map(([k, lbl]) => (
+            <input key={k} type="text" inputMode="numeric" title={lbl} placeholder={lbl} value={playerLimitsEdit[k] ?? ''}
+              onChange={e => setPlayerLimitsEdit(v => ({ ...v, [k]: e.target.value.replace(/[^0-9]/g, '') }))}
+              style={{ ...INP, width: 84, fontSize: 11 }} />
+          ))}
+          <button onClick={async () => {
+            const body = {};
+            for (const [k, v] of Object.entries(playerLimitsEdit)) if (v !== '' && v != null) body[k] = +v;
+            if (!Object.keys(body).length) { setMsg('❌ Aucune limite saisie.'); return; }
+            const { error } = await apiAdminSetPlayerLimits(playerView.id, body);
+            if (error) { setMsg('❌ ' + error); return; }
+            setPlayerView(v => ({ ...v, ...body }));
+            setPlayerLimitsEdit({});
+            setMsg('✅ Limites du joueur mises à jour.');
+          }} style={{ ...BTN('linear-gradient(135deg,#00b894,#0984e3)'), padding: '7px 14px', borderRadius: 8, fontSize: 12 }}>Appliquer les limites</button>
         </div>
       </div>
 

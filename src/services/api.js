@@ -137,6 +137,7 @@ export const apiAdminReactivate         = (id)          => apiFetch(`/api/admin/
 export const apiAdminResetOnboarding    = (id)          => apiFetch(`/api/admin/players/${id}/reset-onboarding`, { method: 'PATCH' })
 export const apiAdminSetGold             = (id, gold)         => apiFetch(`/api/admin/players/${id}/gold`, { method: 'PATCH', body: { gold } })
 export const apiAdminSetForgePoints      = (id, forge_points) => apiFetch(`/api/admin/players/${id}/forge-points`, { method: 'PATCH', body: { forge_points } })
+export const apiAdminSetPlayerLimits     = (id, limits)       => apiFetch(`/api/admin/players/${id}/limits`, { method: 'PATCH', body: limits })
 export const apiAdminSetPseudo           = (id, pseudo)       => apiFetch(`/api/admin/players/${id}/pseudo`, { method: 'PATCH', body: { pseudo } })
 export const apiAdminGetPlayerCollection = (id)               => apiFetch(`/api/admin/players/${id}/collection`)
 export const apiAdminGetCheatReport      = (id)               => apiFetch(`/api/admin/players/${id}/cheat-report`)
