@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { soundCorrect, soundWrong } from '../../utils/sounds.js';
 import { useT } from '../../i18n/translations.js';
 import { useTheme } from '../../ThemeContext.jsx';
@@ -109,7 +110,7 @@ export function GloryInfoButton({ size = 15 }) {
     <>
       <button onClick={e => { e.stopPropagation(); setOpen(true); }} title={t('glory_info_title') || 'Pour la gloire ?'}
         style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
-      {open && (
+      {open && createPortal((
         <div onClick={e => { e.stopPropagation(); setOpen(false); }} style={{ position:'fixed', inset:0, zIndex:4000, display:'flex', alignItems:'center', justifyContent:'center', background:'#000b', backdropFilter:'blur(6px)', padding:16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
             <div style={{ fontSize:15, fontWeight:900, color:'#f9ca24', marginBottom:9 }}>🏆 {t('glory_info_title') || '« Pour la gloire »'}</div>
@@ -117,7 +118,7 @@ export function GloryInfoButton({ size = 15 }) {
             <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('close') || 'Fermer'}</button>
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }
