@@ -16,6 +16,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const [holdOffer,     setHoldOffer]    = useState(null)
   const [history,       setHistory]      = useState([])
   const [lostToWinner,  setLostToWinner] = useState(null)
+  const [lostToGlory,   setLostToGlory]  = useState(false)
   const [quizKey,       setQuizKey]      = useState(0)
   // Durée du cycle (s) pour la barre de progression — suit l'intervalle dynamique serveur
   const [cycleSec,      setCycleSec]     = useState(limits?.quizInterval ?? QUIZ_INTERVAL)
@@ -298,15 +299,17 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     }
   }, [])
 
-  const handleQuizExpire = useCallback((npc, isBot = false) => {
+  const handleQuizExpire = useCallback((npc, isBot = false, isGlory = false) => {
     const solvedAt = Date.now()
 
     if (!activeQuizRef.current) {
       const pending = pendingQuizRef.current
       if (pending) {
         setLostToWinner(npc)
+        setLostToGlory(isGlory)
         setTimeout(() => {
           setLostToWinner(null)
+          setLostToGlory(false)
           setPendingQuiz(currentPending => {
             if (currentPending && currentPending.id === pending.id) {
               setNextQuizTime(resolveNextQuizTime(solvedAt))
@@ -345,6 +348,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     history, setHistory,
     quizKey, setQuizKey,
     lostToWinner, setLostToWinner,
+    lostToGlory, setLostToGlory,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz,
     handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz,

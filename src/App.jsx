@@ -374,6 +374,7 @@ export default function App() {
         setNextCard(card)
         setQuizIsShiny(data.is_shiny || false)
         setLostToWinner(null)
+        setLostToGlory(false)
         setStreakLeader(data.streak_leader || null)
         // Un quiz devient joignable → couper l'annonce « en feu » pour ne pas masquer « Participer »
         if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
@@ -583,8 +584,8 @@ export default function App() {
         setQuizIsShiny(data.next_is_shiny || false)
         if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
         // Personne n'a raflé le geocoin ; s'il a été joué pour la gloire, afficher le 1er
-        // gagnant-gloire dans la barre (« Félicitations à … »), comme un gagnant normal.
-        handleQuizExpireRef.current((data.glory_winners || [])[0]?.pseudo || null)
+        // gagnant-gloire dans la barre (« a joué pour la gloire » + ⓘ), pas « a remporté ».
+        handleQuizExpireRef.current((data.glory_winners || [])[0]?.pseudo || null, false, true)
       })
 
       // Teaser mis à jour sans changement de quiz (ex. admin modifie le Shiny Day) :
@@ -936,6 +937,7 @@ export default function App() {
     nextCard, setNextCard, nextQuizRarity, setNextQuizRarity, holdOffer, setHoldOffer,
     history, setHistory, quizKey, setQuizKey,
     lostToWinner, setLostToWinner,
+    lostToGlory, setLostToGlory,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
 
@@ -1037,7 +1039,7 @@ export default function App() {
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
-      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
     // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
     // → barre floutée + message + timer. Dans les deux cas, interaction impossible.
     const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown

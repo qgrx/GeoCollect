@@ -100,6 +100,28 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
 }
 
 // ─── Quiz Modal ───────────────────────────────────────────────────────────────
+// Petit bouton « ⓘ » qui explique le principe « Pour la gloire » dans une mini-popup.
+// Réutilisé dans la barre de quiz et la popup des gagnants.
+export function GloryInfoButton({ size = 15 }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={e => { e.stopPropagation(); setOpen(true); }} title={t('glory_info_title') || 'Pour la gloire ?'}
+        style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
+      {open && (
+        <div onClick={e => { e.stopPropagation(); setOpen(false); }} style={{ position:'fixed', inset:0, zIndex:4000, display:'flex', alignItems:'center', justifyContent:'center', background:'#000b', backdropFilter:'blur(6px)', padding:16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
+            <div style={{ fontSize:15, fontWeight:900, color:'#f9ca24', marginBottom:9 }}>🏆 {t('glory_info_title') || '« Pour la gloire »'}</div>
+            <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{t('glory_info_body') || ''}</div>
+            <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('close') || 'Fermer'}</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
@@ -503,7 +525,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1,graceDeadline=null}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1,graceDeadline=null}){
   const {t}=useT(); const {theme}=useTheme();
   // Décompte de grâce « encore Ns pour répondre » (gloire / multi-prix) — ticker local 1 s.
   const [,graceTick]=useState(0)
@@ -559,7 +581,12 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
             <div style={{fontSize:14,fontWeight:900,color:'#f9ca24',marginBottom:2,animation:'cgFade .35s .2s ease both',opacity:0}}>
               🎉 Félicitations à <span style={{color:theme.textPrimary,fontWeight:900}}>{lostTo}</span> !
             </div>
-            {nextCard && (
+            {lostToGlory ? (
+              <div style={{fontSize:10,color:theme.textSecondary,display:'flex',alignItems:'center',gap:5,animation:'cgFade .35s .35s ease both',opacity:0}}>
+                <span>🏆 {t('glory_played')||'a joué pour la gloire'}</span>
+                <GloryInfoButton size={12} />
+              </div>
+            ) : nextCard && (
               <div style={{fontSize:10,color:theme.textSecondary,animation:'cgFade .35s .35s ease both',opacity:0}}>
                 a remporté <span style={{color:wc1,fontWeight:800}}>{cardName(nextCard,getLang())}</span>
               </div>
@@ -1101,8 +1128,9 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
                   : <div style={{ fontSize: 12.5, fontWeight: 800, color: '#78716c' }}>{t('glory_nobody_won') || "Personne n'a remporté ce geocoin"}</div>}
               </div>
             </div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, color: '#a8a29e', marginTop: 2 }}>
-              {t('glory_section_title') || 'Pour la gloire'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, color: '#a8a29e' }}>{t('glory_section_title') || 'Pour la gloire'}</span>
+              <GloryInfoButton size={13} />
             </div>
             {gloryList.map((p, i) => {
               const hold = isHoldEntry(p);
