@@ -26,9 +26,33 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
 const DEFAULT_TYPE = 'Normal';
 
 const BOT_DEFAULTS = {
-  seller: { intervalMinutes: 5,  minPrice: 5,  maxPrice: 200 },
-  buyer:  { intervalMinutes: 3,  maxPrice: 50 },
-  quiz:   { everyNQuestions: 3,  maxSeconds: 25 },
+  visible: false,
+  gold: 10000,
+  tasks: {
+    buyer:  { enabled: false, intervalMinutes: 60, maxPrice: 100, unlimitedGold: true },
+    seller: { enabled: false, intervalMinutes: 5,  minPrice: 5,   maxPrice: 200 },
+    quiz:   { enabled: false, delaySeconds: 150 },  // répond TOUJOURS à ce délai exact
+  },
+};
+
+// Formulaire vierge (copie profonde des tâches pour éviter le partage de référence).
+const newBotForm = () => ({
+  pseudo: '',
+  visible: BOT_DEFAULTS.visible,
+  gold: BOT_DEFAULTS.gold,
+  tasks: JSON.parse(JSON.stringify(BOT_DEFAULTS.tasks)),
+});
+
+// Normalise les tâches d'un bot : forme neuve (config.tasks) OU ancienne (type + config plat).
+const botTasks = (bot) => {
+  const cfg = bot?.config || {};
+  const raw = cfg.tasks || (bot?.type && bot.type !== 'multi' ? { [bot.type]: { enabled: true, ...cfg } } : {});
+  const d = BOT_DEFAULTS.tasks;
+  return {
+    buyer:  { ...d.buyer,  ...(raw.buyer  || {}) },
+    seller: { ...d.seller, ...(raw.seller || {}) },
+    quiz:   { ...d.quiz,   ...(raw.quiz   || {}) },
+  };
 };
 
 function parseCSV(text) {
@@ -499,7 +523,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [gameStats,setGameStats]=useState(null);
   const [versionInfo,setVersionInfo]=useState(null);
   const [bots,setBots]=useState([]);
-  const [botForm,setBotForm]=useState({pseudo:'',type:'seller',config:BOT_DEFAULTS.seller});  // { playerId: bool }
+  const [botForm,setBotForm]=useState(newBotForm());
+  const [editingBot,setEditingBot]=useState(null);  // id du bot en cours d'édition, ou null
   const [listingsPage,setListingsPage]=useState(0);
   const [listingsQ,setListingsQ]=useState('');
   const [expiredDays,setExpiredDays]=useState(limits.marketExpireDays || 30);
@@ -557,6 +582,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
   useEffect(()=>{
     if(tab!=='bots') return;
+    setEditingBot(null); setBotForm(newBotForm());
     apiAdminGetBots().then(({data})=>{ if(data?.bots) setBots(data.bots); });
   },[tab]);
 
@@ -1904,46 +1930,79 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         </div>}
 
         {/* ── BOTS ── */}
-        {tab==="bots"&&<div>
+        {tab==="bots"&&(()=>{
+          const setF=(k,v)=>setBotForm(f=>({...f,[k]:v}));
+          const setTask=(t,k,v)=>setBotForm(f=>({...f,tasks:{...f.tasks,[t]:{...f.tasks[t],[k]:v}}}));
+          const startEdit=(bot)=>{
+            setEditingBot(bot.id);
+            setBotForm({pseudo:bot.profiles?.pseudo||'Bot', visible:!!bot.profiles?.bot_visible, gold:bot.profiles?.gold??10000, tasks:botTasks(bot)});
+            if(typeof window!=='undefined') window.scrollTo({top:0,behavior:'smooth'});
+          };
+          const cancelEdit=()=>{ setEditingBot(null); setBotForm(newBotForm()); };
+          const saveBot=async()=>{
+            if(!botForm.pseudo.trim()){setMsg("❌ Pseudo requis.");return;}
+            const payload={visible:botForm.visible,gold:+botForm.gold||0,config:{tasks:botForm.tasks}};
+            if(editingBot){
+              const{data,error}=await apiAdminUpdateBot(editingBot,payload);
+              if(error){setMsg("❌ "+error);return;}
+              setBots(prev=>prev.map(b=>b.id===editingBot?{...b,config:{tasks:botForm.tasks},profiles:{...b.profiles,bot_visible:botForm.visible,gold:+botForm.gold||0,...(data?.bot?.profiles||{})}}:b));
+              cancelEdit(); setMsg("✅ Bot mis à jour !");
+            } else {
+              const{data,error}=await apiAdminCreateBot({pseudo:botForm.pseudo.trim(),...payload});
+              if(error){setMsg("❌ "+error);return;}
+              setBots(prev=>[data.bot,...prev]);
+              setBotForm(newBotForm()); setMsg("✅ Bot créé !");
+            }
+          };
+          const lbl=(t)=><div style={{fontSize:10,color:"#aaa",marginBottom:4}}>{t}</div>;
+          const chk={display:"flex",alignItems:"center",gap:6,color:"#ddd",fontSize:12,fontWeight:700,cursor:"pointer"};
+          const taskBox=(on)=>({background:on?"#ffffff0d":"#ffffff05",border:`1px solid ${on?"#ffffff22":"#ffffff10"}`,borderRadius:10,padding:"10px 12px"});
+          const T=botForm.tasks;
+          return <div>
           <div style={{fontWeight:900,color:"#e74c3c",fontSize:14,marginBottom:16}}>🤖 Gestion des bots</div>
 
-          {/* Formulaire création */}
-          <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12",marginBottom:16}}>
-            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:12,fontSize:13}}>➕ Créer un bot</div>
-            <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
-              <div>
-                <div style={{fontSize:10,color:"#aaa",marginBottom:4}}>Pseudo</div>
-                <input value={botForm.pseudo} onChange={e=>setBotForm(f=>({...f,pseudo:e.target.value}))} placeholder="BotVendeur" style={{...INP,width:120}}/>
+          {/* Formulaire création / édition */}
+          <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:`1px solid ${editingBot?"#f9ca2455":"#ffffff12"}`,marginBottom:16}}>
+            <div style={{fontWeight:800,color:"#f9ca24",marginBottom:12,fontSize:13}}>{editingBot?"✏️ Éditer le bot":"➕ Créer un bot"}</div>
+
+            <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"flex-end",marginBottom:12}}>
+              <div>{lbl("Pseudo")}<input value={botForm.pseudo} disabled={!!editingBot} onChange={e=>setF('pseudo',e.target.value)} placeholder="Poupy" style={{...INP,width:150,opacity:editingBot?0.55:1}}/></div>
+              <div>{lbl("Or affiché")}<input type="number" min={0} value={botForm.gold} onChange={e=>setF('gold',+e.target.value)} style={{...INP,width:100}}/></div>
+              <label style={{...chk,marginBottom:8}}><input type="checkbox" checked={botForm.visible} onChange={e=>setF('visible',e.target.checked)} style={{width:15,height:15}}/> 🏆 Visible au classement</label>
+            </div>
+
+            <div style={{display:"grid",gap:10}}>
+              {/* Achat */}
+              <div style={taskBox(T.buyer.enabled)}>
+                <label style={chk}><input type="checkbox" checked={T.buyer.enabled} onChange={e=>setTask('buyer','enabled',e.target.checked)} style={{width:15,height:15}}/> 🛒 Achat</label>
+                {T.buyer.enabled&&<div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end",marginTop:8}}>
+                  <div>{lbl("Intervalle (min)")}<input type="number" min={1} value={T.buyer.intervalMinutes} onChange={e=>setTask('buyer','intervalMinutes',+e.target.value)} style={{...INP,width:80}}/></div>
+                  <div>{lbl("Prix max (G)")}<input type="number" min={1} value={T.buyer.maxPrice} onChange={e=>setTask('buyer','maxPrice',+e.target.value)} style={{...INP,width:80}}/></div>
+                  <label style={{...chk,fontSize:11,marginBottom:8}}><input type="checkbox" checked={!!T.buyer.unlimitedGold} onChange={e=>setTask('buyer','unlimitedGold',e.target.checked)} style={{width:14,height:14}}/> Or illimité (n'entame pas l'or affiché)</label>
+                </div>}
               </div>
-              <div>
-                <div style={{fontSize:10,color:"#aaa",marginBottom:4}}>Type</div>
-                <select value={botForm.type} onChange={e=>setBotForm(f=>({...f,type:e.target.value,config:BOT_DEFAULTS[e.target.value]||{}}))} style={SEL}>
-                  <option value="seller">🏷️ Vendeur</option>
-                  <option value="buyer">🛒 Acheteur</option>
-                  <option value="quiz">❓ Quiz</option>
-                </select>
+              {/* Vente */}
+              <div style={taskBox(T.seller.enabled)}>
+                <label style={chk}><input type="checkbox" checked={T.seller.enabled} onChange={e=>setTask('seller','enabled',e.target.checked)} style={{width:15,height:15}}/> 🏷️ Vente</label>
+                {T.seller.enabled&&<div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end",marginTop:8}}>
+                  <div>{lbl("Intervalle (min)")}<input type="number" min={1} value={T.seller.intervalMinutes} onChange={e=>setTask('seller','intervalMinutes',+e.target.value)} style={{...INP,width:80}}/></div>
+                  <div>{lbl("Prix min")}<input type="number" min={1} value={T.seller.minPrice} onChange={e=>setTask('seller','minPrice',+e.target.value)} style={{...INP,width:80}}/></div>
+                  <div>{lbl("Prix max")}<input type="number" min={1} value={T.seller.maxPrice} onChange={e=>setTask('seller','maxPrice',+e.target.value)} style={{...INP,width:80}}/></div>
+                </div>}
               </div>
-              {botForm.type==="seller"&&<>
-                <div><div style={{fontSize:10,color:"#aaa",marginBottom:4}}>Intervalle (min)</div><input type="number" min={1} value={botForm.config.intervalMinutes||5} onChange={e=>setBotForm(f=>({...f,config:{...f.config,intervalMinutes:+e.target.value}}))} style={{...INP,width:70}}/></div>
-                <div><div style={{fontSize:10,color:"#aaa",marginBottom:4}}>Prix min</div><input type="number" min={1} value={botForm.config.minPrice||5} onChange={e=>setBotForm(f=>({...f,config:{...f.config,minPrice:+e.target.value}}))} style={{...INP,width:70}}/></div>
-                <div><div style={{fontSize:10,color:"#aaa",marginBottom:4}}>Prix max</div><input type="number" min={1} value={botForm.config.maxPrice||200} onChange={e=>setBotForm(f=>({...f,config:{...f.config,maxPrice:+e.target.value}}))} style={{...INP,width:70}}/></div>
-              </>}
-              {botForm.type==="buyer"&&<>
-                <div><div style={{fontSize:10,color:"#aaa",marginBottom:4}}>Intervalle (min)</div><input type="number" min={1} value={botForm.config.intervalMinutes||3} onChange={e=>setBotForm(f=>({...f,config:{...f.config,intervalMinutes:+e.target.value}}))} style={{...INP,width:70}}/></div>
-                <div><div style={{fontSize:10,color:"#aaa",marginBottom:4}}>Prix max (G)</div><input type="number" min={1} value={botForm.config.maxPrice||50} onChange={e=>setBotForm(f=>({...f,config:{...f.config,maxPrice:+e.target.value}}))} style={{...INP,width:70}}/></div>
-              </>}
-              {botForm.type==="quiz"&&<>
-                <div><div style={{fontSize:10,color:"#aaa",marginBottom:4}}>1 quiz sur N</div><input type="number" min={1} value={botForm.config.everyNQuestions||3} onChange={e=>setBotForm(f=>({...f,config:{...f.config,everyNQuestions:+e.target.value}}))} style={{...INP,width:70}}/></div>
-                <div><div style={{fontSize:10,color:"#aaa",marginBottom:4}}>Délai max (s)</div><input type="number" min={1} max={59} value={botForm.config.maxSeconds||20} onChange={e=>setBotForm(f=>({...f,config:{...f.config,maxSeconds:+e.target.value}}))} style={{...INP,width:70}}/></div>
-              </>}
-              <button onClick={async()=>{
-                if(!botForm.pseudo.trim()){setMsg("❌ Pseudo requis.");return;}
-                const{data,error}=await apiAdminCreateBot({pseudo:botForm.pseudo.trim(),type:botForm.type,config:botForm.config});
-                if(error){setMsg("❌ "+error);return;}
-                setBots(prev=>[data.bot,...prev]);
-                setBotForm({pseudo:'',type:'seller',config:BOT_DEFAULTS.seller});
-                setMsg("✅ Bot créé !");
-              }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:9,fontSize:12,alignSelf:"flex-end"}}>Créer</button>
+              {/* Quiz */}
+              <div style={taskBox(T.quiz.enabled)}>
+                <label style={chk}><input type="checkbox" checked={T.quiz.enabled} onChange={e=>setTask('quiz','enabled',e.target.checked)} style={{width:15,height:15}}/> ❓ Quiz</label>
+                {T.quiz.enabled&&<div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end",marginTop:8}}>
+                  <div>{lbl("Délai de réponse (s)")}<input type="number" min={1} value={T.quiz.delaySeconds} onChange={e=>setTask('quiz','delaySeconds',+e.target.value)} style={{...INP,width:90}}/></div>
+                  <div style={{fontSize:10,color:"#8daacc",marginBottom:8,maxWidth:280}}>Répond systématiquement à ce délai si le quiz n'est pas déjà résolu. Doit rester &lt; durée max du quiz (≈300s).</div>
+                </div>}
+              </div>
+            </div>
+
+            <div style={{display:"flex",gap:8,marginTop:14}}>
+              <button onClick={saveBot} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:9,fontSize:12}}>{editingBot?"💾 Enregistrer":"Créer"}</button>
+              {editingBot&&<button onClick={cancelEdit} style={{...BTN("#ffffff18"),padding:"8px 16px",borderRadius:9,fontSize:12}}>Annuler</button>}
             </div>
           </div>
 
@@ -1951,32 +2010,37 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {bots.length===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"18px 0",fontSize:12}}>Aucun bot configuré.</div>}
             {bots.map(bot=>{
-              const typeIcon={seller:"🏷️",buyer:"🛒",quiz:"❓"}[bot.type]||"🤖";
-              const cfg={...(BOT_DEFAULTS[bot.type]||{}),...(bot.config||{})};
+              const tasks=botTasks(bot);
+              const none=!tasks.buyer.enabled&&!tasks.seller.enabled&&!tasks.quiz.enabled;
+              const visible=!!bot.profiles?.bot_visible;
               return(
-                <div key={bot.id} style={{display:"flex",alignItems:"center",gap:10,background:bot.active?"#ffffff08":"#ffffff04",border:`1px solid ${bot.active?"#ffffff18":"#ffffff08"}`,borderRadius:12,padding:"10px 14px",flexWrap:"wrap",opacity:bot.active?1:0.6}}>
-                  <div style={{fontSize:22,flexShrink:0}}>{typeIcon}</div>
-                  <div style={{flex:1,minWidth:120}}>
-                    <div style={{fontWeight:900,color:"#fff",fontSize:13}}>{bot.profiles?.pseudo||"Bot"}</div>
+                <div key={bot.id} style={{display:"flex",alignItems:"center",gap:10,background:bot.active?"#ffffff08":"#ffffff04",border:`1px solid ${bot.id===editingBot?"#f9ca24":(bot.active?"#ffffff18":"#ffffff08")}`,borderRadius:12,padding:"10px 14px",flexWrap:"wrap",opacity:bot.active?1:0.6}}>
+                  <div style={{fontSize:22,flexShrink:0}}>🤖</div>
+                  <div style={{flex:1,minWidth:150}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                      <span style={{fontWeight:900,color:"#fff",fontSize:13}}>{bot.profiles?.pseudo||"Bot"}</span>
+                      <span style={{fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:6,background:visible?"#00b89422":"#ffffff10",color:visible?"#00b894":"#8daacc"}}>{visible?"🏆 Visible":"🙈 Masqué"}</span>
+                    </div>
                     <div style={{fontSize:10,color:"#8daacc",marginTop:2}}>
-                      {bot.type==="seller"&&`Vend toutes les ${cfg.intervalMinutes}min · ${cfg.minPrice}–${cfg.maxPrice}G`}
-                      {bot.type==="buyer"&&`Achète toutes les ${cfg.intervalMinutes}min · max ${cfg.maxPrice}G`}
-                      {bot.type==="quiz"&&`Répond 1/${cfg.everyNQuestions} quiz en <${cfg.maxSeconds}s`}
+                      {none?"Aucune tâche active":<>
+                        {tasks.buyer.enabled&&`🛒 1/${tasks.buyer.intervalMinutes}min ·≤${tasks.buyer.maxPrice}G${tasks.buyer.unlimitedGold?" ·∞":""}  `}
+                        {tasks.seller.enabled&&`🏷️ 1/${tasks.seller.intervalMinutes}min ·${tasks.seller.minPrice}–${tasks.seller.maxPrice}G  `}
+                        {tasks.quiz.enabled&&`❓ ${tasks.quiz.delaySeconds}s`}
+                      </>}
                     </div>
                     {bot.last_run_at&&<div style={{fontSize:9,color:"#7a94aa",marginTop:1}}>Dernier run : {new Date(bot.last_run_at).toLocaleString('fr-FR')}</div>}
                   </div>
                   <div style={{fontSize:11,color:"#f9ca24",fontWeight:700}}>{bot.profiles?.gold||0}G</div>
                   <div style={{display:"flex",gap:6}}>
+                    <button onClick={()=>startEdit(bot)} style={{background:"#f9ca2422",border:"1px solid #f9ca2444",color:"#f9ca24",padding:"4px 10px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>Éditer</button>
                     <button onClick={async()=>{
                       const next=!bot.active;
                       setBots(prev=>prev.map(b=>b.id===bot.id?{...b,active:next}:b));
-                      const{data,error}=await apiAdminUpdateBot(bot.id,{active:next});
+                      const{error}=await apiAdminUpdateBot(bot.id,{active:next});
                       if(error){
                         setBots(prev=>prev.map(b=>b.id===bot.id?{...b,active:!next}:b));
                         setMsg("❌ "+error);
-                        return;
                       }
-                      if(data?.bot) setBots(prev=>prev.map(b=>b.id===bot.id?{...b,...data.bot}:b));
                     }} style={{background:bot.active?"#e74c3c22":"#00b89422",border:`1px solid ${bot.active?"#e74c3c44":"#00b89444"}`,color:bot.active?"#e74c3c":"#00b894",padding:"4px 10px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>
                       {bot.active?"Désactiver":"Activer"}
                     </button>
@@ -1994,7 +2058,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               );
             })}
           </div>
-        </div>}
+          </div>;
+        })()}
 
         {/* ── CACHE ── */}
         {tab==="cache"&&<div>
