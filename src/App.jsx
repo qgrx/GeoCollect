@@ -464,20 +464,33 @@ export default function App() {
           setTimeout(() => advanceQuizRef.current?.(Date.now()), 2200)
         }
 
-        // Mettre à jour l'historique uniquement si ce n'est pas le joueur lui-même
-        // (handleQuizAnswer ajoute déjà l'entrée { winner: 'Moi' } côté gagnant)
+        // Mettre à jour l'historique. En round MULTI-prix, on bâtit UNE SEULE entrée pour le round
+        // (liste de tous les gagnants) au lieu de dupliquer le même geocoin par gagnant : affichage
+        // « N🏆 » + popup des gagnants, comme pour la gloire. L'entrée « Moi » transitoire posée par
+        // handleQuizAnswer est fusionnée ici (→ ✓ + compteur, sans attendre un rechargement).
         if (data.multi && winnersList.length) {
-          // Round multi-prix : ajouter chaque gagnant SAUF moi (déjà ajouté par handleQuizAnswer),
-          // sans doublonner une entrée déjà présente.
           const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
           const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
-          const others = winnersList.filter(w => !((w.id && w.id === myIdRef.current) || (w.pseudo && w.pseudo === myPseudoRef.current)))
-          if (others.length) setHistory(h => {
-            const additions = others
-              .filter(w => !h.some(e => e.winner === w.pseudo && e.card?.name === data.card_name))
-              .map(w => ({ card: fullCard, winner: w.pseudo, won: false, isBot: !!w.is_bot, isShiny: data.is_shiny || false, glory_winners: gloryPseudos }))
-            return additions.length ? [...additions, ...h].slice(0, 10) : h
+          const winnerPseudos = winnersList.map(w => w.pseudo)
+          const entry = {
+            card: fullCard,
+            winner: winnerPseudos[0] || null,
+            won: iSelf,
+            isBot: !!winnersList[0]?.is_bot,
+            isShiny: data.is_shiny || false,
+            winners: winnerPseudos,          // liste complète des gagnants du round multi-prix
+            glory_winners: gloryPseudos,
+          }
+          setHistory(h => {
+            // Round déjà consolidé (event reçu 2×) → ne rien refaire.
+            if (h.some(e => Array.isArray(e.winners) && e.card?.name === data.card_name
+                && e.winners.length === winnerPseudos.length && e.winners[0] === winnerPseudos[0])) return h
+            // Retirer les entrées transitoires de CE round : l'entrée « Moi » (handleQuizAnswer)
+            // et d'éventuels singletons par gagnant (sans liste `winners`) — puis insérer l'entrée unique.
+            const cleaned = h.filter(e => !(!Array.isArray(e.winners) && e.card?.name === data.card_name
+                && (e.won || winnerPseudos.includes(e.winner))))
+            return [entry, ...cleaned].slice(0, 10)
           })
         } else if (data.winner && !iSelf) {
           const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
@@ -1975,15 +1988,19 @@ export default function App() {
                       // tantôt en ✓, tantôt sous son pseudo (selon la source de l'entrée).
                       // En débutant : plusieurs gagnants → on coche si je suis dans la liste.
                       const hasGlory = !beginnerActive && (h.glory_winners || []).length > 0;
+                      // Round MULTI-prix (≥2 gagnants réels) → tuile unique « N🏆 » + popup des gagnants,
+                      // comme la gloire (au lieu de dupliquer le même geocoin par gagnant).
+                      const multiWinners = (!beginnerActive && Array.isArray(h.winners) && h.winners.length > 1) ? h.winners : null;
                       // Geocoin joué pour la gloire sans gagnant (winner null) → ne pas ajouter un gagnant fantôme.
                       const allWinners = hasGlory ? (h.winner ? [...h.glory_winners, h.winner] : [...h.glory_winners]) : null;
                       const mine = beginnerActive
                         ? (Array.isArray(h.winners) && h.winners.includes(auth.profile?.pseudo))
-                        : (h.won || (!!h.winner && h.winner === auth.profile?.pseudo));
+                        : (h.won || (!!h.winner && h.winner === auth.profile?.pseudo) || (Array.isArray(h.winners) && h.winners.includes(auth.profile?.pseudo)));
                       return (
                         <div key={i} title={h.card?.name} onClick={() => {
                           if (!h.card) return;
                           if (beginnerActive) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: h.winners || [] }); return; }
+                          if (multiWinners) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: multiWinners, gloryCount: 0 }); return; }
                           if (hasGlory) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: allWinners, gloryCount: h.glory_winners.length }); return; }
                           setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); setSelectedCardFromHistory(true);
                         }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, minWidth: 0, maxWidth: isWide ? undefined : 44 }}>
@@ -2002,8 +2019,8 @@ export default function App() {
                             {beginnerActive
                               ? `${mine ? '✓ ' : ''}${h.winners_count || 0}🏆`
                               : mine
-                                ? `✓${hasGlory ? ` (${(h.glory_winners || []).length}🏆)` : ''}`
-                                : hasGlory ? `${allWinners.length}🏆` : h.winner}
+                                ? `✓${multiWinners ? ` (${multiWinners.length}🏆)` : hasGlory ? ` (${(h.glory_winners || []).length}🏆)` : ''}`
+                                : multiWinners ? `${multiWinners.length}🏆` : hasGlory ? `${allWinners.length}🏆` : h.winner}
                           </div>
                         </div>
                       );

@@ -228,6 +228,22 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         return { ok: true, outcome: 'glory', forge: data.forge_points_earned || 0 }
       }
 
+      // Dépôt (geocoin précieux déjà possédé, hors-limite) : il consomme désormais un VRAI
+      // prix (comme un gain réel) et met un exemplaire au dépôt — pas d'ajout collection ni
+      // d'or, pas d'entrée « gagné par moi » perso (l'entrée du round est bâtie au quiz:solved).
+      // final=false ⇒ round multi non terminé : je referme sans avancer le cycle.
+      if (data.deposited) {
+        resolvedQuizIdsRef.current.add(activeQuiz.id)
+        showToast(data.hold ? (t('toast_deposit_win') || '📥 Geocoin mis au dépôt !') : t('toast_quiz_won').replace('{card}', card.name))
+        const solvedAt = Date.now()
+        if (data.final === false) {
+          setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 900)
+        } else {
+          setTimeout(() => advanceQuiz(solvedAt), 900)
+        }
+        return { ok: true, outcome: 'hold', forge: 0 }
+      }
+
       resolvedQuizIdsRef.current.add(activeQuiz.id)  // gagné → ne plus jamais le re-pender
 
       // Re-tentative après une réponse gagnante dont la réponse HTTP avait été perdue :
