@@ -1095,7 +1095,8 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
   const RANK = ['#f59e0b', '#9aa6b2', '#b45309'];   // or / argent / bronze
   // winners.length === gloryCount : joué pour la gloire, personne n'a remporté le geocoin.
   const hasGlory = gloryCount > 0 && winners.length >= gloryCount;
-  const realWinner = winners.length > gloryCount ? winners[winners.length - 1] : null;
+  // Après les glory winners peuvent venir PLUSIEURS gagnants réels (round multi-prix).
+  const realWinners = winners.length > gloryCount ? winners.slice(gloryCount) : [];
   const gloryList  = hasGlory ? winners.slice(0, gloryCount) : [];
   // Chaque gagnant peut être un pseudo (string) ou { pseudo, hold } — gloire (🎖️) vs dépôt (📥).
   const nameOf = w => typeof w === 'string' ? w : (w?.pseudo ?? '');
@@ -1118,17 +1119,22 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
           <div style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center', padding: '10px 0' }}>{t('beginner_recap_none') || "Personne n'a trouvé cette fois !"}</div>
         ) : hasGlory ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: realWinner ? '#f59e0b22' : '#f1f5f9', border: `1px solid ${realWinner ? '#f59e0b88' : '#e2e8f0'}`, borderRadius: 9, padding: '9px 11px' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>{realWinner ? '🏆' : '🚫'}</span>
-              <div>
-                {realWinner
-                  ? <>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: '#1a2538' }}>{nameOf(realWinner)}</div>
-                      <div style={{ fontSize: 10, color: '#78716c', fontWeight: 700 }}>{t('glory_winner_label') || 'A remporté le geocoin'}</div>
-                    </>
-                  : <div style={{ fontSize: 12.5, fontWeight: 800, color: '#78716c' }}>{t('glory_nobody_won') || "Personne n'a remporté ce geocoin"}</div>}
+            {realWinners.length > 0 ? (
+              realWinners.map((w, i) => (
+                <div key={`rw${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f59e0b22', border: '1px solid #f59e0b88', borderRadius: 9, padding: '9px 11px' }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>🏆</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: '#1a2538' }}>{nameOf(w)}</div>
+                    <div style={{ fontSize: 10, color: '#78716c', fontWeight: 700 }}>{t('glory_winner_label') || 'A remporté le geocoin'}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 11px' }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>🚫</span>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: '#78716c' }}>{t('glory_nobody_won') || "Personne n'a remporté ce geocoin"}</div>
               </div>
-            </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
               <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, color: '#a8a29e' }}>{t('glory_section_title') || 'Pour la gloire'}</span>
               <GloryInfoButton size={13} />

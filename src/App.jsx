@@ -2000,8 +2000,15 @@ export default function App() {
                         <div key={i} title={h.card?.name} onClick={() => {
                           if (!h.card) return;
                           if (beginnerActive) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: h.winners || [] }); return; }
-                          if (multiWinners) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: multiWinners, gloryCount: 0 }); return; }
-                          if (hasGlory) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: allWinners, gloryCount: h.glory_winners.length }); return; }
+                          // Round multi-prix et/ou gloire : liste unifiée [gloire…, gagnants réels…].
+                          // gloryCount = nb de « pour la gloire » → la modale sépare les deux sections
+                          // (sinon, en multi-prix AVEC gloire, les joueurs-gloire n'apparaissaient pas).
+                          if (multiWinners || hasGlory) {
+                            const gloryArr = hasGlory ? h.glory_winners : [];
+                            const realArr = multiWinners ? multiWinners : (h.winner ? [h.winner] : []);
+                            setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: [...gloryArr, ...realArr], gloryCount: gloryArr.length });
+                            return;
+                          }
                           setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); setSelectedCardFromHistory(true);
                         }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, minWidth: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
