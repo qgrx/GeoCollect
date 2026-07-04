@@ -269,7 +269,11 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
       if (data.gold_earned) earnGoldWithFx(data.gold_earned)
       if (data.streak != null) cbRef.current.onStreakUpdate?.(data.streak)
-      setHistory(h => [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false }, ...h].slice(0, 10))
+      // Inclure d'emblée les joueurs « pour la gloire » (renvoyés par /answer) : sinon
+      // l'entrée n'aurait que la coche ✓ et le compteur « (N🏆) » n'apparaîtrait qu'après un
+      // rechargement (le patch via quiz:solved peut manquer l'entrée pas encore créée).
+      const meGloryWinners = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
+      setHistory(h => [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false, glory_winners: meGloryWinners }, ...h].slice(0, 10))
 
       // Déterminer l'issue pour piloter le visuel de résultat de la modale
       let outcome = 'card'
