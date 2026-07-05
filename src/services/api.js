@@ -187,6 +187,7 @@ export const apiBuyHoldSlot  = ()                       => apiFetch('/api/hold/s
 export const apiRentHoldSlot = ()                       => apiFetch('/api/hold/slots/rent', { method: 'POST' })
 export const apiTakeForgeInsteadOfHold = ()             => apiFetch('/api/hold/forge-point', { method: 'POST' })
 export const apiAdminGetStats         = () => apiFetch('/api/admin/stats')
+export const apiAdminGetOnlineHistory = (hours = 24) => apiFetch(`/api/admin/online-history?hours=${hours}`)
 export const apiAdminGetBots          = () => apiFetch('/api/admin/bots')
 export const apiAdminCreateBot        = (body) => apiFetch('/api/admin/bots', { method: 'POST', body })
 export const apiAdminUpdateBot        = (id, body) => apiFetch(`/api/admin/bots/${id}`, { method: 'PATCH', body })

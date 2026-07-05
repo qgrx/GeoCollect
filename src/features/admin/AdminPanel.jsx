@@ -6,7 +6,7 @@ import { RC, cardCC, RARITY_CONFIG, ACHIEVEMENT_DEF } from '../../data/cards.js'
 import { MeltAllPreview } from '../forge/ForgeModal.jsx';
 import { PAGE_SIZE } from '../../data/constants.js';
 import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTriggerShinyQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache, apiAdminRecalculateScores, apiAdminResetOnboarding,
-  apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminReactivate,
+  apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminGetOnlineHistory, apiAdminReactivate,
   apiAdminGetBots, apiAdminCreateBot, apiAdminUpdateBot, apiAdminDeleteBot,
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
   apiAdminSaveTranslations,
@@ -462,6 +462,44 @@ function QuestionsManager({mode,setMsg,t}){
   );
 }
 
+// ─── Graphe SVG « joueurs en ligne » (léger, sans lib) ───────────────────────
+// Trace la courbe échantillonnée toutes les 30 s + une ligne au seuil multi-prix,
+// et pointe chaque round multi-prix au comptage réel utilisé (online_at_launch).
+function OnlineHistoryChart({ history = [], multi = [], hours = 24, threshold = 10 }) {
+  const W = 900, H = 220, padL = 26, padR = 12, padT = 12, padB = 20;
+  if (!history.length) return <div style={{ color:'#8daacc', padding:'22px 0', textAlign:'center', fontSize:12 }}>Aucune donnée pour l'instant — l'historique se remplit toutes les 30 s.</div>;
+  const times = history.map(p => new Date(p.at).getTime());
+  const t0 = times[0], t1 = times[times.length - 1] || (t0 + 1);
+  const maxCount = Math.max(threshold, 2, ...history.map(p => p.count));
+  const x = t => padL + ((t - t0) / ((t1 - t0) || 1)) * (W - padL - padR);
+  const y = c => padT + (1 - c / maxCount) * (H - padT - padB);
+  const poly = history.map(p => `${x(new Date(p.at).getTime()).toFixed(1)},${y(p.count).toFixed(1)}`).join(' ');
+  const yTicks = [...new Set([0, threshold, maxCount])].sort((a, b) => a - b);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', height:'auto', background:'#0e1b2a', borderRadius:12, border:'1px solid #ffffff10' }}>
+      {yTicks.map(v => (
+        <g key={v}>
+          <line x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} stroke={v === threshold ? '#e74c3c66' : '#ffffff12'} strokeWidth={1} strokeDasharray={v === threshold ? '5 3' : ''} />
+          <text x={2} y={y(v) + 3} fill={v === threshold ? '#e74c3c' : '#8daacc'} fontSize={9}>{v}</text>
+        </g>
+      ))}
+      <polyline points={poly} fill="none" stroke="#3fb950" strokeWidth={1.6} strokeLinejoin="round" />
+      {multi.map(m => {
+        const mx = x(new Date(m.at).getTime());
+        if (mx < padL - 1 || mx > W - padR + 1) return null;
+        const my = y(m.online_at_launch != null ? m.online_at_launch : threshold);
+        return (
+          <circle key={m.id} cx={mx} cy={my} r={3.6} fill={m.is_shiny ? '#f9ca24' : '#a29bfe'} stroke="#0e1b2a" strokeWidth={1}>
+            <title>{`#${m.id} ${m.card || ''} — ${m.prizes_total} prix — ${m.online_at_launch != null ? m.online_at_launch + ' en ligne au lancement' : 'comptage non enregistré'}${m.is_shiny ? ' ✨' : ''}`}</title>
+          </circle>
+        );
+      })}
+      <text x={padL} y={H - 5} fill="#8daacc" fontSize={9}>−{hours}h</text>
+      <text x={W - padR - 46} y={H - 5} fill="#8daacc" fontSize={9}>maintenant</text>
+    </svg>
+  );
+}
+
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
 export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onReleaseHiddenQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool,onTestAchievement,onShopPacksSaved,onShopTestModeChange}){
   const {t}=useT();
@@ -521,6 +559,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [mktHistType,setMktHistType]=useState('');
   const [mktHistQ,setMktHistQ]=useState('');
   const [gameStats,setGameStats]=useState(null);
+  const [onlineHist,setOnlineHist]=useState(null);
+  const [onlineHrs,setOnlineHrs]=useState(24);
   const [versionInfo,setVersionInfo]=useState(null);
   const [bots,setBots]=useState([]);
   const [botForm,setBotForm]=useState(newBotForm());
@@ -568,6 +608,12 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
     if(tab!=='stats') return;
     apiAdminGetStats().then(({data})=>{ if(data) setGameStats(data); });
   },[tab]);
+
+  useEffect(()=>{
+    if(tab!=='stats') return;
+    setOnlineHist(null);
+    apiAdminGetOnlineHistory(onlineHrs).then(({data})=>{ if(data) setOnlineHist(data); });
+  },[tab,onlineHrs]);
 
   useEffect(()=>{
     if(tab!=='version') return;
@@ -2153,6 +2199,49 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               ))}
             </div>
           )}
+
+          {/* ── Joueurs en ligne (courbe échantillonnée toutes les 30 s) ── */}
+          <div style={{marginTop:24}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
+              <div style={{fontWeight:900,color:"#e74c3c",fontSize:14}}>📈 Joueurs en ligne dans le temps</div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                {[{h:6,l:'6h'},{h:24,l:'24h'},{h:72,l:'3j'},{h:168,l:'7j'}].map(({h,l})=>(
+                  <button key={h} onClick={()=>setOnlineHrs(h)}
+                    style={{background:onlineHrs===h?"#e74c3c":"#ffffff18",border:"none",color:"#fff",padding:"5px 12px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{l}</button>
+                ))}
+                <button onClick={()=>{setOnlineHist(null);apiAdminGetOnlineHistory(onlineHrs).then(({data})=>{if(data)setOnlineHist(data);});}}
+                  style={{...BTN("#ffffff18"),padding:"5px 11px",borderRadius:9,fontSize:11}}>↻</button>
+              </div>
+            </div>
+            {!onlineHist?(
+              <div style={{textAlign:"center",color:"#8daacc",padding:"20px 0",fontSize:12}}>Chargement…</div>
+            ):(<>
+              <OnlineHistoryChart history={onlineHist.history} multi={onlineHist.multi} hours={onlineHist.hours||onlineHrs} threshold={10} />
+              <div style={{display:"flex",gap:14,flexWrap:"wrap",marginTop:8,fontSize:10.5,color:"#8daacc"}}>
+                <span><span style={{color:"#3fb950"}}>━</span> joueurs en ligne</span>
+                <span><span style={{color:"#e74c3c"}}>┈</span> seuil multi-prix (10)</span>
+                <span><span style={{color:"#a29bfe"}}>●</span> round multi-prix</span>
+                <span><span style={{color:"#f9ca24"}}>●</span> round multi-prix (shiny)</span>
+              </div>
+              {(onlineHist.multi||[]).length>0&&(
+                <div style={{marginTop:12,background:"#ffffff06",border:"1px solid #ffffff10",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontSize:11,fontWeight:800,color:"#cbd5e1",marginBottom:6}}>Rounds multi-prix sur la période ({onlineHist.multi.length}) — comptage exact au lancement :</div>
+                  <div style={{maxHeight:160,overflowY:"auto",display:"flex",flexDirection:"column",gap:3}}>
+                    {onlineHist.multi.map(m=>(
+                      <div key={m.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:11,color:"#a9b7c9"}}>
+                        <span style={{color:(m.online_at_launch!=null&&m.online_at_launch<10)?"#e74c3c":"#8daacc",fontWeight:800,minWidth:64}}>{m.online_at_launch!=null?`${m.online_at_launch} en ligne`:'n/c'}</span>
+                        <span style={{color:"#6c7c93"}}>→</span>
+                        <span style={{fontWeight:700}}>{m.prizes_total} prix</span>
+                        <span style={{color:"#6c7c93"}}>·</span>
+                        <span>{m.card||'?'}{m.is_shiny?' ✨':''}</span>
+                        <span style={{color:"#6c7c93",marginLeft:"auto"}}>{new Date(m.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>)}
+          </div>
         </div>}
 
         {/* ── HISTORIQUE MARCHÉ (7 jours) ── */}
