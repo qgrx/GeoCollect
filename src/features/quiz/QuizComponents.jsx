@@ -713,7 +713,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
 }
 
 // ── HoldModal — choix après quiz hors-limite : Dépôt OU 1 Point de Forge ──────
-export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive = false, rentPrice = 80, gold = 0, onStored, onTakeForgePoint, onClose, forgeCapped = false, owned = false }) {
+export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive = false, rentPrice = 80, gold = 0, onStored, onStoreError, onTakeForgePoint, onClose, forgeCapped = false, owned = false }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [loading, setLoading] = useState(false)
@@ -734,10 +734,14 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
   const doStore = useCallback(async (rent = false, replaceId = null) => {
     if (!holdCard || loading) return
     setLoading(true)
-    const { data } = await apiStoreHold(holdCard.id, holdCard.is_shiny || false, rent, replaceId)
+    const { data, error } = await apiStoreHold(holdCard.id, holdCard.is_shiny || false, rent, replaceId)
     setLoading(false)
+    // Le serveur refuse tout stockage qui détruirait un geocoin sans choix explicite
+    // (dépôt plein). On ne prétend pas avoir stocké : on remonte l'erreur pour que
+    // l'appelant rafraîchisse l'état et ré-affiche les bons choix (dont « Louer »).
+    if (error) { onStoreError?.(error); return }
     onStored(holdCard, data || {})
-  }, [holdCard, loading, onStored])
+  }, [holdCard, loading, onStored, onStoreError])
 
   // Clic sur "Remplacer un geocoin" : passer en sélection du geocoin à remplacer.
   const handleStoreClick = useCallback(() => {

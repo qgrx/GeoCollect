@@ -2390,6 +2390,12 @@ export default function App() {
           owned={holdOffer.is_shiny ? (gs.shinyCollection?.[holdOffer.id] || 0) > 0 : (gs.collection?.[holdOffer.id] || 0) > 0}
           forgeCapped={computeCardLimitStatus(auth.profile, gs.limits).forgeCapped}
           onClose={() => setHoldOffer(null)}
+          onStoreError={(err) => {
+            // Le serveur a refusé (dépôt plein / or insuffisant) : rien n'a été détruit.
+            // On resynchronise l'état du dépôt pour ré-afficher les bons choix.
+            refreshHold()
+            showToast(err || t('demo_error'), 'error')
+          }}
           onStored={(card, data = {}) => {
             const forgePoints = data.forge_points_earned || 0
             setHoldOffer(null)
