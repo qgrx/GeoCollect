@@ -6,7 +6,7 @@ import Card from '../../components/Card.jsx'
 import { TxHistoryModal } from '../achievements/NotifComponents.jsx'
 import { ThumbImage } from '../quiz/QuizComponents.jsx'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
-import { apiGetPriceCaps } from '../../services/api.js'
+import { apiGetPriceCaps, apiGetOffseasonMarket } from '../../services/api.js'
 
 // Coins par rareté : chaque rareté a son « coin » (bannière + devise) qui porte
 // l'info de rareté, plutôt qu'un badge sur chaque carte. Ordre = RC[rarity].order.
@@ -56,6 +56,8 @@ export default function MarketModal({
   inline = false,
   listingFee = 4,
   saleTax = 0.12,
+  forgePoints = 0,
+  onBuyOffseason = null,
 }) {
   const { t } = useT()
   const { theme } = useTheme()
@@ -86,6 +88,21 @@ export default function MarketModal({
   const flipPrev     = useRef(null) // rects capturés avant un changement à animer (FLIP)
   const [sellSearch, setSellSearch]       = useState('')
   const [sellSort, setSellSort]           = useState('rarity')
+  // Marché « Hors saison » : geocoins de saisons terminées, vendus par le jeu.
+  const [offItems, setOffItems]           = useState(null)  // null = pas encore chargé
+  const [offOpen, setOffOpen]             = useState(true)
+  const [offBuyingId, setOffBuyingId]     = useState(null)
+
+  const loadOffseason = useCallback(() => {
+    return apiGetOffseasonMarket().then(({ data }) => {
+      setOffItems(data?.items || [])
+      setOffOpen(data?.feature_open !== false)
+    }).catch(() => { setOffItems([]) })
+  }, [])
+
+  useEffect(() => {
+    if (tab === 'horssaison' && offItems === null) loadOffseason()
+  }, [tab, offItems, loadOffseason])
 
   const myCards = Object.entries(myCollection)
     .filter(([, v]) => v > 1)
@@ -141,6 +158,7 @@ export default function MarketModal({
   const tabs = [
     { id: 'acheter',    label: t('market_buy') },
     { id: 'vendre',     label: t('market_sell') },
+    { id: 'horssaison', label: t('market_offseason') },
     { id: 'historique', label: t('market_history'), badge: unreadSales },
   ]
 
@@ -592,6 +610,96 @@ export default function MarketModal({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── HORS SAISON — geocoins de saisons terminées, vendus par le jeu ── */}
+        {tab === 'horssaison' && (
+          <div>
+            <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 12, padding: '8px 11px', background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 8, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 15, flexShrink: 0 }}>🗓️</span>
+              <span>{t('market_offseason_hint')}</span>
+            </div>
+            {!offOpen ? (
+              <div style={{ textAlign: 'center', color: '#888', padding: '30px 0' }}>
+                <div style={{ fontSize: 36 }}>🔒</div>
+                <div style={{ marginTop: 8 }}>{t('market_offseason_closed')}</div>
+              </div>
+            ) : offItems === null ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 0', gap: 10 }}>
+                <style>{`@keyframes dotBounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-8px);opacity:1}}`}</style>
+                {[0, 0.18, 0.36].map(d => <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />)}
+              </div>
+            ) : offItems.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#888', padding: '30px 0' }}>
+                <div style={{ fontSize: 36 }}>🏜️</div>
+                <div style={{ marginTop: 8 }}>{t('market_offseason_empty')}</div>
+              </div>
+            ) : (() => {
+              // Regroupement par marchand = rareté (commun → légendaire).
+              const groups = {}
+              offItems.forEach(it => { (groups[it.card.rarity] ||= []).push(it) })
+              const order = Object.keys(groups).sort((a, b) => RC[a].order - RC[b].order)
+              const doBuy = async (it) => {
+                if (!onBuyOffseason || offBuyingId) return
+                if (it.owned && !window.confirm(t('market_duplicate_confirm').replace('{card}', it.card.name))) return
+                setOffBuyingId(it.card.id)
+                const error = await onBuyOffseason(it)
+                setOffBuyingId(null)
+                if (!error) loadOffseason()
+              }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 4 }}>
+                  {order.map(rarity => {
+                    const m  = MERCHANTS[rarity]
+                    const mc = cardCC(rarity)
+                    return (
+                      <div key={rarity}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, marginBottom: 11, background: `linear-gradient(135deg,${mc.c1},${mc.c2})`, boxShadow: `0 4px 16px ${mc.c1}44` }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', textShadow: '0 1px 3px #0006' }}>{t(m.nameKey)}</div>
+                            <div style={{ fontSize: 10.5, color: '#ffffffd0', fontStyle: 'italic', textShadow: '0 1px 2px #0005', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>« {t(m.taglineKey)} »</div>
+                          </div>
+                          <span style={{ background: '#00000038', color: '#fff', fontWeight: 800, fontSize: 11, padding: '3px 10px', borderRadius: 50, border: '1px solid #ffffff33', flexShrink: 0 }}>{groups[rarity].length}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                          {groups[rarity].map(it => {
+                            const { c1, c2 } = cardCC(it.card.rarity)
+                            const canGold = gold >= it.gold_cost
+                            const canPf   = forgePoints >= it.pf_cost
+                            const canBuy  = canGold && canPf && !offBuyingId
+                            return (
+                              <div key={it.card.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 13px', background: theme.overlay, border: `1.5px solid ${theme.border}`, borderRadius: 13 }}>
+                                <div style={{ position: 'relative', flexShrink: 0 }}>
+                                  <div style={{ width: 38, height: 38, borderRadius: 9, overflow: 'hidden', background: `linear-gradient(135deg,${c1},${c2})`, border: `1.5px solid ${c1}66` }}>
+                                    {(it.card.image_url_thumb || it.card.image_url)
+                                      ? <ThumbImage src={it.card.image_url_thumb || it.card.image_url} alt={it.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff' }}>{it.card.name[0]}</div>}
+                                  </div>
+                                  {it.owned && <div title={t('market_already_owned')} style={{ position: 'absolute', bottom: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#00b894', border: `2px solid ${theme.bgSurface}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 900, lineHeight: 1, boxShadow: '0 1px 3px #0006' }}>✓</div>}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontWeight: 900, fontSize: 14, color: theme.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.card.name}</div>
+                                  <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                                    {it.season_name && <span style={{ fontStyle: 'italic' }}>{it.season_name}</span>}
+                                    <span style={{ color: canGold ? theme.gold : '#e74c3c', fontWeight: 800 }}>{it.gold_cost.toLocaleString()}G</span>
+                                    <span style={{ color: canPf ? '#a29bfe' : '#e74c3c', fontWeight: 800 }}>{it.pf_cost} PF</span>
+                                  </div>
+                                </div>
+                                <button onClick={() => doBuy(it)} disabled={!canBuy}
+                                  style={{ background: canBuy ? 'linear-gradient(135deg,#00b894,#00cec9)' : theme.bgElevated, border: `1px solid ${canBuy ? 'transparent' : theme.border}`, color: canBuy ? '#fff' : theme.textMuted, padding: '6px 12px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: canBuy ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                  {offBuyingId === it.card.id ? '…' : (canGold && canPf) ? t('market_buy_btn') : t('market_insufficient')}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         )}
 

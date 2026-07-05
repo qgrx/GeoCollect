@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { INP, BTN } from '../../utils/styles.js';
-import { apiGetAdminSeasons, apiCreateAdminSeason, apiUpdateAdminSeason, apiDeleteAdminSeason, apiAdminGetCards } from '../../services/api.js';
+import { apiGetAdminSeasons, apiCreateAdminSeason, apiUpdateAdminSeason, apiDeleteAdminSeason, apiAdminGetCards, apiGetAdminConfig, apiSetConfig } from '../../services/api.js';
 import SeasonPopup from '../../components/SeasonPopup.jsx';
 
 function Fld({ lbl, children }) {
@@ -20,6 +20,10 @@ function formatDate(iso) {
 
 const EMPTY_FORM = { name: '', start_date: '', end_date: '' };
 
+// Marché « Hors saison » : raretés + coûts par défaut {gold, pf}.
+const OFF_RARITIES = ['commun', 'rare', 'épique', 'légendaire'];
+const EMPTY_OFF_COST = { commun: { gold: '', pf: '' }, rare: { gold: '', pf: '' }, 'épique': { gold: '', pf: '' }, 'légendaire': { gold: '', pf: '' } };
+
 export default function AdminSeasons({ setMsg }) {
   const [seasons, setSeasons] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -27,6 +31,8 @@ export default function AdminSeasons({ setMsg }) {
   const [loading, setLoading] = useState(true);
   const [allCards, setAllCards] = useState(null);   // cache du pool admin (cartes), chargé à la 1re prévisualisation
   const [preview, setPreview] = useState(null);     // { season, cards } — popup d'aperçu admin
+  const [offEnabled, setOffEnabled] = useState(true);       // feature_offseason_market
+  const [offCost, setOffCost] = useState(EMPTY_OFF_COST);   // offseason_cost_by_rarity
 
   useEffect(() => {
     apiGetAdminSeasons().then(({ data, error }) => {
@@ -34,7 +40,34 @@ export default function AdminSeasons({ setMsg }) {
       if (error) { setMsg('❌ ' + error); return; }
       setSeasons(data?.seasons || []);
     });
+    apiGetAdminConfig().then(({ data }) => {
+      const cfg = data?.config || {};
+      if (cfg.feature_offseason_market !== undefined) setOffEnabled(cfg.feature_offseason_market !== false);
+      const rates = cfg.offseason_cost_by_rarity || {};
+      setOffCost(OFF_RARITIES.reduce((acc, r) => {
+        acc[r] = { gold: rates[r]?.gold ?? '', pf: rates[r]?.pf ?? '' };
+        return acc;
+      }, {}));
+    });
   }, []);
+
+  // Sauvegarde des réglages « hors saison » : coûts par défaut + interrupteur.
+  async function saveOffseasonSettings() {
+    const rates = OFF_RARITIES.reduce((acc, r) => {
+      const gold = offCost[r]?.gold === '' ? null : Number(offCost[r].gold);
+      const pf   = offCost[r]?.pf   === '' ? null : Number(offCost[r].pf);
+      if (gold != null && pf != null) acc[r] = { gold, pf };
+      return acc;
+    }, {});
+    const [r1, r2] = await Promise.all([
+      apiSetConfig('offseason_cost_by_rarity', rates),
+      apiSetConfig('feature_offseason_market', offEnabled),
+    ]);
+    if (r1.error || r2.error) { setMsg('❌ ' + (r1.error || r2.error)); return; }
+    setMsg('✅ Réglages du marché hors saison enregistrés.');
+  }
+  const setOffField = (rarity, key, value) =>
+    setOffCost(prev => ({ ...prev, [rarity]: { ...prev[rarity], [key]: value.replace(/[^0-9]/g, '') } }));
 
   // Prévisualiser la popup de saison telle qu'elle s'affiche aux utilisateurs.
   async function handlePreview(s) {
@@ -96,6 +129,36 @@ export default function AdminSeasons({ setMsg }) {
   return (
     <div>
       <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', marginBottom: 16 }}>🌸 Saisons</div>
+
+      {/* Réglages du marché « Hors saison » */}
+      <div style={{ background: '#12203a', border: '1px solid #6c5ce744', borderRadius: 10, padding: 14, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <div style={{ flex: 1, fontWeight: 800, color: '#a29bfe', fontSize: 12 }}>🗓️ Marché « Hors saison »</div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input type="checkbox" checked={offEnabled} onChange={e => setOffEnabled(e.target.checked)} style={{ width: 15, height: 15 }} />
+            <span style={{ color: offEnabled ? '#2ecc71' : '#888', fontSize: 11, fontWeight: 800 }}>{offEnabled ? 'Activé' : 'Désactivé'}</span>
+          </label>
+        </div>
+        <div style={{ color: '#8daacc', fontSize: 11, marginBottom: 10 }}>
+          Coûts par défaut (Or + PF) par rareté pour les geocoins de saisons terminées. Surchargeable carte par carte dans l'onglet Geocoins. Une carte n'est proposée que si Or ET PF sont définis.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {OFF_RARITIES.map(r => (
+            <div key={r} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ minWidth: 90, fontSize: 12, fontWeight: 700, color: '#fff' }}>{r}</span>
+              <input type="text" inputMode="numeric" placeholder="Or" value={offCost[r]?.gold ?? ''}
+                onChange={e => setOffField(r, 'gold', e.target.value)} style={{ ...INP, width: 80 }} />
+              <span style={{ color: '#aaa', fontSize: 12 }}>G</span>
+              <input type="text" inputMode="numeric" placeholder="PF" value={offCost[r]?.pf ?? ''}
+                onChange={e => setOffField(r, 'pf', e.target.value)} style={{ ...INP, width: 80 }} />
+              <span style={{ color: '#aaa', fontSize: 12 }}>pts</span>
+            </div>
+          ))}
+        </div>
+        <button onClick={saveOffseasonSettings} style={{ ...BTN('linear-gradient(135deg,#6c5ce7,#a29bfe)'), padding: '8px 16px', borderRadius: 8, fontSize: 12, marginTop: 10 }}>
+          💾 Enregistrer les réglages hors saison
+        </button>
+      </div>
 
       {/* Formulaire création / édition */}
       <div style={{ background: '#1a2744', border: '1px solid #ffffff22', borderRadius: 10, padding: 14, marginBottom: 20 }}>

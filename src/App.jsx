@@ -17,7 +17,7 @@ import { isCorrectAnswer } from './utils/answer.js';
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
 import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiPingProfile, apiGetDemo, apiDemoClaim } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -1141,6 +1141,19 @@ export default function App() {
     showToast(t('toast_listed').replace('{card}', card.name).replace('{price}', price));
     return null;
   }
+  // Achat au marché « Hors saison » : débit Gold + PF, ajout collection, popups achievements.
+  async function handleBuyOffseason(item) {
+    const { data, error } = await apiBuyOffseasonCard(item.card.id)
+    if (error) { showToast('❌ ' + error, 'error'); return error }
+    gs.earnCard(item.card, false)
+    if (typeof data.gold_remaining === 'number') gs.setGold(data.gold_remaining)
+    if (typeof data.forge_points_remaining === 'number') gs.addForgePoints(data.forge_points_remaining - gs.forgePoints)
+    gs.checkAchievements(data.achievements || [])
+    gs.checkAchievementUpgrades(data.achievement_upgrades || [])
+    gs.triggerQuestRefresh()
+    showToast(t('toast_offseason_bought').replace('{card}', item.card.name))
+    return null
+  }
   async function handleCancelListing(index) {
     const error = await gs.handleCancelListing(index, auth.profile?.pseudo || 'Moi');
     if (error) { showToast('❌ ' + error, 'error'); return; }
@@ -2192,6 +2205,7 @@ export default function App() {
                   myListings={gs.myListings} transactions={gs.transactions}
                   onClose={() => setActiveTab('collection')}
                   onBuy={handleBuy} onListCard={handleListCard} onCancelListing={handleCancelListing} onCancelAllListings={handleCancelAllListings}
+                  onBuyOffseason={handleBuyOffseason} forgePoints={gs.forgePoints}
                   initialTab={marketTab} initialSellCard={marketTab === 'vendre' ? marketSellCard : null}
                   ranks={gs.limits.playerRanks}
                   marketSalesOpen={gs.limits.marketSalesOpen !== false}

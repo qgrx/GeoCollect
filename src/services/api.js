@@ -92,6 +92,12 @@ export const apiListCard = (cardId, price) =>
 export const apiCancelListing = (id) =>
   apiFetch(`/api/market/${id}`, { method: 'DELETE' })
 
+// ─── Marché « Hors saison » (geocoins de saisons terminées, vendus par le jeu) ─
+export const apiGetOffseasonMarket = () => apiFetch('/api/market/offseason')
+
+export const apiBuyOffseasonCard = (card_id) =>
+  apiFetch('/api/market/offseason/buy', { method: 'POST', body: { card_id } })
+
 // ─── Quiz ─────────────────────────────────────────────────────────────────────
 export const apiGetCurrentQuiz  = () => apiFetch('/api/quiz/current')
 export const apiGetQuizHistory  = (limit = 10) => apiFetch(`/api/quiz/history?limit=${limit}`)
