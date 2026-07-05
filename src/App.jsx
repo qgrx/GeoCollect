@@ -2402,6 +2402,12 @@ export default function App() {
             if (typeof data.gold === 'number') gs.setGold(data.gold)
             if (forgePoints > 0) gs.addForgePoints(forgePoints)
             refreshHold()
+            if (data.hold_full) {
+              // Dépôt plein sans choix : le geocoin n'a PAS été stocké, on reçoit 1 PF.
+              showToast(forgePoints > 0 ? t('toast_quiz_forge_taken').replace('{n}', forgePoints) : t('toast_forge_limit'),
+                forgePoints > 0 ? 'success' : 'error')
+              return
+            }
             showToast(forgePoints > 0
               ? `${t('toast_hold_stored').replace('{card}', card.name)} ${t('toast_hold_replaced_forge').replace('{n}', forgePoints)}`
               : t('toast_hold_stored').replace('{card}', card.name))
