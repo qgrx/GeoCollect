@@ -8,6 +8,7 @@ import { PAGE_SIZE } from '../../data/constants.js';
 import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTriggerShinyQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache, apiAdminRecalculateScores, apiAdminResetOnboarding,
   apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminGetOnlineHistory, apiAdminReactivate,
   apiAdminGetBots, apiAdminCreateBot, apiAdminUpdateBot, apiAdminDeleteBot,
+  apiAdminGetMarketVolume,
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
   apiAdminSaveTranslations,
   apiAdminEditFullQuestion, apiAdminAddQuestion, apiAdminBatchAddQuestions,
@@ -22,6 +23,66 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiAdminGetVersion,
   apiAdminSeedJeu,
 } from '../../services/api.js';
+
+function BarChart({ buckets, mode, period }) {
+  const [hov, setHov] = useState(null);
+  if (!buckets.length) return (
+    <div style={{textAlign:'center',color:'#8daacc',padding:'40px 0',fontSize:12}}>Aucune donnée sur la période</div>
+  );
+  const W=580, H=200, PL=54, PR=10, PT=18, PB=52;
+  const cW=W-PL-PR, cH=H-PT-PB;
+  const vals = buckets.map(b => mode==='volume' ? b.volume : b.count);
+  const maxV = Math.max(...vals, 1);
+  const ticks = [0,0.25,0.5,0.75,1];
+  const slot = cW / buckets.length;
+  const barW = Math.max(3, slot * 0.65);
+  const fmtY = v => mode==='volume'
+    ? (v>=1000 ? `${(v/1000).toFixed(1)}k` : `${v}`) + 'G'
+    : `${v}`;
+  const fmtX = lbl => {
+    if (period==='hour') return lbl.slice(11,16);
+    const [,m,d] = lbl.split('-');
+    return `${+d}/${+m}`;
+  };
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{display:'block',overflow:'visible'}}>
+      {ticks.map((t,i)=>{
+        const y = PT + cH*(1-t);
+        return <g key={i}>
+          <line x1={PL} y1={y} x2={PL+cW} y2={y} stroke="#ffffff10" strokeWidth={1}/>
+          <text x={PL-6} y={y+3} textAnchor="end" fontSize={9} fill="#8daacc">{fmtY(Math.round(maxV*t))}</text>
+        </g>;
+      })}
+      {buckets.map((b,i)=>{
+        const val = mode==='volume' ? b.volume : b.count;
+        const bH = Math.max(1, val/maxV*cH);
+        const x = PL + i*slot + (slot-barW)/2;
+        const y = PT + cH - bH;
+        const isHov = hov===i;
+        const ttX = Math.min(Math.max(x+barW/2, PL+38), PL+cW-38);
+        const ttY = Math.max(y-36, 2);
+        return <g key={i} onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)} style={{cursor:'default'}}>
+          <rect x={x} y={y} width={barW} height={bH} rx={2} fill={isHov?'#e74c3c':'#e74c3c88'}/>
+          <text x={x+barW/2} y={H-PB+14}
+            textAnchor={buckets.length>14?'end':'middle'}
+            fontSize={8} fill={isHov?'#fff':'#8daacc'}
+            transform={buckets.length>14?`rotate(-40,${x+barW/2},${H-PB+14})`:''}>{fmtX(b.label)}</text>
+          {isHov&&<>
+            <rect x={ttX-38} y={ttY} width={76} height={28} rx={4} fill="#0c1620" stroke="#e74c3c55" strokeWidth={1}/>
+            <text x={ttX} y={ttY+12} textAnchor="middle" fontSize={9} fill="#fff" fontWeight="bold">
+              {mode==='volume'?`${b.volume.toLocaleString('fr-FR')}G`:`${b.count} tx`}
+            </text>
+            <text x={ttX} y={ttY+23} textAnchor="middle" fontSize={8} fill="#8daacc">
+              {mode==='volume'?`${b.count} ventes`:b.label.length>10?b.label.slice(0,10):b.label}
+            </text>
+          </>}
+        </g>;
+      })}
+      <line x1={PL} y1={PT} x2={PL} y2={PT+cH} stroke="#ffffff30" strokeWidth={1}/>
+      <line x1={PL} y1={PT+cH} x2={PL+cW} y2={PT+cH} stroke="#ffffff30" strokeWidth={1}/>
+    </svg>
+  );
+}
 
 const DEFAULT_TYPE = 'Normal';
 
@@ -558,6 +619,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [mktHistPage,setMktHistPage]=useState(0);
   const [mktHistType,setMktHistType]=useState('');
   const [mktHistQ,setMktHistQ]=useState('');
+  const [mktVol,setMktVol]=useState({buckets:[],total:0,loading:false});
+  const [mktVolPeriod,setMktVolPeriod]=useState('day');
+  const [mktVolRarity,setMktVolRarity]=useState('');
+  const [mktVolQ,setMktVolQ]=useState('');
+  const [mktVolMode,setMktVolMode]=useState('volume');
   const [gameStats,setGameStats]=useState(null);
   const [onlineHist,setOnlineHist]=useState(null);
   const [onlineHrs,setOnlineHrs]=useState(24);
@@ -592,7 +658,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
       .catch(err => { setMsg('❌ Erreur traitement image: ' + err.message); });
   }
 
-  useEffect(()=>{setEditAch(null);setListingsPage(0);setListingsQ('');setMktHistPage(0);setMktHistType('');setMktHistQ('');setDomainInput('');setDomainSearch('');},[tab]);
+  useEffect(()=>{setEditAch(null);setListingsPage(0);setListingsQ('');setMktHistPage(0);setMktHistType('');setMktHistQ('');setMktVolQ('');setDomainInput('');setDomainSearch('');},[tab]);
 
   useEffect(()=>{
     if(tab!=='achievements') return;
@@ -638,6 +704,16 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   },[tab]);
 
   useEffect(()=>{
+    if(tab!=='market_chart') return;
+    setMktVol(d=>({...d,loading:true}));
+    apiAdminGetMarketVolume({period:mktVolPeriod,...(mktVolRarity&&{rarity:mktVolRarity}),...(mktVolQ&&{q:mktVolQ})})
+      .then(({data})=>{
+        if(data) setMktVol({buckets:data.buckets||[],total:data.total||0,loading:false});
+        else setMktVol(d=>({...d,loading:false}));
+      });
+  },[tab,mktVolPeriod,mktVolRarity,mktVolQ]);
+
+  useEffect(()=>{
     if(tab!=='market_history') return;
     setMktHist(d=>({...d,loading:true}));
     apiAdminGetMarketHistory({page:mktHistPage,...(mktHistType&&{type:mktHistType}),...(mktHistQ&&{q:mktHistQ})})
@@ -663,7 +739,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
     {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'drafts',icon:'📝',label:'Brouillons'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'},{id:'demo',icon:'🎮',label:'Démo'}]},
     {label:'Économie',items:[{id:'limits',icon:'💰',label:'Limites & Prix'},{id:'shop',icon:'🛍️',label:'Boutique'},{id:'ranks',icon:'🎖️',label:'Rangs'}]},
     {label:'Récompenses',items:[{id:'quests',icon:'🔨',label:'Quêtes'},{id:'achievements',icon:'🏆',label:'Achievements'}]},
-    {label:'Communauté',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'referrals',icon:'🤝',label:'Parrainage'},{id:'bots',icon:'🤖',label:'Bots'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_history',icon:'💸',label:'Historique'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
+    {label:'Communauté',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'referrals',icon:'🤝',label:'Parrainage'},{id:'bots',icon:'🤖',label:'Bots'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_history',icon:'💸',label:'Historique'},{id:'market_chart',icon:'📊',label:'Graphique'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
     {label:'Système',items:[{id:'maintenance',icon:'🛠️',label:'Maintenance'},{id:'interface',icon:'📱',label:'Interface'},{id:'cache',icon:'⚡',label:'Cache'},{id:'stats',icon:'📈',label:'Stats'},{id:'domains',icon:'🔒',label:'Domaines'},{id:'version',icon:'🔖',label:'Version'}]},
   ]
 
@@ -2289,6 +2365,50 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               )}
             </>
           )}
+        </div>}
+
+        {/* ── GRAPHIQUE VOLUME ── */}
+        {tab==="market_chart"&&<div>
+          {/* Titre + totaux */}
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+            <div style={{fontWeight:900,color:"#e74c3c",fontSize:14,flex:1}}>📊 Volume marché</div>
+            {mktVol.total>0&&<span style={{fontSize:11,color:"#8daacc",fontWeight:700}}>{mktVol.total.toLocaleString('fr-FR')} transaction{mktVol.total>1?'s':''} · {mktVol.buckets.reduce((s,b)=>s+b.volume,0).toLocaleString('fr-FR')}G</span>}
+          </div>
+
+          {/* Contrôles */}
+          <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
+            {/* Période */}
+            {[['hour','24h'],['day','30j'],['week','12 sem']].map(([v,l])=>(
+              <button key={v} onClick={()=>setMktVolPeriod(v)}
+                style={{background:mktVolPeriod===v?"#e74c3c":"#ffffff18",border:"none",color:"#fff",padding:"5px 12px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{l}</button>
+            ))}
+            <div style={{width:1,height:20,background:"#ffffff20",margin:"0 2px"}}/>
+            {/* Mode */}
+            {[['volume','Volume (G)'],['count','Nb tx']].map(([v,l])=>(
+              <button key={v} onClick={()=>setMktVolMode(v)}
+                style={{background:mktVolMode===v?"#f9ca24":"#ffffff18",border:"none",color:mktVolMode===v?"#1a1a2e":"#fff",padding:"5px 12px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{l}</button>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+            {/* Rareté */}
+            {[['','Tout'],['commun','Commun'],['rare','Rare'],['épique','Épique'],['légendaire','Légendaire']].map(([v,l])=>(
+              <button key={v} onClick={()=>setMktVolRarity(v)}
+                style={{background:mktVolRarity===v?"#6c5ce7":"#ffffff18",border:"none",color:"#fff",padding:"4px 10px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{l}</button>
+            ))}
+            <div style={{flex:1,minWidth:140}}>
+              <input value={mktVolQ} onChange={e=>{setMktVolQ(e.target.value);}} placeholder="Filtrer par joueur…"
+                style={{...INP,width:"100%",fontSize:11,padding:"6px 10px"}}/>
+            </div>
+          </div>
+
+          {/* Graphique */}
+          <div style={{background:"#ffffff06",borderRadius:11,padding:"14px 10px 6px",border:"1px solid #ffffff10"}}>
+            {mktVol.loading
+              ? <div style={{textAlign:"center",color:"#8daacc",padding:"40px 0",fontSize:12}}>Chargement…</div>
+              : <BarChart buckets={mktVol.buckets} mode={mktVolMode} period={mktVolPeriod}/>
+            }
+          </div>
+          {mktVolQ&&<div style={{marginTop:8,fontSize:11,color:"#8daacc",textAlign:"center"}}>Vue joueur : toutes leurs transactions (achats + ventes)</div>}
         </div>}
 
         {/* ── MARCHÉ ADMIN ── */}
