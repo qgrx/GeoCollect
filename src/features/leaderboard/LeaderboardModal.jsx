@@ -283,7 +283,7 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {players.map((p, i) => {
               const isSeparate = p.isMeSeparate;
-              const rank = page * PG + i - (isSeparate ? 1 : 0);
+              const rank = p.rank !== undefined ? p.rank : (page * PG + i - (isSeparate ? 1 : 0));
               return (
                 <div key={p.id || p.pseudo}>
                   {isSeparate && <div style={{ textAlign: 'center', fontSize: 10, color: theme.textMuted, padding: '4px 0 2px', letterSpacing: .5 }}>· · ·</div>}
