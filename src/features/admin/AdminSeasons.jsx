@@ -18,7 +18,12 @@ function formatDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
-const EMPTY_FORM = { name: '', start_date: '', end_date: '' };
+const EMPTY_FORM = { name: '', start_date: '', end_date: '', is_cyclic: false };
+
+function isCyclicNow(s, todayMD) {
+  const sm = s.start_date.slice(5), em = s.end_date.slice(5);
+  return sm <= em ? (todayMD >= sm && todayMD <= em) : (todayMD >= sm || todayMD <= em);
+}
 
 // Marché « Hors saison » : raretés + coûts par défaut {gold, pf}.
 const OFF_RARITIES = ['commun', 'rare', 'épique', 'légendaire'];
@@ -86,7 +91,7 @@ export default function AdminSeasons({ setMsg }) {
 
   function startEdit(s) {
     setEditId(s.id);
-    setForm({ name: s.name, start_date: s.start_date, end_date: s.end_date });
+    setForm({ name: s.name, start_date: s.start_date, end_date: s.end_date, is_cyclic: !!s.is_cyclic });
   }
 
   function cancelEdit() {
@@ -177,6 +182,12 @@ export default function AdminSeasons({ setMsg }) {
             <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} style={INP} />
           </Fld>
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 10 }}>
+          <input type="checkbox" checked={!!form.is_cyclic} onChange={e => setForm(f => ({ ...f, is_cyclic: e.target.checked }))} style={{ width: 15, height: 15 }} />
+          <span style={{ color: form.is_cyclic ? '#74b9ff' : '#888', fontSize: 12, fontWeight: 700 }}>
+            🔄 Cyclique — se répète chaque année à la même période
+          </span>
+        </label>
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
           <button onClick={handleSave} style={{ flex: 1, ...BTN('linear-gradient(135deg,#e74c3c,#c0392b)'), padding: '10px', borderRadius: 9 }}>
             {editId ? '💾 Enregistrer' : '➕ Créer la saison'}
@@ -195,19 +206,21 @@ export default function AdminSeasons({ setMsg }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {seasons.map(s => {
-            const isActive = s.start_date <= today && s.end_date >= today;
-            const isPast   = s.end_date < today;
-            const isFuture = s.start_date > today;
-            const statusColor = isActive ? '#2ecc71' : isPast ? '#888' : '#f39c12';
-            const statusLabel = isActive ? 'EN COURS' : isPast ? 'TERMINÉE' : 'À VENIR';
+            const todayMD = today.slice(5);
+            const isActive = s.is_cyclic ? isCyclicNow(s, todayMD) : (s.start_date <= today && s.end_date >= today);
+            const isPast   = !s.is_cyclic && s.end_date < today;
+            const isFuture = !s.is_cyclic && s.start_date > today;
+            const statusColor = isActive ? '#2ecc71' : s.is_cyclic ? '#74b9ff' : isPast ? '#888' : '#f39c12';
+            const statusLabel = isActive ? 'EN COURS' : s.is_cyclic ? 'HORS PÉRIODE' : isPast ? 'TERMINÉE' : 'À VENIR';
             return (
               <div key={s.id} style={{ background: editId === s.id ? '#1f3060' : '#1a2744', border: `1px solid ${isActive ? '#2ecc7144' : '#ffffff18'}`, borderRadius: 9, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                     <span style={{ fontWeight: 800, color: '#fff', fontSize: 13 }}>{s.name}</span>
                     <span style={{ fontSize: 9, fontWeight: 800, color: statusColor, background: statusColor + '22', padding: '2px 6px', borderRadius: 4, letterSpacing: .5 }}>{statusLabel}</span>
+                    {s.is_cyclic && <span style={{ fontSize: 9, fontWeight: 800, color: '#74b9ff', background: '#74b9ff22', padding: '2px 6px', borderRadius: 4, letterSpacing: .5 }}>🔄 CYCLIQUE</span>}
                   </div>
-                  <div style={{ color: '#aaa', fontSize: 11 }}>{formatDate(s.start_date)} → {formatDate(s.end_date)}</div>
+                  <div style={{ color: '#aaa', fontSize: 11 }}>{formatDate(s.start_date)} → {formatDate(s.end_date)}{s.is_cyclic && <span style={{ color: '#74b9ff', marginLeft: 6 }}>(fenêtre annuelle)</span>}</div>
                 </div>
                 <button onClick={() => handlePreview(s)} title="Prévisualiser la popup de saison (test admin)" style={{ ...BTN('#ffffff18'), padding: '6px 12px', borderRadius: 7, fontSize: 11 }}>👁️</button>
                 <button onClick={() => startEdit(s)} style={{ ...BTN('#ffffff18'), padding: '6px 12px', borderRadius: 7, fontSize: 11 }}>✏️</button>
