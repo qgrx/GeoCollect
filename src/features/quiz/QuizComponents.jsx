@@ -559,7 +559,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
             </div>
             {!streakHype.exempt && streakHype.handicap > 0 && (
               <div style={{fontSize:11,color:'#ffb07a',fontWeight:800,marginTop:3}}>
-                {t('streak_hype_gift').replace('{x}', streakHype.handicap)}
+                {t('streak_hype_gift').replace('{x}', streakHype.handicap).replace('{pseudo}', streakHype.pseudo)}
               </div>
             )}
           </div>

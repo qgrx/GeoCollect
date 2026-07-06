@@ -55,7 +55,7 @@ const TRANSLATIONS = {
     quiz_answer_retry:"⚠️ Souci de connexion — réessaie (ta réponse a peut-être été prise en compte).",
     quiz_answer_checking:"⏳ Validation en cours…",
     streak_hype_big:"🔥 {pseudo} est en feu — {n} victoires d'affilée !",
-    streak_hype_gift:"🎁 Cadeau aux autres : +{x}s avant qu'il puisse répondre. Y arrivera-t-il quand même ?",
+    streak_hype_gift:"🎁 Cadeau aux autres : +{x}s avant que {pseudo} puisse répondre. De quoi renverser la situation ?",
     streak_bar_small:"{pseudo} est en feu · {n} victoires d'affilée",
     streak_handicap_self:"Cadeau aux autres : tu peux répondre dans {x}s",
     streak_question_hidden:"Question masquée — cadeau aux autres · {x}s",
