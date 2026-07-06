@@ -1,5 +1,6 @@
 # Geocoins.fr
 
+Ce projet est hébergé sur geocoins.fr.
 Jeu de cartes à collectionner basé sur le géocaching.  
 Réponds aux questions, gagne des cartes, vends tes doublons sur le marché.
 

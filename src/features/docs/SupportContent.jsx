@@ -99,7 +99,7 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
       {editMode && !loading && !error && (
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <button onClick={() => { if (window.confirm('Restaurer le contenu par défaut ?')) reset() }} style={{ background: '#ffffff10', border: '1px solid #ffffff22', color: mutedColor, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 11 }}>↺ Défauts</button>
-          <button onClick={save} disabled={!dirty || saving}
+          <button onClick={() => save()} disabled={!dirty || saving}
             style={{ background: dirty ? 'linear-gradient(135deg,#f9ca24,#e17055)' : '#ffffff18', border: 'none', color: dirty ? '#1e3045' : '#666', padding: '8px 18px', borderRadius: 8, cursor: dirty ? 'pointer' : 'default', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12 }}>
             {saving ? 'Enregistrement…' : dirty ? '💾 Enregistrer' : '✓ Enregistré'}
           </button>
