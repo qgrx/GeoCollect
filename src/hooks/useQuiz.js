@@ -273,7 +273,19 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // l'entrée n'aurait que la coche ✓ et le compteur « (N🏆) » n'apparaîtrait qu'après un
       // rechargement (le patch via quiz:solved peut manquer l'entrée pas encore créée).
       const meGloryWinners = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
-      setHistory(h => [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false, glory_winners: meGloryWinners, quiz_id: activeQuiz?.id }, ...h].slice(0, 10))
+      setHistory(h => {
+        // quiz:solved peut arriver avant la réponse HTTP (race réseau) et avoir déjà inséré
+        // une entrée pour ce round : on la patche plutôt que de prepend un doublon.
+        const qid = activeQuiz?.id
+        if (qid) {
+          const idx = h.findIndex(e => e.quiz_id === qid)
+          if (idx >= 0) {
+            const updated = { ...h[idx], won: true, glory_winners: meGloryWinners.length ? meGloryWinners : h[idx].glory_winners }
+            return [...h.slice(0, idx), updated, ...h.slice(idx + 1)]
+          }
+        }
+        return [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false, glory_winners: meGloryWinners, quiz_id: qid }, ...h].slice(0, 10)
+      })
 
       // Déterminer l'issue pour piloter le visuel de résultat de la modale
       let outcome = 'card'
