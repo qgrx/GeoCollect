@@ -485,7 +485,7 @@ export default function App() {
           }
           setHistory(h => {
             // Round déjà consolidé (event reçu 2×) → ne rien refaire.
-            if (data.quiz_id && h.some(e => e.quiz_id === data.quiz_id)) return h
+            if (data.quiz_id && h.some(e => Array.isArray(e.winners) && e.quiz_id === data.quiz_id)) return h
             // Retirer les entrées transitoires de CE round : l'entrée « Moi » (handleQuizAnswer)
             // et d'éventuels singletons par gagnant (sans liste `winners`) — puis insérer l'entrée unique.
             const cleaned = h.filter(e => !(!Array.isArray(e.winners) && e.card?.name === data.card_name
