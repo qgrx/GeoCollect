@@ -273,7 +273,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // l'entrée n'aurait que la coche ✓ et le compteur « (N🏆) » n'apparaîtrait qu'après un
       // rechargement (le patch via quiz:solved peut manquer l'entrée pas encore créée).
       const meGloryWinners = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
-      setHistory(h => [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false, glory_winners: meGloryWinners }, ...h].slice(0, 10))
+      setHistory(h => [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false, glory_winners: meGloryWinners, quiz_id: activeQuiz?.id }, ...h].slice(0, 10))
 
       // Déterminer l'issue pour piloter le visuel de résultat de la modale
       let outcome = 'card'

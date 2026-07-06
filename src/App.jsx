@@ -481,11 +481,11 @@ export default function App() {
             isShiny: data.is_shiny || false,
             winners: winnerPseudos,          // liste complète des gagnants du round multi-prix
             glory_winners: gloryPseudos,
+            quiz_id: data.quiz_id,
           }
           setHistory(h => {
             // Round déjà consolidé (event reçu 2×) → ne rien refaire.
-            if (h.some(e => Array.isArray(e.winners) && e.card?.name === data.card_name
-                && e.winners.length === winnerPseudos.length && e.winners[0] === winnerPseudos[0])) return h
+            if (data.quiz_id && h.some(e => e.quiz_id === data.quiz_id)) return h
             // Retirer les entrées transitoires de CE round : l'entrée « Moi » (handleQuizAnswer)
             // et d'éventuels singletons par gagnant (sans liste `winners`) — puis insérer l'entrée unique.
             const cleaned = h.filter(e => !(!Array.isArray(e.winners) && e.card?.name === data.card_name
@@ -497,15 +497,16 @@ export default function App() {
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
           const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           setHistory(h => {
-            if (h[0]?.winner === data.winner && h[0]?.card?.name === data.card_name) return h
-            return [{ card: fullCard, winner: data.winner, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryPseudos }, ...h].slice(0, 10)
+            if (data.quiz_id && h.some(e => e.quiz_id === data.quiz_id)) return h
+            return [{ card: fullCard, winner: data.winner, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryPseudos, quiz_id: data.quiz_id }, ...h].slice(0, 10)
           })
         } else if (iSelf && (data.glory_winners || []).length > 0) {
           // Le gagnant lui-même : useQuiz ajoute l'entrée → on la patch avec les glory_winners
           const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           setHistory(h => {
-            if (h[0]?.won) return [{ ...h[0], glory_winners: gloryPseudos }, ...h.slice(1)]
-            return h
+            const idx = h.findIndex(e => e.won && (data.quiz_id ? e.quiz_id === data.quiz_id : e.card?.name === data.card_name))
+            if (idx < 0) return h
+            return [...h.slice(0, idx), { ...h[idx], glory_winners: gloryPseudos }, ...h.slice(idx + 1)]
           })
         }
       })
@@ -586,8 +587,8 @@ export default function App() {
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: data.card_id || 0 }
           const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           setHistory(h => {
-            if (h[0]?.glory_only && h[0]?.card?.name === data.card_name) return h
-            return [{ card: fullCard, winner: null, won: false, isBot: false, isShiny: data.is_shiny || false, glory_only: true, glory_winners: gloryPseudos }, ...h].slice(0, 10)
+            if (data.quiz_id && h.some(e => e.quiz_id === data.quiz_id)) return h
+            return [{ card: fullCard, winner: null, won: false, isBot: false, isShiny: data.is_shiny || false, glory_only: true, glory_winners: gloryPseudos, quiz_id: data.quiz_id }, ...h].slice(0, 10)
           })
         }
         if (data.next_quiz_at && data.server_time) {
