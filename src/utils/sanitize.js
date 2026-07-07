@@ -1,5 +1,13 @@
 import DOMPurify from 'dompurify'
 
+// Tout lien ouvrant un nouvel onglet (target="_blank") reçoit rel="noopener
+// noreferrer" : empêche la page ouverte d'accéder à window.opener (reverse tabnabbing).
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A' && node.getAttribute('target') === '_blank') {
+    node.setAttribute('rel', 'noopener noreferrer')
+  }
+})
+
 function isDarkColor(c) {
   c = c.toLowerCase().trim()
   if (c === 'black') return true
