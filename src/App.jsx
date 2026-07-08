@@ -260,7 +260,11 @@ export default function App() {
   }, [pendingCheckout, auth.profile?.id, gs.cardPool.length])
 
   // ── Charger l'historique des quiz depuis la DB ────────────────────────────────
-  useEffect(() => {
+  // Aussi rappelé à chaque reconnexion socket et au retour d'onglet : les
+  // quiz:solved / quiz:expired émis pendant une coupure (veille mobile, onglet
+  // gelé) sont perdus → sans re-fetch, le strip « derniers geocoins disputés »
+  // restait figé jusqu'à un rechargement manuel de la page.
+  const refreshQuizHistory = () => {
     if (!auth.profile || !import.meta.env.VITE_API_URL) return
     if (auth.isDemo) return  // démo : faux feed local, pas d'appel API
     apiGetQuizHistory(10).then(({ data }) => {
@@ -269,7 +273,24 @@ export default function App() {
         setHistory(data.history.filter(h => h.price === undefined && h.type !== 'vente' && h.type !== 'achat' && h.buyer === undefined))
       }
     }).catch(() => {})
-  }, [auth.profile?.id])
+  }
+  const refreshQuizHistoryRef = useRef(refreshQuizHistory)
+  useEffect(() => { refreshQuizHistoryRef.current = refreshQuizHistory })
+  useEffect(() => { refreshQuizHistoryRef.current() }, [auth.profile?.id])
+
+  // Retour d'onglet après une longue absence : re-fetch immédiat, sans attendre
+  // que socket.io détecte une connexion morte (jusqu'à ~45 s de ping timeout
+  // pendant lesquelles le socket paraît connecté et le strip resterait figé).
+  useEffect(() => {
+    let hiddenAt = null
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return }
+      if (hiddenAt && Date.now() - hiddenAt > 60_000) refreshQuizHistoryRef.current()
+      hiddenAt = null
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
 
   // ── Notifications navigateur ─────────────────────────────────────────────────
   useEffect(() => {
@@ -644,8 +665,10 @@ export default function App() {
 
       s.on('connect',    () => {
         setSocketOnline(true)
-        // Re-synchroniser après une (re)connexion : un quiz a pu être résolu pendant
-        // une coupure → on réaligne le pending sur l'état serveur pour ne pas laisser
+        // Re-synchroniser après une (re)connexion : les quiz résolus pendant la
+        // coupure n'ont jamais été reçus → recharger les derniers geocoins disputés…
+        refreshQuizHistoryRef.current()
+        // …et réaligner le pending sur l'état serveur pour ne pas laisser
         // « Participer » sur un quiz déjà gagné.
         apiGetCurrentQuiz().then(({ data }) => {
           if (!data) return
