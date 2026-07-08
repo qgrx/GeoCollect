@@ -1,26 +1,33 @@
-import { useState, useEffect, useMemo } from 'react';
-import { INP } from '../../utils/styles.js';
-import { apiAdminGetReferrals } from '../../services/api.js';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { INP, BTN } from '../../utils/styles.js';
+import { apiAdminGetReferrals, apiAdminAssignReferral, apiAdminUnassignReferral, apiAdminSearchPlayers } from '../../services/api.js';
 
 // Vue admin « Parrainage » : qui parraine qui + geocoins (normaux/shiny) de
 // chaque filleul. Données fournies par GET /api/admin/referrals.
+// L'admin peut aussi assigner / réassigner / détacher un filleul manuellement
+// (rattrapage des cas où le claim du lien n'a pas fonctionné).
 export default function AdminReferrals({ setMsg }) {
   const [data, setData]       = useState(null);   // { min_geocoins, parrains }
   const [loading, setLoading] = useState(false);
   const [search, setSearch]   = useState('');
   const [open, setOpen]       = useState({});      // parrainId → déplié ?
+  const [busy, setBusy]       = useState(false);   // mutation en cours
 
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    apiAdminGetReferrals().then(({ data, error }) => {
-      if (!mounted) return;
+  // Formulaire d'assignation
+  const [showAssign, setShowAssign] = useState(false);
+  const [parrainSel, setParrainSel] = useState(null); // { id, pseudo }
+  const [filleulSel, setFilleulSel] = useState(null);
+
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
+    return apiAdminGetReferrals().then(({ data, error }) => {
       setLoading(false);
       if (error) { setMsg?.('❌ ' + error); return; }
       setData(data || { min_geocoins: 0, parrains: [] });
     });
-    return () => { mounted = false; };
   }, [setMsg]);
+
+  useEffect(() => { load(); }, [load]);
 
   const parrains = data?.parrains || [];
   const totals = useMemo(() => ({
@@ -43,6 +50,29 @@ export default function AdminReferrals({ setMsg }) {
       .filter(Boolean);
   }, [parrains, q]);
 
+  const assign = async () => {
+    if (!parrainSel || !filleulSel || busy) return;
+    setBusy(true);
+    const { error } = await apiAdminAssignReferral(filleulSel.id, parrainSel.id);
+    setBusy(false);
+    if (error) { setMsg?.('❌ ' + error); return; }
+    setMsg?.(`✅ ${filleulSel.pseudo} est maintenant filleul de ${parrainSel.pseudo}`);
+    setFilleulSel(null);
+    setOpen(o => ({ ...o, [parrainSel.id]: true }));
+    load(true);
+  };
+
+  const unassign = async (parrain, filleul) => {
+    if (busy) return;
+    if (!window.confirm(`Détacher ${filleul.pseudo} de ${parrain.pseudo} ?`)) return;
+    setBusy(true);
+    const { error } = await apiAdminUnassignReferral(filleul.id);
+    setBusy(false);
+    if (error) { setMsg?.('❌ ' + error); return; }
+    setMsg?.(`✅ ${filleul.pseudo} détaché de ${parrain.pseudo}`);
+    load(true);
+  };
+
   return (
     <div style={{ maxWidth: 880 }}>
       <h2 style={{ fontFamily: "'Fredoka One',sans-serif", color: '#e74c3c', fontSize: 20, margin: '0 0 4px' }}>
@@ -58,6 +88,35 @@ export default function AdminReferrals({ setMsg }) {
         <Stat icon="👤" label="Parrains"  value={totals.parrains}  color="#a29bfe" />
         <Stat icon="🎁" label="Filleuls"  value={totals.filleuls}  color="#74b9ff" />
         <Stat icon="✅" label="Qualifiés" value={totals.qualified} color="#00b894" />
+      </div>
+
+      {/* Assignation manuelle */}
+      <div style={{ background: '#ffffff08', border: '1px solid #ffffff10', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+        <button
+          onClick={() => setShowAssign(s => !s)}
+          style={{ background: 'none', border: 'none', color: '#a29bfe', fontWeight: 800, fontSize: 13, cursor: 'pointer', padding: 0 }}
+        >
+          {showAssign ? '▾' : '▸'} ➕ Assigner un filleul à un parrain
+        </button>
+        {showAssign && (
+          <div style={{ marginTop: 10 }}>
+            <p style={{ color: '#8daacc', fontSize: 11, margin: '0 0 8px' }}>
+              Aucune règle anti-abus ici (contrairement au lien de parrainage) : à utiliser pour
+              rattraper un parrainage qui n'a pas fonctionné. Si le filleul a déjà un parrain, il sera réassigné.
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <PlayerPicker label="Parrain" selected={parrainSel} onSelect={setParrainSel} exclude={filleulSel?.id} />
+              <PlayerPicker label="Filleul" selected={filleulSel} onSelect={setFilleulSel} exclude={parrainSel?.id} />
+              <button
+                onClick={assign}
+                disabled={!parrainSel || !filleulSel || busy}
+                style={{ ...BTN('#a29bfe'), opacity: !parrainSel || !filleulSel || busy ? 0.5 : 1 }}
+              >
+                Assigner
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <input
@@ -103,6 +162,7 @@ export default function AdminReferrals({ setMsg }) {
                       <th style={{ padding: '6px 8px', fontWeight: 700, textAlign: 'right' }}>✨ Shiny</th>
                       <th style={{ padding: '6px 8px', fontWeight: 700, textAlign: 'right' }}>Inscrit</th>
                       <th style={{ padding: '6px 8px', fontWeight: 700, textAlign: 'center' }}>Statut</th>
+                      <th style={{ padding: '6px 8px' }} />
                     </tr>
                   </thead>
                   <tbody>
@@ -124,6 +184,16 @@ export default function AdminReferrals({ setMsg }) {
                             ? <span style={{ color: '#00b894', fontWeight: 800 }}>✅</span>
                             : <span style={{ color: '#7a94aa' }}>—</span>}
                         </td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                          <button
+                            onClick={() => unassign(p, f)}
+                            disabled={busy}
+                            title={`Détacher ${f.pseudo} de ${p.pseudo}`}
+                            style={{ background: '#e74c3c22', border: '1px solid #e74c3c44', color: '#e74c3c', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 800, cursor: 'pointer', opacity: busy ? 0.5 : 1 }}
+                          >
+                            ✕ Détacher
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -133,6 +203,75 @@ export default function AdminReferrals({ setMsg }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// Recherche de joueur par pseudo (GET /api/admin/players) avec debounce,
+// sélection → { id, pseudo }. `exclude` masque un id des résultats (évite de
+// proposer le même joueur comme parrain ET filleul).
+function PlayerPicker({ label, selected, onSelect, exclude }) {
+  const [query, setQuery]     = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const timer = useRef(null);
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const onChange = (value) => {
+    setQuery(value);
+    onSelect(null);
+    clearTimeout(timer.current);
+    if (value.trim().length < 2) { setResults([]); setSearching(false); return; }
+    setSearching(true);
+    timer.current = setTimeout(async () => {
+      const { data, error } = await apiAdminSearchPlayers(value.trim());
+      setSearching(false);
+      if (error) { setResults([]); return; }
+      setResults((data?.players || []).filter(pl => !pl.deleted_at && pl.id !== exclude));
+    }, 350);
+  };
+
+  return (
+    <div style={{ position: 'relative', minWidth: 220 }}>
+      <div style={{ fontSize: 11, color: '#8daacc', fontWeight: 700, marginBottom: 4 }}>{label}</div>
+      {selected ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#a29bfe22', border: '1px solid #a29bfe44', borderRadius: 8, padding: '7px 10px' }}>
+          <span style={{ color: '#d4e8f8', fontWeight: 800, fontSize: 13, flex: 1 }}>{selected.pseudo}</span>
+          <button
+            onClick={() => { onSelect(null); setQuery(''); setResults([]); }}
+            style={{ background: 'none', border: 'none', color: '#8daacc', cursor: 'pointer', fontSize: 13, padding: 0 }}
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <>
+          <input
+            value={query}
+            onChange={e => onChange(e.target.value)}
+            placeholder="Pseudo…"
+            style={{ ...INP, width: '100%' }}
+          />
+          {(searching || results.length > 0) && query.trim().length >= 2 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: '#1b2a3a', border: '1px solid #ffffff20', borderRadius: 8, marginTop: 4, maxHeight: 200, overflowY: 'auto', boxShadow: '0 6px 18px #0008' }}>
+              {searching && <div style={{ color: '#8daacc', fontSize: 12, padding: '8px 10px' }}>Recherche…</div>}
+              {!searching && results.map(pl => (
+                <button
+                  key={pl.id}
+                  onClick={() => { onSelect({ id: pl.id, pseudo: pl.pseudo }); setResults([]); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', background: 'none', border: 'none', color: '#c8dcec', padding: '7px 10px', cursor: 'pointer', textAlign: 'left', fontSize: 13 }}
+                >
+                  <span style={{ fontWeight: 700 }}>{pl.pseudo}</span>
+                  {pl.is_bot && <span style={{ color: '#7a94aa', fontSize: 10 }}>🤖</span>}
+                  {pl.status && pl.status !== 'actif' && <span style={{ color: '#e74c3c', fontSize: 10 }}>({pl.status})</span>}
+                </button>
+              ))}
+              {!searching && !results.length && <div style={{ color: '#8daacc', fontSize: 12, padding: '8px 10px' }}>Aucun joueur trouvé.</div>}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
