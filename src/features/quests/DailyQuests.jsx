@@ -1,34 +1,13 @@
-import { useEffect, useState, useCallback } from 'react'
-import { apiGetDailyQuests } from '../../services/api.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
 
 
-export default function DailyQuests({ questActivitySignal, initialQuests }) {
+// Affichage pur : le chargement et les rechargements des quêtes vivent dans
+// useGameState (refreshQuests), qui garantit qu'une réponse périmée n'écrase
+// jamais une progression plus fraîche.
+export default function DailyQuests({ quests }) {
   const { theme } = useTheme()
   const { t, lang } = useT()
-  // Pré-remplir immédiatement depuis les données chargées au démarrage
-  const [quests, setQuests] = useState(initialQuests ?? null)
-
-  const load = useCallback(async () => {
-    const { data } = await apiGetDailyQuests()
-    if (data?.quests) setQuests(data.quests)
-  }, [])
-
-  // Si les données pré-chargées arrivent après le premier rendu, les accepter
-  useEffect(() => {
-    if (initialQuests) setQuests(initialQuests)
-  }, [initialQuests])
-
-  // Premier fetch uniquement si rien de pré-chargé
-  useEffect(() => {
-    if (!initialQuests) load()
-  }, [])
-
-  // Recharger après chaque action de jeu pertinente
-  useEffect(() => {
-    if (questActivitySignal > 0) load()
-  }, [questActivitySignal, load])
 
   if (!quests) return null
   if (!quests.length) return null

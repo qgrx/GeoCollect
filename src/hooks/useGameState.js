@@ -66,7 +66,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [pendingUpgrade,      setPendingUpgrade]     = useState([])
   const [saleNotifs,          setSaleNotifs]         = useState([])
   const [unreadSales,         _setUnreadSales]       = useState(0)
-  const [initialQuests,       setInitialQuests]     = useState(null)
+  const [quests,              setQuests]            = useState(null)
   const [forgePoints,         setForgePoints]       = useState(Number(profile?.forge_points ?? 0))
   const [forgePointsSignal,   setForgePointsSignal]  = useState(0)
   const [questActivitySignal, setQuestActivitySignal] = useState(0)
@@ -78,6 +78,25 @@ export function useGameState(auth, { onAchievementCard } = {}) {
 
   const mounted = useRef(true)
   useEffect(() => () => { mounted.current = false }, [])
+
+  // ── Quêtes du jour — rechargement centralisé et séquencé ──────────────────
+  // Seule la réponse de la requête la plus récente est appliquée. Sans ce
+  // garde-fou, un fetch parti AVANT une action de jeu (ex. les deux chargements
+  // du démarrage, ralentis par la file d'attente réseau) pouvait aboutir APRÈS
+  // le rechargement post-action et écraser la progression fraîche avec un état
+  // périmé — quête « Chasseur de trésor » figée à 0/1 jusqu'au F5.
+  const questsReqSeq = useRef(0)
+  const refreshQuests = useCallback(async () => {
+    const seq = ++questsReqSeq.current
+    const { data } = await apiGetDailyQuests()
+    if (data?.quests && mounted.current && seq === questsReqSeq.current) setQuests(data.quests)
+  }, [])
+
+  // Recharger après chaque action de jeu pertinente (signal bumpé par
+  // addForgePoints, triggerQuestRefresh, achats/ventes…)
+  useEffect(() => {
+    if (questActivitySignal > 0) refreshQuests()
+  }, [questActivitySignal, refreshQuests])
 
   // Recharge la progression des achievements (compteurs comme « Roi du savoir »)
   // — à appeler après un événement qui la fait évoluer (victoire de quiz, achat…).
@@ -178,6 +197,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       setGold(0); setCollection({}); setShinyCollection({}); setMarket([]); setMyListings([]); setMarketLoaded(false)
       setTransactions([]); setTotalBuys(0); setTotalSells(0); setStreak(0)
       _setUnreadSales(0); setSaleNotifs([]); setUnlockedAch([]); setPendingAch([])
+      setQuests(null)
       return
     }
     setGold(profile.gold ?? 0)
@@ -394,9 +414,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         apiPingProfile()
 
         // Quêtes du jour — en parallèle, déclenche aussi la génération lazy du planning
-        apiGetDailyQuests().then(({ data }) => {
-          if (data?.quests && mounted.current) setInitialQuests(data.quests)
-        })
+        refreshQuests()
 
       } catch (err) {
         if (import.meta.env.DEV) console.warn('[useGameState] load failed:', err.message)
@@ -409,9 +427,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     // Checkin quête connexion puis rechargement des quêtes (séquentiel pour que daily_connection soit reflété)
     apiQuestCheckin().then(({ data }) => {
       if (data?.forge_points_earned > 0) setForgePointsSignal(s => s + data.forge_points_earned)
-      return apiGetDailyQuests()
-    }).then(({ data }) => {
-      if (data?.quests && mounted.current) setInitialQuests(data.quests)
+      return refreshQuests()
     }).catch(() => {})
   }, [profile?.id])
 
@@ -842,7 +858,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,
     // Derived
     isGuest, uniqueCards, totalUnique, myScore,
-    initialQuests, setInitialQuests, forgePoints, forgePointsSignal, questActivitySignal,
+    quests, setQuests, forgePoints, forgePointsSignal, questActivitySignal,
     addForgePoints: (pts) => {
       setQuestActivitySignal(s => s + 1)
       if (!pts) return

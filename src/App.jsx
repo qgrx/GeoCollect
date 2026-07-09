@@ -1216,6 +1216,7 @@ export default function App() {
     setHolds(prev => prev.filter(h => h.id !== holdId))
     if (claimed?.rented) setHoldRentActive(false)
     gs.earnCard(data.card, data.is_shiny || false)
+    if (data.forge_points_earned > 0) gs.addForgePoints(data.forge_points_earned)
     gs.triggerQuestRefresh?.()
     showToast(t('toast_hold_claimed').replace('{card}', data.card.name))
   }
@@ -1286,7 +1287,7 @@ export default function App() {
         const earned = {}
         for (const s of steps) if (s.earned && s.card) earned[s.card.id] = 1
         gs.setCollection(earned)
-        gs.setInitialQuests(DEMO_QUESTS)
+        gs.setQuests(DEMO_QUESTS)
         setDemoTypeTotals(data?.type_totals || [])
         setDemoSocial({ pseudos: data?.social?.pseudos || [], tribute: data?.social?.tribute || [] })
         setDemoSteps(steps)
@@ -2007,7 +2008,7 @@ export default function App() {
 
               {/* Daily quests */}
               <div data-tour="quests">
-                <DailyQuests questActivitySignal={gs.questActivitySignal} initialQuests={gs.initialQuests} />
+                <DailyQuests quests={gs.quests} />
               </div>
 
               {/* Last 8 geocoins — 4×2 (feed propre au mode courant). En Entraînement,
