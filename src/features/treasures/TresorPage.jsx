@@ -271,10 +271,12 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           const permTiles = Math.max(holdSlots, nonRented.length)
           for (let i = 0; i < permTiles; i++)
             tiles.push(renderSlot(nonRented[i] || null, false, `perm-${i}`, i < holdSlots ? Number(holdSlotPrices?.[i] ?? 0) : null))
-          // Emplacement loué (si actif) OU bouton de location (si dépôt permanent plein)
+          // Emplacement loué (si actif) OU bouton de location — TOUJOURS visible, pour que
+          // l'option existe aux yeux du joueur même quand un slot permanent est libre.
+          // Cliquable seulement quand le dépôt permanent est plein (l'API refuse sinon).
           if (holdRentActive) {
             tiles.push(renderSlot(rentedHold, true, 'rent-slot'))
-          } else if (permFull) {
+          } else {
             tiles.push(
               <div key="rent" style={{ width: TILE, flexShrink: 0, height: TILE + 34, borderRadius: 14, border: `2px solid ${RENT_C1}66`, background: `${RENT_C1}12`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, opacity: canRent ? 1 : 0.5, cursor: canRent && !holdBusy ? 'pointer' : 'default' }}
                 onClick={canRent && !holdBusy ? () => setConfirmSlot('rent') : undefined}>
