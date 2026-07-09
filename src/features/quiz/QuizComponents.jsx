@@ -713,7 +713,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
 }
 
 // ── HoldModal — choix après quiz hors-limite : Dépôt OU 1 Point de Forge ──────
-export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive = false, rentPrice = 80, gold = 0, onStored, onStoreError, onTakeForgePoint, onClose, forgeCapped = false, owned = false }) {
+export function HoldModal({ holdCard, holds = [], holdSlots = 0, holdRentActive = false, rentPrice = 80, replacePrice = 50, gold = 0, onStored, onStoreError, onTakeForgePoint, onClose, forgeCapped = false, owned = false }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [loading, setLoading] = useState(false)
@@ -722,14 +722,15 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
   const { c1, c2 } = holdCard ? cardCC(holdCard.rarity) : { c1: '#6c5ce7', c2: '#a29bfe' }
   const rc = holdCard ? RC[holdCard.rarity] : null
 
-  // État du dépôt
+  // État du dépôt (holdSlots = emplacements permanents ACHETÉS ; aucun gratuit)
   const nonRented     = holds.filter(h => !h.rented)
-  const freePermSlot  = nonRented.length < holdSlots            // emplacement permanent libre (gratuit)
+  const freePermSlot  = nonRented.length < holdSlots            // emplacement permanent (acheté) libre
   const rentSlotFree  = holdRentActive && !holds.some(h => h.rented)  // slot loué déjà payé, libre
   const canStoreRented = !freePermSlot && rentSlotFree          // stocker (gratuit) dans le slot loué
-  const canReplace    = !freePermSlot && holds.length > 0       // remplacer un geocoin déjà déposé
-  const canRent       = !freePermSlot && !holdRentActive        // louer un emplacement (emplacement 4)
-  const rentTooPoor   = gold < rentPrice
+  const canReplace    = !freePermSlot && holds.length > 0       // remplacer un geocoin déjà déposé (payant)
+  const canRent       = !freePermSlot && !holdRentActive        // louer un emplacement temporaire
+  const rentTooPoor    = gold < rentPrice
+  const replaceTooPoor = gold < replacePrice
 
   const doStore = useCallback(async (rent = false, replaceId = null) => {
     if (!holdCard || loading) return
@@ -797,7 +798,7 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
         {confirmReplace && canReplace ? (
           <>
             <div style={{ fontSize: 12, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2444', borderRadius: 9, padding: '10px 12px', marginBottom: 12, lineHeight: 1.5 }}>
-              {t('hold_popup_replace_choose')}
+              {t('hold_popup_replace_choose').replace('{price}', replacePrice)}
             </div>
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 14, paddingBottom: 4 }}>
               {holds.map(h => {
@@ -821,9 +822,9 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
               })}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={selectedReplaceId ? () => doStore(false, selectedReplaceId) : undefined} disabled={loading || !selectedReplaceId}
-                style={{ ...BTN('linear-gradient(135deg,#e74c3c,#c0392b)'), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, opacity: (loading || !selectedReplaceId) ? 0.5 : 1, cursor: selectedReplaceId ? 'pointer' : 'default' }}>
-                {loading ? '…' : t('hold_popup_replace_confirm')}
+              <button onClick={selectedReplaceId && !replaceTooPoor ? () => doStore(false, selectedReplaceId) : undefined} disabled={loading || !selectedReplaceId || replaceTooPoor}
+                style={{ ...BTN('linear-gradient(135deg,#e74c3c,#c0392b)'), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, opacity: (loading || !selectedReplaceId || replaceTooPoor) ? 0.5 : 1, cursor: (selectedReplaceId && !replaceTooPoor) ? 'pointer' : 'default' }}>
+                {loading ? '…' : t('hold_popup_replace_confirm').replace('{price}', replacePrice)}
               </button>
               <button onClick={() => { setConfirmReplace(false); setSelectedReplaceId(null) }} disabled={loading}
                 style={{ ...BTN('#ffffff18'), flex: 1, padding: '11px 0', borderRadius: 11, fontSize: 13, color: theme.textSecondary }}>
@@ -834,9 +835,9 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
         ) : (
           <>
             {/* Avertissement : aucun emplacement permanent libre */}
-            {!freePermSlot && (
+            {!freePermSlot && canReplace && (
               <div style={{ fontSize: 11, color: '#f9ca24', background: '#f9ca2415', border: '1px solid #f9ca2433', borderRadius: 9, padding: '7px 11px', marginBottom: 12 }}>
-                {t('hold_popup_full_warning')}
+                {t('hold_popup_full_warning').replace('{price}', replacePrice)}
               </div>
             )}
 
@@ -862,9 +863,9 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
                     </button>
                   )}
                   {canReplace && (
-                    <button onClick={handleStoreClick} disabled={loading}
-                      style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: loading ? 0.7 : 1 }}>
-                      🔄 {t('hold_popup_replace_open')}
+                    <button onClick={replaceTooPoor ? undefined : handleStoreClick} disabled={loading || replaceTooPoor}
+                      style={{ ...BTN(`linear-gradient(135deg,${c1},${c2})`), padding: '12px 0', borderRadius: 11, fontSize: 13.5, opacity: (loading || replaceTooPoor) ? 0.5 : 1, cursor: replaceTooPoor ? 'default' : 'pointer' }}>
+                      🔄 {t('hold_popup_replace_open').replace('{price}', replacePrice)}
                     </button>
                   )}
                   {canRent && (
@@ -877,6 +878,9 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 1, holdRentActive 
               )}
               {canRent && rentTooPoor && (
                 <div style={{ textAlign: 'center', fontSize: 10, color: '#e17055', fontWeight: 700 }}>{t('hold_rent_too_poor')}</div>
+              )}
+              {canReplace && replaceTooPoor && (
+                <div style={{ textAlign: 'center', fontSize: 10, color: '#e17055', fontWeight: 700 }}>{t('hold_replace_too_poor')}</div>
               )}
               {forgeCapped ? (
                 <div style={{ textAlign: 'center', fontSize: 11, color: theme.textMuted, padding: '8px 0', fontWeight: 700 }}>

@@ -86,6 +86,7 @@ export const INIT_LIMITS = {
   dailyOfferGold:       5,
   holdSlotPrices:       [150, 400],
   holdRentPrice:        80,
+  holdReplacePrice:     50,
   referralRequiredCount: 1,
   referralMinGeocoins:   50,
   referralMaxJoinGeocoins: 10,

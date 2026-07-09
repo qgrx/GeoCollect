@@ -774,7 +774,7 @@ export default function App() {
   const [quizSessionActive, setQuizSessionActive] = useState(false);
   const [dailyOffer, setDailyOffer] = useState(null);
   const [holds,      setHolds]      = useState([]);          // geocoins en attente (multi-emplacements)
-  const [holdSlots,  setHoldSlots]  = useState(1);           // emplacements permanents débloqués (1→3)
+  const [holdSlots,  setHoldSlots]  = useState(0);           // emplacements permanents achetés (0→2)
   const [holdRentActive, setHoldRentActive] = useState(false); // emplacement 4 loué actif
   const [seasonPopup, setSeasonPopup] = useState(null); // { season, cards }
   const COLL_PAGE_SIZE = 24;
@@ -911,7 +911,7 @@ export default function App() {
     apiGetDailyTreasure().then(({ data }) => { if (data) setDailyOffer(data) })
     apiGetHold().then(({ data }) => {
       setHolds(data?.holds ?? [])
-      setHoldSlots(data?.slots_unlocked ?? 1)
+      setHoldSlots(data?.slots_unlocked ?? 0)
       setHoldRentActive(!!data?.rent_active)
     })
   }, [auth.profile?.id, activeTab === 'tresors'])
@@ -1204,7 +1204,7 @@ export default function App() {
   async function refreshHold() {
     const { data } = await apiGetHold()
     setHolds(data?.holds ?? [])
-    setHoldSlots(data?.slots_unlocked ?? 1)
+    setHoldSlots(data?.slots_unlocked ?? 0)
     setHoldRentActive(!!data?.rent_active)
   }
 
@@ -2424,6 +2424,7 @@ export default function App() {
           holdSlots={holdSlots}
           holdRentActive={holdRentActive}
           rentPrice={gs.limits?.holdRentPrice ?? 80}
+          replacePrice={gs.limits?.holdReplacePrice ?? 50}
           gold={gs.gold}
           owned={holdOffer.is_shiny ? (gs.shinyCollection?.[holdOffer.id] || 0) > 0 : (gs.collection?.[holdOffer.id] || 0) > 0}
           forgeCapped={computeCardLimitStatus(auth.profile, gs.limits).forgeCapped}
@@ -2823,6 +2824,7 @@ export default function App() {
                 apiSetConfig('beginner_quiz_duration', limEdit.beginnerDuration ?? 60),
                 apiSetConfig('hold_slot_prices',       limEdit.holdSlotPrices   ?? [150, 400]),
                 apiSetConfig('hold_rent_price',        limEdit.holdRentPrice    ?? 80),
+                apiSetConfig('hold_replace_price',     limEdit.holdReplacePrice ?? 50),
                 apiSetConfig('forge_cost_by_rarity',   limEdit.forgeCostByRarity   ?? { commun:60,rare:180,épique:600,légendaire:1800 }),
                 apiSetConfig('melt_points_by_rarity',  limEdit.meltPointsByRarity  ?? {}),
                 apiSetConfig('melt_points_by_rarity_shiny', limEdit.meltPointsByRarityShiny ?? {}),

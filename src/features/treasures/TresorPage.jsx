@@ -34,7 +34,7 @@ const PACK_DEFS = [
   { id: 'gros_soutien',  emoji: '👑', gradient: 'linear-gradient(135deg,#e17055,#f9ca24)', glowColor: '#f9ca2444', borderColor: '#f9ca2466', defaultName: 'Pack Légendaire',  defaultPrice: '15,00 €', defaultGold: 300, highlight: false },
 ]
 
-export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = null, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5, onOpenCgv, holds = [], holdSlots = 1, holdRentActive = false, holdSlotPrices = [150, 400], holdRentPrice = 80, gold = 0, onClaimHold, onBuyHoldSlot, onRentHoldSlot }) {
+export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [], shopPacksConfig = null, packsLoading = false, shopTestMode = false, isAdmin = false, dailyOfferGold = 5, onOpenCgv, holds = [], holdSlots = 0, holdRentActive = false, holdSlotPrices = [150, 400], holdRentPrice = 80, gold = 0, onClaimHold, onBuyHoldSlot, onRentHoldSlot }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [claiming, setClaiming]             = useState(false)
@@ -196,8 +196,9 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           const nonRented = holds.filter(h => !h.rented)
           const rentedHold = holds.find(h => h.rented) || null
           const permFull = nonRented.length >= holdSlots
-          const nextBuyPrice = holdSlots < 3 ? Number(holdSlotPrices?.[holdSlots - 1] ?? 0) : 0
-          const canBuy  = holdSlots < 3 && gold >= nextBuyPrice
+          // holdSlots = emplacements ACHETÉS (0→2, aucun gratuit) → prix du prochain : prices[holdSlots]
+          const nextBuyPrice = holdSlots < 2 ? Number(holdSlotPrices?.[holdSlots] ?? 0) : 0
+          const canBuy  = holdSlots < 2 && gold >= nextBuyPrice
           const canRent = permFull && !holdRentActive && gold >= holdRentPrice
 
           // Tuile d'un emplacement (occupé ou vide). `rented` colore différemment.
@@ -242,8 +243,8 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           }
 
           const tiles = []
-          // Carré « + » d'achat permanent (collé à gauche), tant que < 3 emplacements
-          if (holdSlots < 3) {
+          // Carré « + » d'achat permanent (collé à gauche), tant que < 2 emplacements achetés
+          if (holdSlots < 2) {
             tiles.push(
               <div key="buy" style={{ width: TILE, flexShrink: 0, height: TILE + 34, borderRadius: 14, border: `2px solid ${theme.gold}55`, background: `${theme.gold}10`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, opacity: canBuy ? 1 : 0.5, cursor: canBuy && !holdBusy ? 'pointer' : 'default' }}
                 onClick={canBuy && !holdBusy ? () => setConfirmSlot('buy') : undefined}>
@@ -253,8 +254,11 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
               </div>
             )
           }
-          // Emplacements permanents
-          for (let i = 0; i < holdSlots; i++) tiles.push(renderSlot(nonRented[i] || null, false, `perm-${i}`))
+          // Emplacements permanents — Math.max : un joueur peut détenir plus de geocoins
+          // que d'emplacements (dépôts d'avant la suppression du slot gratuit) ; ils
+          // restent affichés et réclamables, on ne peut juste plus rien stocker.
+          const permTiles = Math.max(holdSlots, nonRented.length)
+          for (let i = 0; i < permTiles; i++) tiles.push(renderSlot(nonRented[i] || null, false, `perm-${i}`))
           // Emplacement loué (si actif) OU bouton de location (si dépôt permanent plein)
           if (holdRentActive) {
             tiles.push(renderSlot(rentedHold, true, 'rent-slot'))
