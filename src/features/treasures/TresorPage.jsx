@@ -202,14 +202,20 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           const canRent = permFull && !holdRentActive && gold >= holdRentPrice
 
           // Tuile d'un emplacement (occupé ou vide). `rented` colore différemment.
-          const renderSlot = (h, rented, key) => {
+          // `boughtPrice` : prix payé pour un emplacement permanent acheté — affiché en
+          // permanence pour que l'acheteur voie que son achat est toujours là.
+          const renderSlot = (h, rented, key, boughtPrice = null) => {
             const accent = rented ? { c1: RENT_C1, c2: RENT_C2 } : null
+            const boughtNote = boughtPrice > 0
+              ? <div style={{ fontSize: 8.5, color: theme.gold, fontWeight: 800, textAlign: 'center', whiteSpace: 'nowrap' }}>✓ {t('hold_slot_bought_note').replace('{price}', boughtPrice)}</div>
+              : null
             if (!h) {
               const c1 = rented ? RENT_C1 : theme.border
               return (
                 <div key={key} style={{ width: TILE, flexShrink: 0, height: TILE + 34, borderRadius: 14, border: `1.5px dashed ${c1}${rented ? '88' : ''}`, background: theme.overlay, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                   <div style={{ fontSize: 26, opacity: 0.4 }}>{rented ? '🔑' : '🗄️'}</div>
                   <div style={{ fontSize: 10, color: theme.textMuted, fontWeight: 700 }}>{rented ? t('hold_rented_empty') : t('hold_slot_free')}</div>
+                  {boughtNote}
                 </div>
               )
             }
@@ -229,6 +235,7 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
                   {h.is_shiny && '✨'}{cardName(hCard, getLang())}
                 </div>
                 <div style={{ fontSize: 9, color: hRc?.color, fontWeight: 800 }}>{rarityLabel(hCard?.rarity, t)}</div>
+                {boughtNote}
                 {h.claimable ? (
                   <button
                     onClick={busy ? undefined : async () => { setClaimingHoldId(h.id); try { await onClaimHold?.(h.id) } finally { setClaimingHoldId(null) } }}
@@ -257,8 +264,11 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           // Emplacements permanents — Math.max : un joueur peut détenir plus de geocoins
           // que d'emplacements (dépôts d'avant la suppression du slot gratuit) ; ils
           // restent affichés et réclamables, on ne peut juste plus rien stocker.
+          // Les i < holdSlots sont les emplacements ACHETÉS : leur prix reste affiché
+          // (« déjà acheté ») pour que l'achat ne semble pas avoir disparu.
           const permTiles = Math.max(holdSlots, nonRented.length)
-          for (let i = 0; i < permTiles; i++) tiles.push(renderSlot(nonRented[i] || null, false, `perm-${i}`))
+          for (let i = 0; i < permTiles; i++)
+            tiles.push(renderSlot(nonRented[i] || null, false, `perm-${i}`, i < holdSlots ? Number(holdSlotPrices?.[i] ?? 0) : null))
           // Emplacement loué (si actif) OU bouton de location (si dépôt permanent plein)
           if (holdRentActive) {
             tiles.push(renderSlot(rentedHold, true, 'rent-slot'))
