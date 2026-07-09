@@ -123,7 +123,7 @@ export function GloryInfoButton({ size = 15 }) {
   );
 }
 
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,deposit=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
   const [outcome,setOutcome]=useState("card");  // 'card' | 'consolation' | 'hold'
@@ -172,6 +172,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // Geocoin précieux déjà possédé ET hors-limite → proposer le CHOIX dépôt / gloire (double bouton).
   const isPreciousCard=quiz.card?.rarity==='légendaire'||quiz.card?.rarity==='épique'||isShiny;
   const showDepositChoice=status==="open"&&!beginner&&isPreciousCard&&!!limitStatus?.over&&alreadyOwned;
+  // Dépôt payant : coût calculé par App (0 = slot acheté/loué libre, sinon location) ;
+  // blocked = 'full' (aucun emplacement) ou 'gold' (or insuffisant pour la location).
+  const depCost=deposit?.cost||0, depBlocked=deposit?.blocked||null;
 
   useEffect(() => {
     if (quiz.winner && status === "open" && !doneRef.current) {
@@ -429,8 +432,8 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
               style={{flex:1,background:(isSubmitting||questionMasked)?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":(isSubmitting||questionMasked)?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:(isSubmitting||questionMasked)?0.6:1}}/>
           {showDepositChoice ? (
             <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
-              <button onClick={()=>submit('hold')} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked} title={t("quiz_choice_deposit_hint")||"Mettre un exemplaire au dépôt"} style={{...BTN("linear-gradient(135deg,#6c5ce7,#4834d4)","#fff"),padding:"6px 14px",borderRadius:10,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?"not-allowed":"pointer",minWidth:98,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.05}}>
-                <span style={{fontSize:12,fontWeight:900}}>{t("quiz_submit")}</span><span style={{fontSize:9,fontWeight:800,opacity:.9}}>📥 {t("quiz_choice_deposit")||'dépôt'}</span>
+              <button onClick={()=>submit('hold')} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||!!depBlocked} title={depBlocked==='full'?(t("quiz_choice_deposit_full")||"Dépôt plein — impossible de déposer"):depBlocked==='gold'?(t("quiz_choice_deposit_too_poor")||"Or insuffisant pour la location ({price} G)").replace('{price}',depCost):(t("quiz_choice_deposit_hint")||"Mettre un exemplaire au dépôt")} style={{...BTN("linear-gradient(135deg,#6c5ce7,#4834d4)","#fff"),padding:"6px 14px",borderRadius:10,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||depBlocked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||depBlocked)?"not-allowed":"pointer",minWidth:98,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.05}}>
+                <span style={{fontSize:12,fontWeight:900}}>{t("quiz_submit")}</span><span style={{fontSize:9,fontWeight:800,opacity:.9}}>📥 {t("quiz_choice_deposit")||'dépôt'}{depCost>0?` (${depCost} G)`:''}</span>
               </button>
               <button onClick={()=>submit('glory')} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked} title={t("quiz_choice_glory_hint")||"Jouer pour la gloire (or + PF)"} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"6px 14px",borderRadius:10,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?"not-allowed":"pointer",minWidth:98,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.05}}>
                 <span style={{fontSize:12,fontWeight:900}}>{t("quiz_submit")}</span><span style={{fontSize:9,fontWeight:800,opacity:.9}}>🏆 {t("quiz_choice_glory")||'gloire'}</span>

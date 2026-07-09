@@ -3,9 +3,9 @@ import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetCurrentQuiz, apiJoinQuiz, apiAnswerQuiz } from '../services/api.js'
 import { getLang } from '../i18n/translations.js'
 
-export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned }) {
+export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onGoldSync }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, limits }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onGoldSync, limits }
 
   const [nextQuizTime,  setNextQuizTime] = useState(Date.now() + QUIZ_INTERVAL * 1000)
   const [countdown,     setCountdown]    = useState(QUIZ_INTERVAL)
@@ -212,7 +212,10 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         // Gloire : pas de geocoin, mais on crédite les consolations cumulées (or + PF).
         if (data.gold_earned) earnGoldWithFx(data.gold_earned)
         cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
-        showToast(data.hold ? (t('toast_deposit_win') || '📥 Geocoin mis au dépôt !') : t('toast_glory_win'))
+        // Choix « dépôt » refusé par le serveur (plein / or insuffisant) → gloire quand même.
+        showToast(data.hold_declined === 'full'              ? (t('toast_deposit_declined_full') || '🗄️ Dépôt plein — victoire pour la gloire !')
+                : data.hold_declined === 'insufficient_gold' ? (t('toast_deposit_declined_gold') || '💰 Or insuffisant pour le dépôt — victoire pour la gloire !')
+                : data.hold ? (t('toast_deposit_win') || '📥 Geocoin mis au dépôt !') : t('toast_glory_win'))
         // Fenêtre de grâce « les autres ont N s pour répondre » : on pose la deadline sur le
         // quiz (pour le décompte affiché dans la modale) et on garde la modale ouverte jusqu'à
         // sa fin (au lieu d'un délai fixe), corrigée du décalage d'horloge serveur/client.
@@ -234,7 +237,11 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // final=false ⇒ round multi non terminé : je referme sans avancer le cycle.
       if (data.deposited) {
         resolvedQuizIdsRef.current.add(activeQuiz.id)
-        showToast(data.hold ? (t('toast_deposit_win') || '📥 Geocoin mis au dépôt !') : t('toast_quiz_won').replace('{card}', card.name))
+        // Location payée à la volée : synchroniser le solde renvoyé et l'afficher dans le toast.
+        if (typeof data.gold === 'number') cbRef.current.onGoldSync?.(data.gold)
+        showToast(data.hold_price_paid > 0
+          ? (t('toast_deposit_win_paid') || '📥 Geocoin mis au dépôt ! (location −{price} G)').replace('{price}', data.hold_price_paid)
+          : data.hold ? (t('toast_deposit_win') || '📥 Geocoin mis au dépôt !') : t('toast_quiz_won').replace('{card}', card.name))
         const solvedAt = Date.now()
         if (data.final === false) {
           setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 900)
