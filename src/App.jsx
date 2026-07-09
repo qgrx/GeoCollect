@@ -1195,7 +1195,10 @@ export default function App() {
     if (error) throw new Error(error)
     setDailyOffer(d => d ? { ...d, claimed: true } : d)
     gs.earnCard(data.card, false)
-    if (data.gold_earned > 0) gs.earnGoldWithFx(data.gold_earned)
+    // earnGoldWithFx est une fonction locale d'App, PAS un membre de gs :
+    // l'appel gs.earnGoldWithFx lançait un TypeError silencieux (promesse non
+    // catchée) qui court-circuitait triggerQuestRefresh + toast à chaque claim.
+    if (data.gold_earned > 0) earnGoldWithFx(data.gold_earned)
     if (data.forge_points_earned > 0) gs.addForgePoints(data.forge_points_earned)
     gs.triggerQuestRefresh()
     showToast(t('toast_daily_claimed').replace('{card}', data.card.name))

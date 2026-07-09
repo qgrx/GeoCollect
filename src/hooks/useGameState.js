@@ -88,7 +88,14 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const questsReqSeq = useRef(0)
   const refreshQuests = useCallback(async () => {
     const seq = ++questsReqSeq.current
-    const { data } = await apiGetDailyQuests()
+    let { data } = await apiGetDailyQuests()
+    // Une relance unique sur échec (réseau, 429) : sans elle, la liste resterait
+    // figée sur l'ancien état jusqu'au prochain signal d'activité.
+    if (!data?.quests && mounted.current) {
+      await new Promise(r => setTimeout(r, 1200))
+      if (seq !== questsReqSeq.current) return
+      ;({ data } = await apiGetDailyQuests())
+    }
     if (data?.quests && mounted.current && seq === questsReqSeq.current) setQuests(data.quests)
   }, [])
 
