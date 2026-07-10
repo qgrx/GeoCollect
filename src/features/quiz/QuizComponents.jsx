@@ -407,7 +407,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           const bannerBody  = limitStatus.forgeCapped
             ? (cardHoldable ? t('quiz_limit_banner_hold_capped') : t('quiz_limit_banner_forge_capped'))
             : (cardHoldable ? t('quiz_limit_banner_hold')        : t('quiz_limit_banner_forge'));
-          const infoBody    = (limitWhen ? `${bannerTitle} — ${limitWhen}\n\n` : '') + bannerBody;
+          const infoBody    = (limitWhen ? `${bannerTitle} — ${limitWhen}\n\n` : '') + bannerBody + `\n\n${t('quiz_limit_info_note')}`;
           const pocket   = limitStatus.type==='hourly';
           const price    = upsell ? (pocket?upsell.pocketPrice:upsell.bagPrice) : null;
           const showUpsell = upsell && price!=null;
