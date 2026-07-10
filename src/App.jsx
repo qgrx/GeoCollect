@@ -1017,15 +1017,18 @@ export default function App() {
   const revealArmRef = useRef(null)   // quiz.id armé (phrase secrète tapée)
   const [beginnerRevealAnswer, setBeginnerRevealAnswer] = useState(null)
   useEffect(() => {
+    console.log('[reveal] effect — recap?', !!beginner.recap, 'arm=', revealArmRef.current)
     if (!beginner.recap) { setBeginnerRevealAnswer(null); revealArmRef.current = null; return }  // nouvelle manche → efface + désarme
     const armed = revealArmRef.current
     if (armed == null) return
     let cancelled = false
-    apiRevealBeginnerAnswer(armed).then(({ data }) => {
+    apiRevealBeginnerAnswer(armed).then((r) => {
+      console.log('[reveal] fetch result', r)
+      const { data } = r
       if (cancelled || !data) return
       const tr = data.translations?.[getLang()]
       setBeginnerRevealAnswer(tr?.answer || data.answer)
-    }).catch(() => {})
+    }).catch((e) => { console.log('[reveal] fetch error', e) })
     return () => { cancelled = true }
   }, [beginner.recap])
   // ── Protection inter-modes — AUTORITÉ SERVEUR UNIQUE ────────────────────────
@@ -2536,7 +2539,7 @@ export default function App() {
       <LimitInfoModalHost />
       {/* QuizNotif popup disabled */}
       {/* Modale Mode Débutant (plusieurs gagnants, communs, sans forge) */}
-      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} onAnswer={wrappedBeginnerAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} onCheatReveal={(id) => { revealArmRef.current = id }} />}
+      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} onAnswer={wrappedBeginnerAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} onCheatReveal={(id) => { console.log('[reveal] ARM set to', id); revealArmRef.current = id }} />}
 
       {/* Modale de règles du jeu (PVP vs Débutant) */}
       {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
