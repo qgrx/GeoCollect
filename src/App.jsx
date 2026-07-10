@@ -17,7 +17,7 @@ import { isCorrectAnswer } from './utils/answer.js';
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
 import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard, apiRevealBeginnerAnswer } from './services/api.js'
 import { soundQuizNew, soundMarketSale, useVolume } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -1006,6 +1006,26 @@ export default function App() {
   const beginnerRef = useRef(beginner)
   useEffect(() => { beginnerRef.current = beginner })
   const [beginnerWinnersPopup, setBeginnerWinnersPopup] = useState(null)   // { card, winners }
+
+  // Aide d'entraînement : phrase secrète « Bravo aux gagnants » tapée dans la barre
+  // du Mode Débutant → arme la révélation de la réponse (quiz.id armé). La réponse
+  // n'est récupérée puis affichée qu'à la pause récap (APRÈS la manche), jamais
+  // pendant — le serveur la refuse d'ailleurs tant que la manche est jouable.
+  const [beginnerRevealArm, setBeginnerRevealArm] = useState(null)      // quiz.id armé
+  const [beginnerRevealAnswer, setBeginnerRevealAnswer] = useState(null)
+  useEffect(() => {
+    if (!beginner.recap) { setBeginnerRevealAnswer(null); return }   // nouvelle manche → on efface
+    if (beginnerRevealArm == null) return
+    const armed = beginnerRevealArm
+    setBeginnerRevealArm(null)   // consommé une seule fois par manche
+    let cancelled = false
+    apiRevealBeginnerAnswer(armed).then(({ data }) => {
+      if (cancelled || !data) return
+      const tr = data.translations?.[getLang()]
+      setBeginnerRevealAnswer(tr?.answer || data.answer)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [beginner.recap, beginnerRevealArm])
   // ── Protection inter-modes — AUTORITÉ SERVEUR UNIQUE ────────────────────────
   // Le serveur calcule cross_blocked dans /current (round-based : bloque la manche
   // en cours / la prochaine au moment du gain, puis se libère après une manche ;
@@ -1076,7 +1096,7 @@ export default function App() {
   const renderQuizBar = () => {
     const bar = beginnerActive
       ? (beginner.recap
-          ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} />
+          ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} revealAnswer={beginnerRevealAnswer} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
       : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
     // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
@@ -2511,7 +2531,7 @@ export default function App() {
       <GloryInfoModalHost />
       {/* QuizNotif popup disabled */}
       {/* Modale Mode Débutant (plusieurs gagnants, communs, sans forge) */}
-      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} onAnswer={wrappedBeginnerAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} />}
+      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} onAnswer={wrappedBeginnerAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} onCheatReveal={setBeginnerRevealArm} />}
 
       {/* Modale de règles du jeu (PVP vs Débutant) */}
       {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
