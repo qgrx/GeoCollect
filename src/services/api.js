@@ -196,6 +196,10 @@ export const apiClaimHold = (hold_id)                   => apiFetch('/api/hold/c
 export const apiBuyHoldSlot  = ()                       => apiFetch('/api/hold/slots/buy', { method: 'POST' })
 export const apiRentHoldSlot = ()                       => apiFetch('/api/hold/slots/rent', { method: 'POST' })
 export const apiTakeForgeInsteadOfHold = ()             => apiFetch('/api/hold/forge-point', { method: 'POST' })
+
+// ─── Limites — agrandir les poches (horaire) / le sac (quotidien) ─────────────
+export const apiBuyPocketBoost = () => apiFetch('/api/limits/pocket/boost', { method: 'POST' })
+export const apiBuyBagSlot     = () => apiFetch('/api/limits/bag/buy', { method: 'POST' })
 export const apiAdminGetStats         = () => apiFetch('/api/admin/stats')
 export const apiAdminGetOnlineHistory = (hours = 24) => apiFetch(`/api/admin/online-history?hours=${hours}`)
 export const apiAdminGetBots          = () => apiFetch('/api/admin/bots')

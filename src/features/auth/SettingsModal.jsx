@@ -39,7 +39,7 @@ function memberSince(dateStr) {
 }
 
 // ─── SettingsModal ────────────────────────────────────────────────────────────
-export default function SettingsModal({ auth, collection = {}, shinyCollection = {}, cardPool = [], ranks = [], limits = {}, score: scoreProp, onClose, onStartTour }) {
+export default function SettingsModal({ auth, collection = {}, shinyCollection = {}, cardPool = [], ranks = [], limits = {}, score: scoreProp, onBuyPocketBoost = null, onBuyBagSlot = null, onClose, onStartTour }) {
   // Succès = nombre de geocoins d'achievement possédés (variantes évolutives incluses).
   const achievementsOwned = (cardPool || []).filter(c => (c.type || '').toLowerCase().startsWith('achievement') && (collection[c.id] || 0) > 0).length
   const { t, lang } = useT()
@@ -50,6 +50,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
   const [loading, setLoading] = useState(false)
   const [changed, setChanged] = useState(false)
   const [showCardsInfo, setShowCardsInfo] = useState(false)
+  const [buying,  setBuying]  = useState(null)   // 'bag' | 'pocket' pendant un achat d'agrandissement
 
   if (!profile) return null
 
@@ -73,17 +74,26 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
     const lastHourReset = profile.cards_hour_reset_at ? new Date(profile.cards_hour_reset_at).getTime() : null
     // Un nouveau jour réinitialise aussi la fenêtre horaire (cohérent avec le backend)
     const hourlyReset = isNewDay || !lastHourReset || (Date.now() - lastHourReset) >= 60 * 60 * 1000
+    // Caps effectifs : sac permanent (+1 geocoin/jour par emplacement) et poches
+    // boostées du jour (+N geocoins/heure jusqu'à minuit) — miroir de computeCardLimitStatus.
+    const bagSlots      = Math.max(0, Number(profile.bag_slots) || 0)
+    const pocketBoost   = profile.pocket_boost_day === today ? Math.max(0, Number(profile.pocket_boost) || 0) : 0
+    const baseDailyCap  = limits.quizDailyCardCap  || 0
+    const baseHourlyCap = limits.quizHourlyCardCap || 0
     limitsDebug = {
       dailyGold:        isNewDay ? 0 : (profile.daily_gold || 0),
       dailyGoldCap:     limits.connected?.dailyGold || 0,
       dailyGoldJoin:    isNewDay ? 0 : (profile.daily_gold_join || 0),
       dailyGoldJoinCap: limits.quizJoinGoldCap || 0,
       dailyCards:       isNewDay ? 0 : (profile.daily_cards || 0),
-      dailyCardsCap:    limits.quizDailyCardCap || 0,
+      dailyCardsCap:    baseDailyCap > 0 ? baseDailyCap + bagSlots : 0,
       dailyShiny:       isNewDay ? 0 : (profile.daily_shiny || 0),
       dailyShinyCap:    limits.quizDailyShinyCap || 0,
       hourlyCards:      hourlyReset ? 0 : (profile.hourly_cards || 0),
-      hourlyCardsCap:   limits.quizHourlyCardCap || 0,
+      hourlyCardsCap:   baseHourlyCap > 0 ? baseHourlyCap + pocketBoost : 0,
+      bagSlots,
+      canBuyBag:        baseDailyCap  > 0,
+      canBuyPocket:     baseHourlyCap > 0,
       dailyForgeConsolation:    isNewDay ? 0 : (profile.daily_forge_consolation || 0),
       dailyForgeConsolationCap: limits.quizDailyForgeCap || 0,
       isNewDay,
@@ -240,11 +250,22 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
               {[
                 { label: 'Or quotidien',       value: limitsDebug.dailyGold,     cap: limitsDebug.dailyGoldCap },
                 ...(limits.quizJoinGold > 0 ? [{ label: 'Or de participation', value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap }] : []),
-                { label: 'Geocoins du jour',   value: limitsDebug.dailyCards,    cap: limitsDebug.dailyCardsCap, info: true },
-                { label: 'Geocoins/heure',     value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap },
+                { label: 'Geocoins du jour',   value: limitsDebug.dailyCards,    cap: limitsDebug.dailyCardsCap, info: true,
+                  // Agrandir le sac : +1 geocoin/jour permanent, prix du prochain emplacement (masqué si 5/5).
+                  buy: (() => {
+                    if (!onBuyBagSlot || !limitsDebug.canBuyBag) return null
+                    const prices = Array.isArray(limits.bagSlotPrices) ? limits.bagSlotPrices : []
+                    const price  = Number(prices[limitsDebug.bagSlots])
+                    return Number.isFinite(price) ? { icon: '🎒', kind: 'bag', label: t('limit_bag_buy'), price, onClick: onBuyBagSlot } : null
+                  })() },
+                { label: 'Geocoins/heure',     value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap,
+                  // Agrandir les poches : +N geocoins/heure jusqu'à minuit (cumulable).
+                  buy: (onBuyPocketBoost && limitsDebug.canBuyPocket)
+                    ? { icon: '🧤', kind: 'pocket', label: t('limit_pocket_buy').replace('{n}', limits.pocketBoostCards ?? 10), price: limits.pocketBoostPrice ?? 100, onClick: onBuyPocketBoost }
+                    : null },
                 ...(limitsDebug.dailyShinyCap > 0 ? [{ label: '✨ Shiny du jour', value: limitsDebug.dailyShiny, cap: limitsDebug.dailyShinyCap }] : []),
                 ...(limits.quizConsolationForge > 0 ? [{ label: 'Forge de compensation', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
-              ].map(({ label, value, cap, info }) => {
+              ].map(({ label, value, cap, info, buy }) => {
                 const unlimited = !cap || cap <= 0
                 const pct = unlimited ? 0 : Math.min(100, Math.round((value / cap) * 100))
                 return (
@@ -263,6 +284,20 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
                         <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: pct >= 100 ? '#eb4d4b' : `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
                       </div>
                     )}
+                    {buy && (() => {
+                      const poor = (profile.gold ?? 0) < buy.price
+                      return (
+                        <button
+                          onClick={async () => { if (buying || poor) return; setBuying(buy.kind); try { await buy.onClick() } finally { setBuying(null) } }}
+                          disabled={!!buying || poor}
+                          title={poor ? t('limit_upsell_no_gold') : undefined}
+                          style={{ marginTop: 4, background: poor ? theme.overlayMd : `${theme.gold}22`, border: `1px solid ${theme.gold}55`,
+                            color: poor ? theme.textMuted : theme.gold, fontWeight: 800, fontSize: 10.5, padding: '5px 10px', borderRadius: 8,
+                            cursor: poor ? 'not-allowed' : 'pointer', fontFamily: "'Nunito',sans-serif", opacity: buying === buy.kind ? 0.6 : 1 }}>
+                          {buy.icon} {buy.label} · {buy.price} Or
+                        </button>
+                      )
+                    })()}
                     {info && showCardsInfo && (
                       <div style={{ marginTop: 4, padding: 8, borderRadius: 8, background: theme.overlayMd, fontSize: 10, color: theme.textSecondary, lineHeight: 1.4 }}>
                         Pas de panique, si un geocoin vous intéresse alors que vous avez atteint la limite, il y a le dépôt d'attente. Un point de forge est également offert en compensation pour chaque quiz gagné.

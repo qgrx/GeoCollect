@@ -120,4 +120,30 @@ describe('computeCardLimitStatus', () => {
     const notCapped = computeCardLimitStatus({ daily_reset_at: today, daily_cards: 70, hourly_cards: 0, daily_forge_consolation: 50 }, limits)
     expect(notCapped.forgeCapped).toBe(false)
   })
+
+  it('sac : les emplacements achetés relèvent la limite quotidienne (+1 chacun)', () => {
+    const base = { daily_reset_at: today, daily_cards: 70, hourly_cards: 3, cards_hour_reset_at: minsAgo(10) }
+    expect(computeCardLimitStatus(base, limits).type).toBe('daily')
+    expect(computeCardLimitStatus({ ...base, bag_slots: 1 }, limits).over).toBe(false)
+    // 70 + 2 slots = cap 72 → 71 cartes ne bloquent pas, 72 oui
+    expect(computeCardLimitStatus({ ...base, daily_cards: 72, bag_slots: 2 }, limits).type).toBe('daily')
+  })
+
+  it('poches : le boost du jour relève la limite horaire jusqu\'à minuit', () => {
+    const base = { daily_reset_at: today, daily_cards: 30, hourly_cards: 20, cards_hour_reset_at: minsAgo(10) }
+    expect(computeCardLimitStatus(base, limits).type).toBe('hourly')
+    const boosted = { ...base, pocket_boost: 10, pocket_boost_day: today }
+    expect(computeCardLimitStatus(boosted, limits).over).toBe(false)
+    // Boost de la veille : expiré, la limite horaire s'applique de nouveau
+    const stale = { ...base, pocket_boost: 10, pocket_boost_day: '2000-01-01' }
+    expect(computeCardLimitStatus(stale, limits).type).toBe('hourly')
+  })
+
+  it('cap à 0 = illimité : ni le sac ni le boost ne le transforment en limite', () => {
+    const s = computeCardLimitStatus(
+      { daily_reset_at: today, daily_cards: 999, hourly_cards: 999, cards_hour_reset_at: minsAgo(10), bag_slots: 5, pocket_boost: 10, pocket_boost_day: today },
+      { quizDailyCardCap: 0, quizHourlyCardCap: 0 },
+    )
+    expect(s.over).toBe(false)
+  })
 })

@@ -123,7 +123,7 @@ export function GloryInfoButton({ size = 15 }) {
   );
 }
 
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,deposit=null}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,upsell=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,deposit=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
   const [outcome,setOutcome]=useState("card");  // 'card' | 'consolation' | 'hold'
@@ -143,6 +143,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     return Math.floor((Date.now()-srvSkew-new Date(quiz.started_at).getTime())/1000);
   });
   const [shake,setShake]=useState(false);
+  const [upsellBusy,setUpsellBusy]=useState(false);
   const [npc,setNpc]=useState(null);
   const [revealedLetters,setRevealedLetters]=useState(0);
   const [isSubmitting,setIsSubmitting]=useState(false);
@@ -375,6 +376,24 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
                   ? (cardHoldable ? t('quiz_limit_banner_hold_capped') : t('quiz_limit_banner_forge_capped'))
                   : (cardHoldable ? t('quiz_limit_banner_hold')        : t('quiz_limit_banner_forge'))}
               </div>
+              {/* Agrandir contre de l'or : poches (limite horaire, boost jusqu'à minuit)
+                  ou sac (limite quotidienne, +1/jour permanent — masqué si 5/5 achetés).
+                  Le profil mis à jour recalcule limitStatus → la bannière se referme. */}
+              {upsell && (()=>{
+                const pocket=limitStatus.type==='hourly';
+                const price=pocket?upsell.pocketPrice:upsell.bagPrice;
+                if(price==null) return null;
+                const poor=(upsell.gold??0)<price;
+                const buy=async()=>{ if(upsellBusy||poor) return; setUpsellBusy(true); try{ await (pocket?upsell.onBuyPocket:upsell.onBuyBag)(); } finally{ setUpsellBusy(false); } };
+                return (
+                  <button onClick={buy} disabled={upsellBusy||poor} title={poor?t('limit_upsell_no_gold'):undefined}
+                    style={{marginTop:8,background:poor?"#ffffff10":"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:poor?"#8d8d8d":"#1e2b3a",fontWeight:900,fontSize:11.5,padding:"7px 12px",borderRadius:9,cursor:poor?"not-allowed":"pointer",fontFamily:"'Nunito',sans-serif",opacity:upsellBusy?0.6:1}}>
+                    {pocket
+                      ? `🧤 ${t('limit_pocket_buy').replace('{n}',upsell.pocketCards)} · ${price} 💰`
+                      : `🎒 ${t('limit_bag_buy')} · ${price} 💰`}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         )}

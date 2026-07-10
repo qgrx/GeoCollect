@@ -17,7 +17,7 @@ import { isCorrectAnswer } from './utils/answer.js';
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
 import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard } from './services/api.js'
 import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -1241,6 +1241,41 @@ export default function App() {
     setHoldRentActive(true)
     if (typeof data.gold === 'number') gs.setGold(data.gold)
     showToast(t('toast_hold_slot_rented'))
+  }
+
+  // ── Agrandir les poches : +N geocoins/heure jusqu'à minuit (cumulable) ──────
+  async function handleBuyPocketBoost() {
+    const { data, error } = await apiBuyPocketBoost()
+    if (error) { showToast(error, 'error'); return }
+    if (typeof data.gold === 'number') gs.setGold(data.gold)
+    // Mise à jour immédiate du profil : computeCardLimitStatus relit ces champs.
+    auth.setProfile(p => p ? { ...p, ...(typeof data.gold === 'number' ? { gold: data.gold } : {}), pocket_boost: data.pocket_boost, pocket_boost_day: data.pocket_boost_day } : p)
+    showToast(t('toast_pocket_bought').replace('{n}', data.cards ?? gs.limits?.pocketBoostCards ?? 10))
+  }
+
+  // ── Agrandir le sac : +1 geocoin/jour PERMANENT par emplacement (5 max) ─────
+  async function handleBuyBagSlot() {
+    const { data, error } = await apiBuyBagSlot()
+    if (error) { showToast(error, 'error'); return }
+    if (typeof data.gold === 'number') gs.setGold(data.gold)
+    auth.setProfile(p => p ? { ...p, ...(typeof data.gold === 'number' ? { gold: data.gold } : {}), bag_slots: data.bag_slots } : p)
+    showToast(t('toast_bag_bought'))
+  }
+
+  // Offre d'agrandissement affichée dans la bannière « limite atteinte » du quiz :
+  // prix du boost de poches (limite horaire) et du prochain emplacement de sac
+  // (limite quotidienne, null = les 5 emplacements sont achetés).
+  const limitUpsell = auth.isDemo ? null : {
+    gold:        gs.gold,
+    pocketPrice: gs.limits?.pocketBoostPrice ?? 100,
+    pocketCards: gs.limits?.pocketBoostCards ?? 10,
+    bagPrice: (() => {
+      const prices = Array.isArray(gs.limits?.bagSlotPrices) ? gs.limits.bagSlotPrices : []
+      const price  = Number(prices[Math.max(0, Number(auth.profile?.bag_slots) || 0)])
+      return Number.isFinite(price) ? price : null
+    })(),
+    onBuyPocket: handleBuyPocketBoost,
+    onBuyBag:    handleBuyBagSlot,
   }
 
   // Wrapper — bloque la soumission pour les non-connectés et propose l'inscription
@@ -2469,7 +2504,7 @@ export default function App() {
       {/* ── Modals ── */}
       {/* QuizNotif popup disabled */}
       {/* Modale Mode Débutant (plusieurs gagnants, communs, sans forge) */}
-      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} onAnswer={wrappedBeginnerAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} />}
+      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} onAnswer={wrappedBeginnerAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} />}
 
       {/* Modale de règles du jeu (PVP vs Débutant) */}
       {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
@@ -2477,7 +2512,7 @@ export default function App() {
       {/* Liste des gagnants d'une manche Entraînement (clic sur le feed) */}
       {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} onClose={() => setBeginnerWinnersPopup(null)} />}
 
-      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} alreadyOwned={!!activeQuiz?.card?.id && ((activeQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[activeQuiz.card.id] || 0) > 0 : (gs.collection?.[activeQuiz.card.id] || 0) > 0)} deposit={(() => {
+      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} alreadyOwned={!!activeQuiz?.card?.id && ((activeQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[activeQuiz.card.id] || 0) > 0 : (gs.collection?.[activeQuiz.card.id] || 0) > 0)} deposit={(() => {
         // Coût du choix « dépôt » (même plan que le serveur) : slot acheté libre ou slot
         // loué pré-payé → gratuit ; sinon location à la volée ; tout occupé → bloqué.
         const nr = holds.filter(h => !h.rented)
@@ -2771,7 +2806,7 @@ export default function App() {
         )
       })()}
 
-      {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} shinyCollection={gs.shinyCollection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} limits={gs.limits} score={userScore} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
+      {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} shinyCollection={gs.shinyCollection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} limits={gs.limits} score={userScore} onBuyPocketBoost={auth.isDemo ? null : handleBuyPocketBoost} onBuyBagSlot={auth.isDemo ? null : handleBuyBagSlot} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
       {showReferral && auth.profile && <ReferralModal onClose={() => setShowReferral(false)} />}
       {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0); setRevealPayment('') }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} initialPaymentLabel={revealPayment} />}
       {/* CGV désactivée temporairement */}
@@ -2838,6 +2873,9 @@ export default function App() {
                 apiSetConfig('hold_slot_prices',       limEdit.holdSlotPrices   ?? [150, 400]),
                 apiSetConfig('hold_rent_price',        limEdit.holdRentPrice    ?? 80),
                 apiSetConfig('hold_replace_price',     limEdit.holdReplacePrice ?? 50),
+                apiSetConfig('pocket_boost_price',     limEdit.pocketBoostPrice ?? 100),
+                apiSetConfig('pocket_boost_cards',     limEdit.pocketBoostCards ?? 10),
+                apiSetConfig('bag_slot_prices',        limEdit.bagSlotPrices    ?? [500, 1000, 2000, 4000, 6000]),
                 apiSetConfig('forge_cost_by_rarity',   limEdit.forgeCostByRarity   ?? { commun:60,rare:180,épique:600,légendaire:1800 }),
                 apiSetConfig('melt_points_by_rarity',  limEdit.meltPointsByRarity  ?? {}),
                 apiSetConfig('melt_points_by_rarity_shiny', limEdit.meltPointsByRarityShiny ?? {}),

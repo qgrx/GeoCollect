@@ -52,8 +52,15 @@ export function computeCardLimitStatus(profile, limits) {
 
   const today     = todayParis()
   const isNewDay  = !profile.daily_reset_at || profile.daily_reset_at < today
-  const dailyCap  = Number(limits?.quizDailyCardCap)  || 0
-  const hourlyCap = Number(limits?.quizHourlyCardCap) || 0
+  // Caps effectifs — miroir du backend (utils/limits.js) : le sac (+1 geocoin/jour
+  // par emplacement permanent) et les poches boostées du jour (+N geocoins/heure
+  // jusqu'à minuit) s'ajoutent aux caps globaux. Un cap à 0 = illimité, jamais étendu.
+  const baseDailyCap  = Number(limits?.quizDailyCardCap)  || 0
+  const baseHourlyCap = Number(limits?.quizHourlyCardCap) || 0
+  const bagSlots  = Math.max(0, Number(profile.bag_slots) || 0)
+  const boost     = profile.pocket_boost_day === today ? Math.max(0, Number(profile.pocket_boost) || 0) : 0
+  const dailyCap  = baseDailyCap  > 0 ? baseDailyCap  + bagSlots : baseDailyCap
+  const hourlyCap = baseHourlyCap > 0 ? baseHourlyCap + boost    : baseHourlyCap
 
   // Cap quotidien de PF de consolation
   const forgeCap      = Number(limits?.quizDailyForgeCap) || 0
