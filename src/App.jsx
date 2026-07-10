@@ -18,7 +18,7 @@ import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
 import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
 import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard } from './services/api.js'
-import { soundQuizNew, soundMarketSale } from './utils/sounds.js'
+import { soundQuizNew, soundMarketSale, useVolume } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
 
@@ -29,6 +29,7 @@ import OnboardingTour from './components/OnboardingTour.jsx';
 import PseudoDisplay from './components/PseudoDisplay.jsx';
 import { getRank, isTopRank, rankCC, getRankLabel } from './utils/rankUtils.js';
 import MaintenanceScreen from './components/MaintenanceScreen.jsx';
+import VolumeControl from './components/VolumeControl.jsx';
 
 // ─── Features ────────────────────────────────────────────────────────────────
 import AuthModal from './features/auth/AuthModal.jsx';
@@ -1896,13 +1897,14 @@ export default function App() {
             {avatarMenu && (
               <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 12, boxShadow: '0 16px 48px #000d', zIndex: 99999, minWidth: 200, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
                 <div style={{ padding: '8px 10px 6px', borderBottom: `1px solid ${theme.borderLight}` }}>
-                  <div style={{ fontSize: 9, color: theme.textSecondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 5, paddingLeft: 4 }}>Langue</div>
+                  <div style={{ fontSize: 9, color: theme.textSecondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 5, paddingLeft: 4 }}>{t('menu_language')}</div>
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     {Object.entries(LANGS).map(([code, label]) => (
                       <button key={code} onClick={() => setLang(code)} style={{ background: lang === code ? '#f9ca2420' : theme.bgElevated, border: lang === code ? '1px solid #f9ca2444' : `1px solid ${theme.border}`, color: lang === code ? '#f9ca24' : theme.textSecondary, padding: '3px 9px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>{label}</button>
                     ))}
                   </div>
                 </div>
+                <VolumeControl />
                 {[
                   // Compte invité (démo) : pas de « Mon compte » ni de parrainage (pas de vrai compte).
                   ...(auth.isDemo ? [] : [

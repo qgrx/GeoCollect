@@ -1,8 +1,42 @@
 // Sons générés via Web Audio API — aucun fichier externe requis
 // Le contexte est créé en lazy sur le premier appel, après un geste utilisateur
+import { useState, useEffect } from 'react'
 
 let _ctx = null
+let _master = null   // nœud de gain global : contrôle le volume de tous les sons
 let _unlocked = false
+
+// ─── Volume global (0 → 1) — persisté et modifiable dans le menu utilisateur ───
+let _volume = 1
+let _volumeListeners = []
+try {
+  const saved = parseFloat(localStorage.getItem('geocards_volume'))
+  if (Number.isFinite(saved)) _volume = Math.min(1, Math.max(0, saved))
+} catch { /* ignore */ }
+
+function applyVolume() {
+  if (_master) _master.gain.value = _volume
+}
+
+export function getVolume() { return _volume }
+
+export function setVolume(v) {
+  _volume = Math.min(1, Math.max(0, Number(v) || 0))
+  applyVolume()
+  try { localStorage.setItem('geocards_volume', String(_volume)) } catch { /* ignore */ }
+  _volumeListeners.forEach(cb => cb(_volume))
+}
+
+// Hook React : renvoie [volume, setVolume] et se resynchronise entre composants
+export function useVolume() {
+  const [vol, setVol] = useState(_volume)
+  useEffect(() => {
+    const cb = v => setVol(v)
+    _volumeListeners.push(cb)
+    return () => { _volumeListeners = _volumeListeners.filter(x => x !== cb) }
+  }, [])
+  return [vol, setVolume]
+}
 
 // Déverrouiller l'audio sur le premier geste utilisateur
 if (typeof window !== 'undefined') {
@@ -12,6 +46,11 @@ if (typeof window !== 'undefined') {
     if (!_ctx) {
       try { _ctx = new (window.AudioContext || window.webkitAudioContext)() } catch { return }
     }
+    if (!_master) {
+      _master = _ctx.createGain()
+      _master.connect(_ctx.destination)
+      applyVolume()
+    }
     if (_ctx.state === 'suspended') _ctx.resume().catch(() => {})
   }
   window.addEventListener('click',   unlock, { once: false, passive: true })
@@ -20,8 +59,8 @@ if (typeof window !== 'undefined') {
 }
 
 function play(fn) {
-  // Ne jouer que si l'audio a été déverrouillé par un geste utilisateur
-  if (!_unlocked || !_ctx) return
+  // Ne jouer que si l'audio a été déverrouillé par un geste utilisateur et audible
+  if (!_unlocked || !_ctx || !_master || _volume <= 0) return
   try {
     if (_ctx.state === 'suspended') _ctx.resume().catch(() => {})
     fn(_ctx)
@@ -34,7 +73,7 @@ export function soundCorrect() {
     ;[523, 659, 784, 1047].forEach((freq, i) => {
       const o = ctx.createOscillator()
       const g = ctx.createGain()
-      o.connect(g); g.connect(ctx.destination)
+      o.connect(g); g.connect(_master)
       o.frequency.value = freq
       o.type = 'sine'
       g.gain.setValueAtTime(0, t + i * 0.1)
@@ -51,7 +90,7 @@ export function soundWrong() {
     const t = ctx.currentTime
     const o = ctx.createOscillator()
     const g = ctx.createGain()
-    o.connect(g); g.connect(ctx.destination)
+    o.connect(g); g.connect(_master)
     o.type = 'sawtooth'
     o.frequency.setValueAtTime(220, t)
     o.frequency.linearRampToValueAtTime(110, t + 0.3)
@@ -66,7 +105,7 @@ export function soundCountdownUrgent() {
     const t = ctx.currentTime
     const o = ctx.createOscillator()
     const g = ctx.createGain()
-    o.connect(g); g.connect(ctx.destination)
+    o.connect(g); g.connect(_master)
     o.type = 'square'
     o.frequency.value = 880
     g.gain.setValueAtTime(0.08, t)
@@ -81,7 +120,7 @@ export function soundMarketSale() {
     ;[392, 523, 659].forEach((freq, i) => {
       const o = ctx.createOscillator()
       const g = ctx.createGain()
-      o.connect(g); g.connect(ctx.destination)
+      o.connect(g); g.connect(_master)
       o.type = 'sine'
       o.frequency.value = freq
       g.gain.setValueAtTime(0, t + i * 0.08)
@@ -98,7 +137,7 @@ export function soundQuizNew() {
     ;[330, 392, 494, 659].forEach((freq, i) => {
       const o = ctx.createOscillator()
       const g = ctx.createGain()
-      o.connect(g); g.connect(ctx.destination)
+      o.connect(g); g.connect(_master)
       o.type = 'triangle'
       o.frequency.value = freq
       g.gain.setValueAtTime(0, t + i * 0.07)
