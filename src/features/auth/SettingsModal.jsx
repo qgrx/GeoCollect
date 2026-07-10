@@ -51,6 +51,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
   const [changed, setChanged] = useState(false)
   const [showCardsInfo, setShowCardsInfo] = useState(false)
   const [buying,  setBuying]  = useState(null)   // 'bag' | 'pocket' pendant un achat d'agrandissement
+  const [confirmBuy, setConfirmBuy] = useState(null)   // 'bag' | 'pocket' : confirmation Payer/Annuler ouverte
 
   if (!profile) return null
 
@@ -261,7 +262,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
                 { label: 'Geocoins/heure',     value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap,
                   // Agrandir les poches : +N geocoins/heure jusqu'à minuit (cumulable).
                   buy: (onBuyPocketBoost && limitsDebug.canBuyPocket)
-                    ? { icon: '🧤', kind: 'pocket', label: t('limit_pocket_buy').replace('{n}', limits.pocketBoostCards ?? 10), price: limits.pocketBoostPrice ?? 100, onClick: onBuyPocketBoost }
+                    ? { icon: '🧤', kind: 'pocket', label: t('limit_pocket_buy').replace('{n}', limits.pocketBoostCards ?? 10), price: limits.pocketBoostPrice ?? 100, cards: limits.pocketBoostCards ?? 10, onClick: onBuyPocketBoost }
                     : null },
                 ...(limitsDebug.dailyShinyCap > 0 ? [{ label: '✨ Shiny du jour', value: limitsDebug.dailyShiny, cap: limitsDebug.dailyShinyCap }] : []),
                 ...(limits.quizConsolationForge > 0 ? [{ label: 'Forge de compensation', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
@@ -284,16 +285,43 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
                         <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: pct >= 100 ? '#eb4d4b' : `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
                       </div>
                     )}
+                    {/* Achat en 2 temps : bouton → panneau de confirmation Payer/Annuler
+                        inline (même pattern que l'achat d'emplacement du dépôt, TresorPage) —
+                        fiable sur mobile comme desktop, pas de window.confirm. */}
                     {buy && (() => {
                       const poor = (profile.gold ?? 0) < buy.price
+                      if (confirmBuy === buy.kind) {
+                        return (
+                          <div style={{ marginTop: 6, background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '10px 12px' }}>
+                            <div style={{ fontSize: 11, color: theme.textSecondary, lineHeight: 1.5, marginBottom: 8 }}>
+                              {buy.kind === 'pocket'
+                                ? t('pocket_buy_confirm').replace('{price}', buy.price).replace('{n}', buy.cards)
+                                : t('bag_buy_confirm').replace('{price}', buy.price)}
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button disabled={!!buying}
+                                onClick={async () => { if (buying) return; setBuying(buy.kind); try { await buy.onClick() } finally { setBuying(null); setConfirmBuy(null) } }}
+                                style={{ flex: 1, background: `linear-gradient(135deg,${theme.gold},#f1c40f)`, border: 'none', color: '#1e3045', padding: '8px 0', borderRadius: 9,
+                                  fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: buying ? 'default' : 'pointer', opacity: buying === buy.kind ? 0.6 : 1 }}>
+                                {buying === buy.kind ? '…' : `${t('hold_confirm_pay')} — ${buy.price} G`}
+                              </button>
+                              <button disabled={!!buying} onClick={() => setConfirmBuy(null)}
+                                style={{ flex: 1, background: '#ffffff18', border: 'none', color: theme.textSecondary, padding: '8px 0', borderRadius: 9,
+                                  fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
+                                {t('cancel')}
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      }
                       return (
                         <button
-                          onClick={async () => { if (buying || poor) return; setBuying(buy.kind); try { await buy.onClick() } finally { setBuying(null) } }}
+                          onClick={() => { if (!buying && !poor) setConfirmBuy(buy.kind) }}
                           disabled={!!buying || poor}
                           title={poor ? t('limit_upsell_no_gold') : undefined}
                           style={{ marginTop: 4, background: poor ? theme.overlayMd : `${theme.gold}22`, border: `1px solid ${theme.gold}55`,
                             color: poor ? theme.textMuted : theme.gold, fontWeight: 800, fontSize: 10.5, padding: '5px 10px', borderRadius: 8,
-                            cursor: poor ? 'not-allowed' : 'pointer', fontFamily: "'Nunito',sans-serif", opacity: buying === buy.kind ? 0.6 : 1 }}>
+                            cursor: poor ? 'not-allowed' : 'pointer', fontFamily: "'Nunito',sans-serif" }}>
                           {buy.icon} {buy.label} · {buy.price} Or
                         </button>
                       )

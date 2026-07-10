@@ -144,6 +144,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   });
   const [shake,setShake]=useState(false);
   const [upsellBusy,setUpsellBusy]=useState(false);
+  const [upsellConfirm,setUpsellConfirm]=useState(null);  // 'pocket' | 'bag' : confirmation d'achat ouverte
   const [npc,setNpc]=useState(null);
   const [revealedLetters,setRevealedLetters]=useState(0);
   const [isSubmitting,setIsSubmitting]=useState(false);
@@ -378,16 +379,40 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
               </div>
               {/* Agrandir contre de l'or : poches (limite horaire, boost jusqu'à minuit)
                   ou sac (limite quotidienne, +1/jour permanent — masqué si 5/5 achetés).
-                  Le profil mis à jour recalcule limitStatus → la bannière se referme. */}
+                  Achat en 2 temps — panneau de confirmation Payer/Annuler inline (même
+                  pattern que l'achat d'emplacement du dépôt, TresorPage) : fiable sur
+                  mobile comme desktop, pas de window.confirm. Le profil mis à jour
+                  recalcule limitStatus → la bannière se referme après paiement. */}
               {upsell && (()=>{
                 const pocket=limitStatus.type==='hourly';
                 const price=pocket?upsell.pocketPrice:upsell.bagPrice;
                 if(price==null) return null;
                 const poor=(upsell.gold??0)<price;
-                const buy=async()=>{ if(upsellBusy||poor) return; setUpsellBusy(true); try{ await (pocket?upsell.onBuyPocket:upsell.onBuyBag)(); } finally{ setUpsellBusy(false); } };
+                const buy=async()=>{ if(upsellBusy||poor) return; setUpsellBusy(true); try{ await (pocket?upsell.onBuyPocket:upsell.onBuyBag)(); } finally{ setUpsellBusy(false); setUpsellConfirm(null); } };
+                if(upsellConfirm===(pocket?'pocket':'bag')){
+                  return (
+                    <div style={{marginTop:8,background:"#00000033",border:"1px solid #f9ca2444",borderRadius:10,padding:"9px 11px"}}>
+                      <div style={{fontSize:11.5,color:"#e9d7a8",lineHeight:1.5,marginBottom:8}}>
+                        {pocket
+                          ? t('pocket_buy_confirm').replace('{price}',price).replace('{n}',upsell.pocketCards)
+                          : t('bag_buy_confirm').replace('{price}',price)}
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={buy} disabled={upsellBusy}
+                          style={{flex:1,background:"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:"#1e2b3a",fontWeight:900,fontSize:12,padding:"8px 0",borderRadius:9,cursor:upsellBusy?"default":"pointer",fontFamily:"'Nunito',sans-serif",opacity:upsellBusy?0.6:1}}>
+                          {upsellBusy ? '…' : `${t('hold_confirm_pay')} — ${price} G`}
+                        </button>
+                        <button onClick={()=>setUpsellConfirm(null)} disabled={upsellBusy}
+                          style={{flex:1,background:"#ffffff18",border:"none",color:"#a8bfcf",fontWeight:900,fontSize:12,padding:"8px 0",borderRadius:9,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>
+                          {t('cancel')}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
-                  <button onClick={buy} disabled={upsellBusy||poor} title={poor?t('limit_upsell_no_gold'):undefined}
-                    style={{marginTop:8,background:poor?"#ffffff10":"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:poor?"#8d8d8d":"#1e2b3a",fontWeight:900,fontSize:11.5,padding:"7px 12px",borderRadius:9,cursor:poor?"not-allowed":"pointer",fontFamily:"'Nunito',sans-serif",opacity:upsellBusy?0.6:1}}>
+                  <button onClick={()=>{ if(!poor) setUpsellConfirm(pocket?'pocket':'bag'); }} disabled={poor} title={poor?t('limit_upsell_no_gold'):undefined}
+                    style={{marginTop:8,background:poor?"#ffffff10":"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:poor?"#8d8d8d":"#1e2b3a",fontWeight:900,fontSize:11.5,padding:"7px 12px",borderRadius:9,cursor:poor?"not-allowed":"pointer",fontFamily:"'Nunito',sans-serif"}}>
                     {pocket
                       ? `🧤 ${t('limit_pocket_buy').replace('{n}',upsell.pocketCards)} · ${price} 💰`
                       : `🎒 ${t('limit_bag_buy')} · ${price} 💰`}
