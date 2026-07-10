@@ -103,24 +103,42 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
 // ─── Quiz Modal ───────────────────────────────────────────────────────────────
 // Petit bouton « ⓘ » qui explique le principe « Pour la gloire » dans une mini-popup.
 // Réutilisé dans la barre de quiz et la popup des gagnants.
+//
+// ⚠️ La popup est DÉCOUPLÉE du bouton : elle est rendue par un hôte permanent
+// (GloryInfoModalHost, monté une fois dans App) piloté par un singleton de
+// module. Sinon, quand le bouton vit dans une bannière éphémère — ex. la
+// bannière « Félicitations … a joué pour la gloire », affichée ~8 s puis
+// démontée par useQuiz — le démontage détruisait le portail de la popup et la
+// fermait en pleine lecture.
+let _openGloryInfo = null;
+
 export function GloryInfoButton({ size = 15 }) {
   const { t } = useT();
-  const [open, setOpen] = useState(false);
   return (
-    <>
-      <button onClick={e => { e.stopPropagation(); setOpen(true); }} title={t('glory_info_title') || 'Pour la gloire ?'}
-        style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
-      {open && createPortal((
-        <div onClick={e => { e.stopPropagation(); setOpen(false); }} style={{ position:'fixed', inset:0, zIndex:4000, display:'flex', alignItems:'center', justifyContent:'center', background:'#000b', backdropFilter:'blur(6px)', padding:16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
-            <div style={{ fontSize:15, fontWeight:900, color:'#f9ca24', marginBottom:9 }}>🏆 {t('glory_info_title') || '« Pour la gloire »'}</div>
-            <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{t('glory_info_body') || ''}</div>
-            <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('close') || 'Fermer'}</button>
-          </div>
-        </div>
-      ), document.body)}
-    </>
+    <button onClick={e => { e.stopPropagation(); _openGloryInfo?.(); }} title={t('glory_info_title') || 'Pour la gloire ?'}
+      style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
   );
+}
+
+// Hôte permanent de la popup « Pour la gloire ». À monter UNE SEULE FOIS à la
+// racine (App) pour que la popup survive au démontage du bouton déclencheur.
+export function GloryInfoModalHost() {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    _openGloryInfo = () => setOpen(true);
+    return () => { if (_openGloryInfo) _openGloryInfo = null; };
+  }, []);
+  if (!open) return null;
+  return createPortal((
+    <div onClick={() => setOpen(false)} style={{ position:'fixed', inset:0, zIndex:4000, display:'flex', alignItems:'center', justifyContent:'center', background:'#000b', backdropFilter:'blur(6px)', padding:16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
+        <div style={{ fontSize:15, fontWeight:900, color:'#f9ca24', marginBottom:9 }}>🏆 {t('glory_info_title') || '« Pour la gloire »'}</div>
+        <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{t('glory_info_body') || ''}</div>
+        <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('close') || 'Fermer'}</button>
+      </div>
+    </div>
+  ), document.body);
 }
 
 // Petit bouton « ⓘ » qui déplie l'explication de la limite atteinte (titre + délai de
