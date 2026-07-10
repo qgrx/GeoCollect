@@ -1891,7 +1891,6 @@ export default function App() {
           <div style={{ position: 'relative' }} ref={avatarMenuRef}>
             <button onClick={() => setAvatarMenu(v => !v)} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: '2px solid #f9ca2444', cursor: 'pointer', fontSize: 13, fontWeight: 900, color: '#1a2538', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {auth.profile.pseudo[0].toUpperCase()}
-              {gs.unreadSales > 0 && isMobile && <span style={{ position: 'absolute', top: -3, right: -3, background: '#e74c3c', borderRadius: '50%', width: 14, height: 14, fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${theme.badgeBorder}`, color: '#fff' }}>{gs.unreadSales > 9 ? '9+' : gs.unreadSales}</span>}
               {hasReleaseNotif && <span style={{ position: 'absolute', top: -2, left: -2, background: '#6c5ce7', borderRadius: '50%', width: 10, height: 10, border: `1.5px solid ${theme.badgeBorder}`, boxShadow: '0 0 6px #6c5ce7' }} />}
             </button>
             {avatarMenu && (
