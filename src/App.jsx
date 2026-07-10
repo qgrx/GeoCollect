@@ -1011,13 +1011,15 @@ export default function App() {
   // du Mode Débutant → arme la révélation de la réponse (quiz.id armé). La réponse
   // n'est récupérée puis affichée qu'à la pause récap (APRÈS la manche), jamais
   // pendant — le serveur la refuse d'ailleurs tant que la manche est jouable.
-  const [beginnerRevealArm, setBeginnerRevealArm] = useState(null)      // quiz.id armé
+  // Arm dans une ref (pas un state) : sinon le consommer relancerait l'effet, dont
+  // le cleanup annulerait (cancelled=true) le fetch en cours → la réponse ne
+  // s'afficherait jamais. L'effet ne dépend donc QUE de l'apparition du récap.
+  const revealArmRef = useRef(null)   // quiz.id armé (phrase secrète tapée)
   const [beginnerRevealAnswer, setBeginnerRevealAnswer] = useState(null)
   useEffect(() => {
-    if (!beginner.recap) { setBeginnerRevealAnswer(null); return }   // nouvelle manche → on efface
-    if (beginnerRevealArm == null) return
-    const armed = beginnerRevealArm
-    setBeginnerRevealArm(null)   // consommé une seule fois par manche
+    if (!beginner.recap) { setBeginnerRevealAnswer(null); revealArmRef.current = null; return }  // nouvelle manche → efface + désarme
+    const armed = revealArmRef.current
+    if (armed == null) return
     let cancelled = false
     apiRevealBeginnerAnswer(armed).then(({ data }) => {
       if (cancelled || !data) return
@@ -1025,7 +1027,7 @@ export default function App() {
       setBeginnerRevealAnswer(tr?.answer || data.answer)
     }).catch(() => {})
     return () => { cancelled = true }
-  }, [beginner.recap, beginnerRevealArm])
+  }, [beginner.recap])
   // ── Protection inter-modes — AUTORITÉ SERVEUR UNIQUE ────────────────────────
   // Le serveur calcule cross_blocked dans /current (round-based : bloque la manche
   // en cours / la prochaine au moment du gain, puis se libère après une manche ;
@@ -2534,7 +2536,7 @@ export default function App() {
       <LimitInfoModalHost />
       {/* QuizNotif popup disabled */}
       {/* Modale Mode Débutant (plusieurs gagnants, communs, sans forge) */}
-      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} onAnswer={wrappedBeginnerAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} onCheatReveal={setBeginnerRevealArm} />}
+      {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} onAnswer={wrappedBeginnerAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} onCheatReveal={(id) => { revealArmRef.current = id }} />}
 
       {/* Modale de règles du jeu (PVP vs Débutant) */}
       {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
