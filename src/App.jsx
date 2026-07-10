@@ -413,13 +413,14 @@ export default function App() {
         setQuizSessionActive(true)
         if (Date.now() >= snoozedUntilRef.current) {
           setPendingQuiz(q)
-          soundQuizNew()
+          // Mode Entraînement actif → pas de son du quiz PvP (la barre PvP est déjà masquée).
+          if (!beginnerActiveRef.current) soundQuizNew()
         } else {
           // Snoozé : on n'affiche pas le nouveau quiz, mais on RETIRE l'ancien pending
           // (il appartient au tour précédent → sinon « Participer » sur un quiz périmé).
           setPendingQuiz(null)
         }
-        sendPushNotif(card)
+        if (!beginnerActiveRef.current) sendPushNotif(card)
       })
 
       // Quiz — résolu par quelqu'un
@@ -558,9 +559,11 @@ export default function App() {
 
         if (iSelf) return  // le gagnant a déjà refermé sa modale (handleQuizAnswer, final=false)
 
-        // Toast « X a décroché un geocoin — encore Ns ! »
-        const secLeft = graceDeadline ? Math.max(1, Math.ceil((graceDeadline - Date.now()) / 1000)) : (data.prizes_remaining || 1)
-        showToast(t('quiz_prize_taken_toast').replace('{pseudo}', data.winner || '?').replace('{n}', secLeft))
+        // Toast « X a décroché un geocoin — encore Ns ! » — tu en mode Entraînement (notif PvP).
+        if (!beginnerActiveRef.current) {
+          const secLeft = graceDeadline ? Math.max(1, Math.ceil((graceDeadline - Date.now()) / 1000)) : (data.prizes_remaining || 1)
+          showToast(t('quiz_prize_taken_toast').replace('{pseudo}', data.winner || '?').replace('{n}', secLeft))
+        }
 
         // « En feu » : seul le 1er gagnant (prize_index 0) porte la série → MAJ leader (handicap)
         // + animation. Le quiz:solved multi ne la rejouera pas (guard data.multi).
@@ -594,7 +597,7 @@ export default function App() {
           }
           setPendingQuiz(patch)
         }
-        if (!iSelf && data.winner) {
+        if (!iSelf && data.winner && !beginnerActiveRef.current) {
           showToast(t('toast_glory_other').replace('{pseudo}', data.winner))
         }
       })
@@ -1005,6 +1008,10 @@ export default function App() {
   })
   const beginnerRef = useRef(beginner)
   useEffect(() => { beginnerRef.current = beginner })
+  // Ref lu par les handlers socket PvP (figés sur [profile.id]) pour taire son/push/toasts
+  // du mode compétitif quand l'utilisateur est en mode Entraînement (piste débutant).
+  const beginnerActiveRef = useRef(beginnerActive)
+  useEffect(() => { beginnerActiveRef.current = beginnerActive })
   const [beginnerWinnersPopup, setBeginnerWinnersPopup] = useState(null)   // { card, winners }
   // ── Protection inter-modes — AUTORITÉ SERVEUR UNIQUE ────────────────────────
   // Le serveur calcule cross_blocked dans /current (round-based : bloque la manche
