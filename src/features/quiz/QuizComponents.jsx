@@ -123,6 +123,30 @@ export function GloryInfoButton({ size = 15 }) {
   );
 }
 
+// Petit bouton « ⓘ » qui déplie l'explication de la limite atteinte (titre + délai de
+// reset + ce qu'on gagne quand même) dans une popup. Permet de garder le bandeau du
+// quiz sur une seule ligne pour que la question reste visible sans scroll — sur
+// viewport court (clavier ouvert) chaque ligne gagnée compte.
+export function LimitInfoButton({ title, body, size = 14 }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={e => { e.stopPropagation(); setOpen(true); }} title={title}
+        style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
+      {open && createPortal((
+        <div onClick={e => { e.stopPropagation(); setOpen(false); }} style={{ position:'fixed', inset:0, zIndex:4000, display:'flex', alignItems:'center', justifyContent:'center', background:'#000b', backdropFilter:'blur(6px)', padding:16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
+            <div style={{ fontSize:15, fontWeight:900, color:'#f9ca24', marginBottom:9 }}>⚠️ {title}</div>
+            <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{body}</div>
+            <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('shop_close') || 'Fermer'}</button>
+          </div>
+        </div>
+      ), document.body)}
+    </>
+  );
+}
+
 export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,upsell=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,holdState=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
@@ -373,64 +397,62 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             (S23, clavier), les sections fixes ne dépassent plus le cadre et la question
             reste lisible / le bouton Répondre ne déborde plus. */}
         <div style={{flex:1,minHeight:0,overflowY:"auto",overflowX:"hidden"}}>
-        {status==="open" && limitStatus?.over && (
-          <div style={{background:"linear-gradient(135deg,#3a2a0e,#2a1f0a)",border:"1.5px solid #f9ca2466",borderRadius:12,padding:"10px 13px",marginBottom:12,display:"flex",gap:10,alignItems:"flex-start"}}>
-            <span style={{fontSize:20,lineHeight:1.2,flexShrink:0}}>⚠️</span>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:12.5,fontWeight:900,color:"#f9ca24",marginBottom:2}}>
-                {(limitStatus.type==='hourly' ? t('quiz_limit_hourly_title') : t('quiz_limit_daily_title'))}
-                {limitWhen ? <span style={{color:"#ffd97a",fontWeight:700}}> · {limitWhen}</span> : null}
-              </div>
-              <div style={{fontSize:11.5,color:"#e9d7a8",lineHeight:1.45}}>
-                {limitStatus.forgeCapped
-                  ? (cardHoldable ? t('quiz_limit_banner_hold_capped') : t('quiz_limit_banner_forge_capped'))
-                  : (cardHoldable ? t('quiz_limit_banner_hold')        : t('quiz_limit_banner_forge'))}
-              </div>
-              {/* Agrandir contre de l'or : poches (limite horaire, boost jusqu'à minuit)
-                  ou sac (limite quotidienne, +1/jour permanent — masqué si 5/5 achetés).
-                  Achat en 2 temps — panneau de confirmation Payer/Annuler inline (même
-                  pattern que l'achat d'emplacement du dépôt, TresorPage) : fiable sur
-                  mobile comme desktop, pas de window.confirm. Le profil mis à jour
-                  recalcule limitStatus → la bannière se referme après paiement. */}
-              {upsell && (()=>{
-                const pocket=limitStatus.type==='hourly';
-                const price=pocket?upsell.pocketPrice:upsell.bagPrice;
-                if(price==null) return null;
-                const poor=(upsell.gold??0)<price;
-                const buy=async()=>{ if(upsellBusy||poor) return; setUpsellBusy(true); try{ await (pocket?upsell.onBuyPocket:upsell.onBuyBag)(); } finally{ setUpsellBusy(false); setUpsellConfirm(null); } };
-                if(upsellConfirm===(pocket?'pocket':'bag')){
-                  return (
-                    <div style={{marginTop:8,background:"#00000033",border:"1px solid #f9ca2444",borderRadius:10,padding:"9px 11px"}}>
-                      <div style={{fontSize:11.5,color:"#e9d7a8",lineHeight:1.5,marginBottom:8}}>
-                        {pocket
-                          ? t('pocket_buy_confirm').replace('{price}',price).replace('{n}',upsell.pocketCards)
-                          : t('bag_buy_confirm').replace('{price}',price)}
-                      </div>
-                      <div style={{display:"flex",gap:8}}>
-                        <button onClick={buy} disabled={upsellBusy}
-                          style={{flex:1,background:"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:"#1e2b3a",fontWeight:900,fontSize:12,padding:"8px 0",borderRadius:9,cursor:upsellBusy?"default":"pointer",fontFamily:"'Nunito',sans-serif",opacity:upsellBusy?0.6:1}}>
-                          {upsellBusy ? '…' : `${t('hold_confirm_pay')} — ${price} G`}
-                        </button>
-                        <button onClick={()=>setUpsellConfirm(null)} disabled={upsellBusy}
-                          style={{flex:1,background:"#ffffff18",border:"none",color:"#a8bfcf",fontWeight:900,fontSize:12,padding:"8px 0",borderRadius:9,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>
-                          {t('cancel')}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-                return (
-                  <button onClick={()=>{ if(!poor) setUpsellConfirm(pocket?'pocket':'bag'); }} disabled={poor} title={poor?t('limit_upsell_no_gold'):undefined}
-                    style={{marginTop:8,background:poor?"#ffffff10":"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:poor?"#8d8d8d":"#1e2b3a",fontWeight:900,fontSize:11.5,padding:"7px 12px",borderRadius:9,cursor:poor?"not-allowed":"pointer",fontFamily:"'Nunito',sans-serif"}}>
-                    {pocket
-                      ? `🧤 ${t('limit_pocket_buy').replace('{n}',upsell.pocketCards)} · ${price} 💰`
-                      : `🎒 ${t('limit_bag_buy')} · ${price} 💰`}
-                  </button>
-                );
-              })()}
+        {/* Bandeau limite atteinte — compacté sur UNE ligne (⚠️ « Limites atteintes » +
+            ⓘ + bouton d'agrandissement) pour que la question reste visible sans scroll.
+            Le détail (délai de reset, ce qu'on gagne quand même) est déporté dans la
+            popup ⓘ (LimitInfoButton), et l'achat garde son panneau de confirmation
+            Payer/Annuler (déplié sous la ligne quand on tape le bouton). */}
+        {status==="open" && limitStatus?.over && (()=>{
+          const bannerTitle = limitStatus.type==='hourly' ? t('quiz_limit_hourly_title') : t('quiz_limit_daily_title');
+          const bannerBody  = limitStatus.forgeCapped
+            ? (cardHoldable ? t('quiz_limit_banner_hold_capped') : t('quiz_limit_banner_forge_capped'))
+            : (cardHoldable ? t('quiz_limit_banner_hold')        : t('quiz_limit_banner_forge'));
+          const infoBody    = (limitWhen ? `${bannerTitle} — ${limitWhen}\n\n` : '') + bannerBody;
+          const pocket   = limitStatus.type==='hourly';
+          const price    = upsell ? (pocket?upsell.pocketPrice:upsell.bagPrice) : null;
+          const showUpsell = upsell && price!=null;
+          const poor     = (upsell?.gold??0)<price;
+          const active   = upsellConfirm===(pocket?'pocket':'bag');
+          const buy=async()=>{ if(upsellBusy||poor) return; setUpsellBusy(true); try{ await (pocket?upsell.onBuyPocket:upsell.onBuyBag)(); } finally{ setUpsellBusy(false); setUpsellConfirm(null); } };
+          return (
+          <div style={{background:"linear-gradient(135deg,#3a2a0e,#2a1f0a)",border:"1.5px solid #f9ca2466",borderRadius:12,padding:"8px 11px",marginBottom:12}}>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:15,lineHeight:1,flexShrink:0}}>⚠️</span>
+              <span style={{fontSize:12.5,fontWeight:900,color:"#f9ca24",whiteSpace:"nowrap"}}>{t('quiz_limit_reached')}</span>
+              <LimitInfoButton title={bannerTitle} body={infoBody} />
+              {showUpsell && !active && (
+                <button onClick={()=>{ if(!poor) setUpsellConfirm(pocket?'pocket':'bag'); }} disabled={poor} title={poor?t('limit_upsell_no_gold'):undefined}
+                  style={{marginLeft:"auto",flexShrink:0,background:poor?"#ffffff10":"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:poor?"#8d8d8d":"#1e2b3a",fontWeight:900,fontSize:11,padding:"6px 10px",borderRadius:9,cursor:poor?"not-allowed":"pointer",fontFamily:"'Nunito',sans-serif",whiteSpace:"nowrap"}}>
+                  {pocket ? `🧤 ${t('limit_pocket_buy_short')} · ${price}💰` : `🎒 ${t('limit_bag_buy_short')} · ${price}💰`}
+                </button>
+              )}
             </div>
+            {/* Achat en 2 temps — panneau Payer/Annuler (même pattern que l'achat
+                d'emplacement du dépôt, TresorPage) : fiable mobile/desktop, pas de
+                window.confirm. Le profil mis à jour recalcule limitStatus → la
+                bannière se referme après paiement. */}
+            {showUpsell && active && (
+              <div style={{marginTop:8,background:"#00000033",border:"1px solid #f9ca2444",borderRadius:10,padding:"9px 11px"}}>
+                <div style={{fontSize:11.5,color:"#e9d7a8",lineHeight:1.5,marginBottom:8}}>
+                  {pocket
+                    ? t('pocket_buy_confirm').replace('{price}',price).replace('{n}',upsell.pocketCards)
+                    : t('bag_buy_confirm').replace('{price}',price)}
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={buy} disabled={upsellBusy}
+                    style={{flex:1,background:"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:"#1e2b3a",fontWeight:900,fontSize:12,padding:"8px 0",borderRadius:9,cursor:upsellBusy?"default":"pointer",fontFamily:"'Nunito',sans-serif",opacity:upsellBusy?0.6:1}}>
+                    {upsellBusy ? '…' : `${t('hold_confirm_pay')} — ${price} G`}
+                  </button>
+                  <button onClick={()=>setUpsellConfirm(null)} disabled={upsellBusy}
+                    style={{flex:1,background:"#ffffff18",border:"none",color:"#a8bfcf",fontWeight:900,fontSize:12,padding:"8px 0",borderRadius:9,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>
+                    {t('cancel')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+          );
+        })()}
         <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
           <div style={{flexShrink:0,pointerEvents:"none"}}>
             {compact ? (
