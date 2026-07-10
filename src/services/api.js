@@ -105,8 +105,12 @@ export const apiGetQuizHistory  = (limit = 10) => apiFetch(`/api/quiz/history?li
 export const apiJoinQuiz = (quizId) =>
   apiFetch('/api/quiz/join', { method: 'POST', body: { quiz_id: quizId } })
 
-export const apiAnswerQuiz = (quizId, answer, nonce, choice) =>
-  apiFetch('/api/quiz/answer', { method: 'POST', body: { quiz_id: quizId, answer, ...(nonce ? { nonce } : {}), ...(choice ? { choice } : {}) } })
+export const apiAnswerQuiz = (quizId, answer, nonce, choice, holdAction) =>
+  apiFetch('/api/quiz/answer', { method: 'POST', body: { quiz_id: quizId, answer, ...(nonce ? { nonce } : {}), ...(choice ? { choice } : {}),
+    // Dépôt payant (précieux déjà possédé, hors-limite) : méthode choisie explicitement
+    // dans le sélecteur — remplacer un geocoin désigné OU louer un emplacement.
+    ...(holdAction?.rent ? { hold_rent: true } : {}),
+    ...(holdAction?.replaceId != null ? { hold_replace_id: holdAction.replaceId } : {}) } })
 
 // ─── Quiz — Mode Débutant ───────────────────────────────────────────────────
 export const apiGetBeginnerQuiz     = () => apiFetch('/api/quiz/beginner/current')

@@ -186,13 +186,13 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     if (snoozeMs > 0) snoozedUntilRef.current = Date.now() + snoozeMs
   }, [pendingQuiz, limits])
 
-  const handleQuizAnswer = useCallback(async (userAnswer, choice) => {
+  const handleQuizAnswer = useCallback(async (userAnswer, choice, holdAction) => {
     if (!activeQuiz) return 'error'  // fenêtre fermée entre-temps (ex. revalidation tardive)
     const card = activeQuiz.card
     const { earnCard, earnGoldWithFx, showToast, t } = cbRef.current
     if (profile && activeQuiz.id) {
       // Honeypot anti-bot : on renvoie le nonce émis par /current (présent via ...data.quiz).
-      const { data, error, status, body } = await apiAnswerQuiz(activeQuiz.id, userAnswer, activeQuiz.nonce, choice)
+      const { data, error, status, body } = await apiAnswerQuiz(activeQuiz.id, userAnswer, activeQuiz.nonce, choice, holdAction)
       if (error) {
         if (status === 425) return { handicap: true, wait_ms: body?.wait_ms || 0 } // série : délai cadeau
         if (status === 423) return 'blocked' // protection inter-modes (prochaine manche)
@@ -237,9 +237,13 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // final=false ⇒ round multi non terminé : je referme sans avancer le cycle.
       if (data.deposited) {
         resolvedQuizIdsRef.current.add(activeQuiz.id)
-        // Location payée à la volée : synchroniser le solde renvoyé et l'afficher dans le toast.
+        // Location/remplacement payé à la volée : synchroniser le solde renvoyé et le PF de
+        // consolation du geocoin sacrifié (remplacement), puis l'afficher dans le toast.
         if (typeof data.gold === 'number') cbRef.current.onGoldSync?.(data.gold)
-        showToast(data.hold_price_paid > 0
+        if (data.forge_points_earned > 0) cbRef.current.onForgePointsEarned?.(data.forge_points_earned)
+        showToast(data.hold_replaced
+          ? (t('toast_deposit_win_replaced') || '📥 Geocoin déposé ! (remplacement −{price} G)').replace('{price}', data.hold_price_paid)
+          : data.hold_price_paid > 0
           ? (t('toast_deposit_win_paid') || '📥 Geocoin mis au dépôt ! (location −{price} G)').replace('{price}', data.hold_price_paid)
           : data.hold ? (t('toast_deposit_win') || '📥 Geocoin mis au dépôt !') : t('toast_quiz_won').replace('{card}', card.name))
         const solvedAt = Date.now()

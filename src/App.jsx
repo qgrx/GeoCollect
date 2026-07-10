@@ -1404,14 +1404,17 @@ export default function App() {
     return () => clearInterval(id)
   }, [auth.isDemo, demoSocial, setHistory])
 
-  const wrappedHandleQuizAnswer = async (_userAnswer, _choice) => {
+  const wrappedHandleQuizAnswer = async (_userAnswer, _choice, _holdAction) => {
     if (!auth.profile) {
       setShowRegisterPrompt(true)
       return false
     }
     // Démo : ne pas passer par le quiz global, valider côté client (sans compte).
     if (auth.isDemo) return demoAnswer(_userAnswer)
-    const result = await handleQuizAnswer(_userAnswer, _choice)
+    const result = await handleQuizAnswer(_userAnswer, _choice, _holdAction)
+    // Dépôt effectué (location/remplacement/slot) : le contenu du dépôt a changé →
+    // resynchroniser pour que le prochain sélecteur affiche les bons geocoins/prix.
+    if (result?.outcome === 'hold') refreshHold()
     // Filet de sécurité (course rare avant le 1er poll) : un refus serveur affiche le
     // blocage ; le poll /current confirmera/effacera ensuite.
     if (result === 'blocked') { crossServedRef.current = false; setCrossBlocked(true) }
@@ -2513,15 +2516,7 @@ export default function App() {
       {/* Liste des gagnants d'une manche Entraînement (clic sur le feed) */}
       {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} onClose={() => setBeginnerWinnersPopup(null)} />}
 
-      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} alreadyOwned={!!activeQuiz?.card?.id && ((activeQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[activeQuiz.card.id] || 0) > 0 : (gs.collection?.[activeQuiz.card.id] || 0) > 0)} deposit={(() => {
-        // Coût du choix « dépôt » (même plan que le serveur) : slot acheté libre ou slot
-        // loué pré-payé → gratuit ; sinon location à la volée ; tout occupé → bloqué.
-        const nr = holds.filter(h => !h.rented)
-        if (nr.length < holdSlots) return { cost: 0, blocked: null }
-        if (holdRentActive) return holds.some(h => h.rented) ? { cost: 0, blocked: 'full' } : { cost: 0, blocked: null }
-        const price = gs.limits?.holdRentPrice ?? 80
-        return { cost: price, blocked: gs.gold < price ? 'gold' : null }
-      })()} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
+      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} alreadyOwned={!!activeQuiz?.card?.id && ((activeQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[activeQuiz.card.id] || 0) > 0 : (gs.collection?.[activeQuiz.card.id] || 0) > 0)} holdState={{ holds, holdSlots, holdRentActive, rentPrice: gs.limits?.holdRentPrice ?? 80, replacePrice: gs.limits?.holdReplacePrice ?? 50, gold: gs.gold }} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {
           // Délai cadeau écoulé : le serveur autorise enfin la question au leader.
           const { data } = await apiGetCurrentQuiz().catch(() => ({ data: null }))

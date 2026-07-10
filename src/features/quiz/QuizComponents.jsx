@@ -123,9 +123,12 @@ export function GloryInfoButton({ size = 15 }) {
   );
 }
 
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,upsell=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,deposit=null}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,upsell=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,holdState=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
+  // Sélecteur de dépôt (remplacer / louer) ouvert quand le joueur choisit « dépôt » sans
+  // slot gratuit : on ne débite jamais une location/un remplacement sur un tap accidentel.
+  const [showHoldChooser,setShowHoldChooser]=useState(false);
   const [outcome,setOutcome]=useState("card");  // 'card' | 'consolation' | 'hold'
   const [resultForge,setResultForge]=useState(0);  // PF réellement gagnés (0 = cap PF atteint)
   const [reportStatus,setReportStatus]=useState(()=>{
@@ -174,9 +177,15 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // Geocoin précieux déjà possédé ET hors-limite → proposer le CHOIX dépôt / gloire (double bouton).
   const isPreciousCard=quiz.card?.rarity==='légendaire'||quiz.card?.rarity==='épique'||isShiny;
   const showDepositChoice=status==="open"&&!beginner&&isPreciousCard&&!!limitStatus?.over&&alreadyOwned;
-  // Dépôt payant : coût calculé par App (0 = slot acheté/loué libre, sinon location) ;
-  // blocked = 'full' (aucun emplacement) ou 'gold' (or insuffisant pour la location).
-  const depCost=deposit?.cost||0, depBlocked=deposit?.blocked||null;
+  // Disponibilité réelle du dépôt (même plan que le serveur), pour piloter le sélecteur
+  // remplacer/louer. Un slot gratuit → dépôt direct ; sinon on propose remplacer OU louer,
+  // et le bouton n'est désactivé QUE si aucune de ces options n'est possible/abordable.
+  const hs=holdState||{};
+  const hHolds=hs.holds||[];
+  const hFreeSlot=(hHolds.filter(h=>!h.rented).length < (hs.holdSlots||0)) || (!!hs.holdRentActive && !hHolds.some(h=>h.rented));
+  const hCanReplace=hHolds.length>0 && (hs.gold||0) >= (hs.replacePrice ?? 50);
+  const hCanRent=!hs.holdRentActive && (hs.gold||0) >= (hs.rentPrice ?? 80);
+  const canDeposit=hFreeSlot||hCanReplace||hCanRent;
 
   useEffect(() => {
     if (quiz.winner && status === "open" && !doneRef.current) {
@@ -218,7 +227,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     setReportStatus('done');
   }
   function finish(n){if(doneRef.current)return;doneRef.current=true;setNpc(n || 'Un autre joueur');setStatus("lost");onExpire(n || 'Un autre joueur');}
-    async function submit(choiceArg){
+    async function submit(choiceArg, holdAction){
     if(status!=="open") return;
     if(tooLate) return;  // mode débutant : décompte terminé, réponse bloquée
     if(handicapLeft>0) return;  // série : cadeau aux autres, envoi bloqué côté client
@@ -226,7 +235,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     submittingRef.current = true
     setIsSubmitting(true)
     const startedAt = Date.now()
-    const result = await onAnswer(inp, choiceArg)
+    const result = await onAnswer(inp, choiceArg, holdAction)
     const elapsed = Date.now() - startedAt
     if (elapsed < 600) await new Promise(r => setTimeout(r, 600 - elapsed))
     submittingRef.current = false
@@ -244,7 +253,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
         retryRef.current += 1;
         setSubmitError(t('quiz_answer_checking'));
         setIsSubmitting(true); submittingRef.current = true;
-        setTimeout(() => { submittingRef.current = false; submit(choiceArg); }, 1500);
+        setTimeout(() => { submittingRef.current = false; submit(choiceArg, holdAction); }, 1500);
         return;
       }
       retryRef.current = 0; setSubmitError(t('quiz_answer_retry'));
@@ -476,8 +485,8 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
               style={{flex:1,background:(isSubmitting||questionMasked)?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":(isSubmitting||questionMasked)?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:(isSubmitting||questionMasked)?0.6:1}}/>
           {showDepositChoice ? (
             <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
-              <button onClick={()=>submit('hold')} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||!!depBlocked} title={depBlocked==='full'?(t("quiz_choice_deposit_full")||"Dépôt plein — impossible de déposer"):depBlocked==='gold'?(t("quiz_choice_deposit_too_poor")||"Or insuffisant pour la location ({price} G)").replace('{price}',depCost):(t("quiz_choice_deposit_hint")||"Mettre un exemplaire au dépôt")} style={{...BTN("linear-gradient(135deg,#6c5ce7,#4834d4)","#fff"),padding:"6px 14px",borderRadius:10,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||depBlocked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||depBlocked)?"not-allowed":"pointer",minWidth:98,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.05}}>
-                <span style={{fontSize:12,fontWeight:900}}>{t("quiz_submit")}</span><span style={{fontSize:9,fontWeight:800,opacity:.9}}>📥 {t("quiz_choice_deposit")||'dépôt'}{depCost>0?` (${depCost} G)`:''}</span>
+              <button onClick={()=> hFreeSlot ? submit('hold') : setShowHoldChooser(true)} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||!canDeposit} title={!canDeposit?(t("quiz_choice_deposit_full")||"Dépôt plein — impossible de déposer"):hFreeSlot?(t("quiz_choice_deposit_hint")||"Mettre un exemplaire au dépôt"):(t("quiz_choice_deposit_choose")||"Choisir : remplacer un geocoin ou louer un emplacement")} style={{...BTN("linear-gradient(135deg,#6c5ce7,#4834d4)","#fff"),padding:"6px 14px",borderRadius:10,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||!canDeposit)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||!canDeposit)?"not-allowed":"pointer",minWidth:98,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.05}}>
+                <span style={{fontSize:12,fontWeight:900}}>{t("quiz_submit")}</span><span style={{fontSize:9,fontWeight:800,opacity:.9}}>📥 {t("quiz_choice_deposit")||'dépôt'}{hFreeSlot?'':'…'}</span>
               </button>
               <button onClick={()=>submit('glory')} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked} title={t("quiz_choice_glory_hint")||"Jouer pour la gloire (or + PF)"} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"6px 14px",borderRadius:10,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?"not-allowed":"pointer",minWidth:98,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.05}}>
                 <span style={{fontSize:12,fontWeight:900}}>{t("quiz_submit")}</span><span style={{fontSize:9,fontWeight:800,opacity:.9}}>🏆 {t("quiz_choice_glory")||'gloire'}</span>
@@ -544,6 +553,24 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
         )}
         </div>
       </div>
+      {/* Sélecteur de dépôt (dépôt plein / location payante) : le joueur choisit
+          EXPLICITEMENT remplacer un geocoin OU louer avant tout débit. Annuler ⇒ retour
+          au quiz (il peut encore jouer pour la gloire). La réponse n'est soumise (et le
+          prix débité) qu'au choix confirmé, via submit('hold', {rent, replaceId}). */}
+      {showHoldChooser && showDepositChoice && (
+        <HoldModal
+          holdCard={{ ...quiz.card, id: quiz.card.id, is_shiny: isShinyFrozen }}
+          holds={hHolds}
+          holdSlots={hs.holdSlots||0}
+          holdRentActive={!!hs.holdRentActive}
+          rentPrice={hs.rentPrice ?? 80}
+          replacePrice={hs.replacePrice ?? 50}
+          gold={hs.gold||0}
+          owned={true}
+          onClose={()=>setShowHoldChooser(false)}
+          onChoose={(action)=>{ setShowHoldChooser(false); submit('hold', action); }}
+        />
+      )}
     </div>
   );
 }
@@ -760,7 +787,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
 }
 
 // ── HoldModal — choix après quiz hors-limite : Dépôt OU 1 Point de Forge ──────
-export function HoldModal({ holdCard, holds = [], holdSlots = 0, holdRentActive = false, rentPrice = 80, replacePrice = 50, gold = 0, onStored, onStoreError, onTakeForgePoint, onClose, forgeCapped = false, owned = false }) {
+export function HoldModal({ holdCard, holds = [], holdSlots = 0, holdRentActive = false, rentPrice = 80, replacePrice = 50, gold = 0, onStored, onStoreError, onTakeForgePoint, onClose, forgeCapped = false, owned = false, onChoose = null }) {
   const { t } = useT()
   const { theme } = useTheme()
   const [loading, setLoading] = useState(false)
@@ -781,6 +808,10 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 0, holdRentActive 
 
   const doStore = useCallback(async (rent = false, replaceId = null) => {
     if (!holdCard || loading) return
+    // Mode « sélecteur » (quiz : précieux déjà possédé, dépôt payant) : on ne stocke pas
+    // ici. On remonte la méthode choisie à l'appelant, qui soumet la réponse ET débite
+    // atomiquement côté serveur (POST /api/quiz/answer). Pas d'appel apiStoreHold.
+    if (onChoose) { onChoose({ rent: !!rent, replaceId: replaceId ?? null }); return }
     setLoading(true)
     const { data, error } = await apiStoreHold(holdCard.id, holdCard.is_shiny || false, rent, replaceId)
     setLoading(false)
@@ -789,7 +820,7 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 0, holdRentActive 
     // l'appelant rafraîchisse l'état et ré-affiche les bons choix (dont « Louer »).
     if (error) { onStoreError?.(error); return }
     onStored(holdCard, data || {})
-  }, [holdCard, loading, onStored, onStoreError])
+  }, [holdCard, loading, onStored, onStoreError, onChoose])
 
   // Clic sur "Remplacer un geocoin" : passer en sélection du geocoin à remplacer.
   const handleStoreClick = useCallback(() => {
@@ -929,7 +960,14 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 0, holdRentActive 
               {canReplace && replaceTooPoor && (
                 <div style={{ textAlign: 'center', fontSize: 10, color: '#e17055', fontWeight: 700 }}>{t('hold_replace_too_poor')}</div>
               )}
-              {forgeCapped ? (
+              {onChoose ? (
+                // Sélecteur (quiz) : l'alternative au dépôt n'est pas 1 PF mais la gloire —
+                // annuler revient au quiz, où le joueur peut choisir « pour la gloire ».
+                <button onClick={onClose} disabled={loading}
+                  style={{ ...BTN('#ffffff14'), padding: '11px 0', borderRadius: 11, fontSize: 12.5, color: theme.textSecondary }}>
+                  🏆 {t('hold_popup_rather_glory') || 'Plutôt jouer pour la gloire'}
+                </button>
+              ) : forgeCapped ? (
                 <div style={{ textAlign: 'center', fontSize: 11, color: theme.textMuted, padding: '8px 0', fontWeight: 700 }}>
                   ⚒️ {t('hold_forge_capped_note')}
                 </div>
