@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { RARITY_CONFIG as RC, cardCC, cardName } from '../data/cards.js';
 import { useT } from '../i18n/translations.js';
 
@@ -62,7 +63,11 @@ export default function Card({ card, count, onClick, selected, small, dimmed, is
   const rc = RC[card.rarity] || RC.commun
   const { c1, c2 } = cardCC(card.rarity)
   const isLeg = card.rarity === 'légendaire'
-  const hasImage = !!(card.image || card.image_url)
+  // Si l'image échoue au chargement (fichier absent / URL périmée, ex. variante
+  // d'achievement évolutif sans image), on retombe sur l'emblème 🃏 + dégradé au
+  // lieu d'afficher le glyphe « image cassée » du navigateur.
+  const [imgError, setImgError] = useState(false)
+  const hasImage = !!(card.image || card.image_url) && !imgError
   const w = small ? 100 : 148
   const h = small ? 130 : 190
 
@@ -91,7 +96,7 @@ export default function Card({ card, count, onClick, selected, small, dimmed, is
 
       <div style={{position:'absolute',inset:0,display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop: small ? 4 : 6}}>
         {hasImage ? (
-          <img src={card.image||card.image_url} alt={card.name} style={{
+          <img src={card.image||card.image_url} alt={card.name} onError={() => setImgError(true)} style={{
             width:'100%', height:'88%', objectFit:'contain', display:'block',
             animation: 'none',
           }}/>
