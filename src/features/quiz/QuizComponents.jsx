@@ -145,28 +145,44 @@ export function GloryInfoModalHost() {
   ), document.body);
 }
 
-// Petit bouton « ⓘ » qui déplie l'explication de la limite atteinte (titre + délai de
-// reset + ce qu'on gagne quand même) dans une popup. Permet de garder le bandeau du
-// quiz sur une seule ligne pour que la question reste visible sans scroll — sur
-// viewport court (clavier ouvert) chaque ligne gagnée compte.
+// Petit bouton « ⓘ » qui explique la limite atteinte (titre + délai de reset + ce
+// qu'on gagne quand même) dans une popup. Permet de garder le bandeau du quiz sur
+// une seule ligne pour que la question reste visible sans scroll.
+//
+// ⚠️ Comme « Pour la gloire », la popup est DÉCOUPLÉE du bouton : elle est rendue
+// par un hôte permanent (LimitInfoModalHost) piloté par un singleton de module.
+// Sinon, quand la manche de quiz tourne, le démontage du QuizModal détruisait le
+// portail de la popup et la fermait en pleine lecture. Le contenu est passé au
+// déclenchement car il dépend du contexte (limite horaire/quotidienne, carte
+// déposable ou non).
+let _openLimitInfo = null;
+
 export function LimitInfoButton({ title, body, size = 14 }) {
-  const { t } = useT();
-  const [open, setOpen] = useState(false);
   return (
-    <>
-      <button onClick={e => { e.stopPropagation(); setOpen(true); }} title={title}
-        style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
-      {open && createPortal((
-        <div onClick={e => { e.stopPropagation(); setOpen(false); }} style={{ position:'fixed', inset:0, zIndex:4000, display:'flex', alignItems:'center', justifyContent:'center', background:'#000b', backdropFilter:'blur(6px)', padding:16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
-            <div style={{ fontSize:15, fontWeight:900, color:'#f9ca24', marginBottom:9 }}>⚠️ {title}</div>
-            <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{body}</div>
-            <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('shop_close') || 'Fermer'}</button>
-          </div>
-        </div>
-      ), document.body)}
-    </>
+    <button onClick={e => { e.stopPropagation(); _openLimitInfo?.(title, body); }} title={title}
+      style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
   );
+}
+
+// Hôte permanent de la popup « Limites atteintes ». À monter UNE SEULE FOIS à la
+// racine (App) pour que la popup survive au démontage du bouton déclencheur.
+export function LimitInfoModalHost() {
+  const { t } = useT();
+  const [info, setInfo] = useState(null);  // { title, body } | null
+  useEffect(() => {
+    _openLimitInfo = (title, body) => setInfo({ title, body });
+    return () => { if (_openLimitInfo) _openLimitInfo = null; };
+  }, []);
+  if (!info) return null;
+  return createPortal((
+    <div onClick={() => setInfo(null)} style={{ position:'fixed', inset:0, zIndex:4000, display:'flex', alignItems:'center', justifyContent:'center', background:'#000b', backdropFilter:'blur(6px)', padding:16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
+        <div style={{ fontSize:15, fontWeight:900, color:'#f9ca24', marginBottom:9 }}>⚠️ {info.title}</div>
+        <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{info.body}</div>
+        <button onClick={() => setInfo(null)} style={{ marginTop:15, background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('shop_close') || 'Fermer'}</button>
+      </div>
+    </div>
+  ), document.body);
 }
 
 export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,upsell=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,holdState=null,onCheatReveal=null}){ const {t}=useT();

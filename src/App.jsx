@@ -37,7 +37,7 @@ import SettingsModal from './features/auth/SettingsModal.jsx';
 import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
 import { DemoComplete } from './features/demo/DemoGame.jsx';
-import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, BeginnerRecap, BeginnerWinnersModal, GameRulesModal, GloryInfoModalHost } from './features/quiz/QuizComponents.jsx';
+import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, BeginnerRecap, BeginnerWinnersModal, GameRulesModal, GloryInfoModalHost, LimitInfoModalHost } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
@@ -2529,6 +2529,9 @@ export default function App() {
       {/* Popup « Pour la gloire » — hôte permanent : découplée de son bouton
           déclencheur pour survivre au démontage des bannières éphémères. */}
       <GloryInfoModalHost />
+      {/* Popup « Limites atteintes » — même hôte permanent, découplé du bouton ⓘ du
+          bandeau de quiz pour survivre au démontage du QuizModal entre les manches. */}
+      <LimitInfoModalHost />
       {/* QuizNotif popup disabled */}
       {/* Modale Mode Débutant (plusieurs gagnants, communs, sans forge) */}
       {beginnerActive && beginner.activeQuiz && <QuizModal beginner roundDuration={beginner.cycleSec} quiz={beginner.activeQuiz} isShiny={false} limitStatus={computeCardLimitStatus(auth.profile, gs.limits)} upsell={limitUpsell} onAnswer={wrappedBeginnerAnswer} onExpire={beginner.handleClose} onClose={beginner.handleClose} onCheatReveal={setBeginnerRevealArm} />}
