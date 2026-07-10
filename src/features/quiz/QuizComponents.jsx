@@ -11,10 +11,6 @@ import { QUIZ_INTERVAL } from '../../data/constants.js';
 import Card from '../../components/Card.jsx';
 import { BTN } from '../../utils/styles.js';
 
-// Phrase secrète (normalisée) tapée dans la barre du Mode Débutant pour armer la
-// révélation de la réponse — affichée seulement APRÈS la manche (cf. BeginnerRecap).
-const REVEAL_PHRASE = 'bravo aux gagnants';
-
 const SNOOZE_OPTIONS = [
   { label: '1 min',    ms: 60_000 },
   { label: '5 min',   ms: 5 * 60_000 },
@@ -185,7 +181,7 @@ export function LimitInfoModalHost() {
   ), document.body);
 }
 
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,upsell=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,holdState=null,onCheatReveal=null}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,upsell=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,holdState=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
   // Sélecteur de dépôt (remplacer / louer) ouvert quand le joueur choisit « dépôt » sans
@@ -541,7 +537,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           )}
           <div style={{display:"flex",gap:9}}>
             {submitError&&<div style={{fontSize:12,color:"#f39c12",fontWeight:700,padding:"7px 10px",background:"#f39c1218",borderRadius:9,marginBottom:6,border:"1px solid #f39c1233"}}>{submitError}</div>}
-            <input ref={ref} value={inp} disabled={isSubmitting||questionMasked} onChange={e=>{const v=e.target.value;setInp(v);setSubmitError(null);if(beginner&&onCheatReveal&&normA(v)===REVEAL_PHRASE)onCheatReveal(quiz.id);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0&&!questionMasked)submit(showDepositChoice?'glory':undefined)}} placeholder={questionMasked ? (handicapLeft>0?`🎁 ${handicapLeft}s`:"…") : (wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc))}
+            <input ref={ref} value={inp} disabled={isSubmitting||questionMasked} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0&&!questionMasked)submit(showDepositChoice?'glory':undefined)}} placeholder={questionMasked ? (handicapLeft>0?`🎁 ${handicapLeft}s`:"…") : (wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc))}
               style={{flex:1,background:(isSubmitting||questionMasked)?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":(isSubmitting||questionMasked)?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:(isSubmitting||questionMasked)?0.6:1}}/>
           {showDepositChoice ? (
             <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>

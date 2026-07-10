@@ -117,9 +117,6 @@ export const apiGetBeginnerQuiz     = () => apiFetch('/api/quiz/beginner/current
 export const apiGetBeginnerHistory  = (limit = 10) => apiFetch(`/api/quiz/beginner/history?limit=${limit}&_=${Date.now()}`)
 export const apiAnswerBeginnerQuiz  = (quizId, answer) =>
   apiFetch('/api/quiz/beginner/answer', { method: 'POST', body: { quiz_id: quizId, answer } })
-// Aide d'entraînement : réponse révélée APRÈS la manche (le serveur refuse tant
-// qu'elle est encore jouable). Déclenchée par la phrase secrète « Bravo aux gagnants ».
-export const apiRevealBeginnerAnswer = (quizId) => apiFetch(`/api/quiz/beginner/reveal?quiz_id=${quizId}`)
 
 export const apiReportQuestion      = (questionId) =>
   apiFetch(`/api/quiz/questions/${questionId}/report`, { method: 'POST' })

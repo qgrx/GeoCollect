@@ -87,11 +87,13 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     setPendingQuiz(alreadyWonFlag ? null : q)
   }, [buildQuiz])
 
-  const applyRecap = useCallback((winners, nextAtIso, serverTime) => {
+  const applyRecap = useCallback((winners, nextAtIso, serverTime, answer, translations) => {
     const until = (nextAtIso && serverTime)
       ? Date.now() + Math.max(0, new Date(nextAtIso).getTime() - new Date(serverTime).getTime())
       : Date.now() + 10_000
-    setRecap({ winners: winners || [], untilMs: until })
+    // Réponse révélée dans le récap (mode Entraînement) — traduite si dispo.
+    const revealAnswer = translations?.[getLang()]?.answer || answer || null
+    setRecap({ winners: winners || [], untilMs: until, answer: revealAnswer })
     setPendingQuiz(null)
     setActiveQuiz(null); activeQuizRef.current = null
     setEndTime(0)
@@ -102,7 +104,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     if (!data) return
     setCycleSec(data.duration || QUIZ_INTERVAL)
     if (data.phase === 'pause' || (data.quiz == null && data.next_at)) {
-      applyRecap(data.winners, data.next_at, data.server_time)
+      applyRecap(data.winners, data.next_at, data.server_time, data.answer, data.translations)
       refreshHistory()   // resync : couvre un beginner:closed manqué
       return
     }
@@ -173,7 +175,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
       lastClosedIdRef.current = data.quiz_id
       setHistory(h => [{ card, winners, winners_count: winners.length, isShiny: false }, ...h].slice(0, 10))
     }
-    applyRecap(data?.winners, data?.next_at, data?.server_time)
+    applyRecap(data?.winners, data?.next_at, data?.server_time, data?.answer, data?.translations)
     refreshHistory()
   }, [applyRecap, refreshHistory])
 
