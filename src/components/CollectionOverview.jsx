@@ -3,9 +3,8 @@ import { cardCC, cardName } from '../data/cards.js'
 // ── Vue d'ensemble « tout en un » de la collection ───────────────────────────
 // Toutes les cartes du filtre courant sur une seule page, manquantes comprises
 // (grisées, révélées au survol) — même principe que la grille inventaire de
-// l'admin (AdminPlayers), en version joueur : vignettes compactes, barre de
-// progression de complétion, clic → fiche détaillée (mêmes règles d'ouverture
-// que la grille paginée).
+// l'admin (AdminPlayers), en version joueur : vignettes compactes, clic →
+// fiche détaillée (mêmes règles d'ouverture que la grille classique).
 
 const OVERVIEW_CSS = `
 @keyframes overviewPop { from{opacity:0;transform:scale(.6)} to{opacity:1;transform:scale(1)} }
@@ -20,23 +19,11 @@ function injectOverviewStyle() {
 injectOverviewStyle()
 
 export default function CollectionOverview({ items, theme, isMobile, lang, onSelect }) {
-  const owned = items.filter(x => !x.missing).length
-  const pct = items.length ? Math.round(owned / items.length * 100) : 0
   const w = isMobile ? 52 : 64
   const h = Math.round(w * 1.3)
 
   return (
-    <div style={{ animation: 'fadeIn .3s ease', paddingBottom: 8 }}>
-      {/* Complétion du filtre courant */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <div style={{ flex: 1, height: 6, borderRadius: 6, background: theme.border, overflow: 'hidden' }}>
-          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 6, background: 'linear-gradient(90deg,#f9ca24,#e17055)', transition: 'width .6s cubic-bezier(.22,1,.36,1)' }} />
-        </div>
-        <span style={{ fontSize: 12, fontWeight: 900, color: pct === 100 ? '#3fb950' : theme.textSecondary, fontFamily: "'Nunito',sans-serif", whiteSpace: 'nowrap' }}>
-          {pct === 100 ? '✓ ' : ''}{owned} / {items.length}
-        </span>
-      </div>
-
+    <div style={{ animation: 'fadeIn .3s ease', padding: '12px 0 8px' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 5 : 7, justifyContent: 'center' }}>
         {items.map(({ card, count, cnt, missing, isShiny }, idx) => {
           const c = count || cnt || 0

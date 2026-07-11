@@ -24,7 +24,7 @@ import { useAuth } from './hooks/useAuth.js';
 
 // ─── Components ───────────────────────────────────────────────────────────────
 import Card from './components/Card.jsx';
-import CollectionPager from './components/CollectionPager.jsx';
+import CollectionScroll from './components/CollectionScroll.jsx';
 import CollectionOverview from './components/CollectionOverview.jsx';
 import CardDetailModal from './components/CardDetailModal.jsx';
 import OnboardingTour from './components/OnboardingTour.jsx';
@@ -776,7 +776,6 @@ export default function App() {
   const [sortMenuOpen,    setSortMenuOpen]    = useState(false);
   const [gridAnimKey,     setGridAnimKey]     = useState(0);
   const [cardSearch,      setCardSearch]      = useState('');
-  const [collPage,        setCollPage]        = useState(0);
   const [collViewAll,     setCollViewAll]     = useState(false);  // vue d'ensemble « tout en un » (manquants inclus, sans pagination)
   const [quizSessionActive, setQuizSessionActive] = useState(false);
   const [dailyOffer, setDailyOffer] = useState(null);
@@ -902,6 +901,24 @@ export default function App() {
     window.addEventListener('resize', handler)
     return () => window.removeEventListener('resize', handler)
   }, [])
+
+  // ── Hauteur du header sticky — sert d'offset au bandeau figé de la collection
+  // (onglets de types + barre de recherche) qui se cale juste en dessous.
+  // ResizeObserver et non un simple resize : le contenu du header change après
+  // coup (nav desktop montée à la connexion, devises, polices chargées) et une
+  // mesure unique au mount laissait un offset trop court → le bandeau glissait
+  // sous le menu. ─────────────────────────────────────────────────────────────
+  const headerRef = useRef(null)
+  const [headerH, setHeaderH] = useState(48)
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const measure = () => setHeaderH(el.offsetHeight || 48)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [auth.profile?.id, isMobile])
 
   // ── Navigation mobile (onglets) ────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState(() => {
@@ -1841,7 +1858,7 @@ export default function App() {
       {!shinyDayBanner && <div style={{ height: 3, background: 'linear-gradient(90deg,#58a6ff,#bc8cff,#f9ca24,#f85149)', flexShrink: 0 }} />}
 
       {/* ── HEADER ── */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 200, background: theme.headerBg, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${theme.border}`, padding: isMobile ? '9px 10px' : '9px 20px', display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, flexShrink: 0 }}>
+      <header ref={headerRef} style={{ position: 'sticky', top: 0, zIndex: 200, background: theme.headerBg, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${theme.border}`, padding: isMobile ? '9px 10px' : '9px 20px', display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, flexShrink: 0 }}>
         <Logo iconSize={isMobile ? 26 : 30} textSize={isMobile ? 15 : 19} />
 
         {/* Desktop tab nav — même style que mobile, centré dans le header */}
@@ -2149,15 +2166,19 @@ export default function App() {
                 </div>
               )}
 
-              {/* Type filter tabs */}
-              {(!auth.profile || activeTab === 'collection') && gs.cardPool.length > 0 && (
+              {/* ── Bandeau figé sous le header : onglets de types + barre de recherche.
+                  Reste visible pendant le défilement des geocoins ; déborde des
+                  gouttières du <main> (fond opaque) pour couvrir toute la largeur. */}
+              {(!auth.profile || activeTab === 'collection') && (gs.cardPool.length > 0 || !currentTabLocked) && (
+              <div style={{ position: 'sticky', top: headerH, zIndex: 150, background: theme.bgMain, margin: isWide ? '0 -20px' : '0 -14px', padding: isWide ? '2px 20px 0' : '2px 14px 0', boxShadow: '0 10px 14px -12px #000a' }}>
+                {gs.cardPool.length > 0 && (
                 <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 10, paddingBottom: 2, scrollbarWidth: 'none' }}>
                   {typeTabs.map(({ type: tp, total, owned, locked }) => {
                     const pct   = total > 0 ? Math.round(owned / total * 100) : 0
                     const full  = owned === total && total > 0
                     const active = filter === tp
                     return (
-                      <button key={tp} onClick={() => { setFilter(tp); setCollPage(0); }} style={{ flexShrink: 0, background: active ? '#f9ca24' : theme.bgSurface, border: `1px solid ${active ? '#f9ca24' : theme.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', textAlign: 'center', minWidth: 60, opacity: locked && !active ? 0.7 : 1 }}>
+                      <button key={tp} onClick={() => setFilter(tp)} style={{ flexShrink: 0, background: active ? '#f9ca24' : theme.bgSurface, border: `1px solid ${active ? '#f9ca24' : theme.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: "'Nunito',sans-serif", transition: 'all .15s', textAlign: 'center', minWidth: 60, opacity: locked && !active ? 0.7 : 1 }}>
                         <div style={{ fontSize: 11, fontWeight: 800, color: active ? '#1a2538' : full ? '#3fb950' : theme.textSecondary, whiteSpace: 'nowrap', marginBottom: 2 }}>{tp === 'Tous' ? t('filter_all') : typeLabel(tp, gs.limits.typeTranslations, lang)}{locked ? <span style={{ marginLeft: 3, fontSize: 9, opacity: .7 }}>🔒</span> : ''}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                           <span style={{ fontSize: 10, fontWeight: 700, color: active ? '#1a253866' : full ? '#3fb950' : theme.textSecondary }}>{owned}/{total}</span>
@@ -2169,25 +2190,16 @@ export default function App() {
                     )
                   })}
                 </div>
-              )}
+                )}
 
-              {/* Collection content (search + grid) — en démo, les types non jouables invitent à se connecter */}
-              {(!auth.profile || activeTab === 'collection') && (currentTabLocked ? (
-                <div style={{ textAlign: 'center', padding: '48px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-                  <div style={{ fontSize: 46 }}>✨</div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: theme.textPrimary, maxWidth: 300, lineHeight: 1.4 }}>{t('demo_locked_sub')}</div>
-                  <button onClick={() => setShowAuth(true)} style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: '13px 26px', borderRadius: 12, cursor: 'pointer', fontSize: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900, boxShadow: '0 8px 24px #6c5ce755' }}>{t('demo_locked_cta')}</button>
-                </div>
-              ) : (
-                <>
-                  {/* Search + missing toggle */}
-                  {/* Barre de contrôles : search + filtres + tri */}
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-                    <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); setCollPage(0); }} placeholder={t('collection_search')}
+                {/* Barre de contrôles : search + filtres + tri */}
+                {!currentTabLocked && (
+                  <div style={{ display: 'flex', gap: 6, paddingBottom: 10, flexWrap: 'wrap' }}>
+                    <input value={cardSearch} onChange={e => { setCardSearch(e.target.value); setSelectedCard(null); }} placeholder={t('collection_search')}
                       style={{ flex: 1, minWidth: 100, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, padding: '7px 11px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
 
                     {/* ✨ Shiny — en démo : présentation de la feature au lieu du filtre */}
-                    <button onClick={() => { if (auth.isDemo) { setDemoInfo('shiny'); return; } setShowShiny(v => !v); setCollPage(0); setGridAnimKey(k => k+1); }}
+                    <button onClick={() => { if (auth.isDemo) { setDemoInfo('shiny'); return; } setShowShiny(v => !v); setGridAnimKey(k => k+1); }}
                       style={{ flexShrink: 0, background: showShiny ? '#f9ca2422' : theme.bgInput, border: `1px solid ${showShiny ? '#f9ca24' : theme.border}`, color: showShiny ? '#f9ca24' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       {t('filter_shiny')}
                     </button>
@@ -2209,7 +2221,7 @@ export default function App() {
                           <div onClick={() => setSortMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
                           <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 100, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: '0 8px 24px #0008', overflow: 'hidden', minWidth: 130 }}>
                             {[['rarity', t('sort_rarity')], ['name-asc', t('sort_name_asc')], ['name-desc', t('sort_name_desc')]].map(([val, lbl]) => (
-                              <button key={val} onClick={() => { setSortBy(val); setGridAnimKey(k => k+1); setCollPage(0); setSortMenuOpen(false); }}
+                              <button key={val} onClick={() => { setSortBy(val); setGridAnimKey(k => k+1); setSortMenuOpen(false); }}
                                 style={{ display: 'block', width: '100%', background: sortBy === val ? '#f9ca2418' : 'none', border: 'none', borderBottom: `1px solid ${theme.border}`, color: sortBy === val ? theme.gold : theme.textPrimary, padding: '9px 14px', fontFamily: "'Nunito',sans-serif", fontWeight: sortBy === val ? 900 : 600, fontSize: 12, cursor: 'pointer', textAlign: 'left' }}>
                                 {sortBy === val ? '✓ ' : ''}{lbl}
                               </button>
@@ -2222,18 +2234,30 @@ export default function App() {
 
                     {/* Manquants — masqué en démo (collection = uniquement les geocoins gagnés)
                         et en vue d'ensemble (les manquants y sont toujours affichés) */}
-                    {!auth.isDemo && !collViewAll && <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
+                    {!auth.isDemo && !collViewAll && <button onClick={() => setShowMissing(v => !v)}
                       style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : theme.bgInput, border: `1px solid ${showMissing ? '#6c5ce7' : theme.border}`, color: showMissing ? '#fff' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       {showMissing ? t('filter_owned') : t('filter_missing')}
                     </button>}
 
                     {/* Vue d'ensemble « tout en un » : toute la collection sur une page, manquants inclus */}
-                    {!auth.isDemo && <button onClick={() => { setCollViewAll(v => !v); setCollPage(0); }}
+                    {!auth.isDemo && <button onClick={() => setCollViewAll(v => !v)}
                       style={{ flexShrink: 0, background: collViewAll ? '#f9ca24' : theme.bgInput, border: `1px solid ${collViewAll ? '#f9ca24' : theme.border}`, color: collViewAll ? '#1a2538' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       ⊞ {t('coll_view_all')}
                     </button>}
                   </div>
+                )}
+              </div>
+              )}
 
+              {/* Collection content (grille) — en démo, les types non jouables invitent à se connecter */}
+              {(!auth.profile || activeTab === 'collection') && (currentTabLocked ? (
+                <div style={{ textAlign: 'center', padding: '48px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                  <div style={{ fontSize: 46 }}>✨</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: theme.textPrimary, maxWidth: 300, lineHeight: 1.4 }}>{t('demo_locked_sub')}</div>
+                  <button onClick={() => setShowAuth(true)} style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: '13px 26px', borderRadius: 12, cursor: 'pointer', fontSize: 14, fontFamily: "'Nunito',sans-serif", fontWeight: 900, boxShadow: '0 8px 24px #6c5ce755' }}>{t('demo_locked_cta')}</button>
+                </div>
+              ) : (
+                <>
                   {/* Card grid */}
                   {displayCards.length === 0 ? (
                     gs.loadingData ? (
@@ -2252,40 +2276,30 @@ export default function App() {
                       items={displayCards} theme={theme} isMobile={isMobile} lang={lang}
                       onSelect={(card, isShiny, isAchievement) => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(isShiny); setSelectedCardFromHistory(false); }}
                     />
-                  ) : (() => {
-                    const totalPages = Math.ceil(displayCards.length / COLL_PAGE_SIZE)
-                    const page = Math.min(collPage, totalPages - 1)
-                    // Une page du carrousel = la grille existante (cascade cardSort au
-                    // tri/filtre via gridAnimKey, slideIn au premier affichage). Les pages
-                    // voisines sont pré-montées par le pager pour l'aperçu pendant le swipe.
-                    const renderPage = (pIdx) => (
-                      <div key={gridAnimKey} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
-                        {displayCards.slice(pIdx * COLL_PAGE_SIZE, (pIdx + 1) * COLL_PAGE_SIZE).map(({ card, count, cnt, missing, isShiny }, idx) => {
-                          const c = count || cnt || 0;
-                          const isAchievement = card.type?.toLowerCase().startsWith('achievement')
-                          const isEvolutive = isAchievement && !!gs.achievementProgress?.[card.id]?.tiers
-                          const anim = gridAnimKey > 0
-                            ? `cardSort .4s ${Math.min(idx * 0.03, 0.5)}s cubic-bezier(.34,1.56,.64,1) both`
-                            : 'slideIn .35s ease both'
-                          return (
-                            <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ position: 'relative', animation: anim }} {...(pIdx === page && idx === 0 ? { 'data-tour': 'collection' } : {})}>
-                              {isEvolutive && <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 7, background: '#f9ca24cc', color: '#1e3045', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, pointerEvents: 'none' }}>ÉVOLUTIF</div>}
-                              <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )
-                    return (
-                      <CollectionPager
-                        page={page} totalPages={totalPages} count={displayCards.length}
-                        onPageChange={setCollPage} renderPage={renderPage}
-                        theme={theme} isMobile={isMobile}
-                        hintText={t('coll_swipe_hint')}
-                        keysEnabled={!selectedCard}
-                      />
-                    )
-                  })()}
+                  ) : (
+                    <CollectionScroll
+                      items={displayCards} batch={COLL_PAGE_SIZE} theme={theme} isMobile={isMobile}
+                      gridKey={gridAnimKey} topLabel={t('coll_back_top')}
+                      resetKey={`${filter}|${sortBy}|${cardSearch}|${showShiny}|${showMissing}|${gridAnimKey}`}
+                      renderItem={({ card, count, cnt, missing, isShiny }, idx) => {
+                        const c = count || cnt || 0;
+                        const isAchievement = card.type?.toLowerCase().startsWith('achievement')
+                        const isEvolutive = isAchievement && !!gs.achievementProgress?.[card.id]?.tiers
+                        // Cascade par lot : délai selon la position DANS le lot (stable pour un
+                        // idx donné) → les cartes déjà montées ne rejouent pas leur animation
+                        // quand le lot suivant apparaît en dessous.
+                        const anim = gridAnimKey > 0
+                          ? `cardSort .4s ${(idx % COLL_PAGE_SIZE) * 0.03}s cubic-bezier(.34,1.56,.64,1) both`
+                          : `collBatchIn .45s ${(idx % COLL_PAGE_SIZE) * 0.02}s cubic-bezier(.34,1.56,.64,1) both`
+                        return (
+                          <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ position: 'relative', animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
+                            {isEvolutive && <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 7, background: '#f9ca24cc', color: '#1e3045', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, pointerEvents: 'none' }}>ÉVOLUTIF</div>}
+                            <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
+                          </div>
+                        );
+                      }}
+                    />
+                  )}
                 </>
               ))}
 
