@@ -40,14 +40,19 @@ export function todayParis(date = new Date()) {
 // ─── Statut des limites de geocoins (horaire / quotidienne) ───────────────────
 // Détermine si le joueur a atteint une limite l'empêchant d'obtenir le prochain
 // geocoin, et laquelle. Le quotidien prime (reset le plus lointain).
-//   profile : { daily_cards, daily_reset_at, hourly_cards, cards_hour_reset_at }
-//   limits  : { quizDailyCardCap, quizHourlyCardCap }
-// Retourne { over, type: 'daily'|'hourly'|null, resetAt: Date|null, forgeCapped }
+//   profile : { daily_cards, daily_reset_at, hourly_cards, cards_hour_reset_at, daily_shiny }
+//   limits  : { quizDailyCardCap, quizHourlyCardCap, quizDailyShinyCap }
+//   opts    : { shinyCard } — true si le geocoin en jeu est brillant : le cap
+//     quotidien de shiny (quizDailyShinyCap) devient alors bloquant lui aussi.
+//     Sans ça, un joueur à 5/5 shiny (geocoins jour/heure non pleins) répondait
+//     sans choix dépôt/gloire et perdait le shiny en gloire silencieuse.
+// Retourne { over, type: 'daily'|'shiny'|'hourly'|null, resetAt: Date|null, forgeCapped }
 //   - daily  : resetAt = null (réinitialisation à minuit, géré à l'affichage)
+//   - shiny  : resetAt = null (cap quotidien de shiny — minuit aussi)
 //   - hourly : resetAt = Date de fin de la fenêtre horaire courante
 //   - forgeCapped : le cap quotidien de PF de consolation est atteint
 //     (hors-limite → plus aucun PF ni geocoin à gagner)
-export function computeCardLimitStatus(profile, limits) {
+export function computeCardLimitStatus(profile, limits, opts = {}) {
   if (!profile) return { over: false, type: null, resetAt: null, forgeCapped: false }
 
   const today     = todayParis()
@@ -71,6 +76,15 @@ export function computeCardLimitStatus(profile, limits) {
   const dailyCards = isNewDay ? 0 : (profile.daily_cards || 0)
   if (dailyCap > 0 && dailyCards >= dailyCap) {
     return { over: true, type: 'daily', resetAt: null, forgeCapped }
+  }
+
+  // Limite quotidienne de shiny — ne bloque QUE les geocoins brillants (miroir du
+  // backend quiz.js : shinyCapReached). Avant l'horaire : les deux resets « jour »
+  // (minuit) priment sur la fenêtre glissante d'une heure.
+  const shinyCap   = Number(limits?.quizDailyShinyCap) || 0
+  const dailyShiny = isNewDay ? 0 : (profile.daily_shiny || 0)
+  if (opts.shinyCard && shinyCap > 0 && dailyShiny >= shinyCap) {
+    return { over: true, type: 'shiny', resetAt: null, forgeCapped }
   }
 
   // Limite horaire (fenêtre glissante d'une heure ; un nouveau jour la réinitialise)

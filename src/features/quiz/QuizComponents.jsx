@@ -322,7 +322,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // Texte "jusqu'à quand" pour la bannière de limite atteinte
   const limitWhen = useMemo(()=>{
     if(!limitStatus?.over) return null;
-    if(limitStatus.type==='daily') return t('limit_reset_midnight');
+    if(limitStatus.type==='daily'||limitStatus.type==='shiny') return t('limit_reset_midnight');
     if(limitStatus.type==='hourly' && limitStatus.resetAt){
       const min=Math.max(1,Math.ceil((new Date(limitStatus.resetAt).getTime()-Date.now())/60000));
       return t('limit_reset_in_min').replace('{n}',min);
@@ -437,14 +437,15 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             popup ⓘ (LimitInfoButton), et l'achat garde son panneau de confirmation
             Payer/Annuler (déplié sous la ligne quand on tape le bouton). */}
         {status==="open" && limitStatus?.over && (()=>{
-          const bannerTitle = limitStatus.type==='hourly' ? t('quiz_limit_hourly_title') : t('quiz_limit_daily_title');
+          const bannerTitle = limitStatus.type==='hourly' ? t('quiz_limit_hourly_title') : limitStatus.type==='shiny' ? t('quiz_limit_shiny_title') : t('quiz_limit_daily_title');
           const bannerBody  = limitStatus.forgeCapped
             ? (cardHoldable ? t('quiz_limit_banner_hold_capped') : t('quiz_limit_banner_forge_capped'))
             : (cardHoldable ? t('quiz_limit_banner_hold')        : t('quiz_limit_banner_forge'));
           const infoBody    = (limitWhen ? `${bannerTitle} — ${limitWhen}\n\n` : '') + bannerBody + `\n\n${t('quiz_limit_info_note')}`;
           const pocket   = limitStatus.type==='hourly';
           const price    = upsell ? (pocket?upsell.pocketPrice:upsell.bagPrice) : null;
-          const showUpsell = upsell && price!=null;
+          // Cap shiny : ni le sac ni les poches ne l'augmentent → pas d'upsell trompeur.
+          const showUpsell = upsell && price!=null && limitStatus.type!=='shiny';
           const poor     = (upsell?.gold??0)<price;
           const active   = upsellConfirm===(pocket?'pocket':'bag');
           const buy=async()=>{ if(upsellBusy||poor) return; setUpsellBusy(true); try{ await (pocket?upsell.onBuyPocket:upsell.onBuyBag)(); } finally{ setUpsellBusy(false); setUpsellConfirm(null); } };

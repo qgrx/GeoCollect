@@ -139,6 +139,23 @@ describe('computeCardLimitStatus', () => {
     expect(computeCardLimitStatus(stale, limits).type).toBe('hourly')
   })
 
+  it('cap shiny atteint : bloque un quiz shiny (type shiny), pas un quiz normal', () => {
+    // Bug Sebal : 5/5 shiny mais geocoins jour/heure sous les caps → le front ne
+    // signalait aucune limite et le choix dépôt/gloire n'était jamais proposé.
+    const profile = { daily_reset_at: today, daily_cards: 29, hourly_cards: 0, cards_hour_reset_at: minsAgo(10), daily_shiny: 5 }
+    const withShinyCap = { ...limits, quizDailyShinyCap: 5 }
+    const shinyQuiz = computeCardLimitStatus(profile, withShinyCap, { shinyCard: true })
+    expect(shinyQuiz.over).toBe(true)
+    expect(shinyQuiz.type).toBe('shiny')
+    // Quiz non-shiny : le cap shiny ne s'applique pas
+    expect(computeCardLimitStatus(profile, withShinyCap, { shinyCard: false }).over).toBe(false)
+    expect(computeCardLimitStatus(profile, withShinyCap).over).toBe(false)
+    // Cap shiny à 0 = illimité ; sous le cap = pas de blocage ; nouveau jour = reset
+    expect(computeCardLimitStatus(profile, { ...limits, quizDailyShinyCap: 0 }, { shinyCard: true }).over).toBe(false)
+    expect(computeCardLimitStatus({ ...profile, daily_shiny: 4 }, withShinyCap, { shinyCard: true }).over).toBe(false)
+    expect(computeCardLimitStatus({ ...profile, daily_reset_at: '2000-01-01' }, withShinyCap, { shinyCard: true }).over).toBe(false)
+  })
+
   it('cap à 0 = illimité : ni le sac ni le boost ne le transforment en limite', () => {
     const s = computeCardLimitStatus(
       { daily_reset_at: today, daily_cards: 999, hourly_cards: 999, cards_hour_reset_at: minsAgo(10), bag_slots: 5, pocket_boost: 10, pocket_boost_day: today },
