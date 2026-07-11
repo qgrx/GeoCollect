@@ -24,6 +24,8 @@ import { useAuth } from './hooks/useAuth.js';
 
 // ─── Components ───────────────────────────────────────────────────────────────
 import Card from './components/Card.jsx';
+import CollectionPager from './components/CollectionPager.jsx';
+import CollectionOverview from './components/CollectionOverview.jsx';
 import CardDetailModal from './components/CardDetailModal.jsx';
 import OnboardingTour from './components/OnboardingTour.jsx';
 import PseudoDisplay from './components/PseudoDisplay.jsx';
@@ -775,6 +777,7 @@ export default function App() {
   const [gridAnimKey,     setGridAnimKey]     = useState(0);
   const [cardSearch,      setCardSearch]      = useState('');
   const [collPage,        setCollPage]        = useState(0);
+  const [collViewAll,     setCollViewAll]     = useState(false);  // vue d'ensemble « tout en un » (manquants inclus, sans pagination)
   const [quizSessionActive, setQuizSessionActive] = useState(false);
   const [dailyOffer, setDailyOffer] = useState(null);
   const [holds,      setHolds]      = useState([]);          // geocoins en attente (multi-emplacements)
@@ -1664,8 +1667,8 @@ export default function App() {
         .filter(([, n]) => n > 0)
         .map(([id, n]) => ({ card: gs.cardPool.find(c => c.id === +id), count: n, isShiny: true, missing: false }))
         .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
-      // Si showMissing actif en mode shiny : montrer aussi les cartes possédées sans shiny
-      if (showMissing) {
+      // Si showMissing (ou vue d'ensemble) actif en mode shiny : montrer aussi les cartes possédées sans shiny
+      if (showMissing || collViewAll) {
         const shinyIds = new Set(shinyList.map(x => x.card.id))
         const nonShiny = Object.entries(gs.collection)
           .filter(([id, v]) => v > 0 && !shinyIds.has(+id))
@@ -1680,7 +1683,7 @@ export default function App() {
     // En démo : toujours afficher les 5 geocoins du parcours, les non-gagnés en
     // « manquant » (cardPool ne contient que ces 5).
     let normalList;
-    if (showMissing || auth.isDemo) {
+    if (showMissing || collViewAll || auth.isDemo) {
       normalList = visibleCardPool
         .filter(c => (af || c.type === filter) && matchSearch(c))
         .map(c => ({ card: c, count: gs.collection[c.id] || 0, missing: !(gs.collection[c.id] > 0) }))
@@ -1701,7 +1704,7 @@ export default function App() {
       }
     }
     return normalList.sort(sortFn)
-  }, [showMissing, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, gs.cardPool, visibleCardPool, gs.shinyCollection]);
+  }, [showMissing, collViewAll, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, gs.cardPool, visibleCardPool, gs.shinyCollection]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0
   const pseudoChanged   = pseudoChangedAt > 0 && (Date.now() - pseudoChangedAt) < PSEUDO_NOTIF_DAYS * 864e5
@@ -2217,10 +2220,17 @@ export default function App() {
                     </div>
                     )}
 
-                    {/* Manquants — masqué en démo (collection = uniquement les geocoins gagnés) */}
-                    {!auth.isDemo && <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
+                    {/* Manquants — masqué en démo (collection = uniquement les geocoins gagnés)
+                        et en vue d'ensemble (les manquants y sont toujours affichés) */}
+                    {!auth.isDemo && !collViewAll && <button onClick={() => { setShowMissing(v => !v); setCollPage(0); }}
                       style={{ flexShrink: 0, background: showMissing ? '#6c5ce7' : theme.bgInput, border: `1px solid ${showMissing ? '#6c5ce7' : theme.border}`, color: showMissing ? '#fff' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       {showMissing ? t('filter_owned') : t('filter_missing')}
+                    </button>}
+
+                    {/* Vue d'ensemble « tout en un » : toute la collection sur une page, manquants inclus */}
+                    {!auth.isDemo && <button onClick={() => { setCollViewAll(v => !v); setCollPage(0); }}
+                      style={{ flexShrink: 0, background: collViewAll ? '#f9ca24' : theme.bgInput, border: `1px solid ${collViewAll ? '#f9ca24' : theme.border}`, color: collViewAll ? '#1a2538' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      ⊞ {t('coll_view_all')}
                     </button>}
                   </div>
 
@@ -2237,37 +2247,43 @@ export default function App() {
                         {t('no_cards')}
                       </div>
                     )
+                  ) : collViewAll ? (
+                    <CollectionOverview
+                      items={displayCards} theme={theme} isMobile={isMobile} lang={lang}
+                      onSelect={(card, isShiny, isAchievement) => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(isShiny); setSelectedCardFromHistory(false); }}
+                    />
                   ) : (() => {
                     const totalPages = Math.ceil(displayCards.length / COLL_PAGE_SIZE)
                     const page = Math.min(collPage, totalPages - 1)
-                    const slice = displayCards.slice(page * COLL_PAGE_SIZE, (page + 1) * COLL_PAGE_SIZE)
+                    // Une page du carrousel = la grille existante (cascade cardSort au
+                    // tri/filtre via gridAnimKey, slideIn au premier affichage). Les pages
+                    // voisines sont pré-montées par le pager pour l'aperçu pendant le swipe.
+                    const renderPage = (pIdx) => (
+                      <div key={gridAnimKey} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
+                        {displayCards.slice(pIdx * COLL_PAGE_SIZE, (pIdx + 1) * COLL_PAGE_SIZE).map(({ card, count, cnt, missing, isShiny }, idx) => {
+                          const c = count || cnt || 0;
+                          const isAchievement = card.type?.toLowerCase().startsWith('achievement')
+                          const isEvolutive = isAchievement && !!gs.achievementProgress?.[card.id]?.tiers
+                          const anim = gridAnimKey > 0
+                            ? `cardSort .4s ${Math.min(idx * 0.03, 0.5)}s cubic-bezier(.34,1.56,.64,1) both`
+                            : 'slideIn .35s ease both'
+                          return (
+                            <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ position: 'relative', animation: anim }} {...(pIdx === page && idx === 0 ? { 'data-tour': 'collection' } : {})}>
+                              {isEvolutive && <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 7, background: '#f9ca24cc', color: '#1e3045', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, pointerEvents: 'none' }}>ÉVOLUTIF</div>}
+                              <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
                     return (
-                      <>
-                        <div key={gridAnimKey} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14, marginBottom: 16 }}>
-                          {slice.map(({ card, count, cnt, missing, isShiny }, idx) => {
-                            const c = count || cnt || 0;
-                            const isAchievement = card.type?.toLowerCase().startsWith('achievement')
-                            const isEvolutive = isAchievement && !!gs.achievementProgress?.[card.id]?.tiers
-                            const anim = gridAnimKey > 0
-                              ? `cardSort .4s ${Math.min(idx * 0.03, 0.5)}s cubic-bezier(.34,1.56,.64,1) both`
-                              : 'slideIn .35s ease both'
-                            return (
-                              <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ position: 'relative', animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
-                                {isEvolutive && <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 7, background: '#f9ca24cc', color: '#1e3045', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, pointerEvents: 'none' }}>ÉVOLUTIF</div>}
-                                <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {totalPages > 1 && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, paddingBottom: 8 }}>
-                            <button onClick={() => setCollPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ background: page===0?theme.bgInput:theme.bgElevated, border: `1px solid ${theme.border}`, color: page===0?theme.textMuted:theme.textPrimary, width: 32, height: 32, borderRadius: 8, cursor: page===0?'default':'pointer', fontWeight: 900, fontSize: 15 }}>‹</button>
-                            <span style={{ fontSize: 12, color: theme.textSecondary, fontWeight: 700 }}>{page+1} / {totalPages}</span>
-                            <span style={{ fontSize: 11, color: theme.textMuted }}>({displayCards.length})</span>
-                            <button onClick={() => setCollPage(p => Math.min(totalPages-1, p+1))} disabled={page===totalPages-1} style={{ background: page===totalPages-1?theme.bgInput:theme.bgElevated, border: `1px solid ${theme.border}`, color: page===totalPages-1?theme.textMuted:theme.textPrimary, width: 32, height: 32, borderRadius: 8, cursor: page===totalPages-1?'default':'pointer', fontWeight: 900, fontSize: 15 }}>›</button>
-                          </div>
-                        )}
-                      </>
+                      <CollectionPager
+                        page={page} totalPages={totalPages} count={displayCards.length}
+                        onPageChange={setCollPage} renderPage={renderPage}
+                        theme={theme} isMobile={isMobile}
+                        hintText={t('coll_swipe_hint')}
+                        keysEnabled={!selectedCard}
+                      />
                     )
                   })()}
                 </>
