@@ -747,6 +747,7 @@ export default function App() {
   const [showForge,       setShowForge]       = useState(false);
   const [marketTab,       setMarketTab]       = useState('acheter');
   const [marketSellCard,  setMarketSellCard]  = useState(null);
+  const [forgeShinyFocus, setForgeShinyFocus] = useState(null);  // geocoin ciblé depuis « shiny manquants » → forge Brillance
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdmin,       setShowAdmin]       = useState(() => window.location.pathname === '/admin');
   const [showCgv,         setShowCgv]         = useState(false);
@@ -935,6 +936,9 @@ export default function App() {
   })
   useEffect(() => { localStorage.setItem('geocoins_tab', activeTab) }, [activeTab])
   useEffect(() => { gs.marketOpenRef.current = activeTab === 'market' }, [activeTab])
+  // Ciblage forge consommé : on l'oublie dès qu'on quitte la forge, pour qu'une
+  // visite ultérieure via la nav ne re-cible pas l'ancien geocoin
+  useEffect(() => { if (activeTab !== 'forge' && forgeShinyFocus != null) setForgeShinyFocus(null) }, [activeTab, forgeShinyFocus])
 
   // Fetch offre du jour + dépôt d'attente quand le profil est chargé ou quand on ouvre l'onglet Trésors
   useEffect(() => {
@@ -2302,6 +2306,16 @@ export default function App() {
                           <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ position: 'relative', animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
                             {isEvolutive && <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 7, background: '#f9ca24cc', color: '#1e3045', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, pointerEvents: 'none' }}>ÉVOLUTIF</div>}
                             <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
+                            {/* Shiny manquant : raccourci vers la forge Brillance, ciblé sur ce geocoin */}
+                            {showShiny && missing && (!isAchievement || isEvolutive) && !auth.isDemo && gs.limits.featureForge !== false && gs.limits.shinyForgeOpen !== false && (
+                              <button
+                                title={t('coll_forge_shiny')} aria-label={t('coll_forge_shiny')}
+                                onClick={e => { e.stopPropagation(); setForgeShinyFocus(card.id); setActiveTab('forge') }}
+                                style={{ position: 'absolute', bottom: 8, right: 8, zIndex: 7, width: 26, height: 26, borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, lineHeight: 1, padding: 0, background: 'linear-gradient(135deg,#f9ca24,#e17055)', boxShadow: '0 2px 8px #00000066', transition: 'transform .15s' }}
+                                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.18)' }}
+                                onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}
+                              >🔨</button>
+                            )}
                           </div>
                         );
                       }}
@@ -2333,6 +2347,8 @@ export default function App() {
               {/* Forge inline */}
               {auth.profile && activeTab === 'forge' && (gs.cardPool.some(c => c.forgeable) || gs.limits.shinyForgeOpen !== false) && (
                 <ForgeModal inline loading={gs.loadingData}
+                  initialTab={forgeShinyFocus != null ? 'brillance' : 'normal'}
+                  focusCardId={forgeShinyFocus}
                   cardPool={gs.cardPool}
                   collection={gs.collection}
                   shinyCollection={gs.shinyCollection || {}}

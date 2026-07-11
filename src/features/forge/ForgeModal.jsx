@@ -465,7 +465,7 @@ function useMeltAnimation() {
 }
 
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
-export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, onMelted, onMeltedShiny, onMeltedAll, onMeltedAllShiny, inline = false, shinyForgeCostByRarity = {}, forgeCostByRarity = {}, meltPointsByRarity = {}, meltPointsByRarityShiny = {}, achievementProgress = {}, loading = false }) {
+export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, onMelted, onMeltedShiny, onMeltedAll, onMeltedAllShiny, inline = false, shinyForgeCostByRarity = {}, forgeCostByRarity = {}, meltPointsByRarity = {}, meltPointsByRarityShiny = {}, achievementProgress = {}, loading = false, initialTab = 'normal', focusCardId = null }) {
   useEffect(() => { injectStyle() }, [])
   const { theme } = useTheme()
   const { t } = useT()
@@ -475,7 +475,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
   const [shinyMode, setShinyMode]   = useState(false) // true = animation brillance
   const [error, setError]           = useState(null)
   const [recentlyForged, setRecentlyForged] = useState(new Set())
-  const [activeTab, setActiveTab]   = useState('normal')
+  const [activeTab, setActiveTab]   = useState(initialTab)
   const [meltingAll, setMeltingAll] = useState(false)
   const [meltMode, setMeltMode]     = useState('normal') // 'normal' | 'shiny'
   const {
@@ -505,6 +505,13 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
   // Geocoins ordinaires + achievements évolutifs (les achievements non évolutifs
   // restent exclus de la forge brillante).
   const ownedCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 0 && (!isAchievement(c) || isEvolutiveAch(c)))
+  // Arrivée depuis la collection (« shiny manquants ») : le geocoin visé est
+  // remonté en tête de l'onglet Brillance et mis en évidence — la grille se
+  // charge par lots, un simple défilement automatique ne le garantirait pas.
+  const shinyGridCards = focusCardId != null
+    ? [...ownedCards.filter(c => c.id === focusCardId), ...ownedCards.filter(c => c.id !== focusCardId)]
+    : ownedCards
+  useEffect(() => { if (focusCardId != null) window.scrollTo({ top: 0 }) }, [focusCardId])
   const byRarityDesc = (a, b) => (RC[a.rarity]?.order ?? 99) - (RC[b.rarity]?.order ?? 99)
   const duplicateCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 1 && c.type !== 'Achievement').sort(byRarityDesc)
   const duplicateShinyCards = (cardPool || []).filter(c => (shinyCollection[c.id] || 0) > 1 && c.type !== 'Achievement').sort(byRarityDesc)
@@ -926,14 +933,16 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                     </div>
                   )
               ) : (
-                <CollectionScroll items={ownedCards} batch={FORGE_BATCH} theme={theme} isMobile={isMobileView} topLabel={t('coll_back_top')}
+                <CollectionScroll items={shinyGridCards} batch={FORGE_BATCH} theme={theme} isMobile={isMobileView} topLabel={t('coll_back_top')}
                   renderItem={(card) => {
                   const alreadyShiny = (shinyCollection[card.id] || 0) > 0
                   const needsLegendary = achNeedsLegendary(card)
                   const cost = card.shiny_forge_cost ?? shinyForgeCostByRarity[card.rarity] ?? null
                   const canAfford = cost != null && forgePoints >= cost
+                  const focused = card.id === focusCardId
                   return (
-                    <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny || needsLegendary ? 0.5 : 1 }}>
+                    <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny || needsLegendary ? 0.5 : 1,
+                      ...(focused ? { padding: 8, borderRadius: 18, animation: 'shinyCardGlow 2s ease-in-out infinite' } : {}) }}>
                       <Card card={card} isShiny={alreadyShiny} />
                       {!needsLegendary && <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>🔨 {cost ?? '—'} pts</div>}
                       {needsLegendary ? (
