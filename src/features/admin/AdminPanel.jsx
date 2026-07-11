@@ -44,6 +44,9 @@ function BarChart({ buckets, mode, period }) {
     const [,m,d] = lbl.split('-');
     return `${+d}/${+m}`;
   };
+  // Les buckets vides sont désormais renvoyés par l'API (axe X linéaire) :
+  // on n'étiquette qu'un bucket sur N pour rester lisible sur petit écran.
+  const lblStep = Math.ceil(buckets.length/12);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{display:'block',overflow:'visible'}}>
       {ticks.map((t,i)=>{
@@ -61,12 +64,14 @@ function BarChart({ buckets, mode, period }) {
         const isHov = hov===i;
         const ttX = Math.min(Math.max(x+barW/2, PL+38), PL+cW-38);
         const ttY = Math.max(y-36, 2);
-        return <g key={i} onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)} style={{cursor:'default'}}>
+        return <g key={i} onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)} onClick={()=>setHov(hov===i?null:i)} style={{cursor:'default'}}>
+          {/* Zone de toucher pleine hauteur : une barre basse est trop fine pour le doigt */}
+          <rect x={PL+i*slot} y={PT} width={slot} height={cH} fill="transparent"/>
           <rect x={x} y={y} width={barW} height={bH} rx={2} fill={isHov?'#e74c3c':'#e74c3c88'}/>
-          <text x={x+barW/2} y={H-PB+14}
+          {(i%lblStep===0||isHov)&&<text x={x+barW/2} y={H-PB+14}
             textAnchor={buckets.length>14?'end':'middle'}
             fontSize={8} fill={isHov?'#fff':'#8daacc'}
-            transform={buckets.length>14?`rotate(-40,${x+barW/2},${H-PB+14})`:''}>{fmtX(b.label)}</text>
+            transform={buckets.length>14?`rotate(-40,${x+barW/2},${H-PB+14})`:''}>{fmtX(b.label)}</text>}
           {isHov&&<>
             <rect x={ttX-38} y={ttY} width={76} height={28} rx={4} fill="#0c1620" stroke="#e74c3c55" strokeWidth={1}/>
             <text x={ttX} y={ttY+12} textAnchor="middle" fontSize={9} fill="#fff" fontWeight="bold">
@@ -529,8 +534,9 @@ function QuestionsManager({mode,setMsg,t}){
 function OnlineHistoryChart({ history = [], multi = [], hours = 24, threshold = 10 }) {
   const W = 900, H = 220, padL = 26, padR = 12, padT = 12, padB = 20;
   if (!history.length) return <div style={{ color:'#8daacc', padding:'22px 0', textAlign:'center', fontSize:12 }}>Aucune donnée pour l'instant — l'historique se remplit toutes les 30 s.</div>;
-  const times = history.map(p => new Date(p.at).getTime());
-  const t0 = times[0], t1 = times[times.length - 1] || (t0 + 1);
+  // Axe X = fenêtre demandée (−Nh → maintenant), pas l'étendue des données :
+  // sinon la courbe s'étire et les libellés « −24h / maintenant » mentent.
+  const t1 = Date.now(), t0 = t1 - hours * 3600e3;
   const maxCount = Math.max(threshold, 2, ...history.map(p => p.count));
   const x = t => padL + ((t - t0) / ((t1 - t0) || 1)) * (W - padL - padR);
   const y = c => padT + (1 - c / maxCount) * (H - padT - padB);
@@ -561,13 +567,35 @@ function OnlineHistoryChart({ history = [], multi = [], hours = 24, threshold = 
   );
 }
 
+// Anciennes ancres (#drafts, #market_chart…) → onglets fusionnés, pour que les
+// favoris/liens existants continuent d'atterrir au bon endroit.
+const LEGACY_TABS = {
+  drafts: 'questions',
+  market_chart: 'market_activity',
+  market_history: 'market_activity',
+  version: 'stats',
+  cache: 'maintenance',
+  transactions: 'market_admin',
+};
+
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
 export default function AdminPanel({cardPool,cardTypes,questions,limits,maintenanceMode,maintenanceText,bannedIPs,onClose,onAddCard,onEditCard,onDeleteCard,onAddType,onDeleteType,onRenameType,onAddQuestion,onReplaceQuestions,onReleaseHiddenQuestions,onEditQuestion,onDeleteQuestion,onToggleQuestion,onSetLimits,onSetMaintenance,onBanIP,onUnbanIP,onStartTour,onUpdateCardInPool,onTestAchievement,onShopPacksSaved,onShopTestModeChange}){
   const {t}=useT();
   // Geocoins de type achievement, proposés pour lier une condition à une carte.
   const achievementCards=(cardPool||[]).filter(c=>c.type?.toLowerCase().startsWith('achievement'));
-  const [tab,setTab]=useState(()=>window.location.hash.slice(1)||"cards");
+  const [tab,setTab]=useState(()=>{const h=window.location.hash.slice(1);return LEGACY_TABS[h]||h||"cards";});
   const [showMeltPreview,setShowMeltPreview]=useState(false);
+  // Sous-onglets des onglets fusionnés (préservent l'intention des anciennes ancres).
+  const [qMode,setQMode]=useState(()=>window.location.hash.slice(1)==='drafts'?'drafts':'published');
+  const [mktView,setMktView]=useState(()=>window.location.hash.slice(1)==='market_history'?'history':'chart');
+  // Mobile : navigation en tiroir + paddings réduits (même seuil que le reste de l'app).
+  const [isMobile,setIsMobile]=useState(()=>window.innerWidth<640);
+  const [navOpen,setNavOpen]=useState(false);
+  useEffect(()=>{
+    const h=()=>setIsMobile(window.innerWidth<640);
+    window.addEventListener('resize',h);
+    return ()=>window.removeEventListener('resize',h);
+  },[]);
   // Les onglets « Questions » et « Brouillons » sont gérés par <QuestionsManager/> (autonome).
 
   // ── Mode démo (onboarding) : 5 paires geocoin + question ──────────────────────
@@ -682,7 +710,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   },[tab,onlineHrs]);
 
   useEffect(()=>{
-    if(tab!=='version') return;
+    if(tab!=='stats') return;
     apiAdminGetVersion().then(({data})=>{ if(data) setVersionInfo(data); });
   },[tab]);
 
@@ -704,24 +732,24 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   },[tab]);
 
   useEffect(()=>{
-    if(tab!=='market_chart') return;
+    if(tab!=='market_activity'||mktView!=='chart') return;
     setMktVol(d=>({...d,loading:true}));
     apiAdminGetMarketVolume({period:mktVolPeriod,...(mktVolRarity&&{rarity:mktVolRarity}),...(mktVolQ&&{q:mktVolQ})})
       .then(({data})=>{
         if(data) setMktVol({buckets:data.buckets||[],total:data.total||0,loading:false});
         else setMktVol(d=>({...d,loading:false}));
       });
-  },[tab,mktVolPeriod,mktVolRarity,mktVolQ]);
+  },[tab,mktView,mktVolPeriod,mktVolRarity,mktVolQ]);
 
   useEffect(()=>{
-    if(tab!=='market_history') return;
+    if(tab!=='market_activity'||mktView!=='history') return;
     setMktHist(d=>({...d,loading:true}));
     apiAdminGetMarketHistory({page:mktHistPage,...(mktHistType&&{type:mktHistType}),...(mktHistQ&&{q:mktHistQ})})
       .then(({data})=>{
         if(data) setMktHist({transactions:data.transactions||[],total:data.total||0,loading:false});
         else setMktHist(d=>({...d,loading:false}));
       });
-  },[tab,mktHistPage,mktHistType,mktHistQ]);
+  },[tab,mktView,mktHistPage,mktHistType,mktHistQ]);
 
   useEffect(()=>{
     if(tab!=='market_admin') return;
@@ -734,54 +762,92 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   },[tab,listingsPage,listingsQ]);
 
 
+  // 6 thèmes au lieu de 7 groupes / 25 entrées : brouillons fusionnés dans
+  // Questions, graphique + historique marché fusionnés dans Activité, version
+  // fusionnée dans Stats, cache fusionné dans Maintenance.
   const NAV=[
     {label:'Contenu',items:[{id:'cards',icon:'🃏',label:'Cartes'},{id:'types',icon:'🏷️',label:'Types'},{id:'seasons',icon:'🌸',label:'Saisons'}]},
-    {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'drafts',icon:'📝',label:'Brouillons'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'},{id:'demo',icon:'🎮',label:'Démo'}]},
-    {label:'Économie',items:[{id:'limits',icon:'💰',label:'Limites & Prix'},{id:'shop',icon:'🛍️',label:'Boutique'},{id:'ranks',icon:'🎖️',label:'Rangs'}]},
-    {label:'Récompenses',items:[{id:'quests',icon:'🔨',label:'Quêtes'},{id:'achievements',icon:'🏆',label:'Achievements'}]},
-    {label:'Communauté',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'referrals',icon:'🤝',label:'Parrainage'},{id:'bots',icon:'🤖',label:'Bots'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_history',icon:'💸',label:'Historique'},{id:'market_chart',icon:'📊',label:'Graphique'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
-    {label:'Système',items:[{id:'maintenance',icon:'🛠️',label:'Maintenance'},{id:'interface',icon:'📱',label:'Interface'},{id:'cache',icon:'⚡',label:'Cache'},{id:'stats',icon:'📈',label:'Stats'},{id:'domains',icon:'🔒',label:'Domaines'},{id:'version',icon:'🔖',label:'Version'}]},
+    {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'},{id:'demo',icon:'🎮',label:'Démo'}]},
+    {label:'Récompenses',items:[{id:'quests',icon:'🔨',label:'Quêtes'},{id:'achievements',icon:'🏆',label:'Achievements'},{id:'ranks',icon:'🎖️',label:'Rangs'}]},
+    {label:'Économie & Marché',items:[{id:'limits',icon:'💰',label:'Limites & Prix'},{id:'shop',icon:'🛍️',label:'Boutique'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_activity',icon:'📊',label:'Activité marché'}]},
+    {label:'Joueurs',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'referrals',icon:'🤝',label:'Parrainage'},{id:'bots',icon:'🤖',label:'Bots'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
+    {label:'Système',items:[{id:'stats',icon:'📈',label:'Stats & Version'},{id:'maintenance',icon:'🛠️',label:'Maintenance'},{id:'interface',icon:'📱',label:'Interface'},{id:'domains',icon:'🔒',label:'Domaines'}]},
   ]
+  const activeItem=NAV.flatMap(g=>g.items).find(i=>i.id===tab);
+
+  // Liste de navigation partagée entre la sidebar desktop et le tiroir mobile.
+  const navList=(afterNavigate)=>NAV.map(group=>(
+    <div key={group.label}>
+      <div style={{fontSize:9,color:"#7a94aa",fontWeight:700,textTransform:"uppercase",letterSpacing:1.2,padding:"14px 12px 4px"}}>{group.label}</div>
+      {group.items.map(item=>(
+        <button key={item.id}
+          style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:tab===item.id?"#e74c3c14":"none",border:"none",borderLeft:`3px solid ${tab===item.id?"#e74c3c":"transparent"}`,color:tab===item.id?"#e74c3c":"#8daacc",padding:isMobile?"11px 12px":"8px 12px",borderRadius:"0 8px 8px 0",fontFamily:"'Nunito',sans-serif",fontWeight:tab===item.id?800:600,fontSize:13,cursor:"pointer",textAlign:"left",transition:"all .12s"}}
+          onMouseEnter={e=>{if(tab!==item.id){e.currentTarget.style.color="#d4e8f8";e.currentTarget.style.background="#ffffff08"}}}
+          onMouseLeave={e=>{if(tab!==item.id){e.currentTarget.style.color="#8daacc";e.currentTarget.style.background="none"}}}
+          onClick={()=>{setTab(item.id);setMsg('');window.location.hash=item.id;afterNavigate&&afterNavigate();}}>
+          <span style={{fontSize:14,width:18,textAlign:"center"}}>{item.icon}</span>
+          <span>{item.label}</span>
+        </button>
+      ))}
+    </div>
+  ));
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:2000,display:"flex",flexDirection:"column",fontFamily:"'Nunito',sans-serif",background:"#0f1923",color:"#d4e8f8"}}>
+      {/* Tableaux larges : défilement horizontal sur petit écran plutôt que débordement. */}
+      <style>{`@media (max-width:639px){.gc-admin-content table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;}}`}</style>
 
       {/* ── Header ── */}
-      <div style={{height:52,flexShrink:0,background:"#0c1620",borderBottom:"1px solid #e74c3c22",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",gap:12}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontFamily:"'Fredoka One',sans-serif",fontSize:18,color:"#e74c3c"}}>🔧 {t("admin_title")}</span>
-          {msg&&<div style={{background:msg.startsWith("❌")?"#e74c3c22":"#00b89422",border:`1px solid ${msg.startsWith("❌")?"#e74c3c55":"#00b89455"}`,color:msg.startsWith("❌")?"#e74c3c":"#00b894",fontWeight:800,fontSize:11,padding:"3px 10px",borderRadius:6,maxWidth:320,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg}</div>}
+      <div style={{height:52,flexShrink:0,background:"#0c1620",borderBottom:"1px solid #e74c3c22",display:"flex",alignItems:"center",justifyContent:"space-between",padding:isMobile?"0 10px":"0 20px",gap:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+          {isMobile&&(
+            <button onClick={()=>setNavOpen(true)} aria-label="Ouvrir le menu"
+              style={{background:"#ffffff12",border:"none",color:"#d4e8f8",width:38,height:38,borderRadius:10,fontSize:18,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>☰</button>
+          )}
+          <span style={{fontFamily:"'Fredoka One',sans-serif",fontSize:isMobile?15:18,color:"#e74c3c",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+            🔧 {isMobile?(activeItem?`${activeItem.icon} ${activeItem.label}`:t("admin_title")):t("admin_title")}
+          </span>
+          {!isMobile&&msg&&<div style={{background:msg.startsWith("❌")?"#e74c3c22":"#00b89422",border:`1px solid ${msg.startsWith("❌")?"#e74c3c55":"#00b89455"}`,color:msg.startsWith("❌")?"#e74c3c":"#00b894",fontWeight:800,fontSize:11,padding:"3px 10px",borderRadius:6,maxWidth:320,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg}</div>}
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          {onStartTour&&<button onClick={onStartTour} style={{background:"linear-gradient(135deg,#6c5ce7,#a29bfe)",border:"none",color:"#fff",padding:"5px 12px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>🎓 Tuto</button>}
-          <button onClick={onClose} style={{background:"#ffffff12",border:"none",color:"#8daacc",width:32,height:32,borderRadius:"50%",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+          {onStartTour&&!isMobile&&<button onClick={onStartTour} style={{background:"linear-gradient(135deg,#6c5ce7,#a29bfe)",border:"none",color:"#fff",padding:"5px 12px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>🎓 Tuto</button>}
+          <button onClick={onClose} style={{background:"#ffffff12",border:"none",color:"#8daacc",width:isMobile?38:32,height:isMobile?38:32,borderRadius:"50%",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
       </div>
+
+      {/* Message : bandeau sous le header sur mobile (pas la place dans le header) */}
+      {isMobile&&msg&&(
+        <div style={{flexShrink:0,background:msg.startsWith("❌")?"#e74c3c22":"#00b89422",borderBottom:`1px solid ${msg.startsWith("❌")?"#e74c3c55":"#00b89455"}`,color:msg.startsWith("❌")?"#e74c3c":"#00b894",fontWeight:800,fontSize:11,padding:"6px 12px"}}
+          onClick={()=>setMsg("")}>{msg}</div>
+      )}
+
+      {/* ── Tiroir de navigation mobile ── */}
+      {isMobile&&navOpen&&(
+        <div style={{position:"fixed",inset:0,zIndex:2100}}>
+          <div onClick={()=>setNavOpen(false)} style={{position:"absolute",inset:0,background:"#000000aa"}}/>
+          <div style={{position:"absolute",top:0,left:0,bottom:0,width:Math.min(264,window.innerWidth-56),background:"#0a1018",borderRight:"1px solid #ffffff14",padding:"8px 6px 28px",overflowY:"auto",boxShadow:"6px 0 24px #000a"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 12px 4px"}}>
+              <span style={{fontFamily:"'Fredoka One',sans-serif",fontSize:15,color:"#e74c3c"}}>🔧 {t("admin_title")}</span>
+              <button onClick={()=>setNavOpen(false)} style={{background:"#ffffff12",border:"none",color:"#8daacc",width:32,height:32,borderRadius:"50%",fontSize:14,cursor:"pointer"}}>✕</button>
+            </div>
+            {navList(()=>setNavOpen(false))}
+            {onStartTour&&<button onClick={()=>{setNavOpen(false);onStartTour();}} style={{margin:"18px 12px 0",background:"linear-gradient(135deg,#6c5ce7,#a29bfe)",border:"none",color:"#fff",padding:"8px 14px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>🎓 Tuto</button>}
+          </div>
+        </div>
+      )}
 
       {/* ── Body ── */}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
 
-        {/* Sidebar */}
-        <div style={{width:188,flexShrink:0,background:"#0a1018",borderRight:"1px solid #ffffff08",padding:"10px 6px",overflowY:"auto"}}>
-          {NAV.map(group=>(
-            <div key={group.label}>
-              <div style={{fontSize:9,color:"#7a94aa",fontWeight:700,textTransform:"uppercase",letterSpacing:1.2,padding:"14px 12px 4px"}}>{group.label}</div>
-              {group.items.map(item=>(
-                <button key={item.id}
-                  style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:tab===item.id?"#e74c3c14":"none",border:"none",borderLeft:`3px solid ${tab===item.id?"#e74c3c":"transparent"}`,color:tab===item.id?"#e74c3c":"#8daacc",padding:"8px 12px",borderRadius:"0 8px 8px 0",fontFamily:"'Nunito',sans-serif",fontWeight:tab===item.id?800:600,fontSize:13,cursor:"pointer",textAlign:"left",transition:"all .12s"}}
-                  onMouseEnter={e=>{if(tab!==item.id){e.currentTarget.style.color="#d4e8f8";e.currentTarget.style.background="#ffffff08"}}}
-                  onMouseLeave={e=>{if(tab!==item.id){e.currentTarget.style.color="#8daacc";e.currentTarget.style.background="none"}}}
-                  onClick={()=>{setTab(item.id);setMsg('');window.location.hash=item.id;}}>
-                  <span style={{fontSize:14,width:18,textAlign:"center"}}>{item.icon}</span>
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
+        {/* Sidebar (desktop) */}
+        {!isMobile&&(
+          <div style={{width:188,flexShrink:0,background:"#0a1018",borderRight:"1px solid #ffffff08",padding:"10px 6px",overflowY:"auto"}}>
+            {navList()}
+          </div>
+        )}
 
         {/* Contenu */}
-        <div style={{flex:1,overflowY:"auto",padding:"22px 26px",minWidth:0}}>
+        <div className="gc-admin-content" style={{flex:1,overflowY:"auto",padding:isMobile?"14px 12px":"22px 26px",minWidth:0}}>
 
         {/* ── CARTES ── */}
         {tab==="cards" && (
@@ -853,10 +919,15 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         </div>}
 
         {/* ── QUESTIONS (publiées) ── */}
-        {tab==="questions"&&<QuestionsManager key="published" mode="published" setMsg={setMsg} t={t}/>}
-
-        {/* ── BROUILLONS ── */}
-        {tab==="drafts"&&<QuestionsManager key="drafts" mode="drafts" setMsg={setMsg} t={t}/>}
+        {tab==="questions"&&<div>
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            {[['published','❓ Publiées'],['drafts','📝 Brouillons']].map(([v,l])=>(
+              <button key={v} onClick={()=>setQMode(v)}
+                style={{background:qMode===v?"#e74c3c":"#ffffff18",border:"none",color:"#fff",padding:"7px 16px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{l}</button>
+            ))}
+          </div>
+          <QuestionsManager key={qMode} mode={qMode} setMsg={setMsg} t={t}/>
+        </div>}
 
         {/* ── QUIZ CONFIG ── */}
         {tab==="quiz_config"&&<div>
@@ -1519,29 +1590,63 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </button>
             </div>
           </div>
-        </div>}
 
-        {/* ── TRANSACTIONS ── */}
-        {tab==="transactions"&&<div>
-          {/* Purge des annonces fictives — accessible directement ici */}
-          <div style={{background:"#e74c3c0a",border:"1px solid #e74c3c22",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-            <div style={{flex:1,fontSize:11,color:"#aaa"}}>
-              <span style={{color:"#e74c3c",fontWeight:800}}>🧹 Annonces suspectes</span> — vendeur inexistant, supprimé ou banni
+          {/* ── Cache Redis (ex-onglet « Cache », fusionné ici) ── */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"24px 0 12px",flexWrap:"wrap",gap:8}}>
+            <div style={{fontWeight:900,color:"#e74c3c",fontSize:14}}>⚡ Cache Redis</div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button onClick={async()=>{
+                setMsg("⏳ Recalcul des scores…");
+                const{data,error}=await apiAdminRecalculateScores();
+                if(error) setMsg("❌ "+error);
+                else setMsg(`✅ ${data?.updated??0} profil(s) mis à jour`);
+              }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"7px 16px",borderRadius:9,fontSize:12}}>
+                🔄 Recalculer les scores
+              </button>
+              <button onClick={async()=>{
+                setMsg("⏳ Vidage en cours…");
+                const{data,error}=await apiAdminFlushCache();
+                if(error) setMsg("❌ "+error+(error.includes('Redis')||error.includes('connect')?' — Redis non configuré ou indisponible':''));
+                else setMsg(`✅ ${data?.flushed??0} clé(s) supprimée(s)`);
+              }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"7px 16px",borderRadius:9,fontSize:12}}>
+                🗑️ Vider tout le cache
+              </button>
             </div>
-            <button onClick={async()=>{
-              setMsg("⏳ Diagnostic…");
-              const{data,error}=await apiAdminDiagnoseListings();
-              if(error){setMsg("❌ "+error);return;}
-              setMsg(`🔍 ${data.suspicious_count} annonce(s) suspecte(s) sur ${data.total_active} actives`);
-              if(data.suspicious?.length) console.table(data.suspicious);
-            }} style={{...BTN("#ffffff18"),padding:"6px 13px",borderRadius:8,fontSize:11}}>🔍 Diagnostiquer</button>
-            <button onClick={async()=>{
-              if(!window.confirm("Annuler toutes les annonces de vendeurs invalides ?")) return;
-              setMsg("⏳ Purge…");
-              const{data,error}=await apiAdminPurgeOrphans();
-              if(error) setMsg("❌ "+error);
-              else setMsg(`✅ ${data.deleted} annonce(s) purgée(s).`);
-            }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"6px 13px",borderRadius:8,fontSize:11}}>🧹 Purger</button>
+          </div>
+          <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:14}}>
+            <div style={{fontSize:11,color:"#8daacc",marginBottom:12,lineHeight:1.6}}>
+              Configure la durée de mise en cache pour chaque ressource.<br/>
+              <strong style={{color:"#f9ca24"}}>0</strong> = désactivé · TTL en secondes
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}}>
+              {[
+                {key:"cache_ttl_cards",       label:"🃏 Cartes",       hint:"Chargé à chaque login"},
+                {key:"cache_ttl_config",      label:"⚙️ Config",       hint:"Paramètres publics"},
+                {key:"cache_ttl_leaderboard", label:"🏆 Classement",   hint:"Page + recherche"},
+                {key:"cache_ttl_market",      label:"🏪 Marché",       hint:"Carnet d'ordres"},
+                {key:"cache_ttl_quiz_stats",  label:"🎲 Quiz stats",   hint:"Agrégat 1 an"},
+              ].map(({key,label,hint})=>(
+                <div key={key} style={{background:"#ffffff08",borderRadius:10,padding:"10px 12px",border:"1px solid #ffffff10"}}>
+                  <div style={{fontWeight:800,color:"#fff",fontSize:12,marginBottom:2}}>{label}</div>
+                  <div style={{fontSize:10,color:"#a8bfcf",marginBottom:7}}>{hint}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <input type="number" min={0} max={3600} value={limEdit[key]??''}
+                      placeholder="—"
+                      onChange={e=>setLimEdit(p=>({...p,[key]:e.target.value===''?undefined:+e.target.value}))}
+                      style={{...INP,width:70}}/>
+                    <span style={{fontSize:11,color:"#8daacc"}}>s</span>
+                    {limEdit[key]!=null&&<span style={{fontSize:9,color:"#a8bfcf"}}>{limEdit[key]>=60?`${Math.round(limEdit[key]/60)}min`:`${limEdit[key]}s`}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={async()=>{await onSetLimits(limEdit);setMsg("✅ TTL sauvegardés !");}}
+              style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 18px",borderRadius:9,marginTop:14,fontSize:12}}>
+              Sauvegarder les TTL
+            </button>
+          </div>
+          <div style={{background:"#6c5ce712",borderRadius:11,padding:"10px 14px",border:"1px solid #6c5ce733",fontSize:11,color:"#a29bfe"}}>
+            ℹ️ Redis est requis. Sans <code>REDIS_URL</code>, le cache est silencieusement désactivé et les requêtes passent directement en base.
           </div>
         </div>}
 
@@ -2187,65 +2292,6 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         })()}
 
         {/* ── CACHE ── */}
-        {tab==="cache"&&<div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <div style={{fontWeight:900,color:"#e74c3c",fontSize:14}}>⚡ Cache Redis</div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={async()=>{
-                setMsg("⏳ Recalcul des scores…");
-                const{data,error}=await apiAdminRecalculateScores();
-                if(error) setMsg("❌ "+error);
-                else setMsg(`✅ ${data?.updated??0} profil(s) mis à jour`);
-              }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"7px 16px",borderRadius:9,fontSize:12}}>
-                🔄 Recalculer les scores
-              </button>
-              <button onClick={async()=>{
-                setMsg("⏳ Vidage en cours…");
-                const{data,error}=await apiAdminFlushCache();
-                if(error) setMsg("❌ "+error+(error.includes('Redis')||error.includes('connect')?' — Redis non configuré ou indisponible':''));
-                else setMsg(`✅ ${data?.flushed??0} clé(s) supprimée(s)`);
-              }} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"7px 16px",borderRadius:9,fontSize:12}}>
-                🗑️ Vider tout le cache
-              </button>
-            </div>
-          </div>
-          <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:14}}>
-            <div style={{fontSize:11,color:"#8daacc",marginBottom:12,lineHeight:1.6}}>
-              Configure la durée de mise en cache pour chaque ressource.<br/>
-              <strong style={{color:"#f9ca24"}}>0</strong> = désactivé · TTL en secondes · sauvegarde via "Enregistrer les limites"
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}}>
-              {[
-                {key:"cache_ttl_cards",       label:"🃏 Cartes",       hint:"Chargé à chaque login"},
-                {key:"cache_ttl_config",      label:"⚙️ Config",       hint:"Paramètres publics"},
-                {key:"cache_ttl_leaderboard", label:"🏆 Classement",   hint:"Page + recherche"},
-                {key:"cache_ttl_market",      label:"🏪 Marché",       hint:"Carnet d'ordres"},
-                {key:"cache_ttl_quiz_stats",  label:"🎲 Quiz stats",   hint:"Agrégat 1 an"},
-              ].map(({key,label,hint})=>(
-                <div key={key} style={{background:"#ffffff08",borderRadius:10,padding:"10px 12px",border:"1px solid #ffffff10"}}>
-                  <div style={{fontWeight:800,color:"#fff",fontSize:12,marginBottom:2}}>{label}</div>
-                  <div style={{fontSize:10,color:"#a8bfcf",marginBottom:7}}>{hint}</div>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <input type="number" min={0} max={3600} value={limEdit[key]??''}
-                      placeholder="—"
-                      onChange={e=>setLimEdit(p=>({...p,[key]:e.target.value===''?undefined:+e.target.value}))}
-                      style={{...INP,width:70}}/>
-                    <span style={{fontSize:11,color:"#8daacc"}}>s</span>
-                    {limEdit[key]!=null&&<span style={{fontSize:9,color:"#a8bfcf"}}>{limEdit[key]>=60?`${Math.round(limEdit[key]/60)}min`:`${limEdit[key]}s`}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button onClick={async()=>{await onSetLimits(limEdit);setMsg("✅ TTL sauvegardés !");}}
-              style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 18px",borderRadius:9,marginTop:14,fontSize:12}}>
-              Sauvegarder les TTL
-            </button>
-          </div>
-          <div style={{background:"#6c5ce712",borderRadius:11,padding:"10px 14px",border:"1px solid #6c5ce733",fontSize:11,color:"#a29bfe"}}>
-            ℹ️ Redis est requis. Sans <code>REDIS_URL</code>, le cache est silencieusement désactivé et les requêtes passent directement en base.
-          </div>
-        </div>}
-
         {/* ── STATS ── */}
         {tab==="stats"&&<div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
@@ -2321,10 +2367,46 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               )}
             </>)}
           </div>
+
+          {/* ── Version déployée (ex-onglet « Version », fusionné ici) ── */}
+          <div style={{marginTop:24}}>
+            <div style={{fontWeight:900,color:"#e74c3c",marginBottom:12,fontSize:14}}>🔖 Version déployée</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12}}>
+              <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12"}}>
+                <div style={{fontSize:11,color:"#8daacc",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Frontend (geocards)</div>
+                <div style={{fontFamily:"monospace",fontSize:16,color:"#a29bfe",fontWeight:900,letterSpacing:2}}>
+                  {typeof __COMMIT_SHA__!=='undefined'?__COMMIT_SHA__:'unknown'}
+                </div>
+                <div style={{fontSize:10,color:"#556b7a",marginTop:4}}>Injecté au build Vite (git rev-parse --short HEAD)</div>
+              </div>
+              <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12"}}>
+                <div style={{fontSize:11,color:"#8daacc",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Backend (geocards-api)</div>
+                {!versionInfo?(
+                  <div style={{color:"#8daacc",fontSize:12}}>Chargement…</div>
+                ):(
+                  <>
+                    <div style={{fontFamily:"monospace",fontSize:16,color:"#00b894",fontWeight:900,letterSpacing:2}}>{versionInfo.commit}</div>
+                    <div style={{fontSize:10,color:"#556b7a",marginTop:4}}>Variable d'env COMMIT_SHA (build arg Docker)</div>
+                    <div style={{fontSize:10,color:"#556b7a",marginTop:2}}>NODE_ENV : {versionInfo.env}</div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>}
 
+        {/* ── ACTIVITÉ MARCHÉ : bascule Graphique / Historique ── */}
+        {tab==="market_activity"&&(
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            {[['chart','📊 Graphique'],['history','💸 Historique']].map(([v,l])=>(
+              <button key={v} onClick={()=>setMktView(v)}
+                style={{background:mktView===v?"#e74c3c":"#ffffff18",border:"none",color:"#fff",padding:"7px 16px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{l}</button>
+            ))}
+          </div>
+        )}
+
         {/* ── HISTORIQUE MARCHÉ (7 jours) ── */}
-        {tab==="market_history"&&<div>
+        {tab==="market_activity"&&mktView==='history'&&<div>
           <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
             <div style={{fontWeight:900,color:"#e74c3c",fontSize:14,flex:1}}>💸 Historique marché — 7 derniers jours ({mktHist.total})</div>
             {['','achat','vente'].map(v=>(
@@ -2371,7 +2453,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         </div>}
 
         {/* ── GRAPHIQUE VOLUME ── */}
-        {tab==="market_chart"&&<div>
+        {tab==="market_activity"&&mktView==='chart'&&<div>
           {/* Titre + totaux */}
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
             <div style={{fontWeight:900,color:"#e74c3c",fontSize:14,flex:1}}>📊 Volume marché</div>
@@ -2743,35 +2825,6 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {tab==="shop"&&<AdminShop setMsg={setMsg} onSaved={onShopPacksSaved} onShopTestModeChange={onShopTestModeChange}/>}
 
         {/* ── VERSION ── */}
-        {tab==="version"&&<div>
-          <div style={{fontWeight:900,color:"#e74c3c",marginBottom:16,fontSize:14}}>🔖 Version déployée</div>
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12"}}>
-              <div style={{fontSize:11,color:"#8daacc",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Frontend (geocards)</div>
-              <div style={{fontFamily:"monospace",fontSize:16,color:"#a29bfe",fontWeight:900,letterSpacing:2}}>
-                {typeof __COMMIT_SHA__!=='undefined'?__COMMIT_SHA__:'unknown'}
-              </div>
-              <div style={{fontSize:10,color:"#556b7a",marginTop:4}}>Injecté au build Vite (git rev-parse --short HEAD)</div>
-            </div>
-            <div style={{background:"#ffffff08",borderRadius:12,padding:16,border:"1px solid #ffffff12"}}>
-              <div style={{fontSize:11,color:"#8daacc",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Backend (geocards-api)</div>
-              {!versionInfo?(
-                <div style={{color:"#8daacc",fontSize:12}}>Chargement…</div>
-              ):(
-                <>
-                  <div style={{fontFamily:"monospace",fontSize:16,color:"#00b894",fontWeight:900,letterSpacing:2}}>{versionInfo.commit}</div>
-                  <div style={{fontSize:10,color:"#556b7a",marginTop:4}}>Variable d'env COMMIT_SHA (build arg Docker)</div>
-                  <div style={{fontSize:10,color:"#556b7a",marginTop:2}}>NODE_ENV : {versionInfo.env}</div>
-                </>
-              )}
-              <button onClick={()=>{setVersionInfo(null);apiAdminGetVersion().then(({data})=>{if(data)setVersionInfo(data);});}}
-                style={{...BTN("linear-gradient(135deg,#2d3436,#636e72)"),padding:"6px 14px",borderRadius:7,marginTop:10,fontSize:11}}>
-                🔄 Rafraîchir
-              </button>
-            </div>
-          </div>
-        </div>}
-
         </div>
       </div>
     </div>
