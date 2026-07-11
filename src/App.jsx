@@ -770,14 +770,19 @@ export default function App() {
   const [revealPayment,   setRevealPayment]    = useState('');
   const [showTxHistory,   setShowTxHistory]   = useState(false);
   const [filter,          setFilter]          = useState('Tous');
-  const [showMissing,     setShowMissing]     = useState(false);
+  const [showMissing,     setShowMissing]     = useState(() => { try { return localStorage.getItem('geocoins_coll_missing') === '1' } catch { return false } });
   const [showShiny,       setShowShiny]       = useState(false);
   const [demoInfo,        setDemoInfo]        = useState(null);  // 'shiny' | 'rarity' : présentation feature en démo
-  const [sortBy,          setSortBy]          = useState('rarity'); // 'rarity'|'name-asc'|'name-desc'
+  const [sortBy,          setSortBy]          = useState(() => { // 'rarity'|'name-asc'|'name-desc'
+    try { const s = localStorage.getItem('geocoins_coll_sort'); return ['rarity', 'name-asc', 'name-desc'].includes(s) ? s : 'rarity' } catch { return 'rarity' }
+  });
   const [sortMenuOpen,    setSortMenuOpen]    = useState(false);
   const [gridAnimKey,     setGridAnimKey]     = useState(0);
   const [cardSearch,      setCardSearch]      = useState('');
   const [collViewAll,     setCollViewAll]     = useState(false);  // vue d'ensemble « tout en un » (manquants inclus, sans pagination)
+  // Préférences de collection mémorisées d'une session à l'autre (tri + manquants/possédés)
+  useEffect(() => { try { localStorage.setItem('geocoins_coll_sort', sortBy) } catch { /* quota/private */ } }, [sortBy]);
+  useEffect(() => { try { localStorage.setItem('geocoins_coll_missing', showMissing ? '1' : '0') } catch { /* quota/private */ } }, [showMissing]);
   const [quizSessionActive, setQuizSessionActive] = useState(false);
   const [dailyOffer, setDailyOffer] = useState(null);
   const [holds,      setHolds]      = useState([]);          // geocoins en attente (multi-emplacements)
