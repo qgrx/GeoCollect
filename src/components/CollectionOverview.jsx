@@ -23,7 +23,7 @@ export default function CollectionOverview({ items, theme, isMobile, lang, onSel
   const h = Math.round(w * 1.3)
 
   return (
-    <div style={{ animation: 'fadeIn .3s ease', padding: '12px 0 8px' }}>
+    <div style={{ animation: 'fadeIn .3s ease', padding: '18px 0 8px' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 5 : 7, justifyContent: 'center' }}>
         {items.map(({ card, count, cnt, missing, isShiny }, idx) => {
           const c = count || cnt || 0

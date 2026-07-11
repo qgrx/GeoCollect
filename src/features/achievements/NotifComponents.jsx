@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { RC, cardCC, rarityLabel } from '../../data/cards.js'
@@ -174,14 +174,26 @@ export function SaleNotif({ notif, onClose, ranks, buyerScore }) {
 export function TxHistoryModal({ transactions = [], onClose, embedded = false, onRead, cardPool = [], saleTax = 0.12 }) {
   const { t } = useT()
   const { theme } = useTheme()
-  const [page, setPage] = useState(0)
-  const PAGE_SIZE = 10
+  // Défilement continu : les transactions se chargent par lots quand la
+  // sentinelle en bas de liste approche du viewport (plus de pagination).
+  const BATCH = 15
+  const [visible, setVisible] = useState(BATCH)
+  const sentinelRef = useRef(null)
 
   // Marquer tout comme lu à l'ouverture
   useEffect(() => { onRead?.() }, [])
 
-  const totalPages = Math.ceil(transactions.length / PAGE_SIZE)
-  const pageItems = transactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const pageItems = transactions.slice(0, visible)
+  const hasMore = transactions.length > pageItems.length
+
+  useEffect(() => {
+    if (!hasMore || !sentinelRef.current) return
+    const io = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) setVisible(v => Math.min(transactions.length, v + BATCH))
+    }, { rootMargin: '400px 0px' })
+    io.observe(sentinelRef.current)
+    return () => io.disconnect()
+  }, [hasMore, visible, transactions.length])
 
   const netOf = price => Math.floor(price * (1 - saleTax))
 
@@ -259,15 +271,18 @@ export function TxHistoryModal({ transactions = [], onClose, embedded = false, o
         </div>
       )}
 
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 }}>
-          <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
-            style={{ background: page === 0 ? theme.overlay : theme.bgElevated, border: `1px solid ${theme.border}`, color: page === 0 ? theme.textMuted : theme.textPrimary, width: 30, height: 30, borderRadius: 8, cursor: page === 0 ? 'default' : 'pointer', fontWeight: 900, fontSize: 14 }}>‹</button>
-          <span style={{ fontSize: 12, color: theme.textMuted, fontWeight: 700 }}>{page + 1} / {totalPages}</span>
-          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
-            style={{ background: page === totalPages - 1 ? theme.overlay : theme.bgElevated, border: `1px solid ${theme.border}`, color: page === totalPages - 1 ? theme.textMuted : theme.textPrimary, width: 30, height: 30, borderRadius: 8, cursor: page === totalPages - 1 ? 'default' : 'pointer', fontWeight: 900, fontSize: 14 }}>›</button>
+      {/* Sentinelle du défilement continu + indicateur de chargement */}
+      {hasMore ? (
+        <div ref={sentinelRef} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '14px 0' }}>
+          {[0, 0.18, 0.36].map(d => (
+            <div key={d} style={{ width: 8, height: 8, borderRadius: '50%', background: theme.gold, animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />
+          ))}
         </div>
-      )}
+      ) : transactions.length > BATCH ? (
+        <div style={{ textAlign: 'center', fontSize: 11, color: theme.textMuted, fontWeight: 700, padding: '10px 0 4px' }}>
+          ({transactions.length})
+        </div>
+      ) : null}
 
     </>
   )

@@ -914,7 +914,13 @@ export default function App() {
   const [headerH,  setHeaderH]  = useState(48)
   useEffect(() => {
     if (!headerEl) return
-    const measure = () => setHeaderH(headerEl.offsetHeight || 48)
+    const measure = () => {
+      const h = headerEl.offsetHeight || 48
+      setHeaderH(h)
+      // Variable CSS globale : les bandeaux figés des autres écrans (classement,
+      // forge, marché) se calent dessus sans avoir à recevoir la valeur en prop.
+      document.documentElement.style.setProperty('--header-h', `${h}px`)
+    }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(headerEl)

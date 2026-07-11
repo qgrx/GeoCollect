@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useT } from '../../i18n/translations.js';
 import { useTheme } from '../../ThemeContext.jsx';
 import { RC } from '../../data/cards.js';
 import { apiGetLeaderboard, apiGetUserCollection } from '../../services/api.js';
 import Card from '../../components/Card.jsx';
+import { BackToTop } from '../../components/CollectionScroll.jsx';
 import PseudoDisplay from '../../components/PseudoDisplay.jsx';
 import { getRank, rankCC } from '../../utils/rankUtils.js';
 import { countOwnedUnique } from '../../utils/gameUtils.js';
@@ -223,33 +224,58 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
   const [players, setPlayers] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);     // premier chargement / nouvelle recherche
+  const [loadingMore, setLoadingMore] = useState(false); // page suivante en cours d'ajout
   const [viewing, setViewing] = useState(null);
   const [search, setSearch] = useState('');
-  const PG = 15;
+  const sentinelRef = useRef(null);
 
   // Comptés séparément, comme côté serveur : geocoins normaux d'un côté, shiny de l'autre.
   const myCardCount  = Object.keys(myCollection || {}).filter(k => (myCollection[k] || 0) > 0).length;
   const myShinyCount = Object.keys(myShinyCollection || {}).filter(k => (myShinyCollection[k] || 0) > 0).length;
 
+  // Défilement continu : les pages serveur s'ACCUMULENT au lieu de se remplacer.
+  // page 0 (ou nouvelle recherche) → remplace ; pages suivantes → ajoutées à la
+  // suite (dédoublonnées par id). L'entrée « moi » hors page reste toujours en fin.
+  const playersRef = useRef([]);
+  useEffect(() => { playersRef.current = players }, [players]);
   useEffect(() => {
-    setLoading(true);
+    if (page === 0) setLoading(true); else setLoadingMore(true);
     apiGetLeaderboard(page, search || undefined).then(({ data }) => {
       if (data?.players) {
-        // Injecter le joueur courant s'il n'est pas dans la page
-        let list = data.players.map(p => p.id === myId ? { ...p, isMe: true, score: myScore ?? p.score, card_count: myCardCount, shiny_count: myShinyCount, gold: myGold ?? p.gold, forge_points: myForgePoints ?? p.forge_points, col: myCollection, shinyCol: myShinyCollection } : p);
+        const decorate = p => p.id === myId ? { ...p, isMe: true, score: myScore ?? p.score, card_count: myCardCount, shiny_count: myShinyCount, gold: myGold ?? p.gold, forge_points: myForgePoints ?? p.forge_points, col: myCollection, shinyCol: myShinyCollection } : p;
+        const incoming = data.players.map(decorate);
+        const base = page === 0 ? [] : playersRef.current.filter(p => !p.isMeSeparate);
+        const seen = new Set(base.map(p => p.id));
+        const fresh = incoming.filter(p => !seen.has(p.id));
+        let list = [...base, ...fresh];
         if (myId && !list.find(p => p.isMe)) {
-          const me = { id: myId, pseudo: myPseudo || 'Moi', isMe: true, isMeSeparate: true, score: myScore ?? 0, card_count: myCardCount, shiny_count: myShinyCount, gold: myGold ?? 0, forge_points: myForgePoints ?? 0, col: myCollection, shinyCol: myShinyCollection };
-          list = [...list, me];
+          list = [...list, { id: myId, pseudo: myPseudo || 'Moi', isMe: true, isMeSeparate: true, score: myScore ?? 0, card_count: myCardCount, shiny_count: myShinyCount, gold: myGold ?? 0, forge_points: myForgePoints ?? 0, col: myCollection, shinyCol: myShinyCollection }];
         }
         setPlayers(list);
-        setTotal(data.total || list.length);
+        const nonSep = list.filter(p => !p.isMeSeparate).length;
+        // Garde anti-boucle : une page suivante qui n'apporte AUCUN joueur nouveau
+        // (fin réelle de liste, total serveur surestimé) clôt le défilement au lieu
+        // de re-déclencher la sentinelle indéfiniment.
+        setTotal(page > 0 && fresh.length === 0 ? nonSep : (data.total || nonSep));
       }
-      setLoading(false);
+      setLoading(false); setLoadingMore(false);
     });
   }, [page, search]);
 
-  const pages = Math.ceil(total / PG);
+  const loadedCount = players.filter(p => !p.isMeSeparate).length;
+  const hasMore = loadedCount < total;
+
+  // Sentinelle en bas de liste → charge la page suivante avant d'y arriver.
+  useEffect(() => {
+    if (!hasMore || loading || loadingMore || viewing || !sentinelRef.current) return;
+    const io = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) setPage(p => p + 1);
+    }, { rootMargin: '500px 0px' });
+    io.observe(sentinelRef.current);
+    return () => io.disconnect();
+  }, [hasMore, loading, loadingMore, viewing, players.length]);
+
   const medal = ['🥇', '🥈', '🥉'];
 
   if (viewing) {
@@ -258,13 +284,17 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
 
   const content = (
     <>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <div style={{ color: theme.gold, fontWeight: 900, fontSize: 20 }}>{t('lb_title')}</div>
-          {!inline && <button onClick={onClose} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>✕</button>}
+        {/* Haut figé (inline) : titre + recherche restent visibles pendant le
+            défilement de la liste, calés sous le header de l'app. */}
+        <div style={inline ? { position: 'sticky', top: 'var(--header-h, 48px)', zIndex: 50, background: theme.bgMain, boxShadow: '0 10px 14px -12px #000a', marginBottom: 18 } : undefined}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <div style={{ color: theme.gold, fontWeight: 900, fontSize: 20 }}>{t('lb_title')}</div>
+            {!inline && <button onClick={onClose} style={{ background: '#ffffff22', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 15, cursor: 'pointer' }}>✕</button>}
+          </div>
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
+            placeholder={t('lb_search')}
+            style={{ width: '100%', boxSizing: 'border-box', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none', marginBottom: 14 }}/>
         </div>
-        <input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
-          placeholder={t('lb_search')}
-          style={{ width: '100%', boxSizing: 'border-box', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none', marginBottom: 14 }}/>
 
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -283,7 +313,8 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {players.map((p, i) => {
               const isSeparate = p.isMeSeparate;
-              const rank = p.rank !== undefined ? p.rank : (page * PG + i - (isSeparate ? 1 : 0));
+              // Liste accumulée depuis la page 0 → l'index global EST le rang.
+              const rank = p.rank !== undefined ? p.rank : i;
               return (
                 <div key={p.id || p.pseudo}>
                   {isSeparate && <div style={{ textAlign: 'center', fontSize: 10, color: theme.textMuted, padding: '4px 0 2px', letterSpacing: .5 }}>· · ·</div>}
@@ -291,7 +322,8 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
                     style={{ display: 'flex', alignItems: 'center', gap: 9, background: p.isMe ? 'linear-gradient(135deg,#f9ca2415,#e8439315)' : theme.overlay, border: p.isMe ? '1.5px solid #f9ca2444' : `1.5px solid ${theme.border}`, borderRadius: 11, padding: '9px 13px', cursor: p.isMe ? 'default' : 'pointer', transition: 'transform .12s' }}
                     onMouseEnter={e => { if (!p.isMe) e.currentTarget.style.transform = 'translateX(4px)' }}
                     onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}>
-                    <div style={{ fontWeight: 900, fontSize: 16, width: 26, textAlign: 'center' }}>{isSeparate ? '—' : (medal[rank] || `#${rank + 1}`)}</div>
+                    {/* minWidth (et non width fixe) : au-delà de 2 chiffres, « #147 » débordait sur l'avatar */}
+                    <div style={{ fontWeight: 900, fontSize: rank >= 99 ? 13 : 16, minWidth: 26, flexShrink: 0, textAlign: 'center' }}>{isSeparate ? '—' : (medal[rank] || `#${rank + 1}`)}</div>
                     <div style={{ width: 32, height: 32, borderRadius: '50%', background: p.isMe ? 'linear-gradient(135deg,#f9ca24,#e17055)' : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
                       {(p.pseudo || p.name || '?')[0].toUpperCase()}
                     </div>
@@ -320,19 +352,24 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
           </div>
         )}
 
-        {pages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 12 }}>
-            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ background: page === 0 ? theme.overlayMd : theme.overlay, border: `1px solid ${theme.border}`, color: page === 0 ? theme.textMuted : theme.textPrimary, padding: '5px 13px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: page === 0 ? 'default' : 'pointer' }}>{t('lb_prev')}</button>
-            <span style={{ fontSize: 11, color: theme.textMuted, fontWeight: 700 }}>Page {page + 1}/{pages}</span>
-            <button onClick={() => setPage(p => Math.min(pages - 1, p + 1))} disabled={page === pages - 1} style={{ background: page === pages - 1 ? theme.overlayMd : theme.overlay, border: `1px solid ${theme.border}`, color: page === pages - 1 ? theme.textMuted : theme.textPrimary, padding: '5px 13px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: page === pages - 1 ? 'default' : 'pointer' }}>{t('lb_next')}</button>
+        {/* Sentinelle du défilement continu — la page suivante se charge avant
+            d'arriver en bas ; les points servent d'indicateur de chargement. */}
+        {hasMore && !loading && (
+          <div ref={sentinelRef} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '16px 0' }}>
+            {[0, 0.18, 0.36].map(d => (
+              <div key={d} style={{ width: 8, height: 8, borderRadius: '50%', background: theme.gold, animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />
+            ))}
           </div>
         )}
 
         {!loading && (
           <div style={{ textAlign: 'center', fontSize: 9, color: theme.textMuted, marginTop: 10, opacity: .7 }}>
+            {!hasMore && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>({total})</span>}
             🕐 {t('lb_refresh_note')}
           </div>
         )}
+
+        {inline && <BackToTop theme={theme} isMobile={typeof window !== 'undefined' && window.innerWidth < 640} />}
     </>
   );
 

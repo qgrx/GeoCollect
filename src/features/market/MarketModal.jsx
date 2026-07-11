@@ -3,6 +3,7 @@ import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { RC, cardCC } from '../../data/cards.js'
 import Card from '../../components/Card.jsx'
+import CollectionScroll from '../../components/CollectionScroll.jsx'
 import { TxHistoryModal } from '../achievements/NotifComponents.jsx'
 import { ThumbImage } from '../quiz/QuizComponents.jsx'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
@@ -164,6 +165,24 @@ export default function MarketModal({
 
   const visitedHistoryRef = useRef(false)
 
+  // Hauteur réelle du bloc figé (onglets + recherche en Acheter) : les bannières
+  // collantes des coins s'y calent pour ne jamais passer dessous. ResizeObserver
+  // car le bloc grandit/rétrécit selon l'onglet et les retours à la ligne.
+  // COIN_GAP : espace constant entre le bloc figé et une bannière de coin,
+  // identique au repos (marginTop de la liste) et une fois collée (offset sticky).
+  const COIN_GAP = 15
+  const stickyRef = useRef(null)
+  const [stickyH, setStickyH] = useState(50)
+  useEffect(() => {
+    const el = stickyRef.current
+    if (!el) return
+    const measure = () => setStickyH(el.offsetHeight || 50)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
 
   useEffect(() => {
     if (tab === 'historique') {
@@ -244,26 +263,44 @@ export default function MarketModal({
           {!inline && <button onClick={onClose} style={{ background: '#ffffff22',border: 'none',color: '#fff',width: 32,height: 32,borderRadius: '50%',fontSize: 16,cursor: 'pointer' }}>✕</button>}
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex',gap: 7,marginBottom: 18,flexWrap: 'wrap' }}>
-          {tabs.map(tab_ => (
-            <button key={tab_.id} onClick={() => { setTab(tab_.id); setMsg(''); setExp(null) }}
-              style={{ position: 'relative', background: tab === tab_.id ? '#f9ca24' : theme.bgElevated, border: `1px solid ${tab === tab_.id ? '#f9ca24' : theme.border}`, color: tab === tab_.id ? '#1e3045' : theme.textPrimary, padding: '7px 15px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              {tab_.label}
-              {tab_.badge > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#e74c3c', color: '#fff', fontSize: 9, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: `1.5px solid ${tab === tab_.id ? '#f9ca24' : '#1e3045'}`, animation: 'pulseBadge 1.5s infinite' }}>{tab_.badge}</span>}
-            </button>
-          ))}
-        </div>
+        {/* Bloc figé pendant le défilement : onglets + (en Acheter) barre de
+            recherche/filtres — sous le header de l'app en inline, en haut du
+            panneau latéral sinon */}
+        {/* En Acheter, pas de marge sous le bloc : l'écart avec les bannières de
+            coins (15px, COIN_GAP) est porté par leur offset sticky et le marginTop
+            de la liste → identique au repos et en défilement. */}
+        <div ref={stickyRef} style={{ position: 'sticky', top: inline ? 'var(--header-h, 48px)' : 0, zIndex: 50, background: inline ? theme.bgMain : theme.bgSurface, padding: '4px 0 12px', marginBottom: tab === 'acheter' ? 0 : 16, boxShadow: '0 10px 14px -12px #000a' }}>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+            {tabs.map(tab_ => (
+              <button key={tab_.id} onClick={() => { setTab(tab_.id); setMsg(''); setExp(null) }}
+                style={{ position: 'relative', background: tab === tab_.id ? '#f9ca24' : theme.bgElevated, border: `1px solid ${tab === tab_.id ? '#f9ca24' : theme.border}`, color: tab === tab_.id ? '#1e3045' : theme.textPrimary, padding: '7px 15px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {tab_.label}
+                {tab_.badge > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#e74c3c', color: '#fff', fontSize: 9, fontWeight: 900, borderRadius: '50%', padding: '2px 5px', border: `1.5px solid ${tab === tab_.id ? '#f9ca24' : '#1e3045'}`, animation: 'pulseBadge 1.5s infinite' }}>{tab_.badge}</span>}
+              </button>
+            ))}
+          </div>
 
-        {/* ── ACHETER ── */}
-        {tab === 'acheter' && (
-          <div>
-            {/* Barre de contrôles — même design que la Collection (search + filtres) */}
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-              <input value={buySearch} onChange={e => { setExpandedMerchant(null); setBuySearch(e.target.value) }}
+          {/* Recherche Acheter/Vendre — pleine largeur sur sa propre ligne pour être
+              STRICTEMENT identique entre les deux onglets (les contrôles, différents
+              d'un onglet à l'autre, vivent sur la ligne du dessous). Le ✕ d'effacement
+              est superposé pour ne pas faire varier la largeur de l'input. */}
+          {(tab === 'acheter' || (tab === 'vendre' && myCards.length > 0)) && (
+            <div style={{ position: 'relative', marginTop: 12 }}>
+              <input
+                value={tab === 'acheter' ? buySearch : sellSearch}
+                onChange={e => { if (tab === 'acheter') { setExpandedMerchant(null); setBuySearch(e.target.value) } else setSellSearch(e.target.value) }}
                 placeholder={t('collection_search')}
-                style={{ flex: 1, minWidth: 100, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, padding: '7px 11px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
-              {buySearch && <button onClick={() => setBuySearch('')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>✕</button>}
+                style={{ width: '100%', boxSizing: 'border-box', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, padding: '7px 32px 7px 11px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, outline: 'none' }}/>
+              {(tab === 'acheter' ? buySearch : sellSearch) && (
+                <button onClick={() => tab === 'acheter' ? setBuySearch('') : setSellSearch('')}
+                  style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 4 }}>✕</button>
+              )}
+            </div>
+          )}
+
+          {/* Contrôles Acheter — tri + filtres, sous la recherche */}
+          {tab === 'acheter' && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
               <select value={buySort} onChange={e => setBuySort(e.target.value)}
                 style={{ flexShrink: 0, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textSecondary, padding: '7px 11px', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, outline: 'none', cursor: 'pointer' }}>
                 <option value="price_asc">{t('market_sort_price_asc')}</option>
@@ -280,6 +317,24 @@ export default function MarketModal({
                 {t('market_only_mine')}{myListings.length ? ` (${myListings.length})` : ''}
               </button>
             </div>
+          )}
+
+          {/* Contrôles Vendre — tri, sous la recherche */}
+          {tab === 'vendre' && myCards.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+              <select value={sellSort} onChange={e => setSellSort(e.target.value)}
+                style={{ flexShrink: 0, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textSecondary, padding: '7px 11px', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, outline: 'none', cursor: 'pointer' }}>
+                <option value="rarity">{t('market_sort_label')}: {t('market_sort_rarity')}</option>
+                <option value="price_asc">{t('market_sort_label')}: {t('market_sort_price_asc')}</option>
+                <option value="price_desc">{t('market_sort_label')}: {t('market_sort_price_desc')}</option>
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* ── ACHETER ── (la barre de recherche vit dans le bloc figé ci-dessus) */}
+        {tab === 'acheter' && (
+          <div>
             {(() => {
               const q = buySearch.trim().toLowerCase()
               let filtered = q ? gArr.filter(({ card }) => card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q)) : gArr
@@ -309,8 +364,10 @@ export default function MarketModal({
               const displayOrder = (!flat && expandedMerchant && merchantGroups[expandedMerchant])
                 ? [expandedMerchant, ...baseOrder.filter(r => r !== expandedMerchant)]
                 : baseOrder
+              // gap réduit : chaque coin porte déjà COIN_GAP en paddingTop opaque
+              // (cache sticky), au repos comme en défilement.
               return (
-              <div style={{ display: 'flex',flexDirection: 'column',gap: 18, marginTop: 10 }}>
+              <div style={{ display: 'flex',flexDirection: 'column',gap: 6 }}>
                 <style>{`@keyframes stallReveal{from{clip-path:inset(0 0 100% 0);opacity:.35}to{clip-path:inset(0 0 0 0);opacity:1}}`}</style>
                 {displayOrder.map(rarity => {
                   const m = MERCHANTS[rarity]
@@ -319,10 +376,14 @@ export default function MarketModal({
                   const stock = groupCards.reduce((s, g) => s + g.totalQty, 0)
                   const isExpanded = flat ? true : expandedMerchant === rarity
                   return (
-                  <div key={rarity} ref={el => { merchantRefs.current[rarity] = el }} style={{ scrollMarginTop: inline ? 64 : 14 }}>
-                    {/* Bannière du coin — collante sous le header de l'app (~53px) pendant le scroll de son étal */}
+                  <div key={rarity} ref={el => { merchantRefs.current[rarity] = el }} style={{ scrollMarginTop: inline ? `calc(var(--header-h, 48px) + ${stickyH + 4}px)` : stickyH + 4 }}>
+                    {/* Bannière du coin — collante à COIN_GAP sous le bloc figé pendant le
+                        scroll de son étal. Le conteneur sticky porte l'espace COIN_GAP en
+                        paddingTop OPAQUE (fond de page) : les lignes de l'étal disparaissent
+                        en passant derrière au lieu de rester visibles dans l'interstice. */}
+                    <div style={{ position: flat ? 'static' : 'sticky', top: inline ? `calc(var(--header-h, 48px) + ${stickyH}px)` : stickyH, zIndex: 3, paddingTop: COIN_GAP, background: inline ? theme.bgMain : theme.bgSurface, marginBottom: isExpanded ? 11 : 0 }}>
                     <div onClick={() => { if (!flat) toggleMerchant(rarity) }}
-                      style={{ position: flat ? 'static' : 'sticky', top: inline ? 60 : 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, marginBottom: isExpanded ? 11 : 0, cursor: flat ? 'default' : 'pointer', background: `linear-gradient(135deg,${mc.c1},${mc.c2})`, boxShadow: `0 4px 16px ${mc.c1}44` }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, cursor: flat ? 'default' : 'pointer', background: `linear-gradient(135deg,${mc.c1},${mc.c2})`, boxShadow: `0 4px 16px ${mc.c1}44` }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', textShadow: '0 1px 3px #0006' }}>{t(m.nameKey)}</div>
                         <div style={{ fontSize: 10.5, color: '#ffffffd0', fontStyle: 'italic', textShadow: '0 1px 2px #0005', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>« {t(m.taglineKey)} »</div>
@@ -343,6 +404,7 @@ export default function MarketModal({
                         ))}
                         {!flat && <div style={{ color: '#fff', fontSize: 16, transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform .25s' }}>⌄</div>}
                       </div>
+                    </div>
                     </div>
                     {/* Étal du marchand */}
                     {isExpanded && (
@@ -487,33 +549,19 @@ export default function MarketModal({
                   {t('market_no_duplicates')}
                 </div>
               ) : (
-                <>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-                  <input value={sellSearch} onChange={e => setSellSearch(e.target.value)}
-                    placeholder={t('collection_search')}
-                    style={{ flex: 1, minWidth: 120, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none' }}/>
-                  {sellSearch && <button onClick={() => setSellSearch('')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 16 }}>✕</button>}
-                  <select value={sellSort} onChange={e => setSellSort(e.target.value)}
-                    style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 9, color: theme.textPrimary, padding: '7px 12px', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 12, outline: 'none', cursor: 'pointer' }}>
-                    <option value="rarity">{t('market_sort_label')}: {t('market_sort_rarity')}</option>
-                    <option value="price_asc">{t('market_sort_label')}: {t('market_sort_price_asc')}</option>
-                    <option value="price_desc">{t('market_sort_label')}: {t('market_sort_price_desc')}</option>
-                  </select>
-                </div>
-                <div style={{ display: 'flex',flexWrap: 'wrap',columnGap: 7,rowGap: 12,padding: '4px' }}>
-                  {myCardsFiltered.map(({ card, cnt }) => (
+                <CollectionScroll items={myCardsFiltered} batch={24} theme={theme} isMobile={isMobile} topLabel={t('coll_back_top')}
+                  resetKey={`${sellSearch}|${sellSort}`}
+                  renderItem={({ card, cnt }) => (
                     <Card key={card.id} card={card} count={cnt} small selected={sellCard?.id === card.id}
                       onClick={() => { setSellCard(sellCard?.id === card.id ? null : card); setSellPrice(''); setMsg('') }} />
-                  ))}
-                </div>
-                </>
+                  )} />
               )}
             </div>
             <div style={{ flex: 1, minWidth: 180, order: isMobile ? -1 : 0 }}>
               {sellCard ? (
-                // top tient compte du header sticky de l'app (position: sticky, top: 0)
-                // + un espace blanc visible une fois le panneau collé.
-                <div style={{ position: isMobile ? 'static' : 'sticky', top: isMobile ? 0 : 80, marginTop: isMobile ? 12 : 0 }}>
+                // Se cale sous le bloc figé (onglets + recherche, hauteur mesurée)
+                // avec le même espace constant que les coins de l'onglet Acheter.
+                <div style={{ position: isMobile ? 'static' : 'sticky', top: isMobile ? 0 : (inline ? `calc(var(--header-h, 48px) + ${stickyH + COIN_GAP}px)` : stickyH + COIN_GAP), marginTop: isMobile ? 12 : 0 }}>
                 <div style={{ background: theme.overlay, border: `1.5px solid ${theme.border}`, borderRadius: 15, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {/* Carte sélectionnée */}
                   <div style={{ display: 'flex', justifyContent: 'center' }}><Card card={sellCard} /></div>
@@ -648,64 +696,66 @@ export default function MarketModal({
                 setOffBuyingId(null)
                 if (!error) loadOffseason()
               }
+              // Liste aplatie (bannière de marchand puis ses articles) → défilement
+              // continu par lots, comme la collection.
+              const rows = order.flatMap(rarity => [
+                { kind: 'header', rarity, count: groups[rarity].length },
+                ...groups[rarity].map(it => ({ kind: 'item', it })),
+              ])
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 4 }}>
-                  {order.map(rarity => {
-                    const m  = MERCHANTS[rarity]
-                    const mc = cardCC(rarity)
-                    return (
-                      <div key={rarity}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, marginBottom: 11, background: `linear-gradient(135deg,${mc.c1},${mc.c2})`, boxShadow: `0 4px 16px ${mc.c1}44` }}>
+                <CollectionScroll items={rows} batch={20} layout="list" theme={theme} isMobile={isMobile} topLabel={t('coll_back_top')} showCount={false}
+                  renderItem={(row) => {
+                    if (row.kind === 'header') {
+                      const m  = MERCHANTS[row.rarity]
+                      const mc = cardCC(row.rarity)
+                      return (
+                        <div key={`h_${row.rarity}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 14, marginTop: 9, background: `linear-gradient(135deg,${mc.c1},${mc.c2})`, boxShadow: `0 4px 16px ${mc.c1}44` }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 900, fontSize: 15, color: '#fff', textShadow: '0 1px 3px #0006' }}>{t(m.nameKey)}</div>
                             <div style={{ fontSize: 10.5, color: '#ffffffd0', fontStyle: 'italic', textShadow: '0 1px 2px #0005', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>« {t(m.taglineKey)} »</div>
                           </div>
-                          <span style={{ background: '#00000038', color: '#fff', fontWeight: 800, fontSize: 11, padding: '3px 10px', borderRadius: 50, border: '1px solid #ffffff33', flexShrink: 0 }}>{groups[rarity].length}</span>
+                          <span style={{ background: '#00000038', color: '#fff', fontWeight: 800, fontSize: 11, padding: '3px 10px', borderRadius: 50, border: '1px solid #ffffff33', flexShrink: 0 }}>{row.count}</span>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                          {groups[rarity].map(it => {
-                            const { c1, c2 } = cardCC(it.card.rarity)
-                            const canGold = gold >= it.gold_cost
-                            const canPf   = forgePoints >= it.pf_cost
-                            const canBuy  = canGold && canPf && !offBuyingId
-                            return (
-                              <div key={it.card.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 13px', background: theme.overlay, border: `1.5px solid ${theme.border}`, borderRadius: 13 }}>
-                                <div style={{ position: 'relative', flexShrink: 0 }}>
-                                  <div style={{ width: 38, height: 38, borderRadius: 9, overflow: 'hidden', background: `linear-gradient(135deg,${c1},${c2})`, border: `1.5px solid ${c1}66` }}>
-                                    {(it.card.image_url_thumb || it.card.image_url)
-                                      ? <ThumbImage src={it.card.image_url_thumb || it.card.image_url} alt={it.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff' }}>{it.card.name[0]}</div>}
-                                  </div>
-                                  {it.owned && <div title={t('market_already_owned')} style={{ position: 'absolute', bottom: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#00b894', border: `2px solid ${theme.bgSurface}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 900, lineHeight: 1, boxShadow: '0 1px 3px #0006' }}>✓</div>}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontWeight: 900, fontSize: 14, color: theme.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.card.name}</div>
-                                  <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                                    {it.season_name && <span style={{ fontStyle: 'italic' }}>{it.season_name}</span>}
-                                    <span style={{ color: canGold ? theme.gold : '#e74c3c', fontWeight: 800 }}>{it.gold_cost.toLocaleString()}G</span>
-                                    <span style={{ color: canPf ? '#a29bfe' : '#e74c3c', fontWeight: 800 }}>{it.pf_cost} PF</span>
-                                  </div>
-                                </div>
-                                <button onClick={() => doBuy(it)} disabled={!canBuy}
-                                  style={{ background: canBuy ? 'linear-gradient(135deg,#00b894,#00cec9)' : theme.bgElevated, border: `1px solid ${canBuy ? 'transparent' : theme.border}`, color: canBuy ? '#fff' : theme.textMuted, padding: '6px 12px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: canBuy ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                  {offBuyingId === it.card.id ? '…' : (canGold && canPf) ? t('market_buy_btn') : t('market_insufficient')}
-                                </button>
-                              </div>
-                            )
-                          })}
+                      )
+                    }
+                    const it = row.it
+                    const { c1, c2 } = cardCC(it.card.rarity)
+                    const canGold = gold >= it.gold_cost
+                    const canPf   = forgePoints >= it.pf_cost
+                    const canBuy  = canGold && canPf && !offBuyingId
+                    return (
+                      <div key={it.card.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 13px', background: theme.overlay, border: `1.5px solid ${theme.border}`, borderRadius: 13 }}>
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: 9, overflow: 'hidden', background: `linear-gradient(135deg,${c1},${c2})`, border: `1.5px solid ${c1}66` }}>
+                            {(it.card.image_url_thumb || it.card.image_url)
+                              ? <ThumbImage src={it.card.image_url_thumb || it.card.image_url} alt={it.card.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff' }}>{it.card.name[0]}</div>}
+                          </div>
+                          {it.owned && <div title={t('market_already_owned')} style={{ position: 'absolute', bottom: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#00b894', border: `2px solid ${theme.bgSurface}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 900, lineHeight: 1, boxShadow: '0 1px 3px #0006' }}>✓</div>}
                         </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 900, fontSize: 14, color: theme.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.card.name}</div>
+                          <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                            {it.season_name && <span style={{ fontStyle: 'italic' }}>{it.season_name}</span>}
+                            <span style={{ color: canGold ? theme.gold : '#e74c3c', fontWeight: 800 }}>{it.gold_cost.toLocaleString()}G</span>
+                            <span style={{ color: canPf ? '#a29bfe' : '#e74c3c', fontWeight: 800 }}>{it.pf_cost} PF</span>
+                          </div>
+                        </div>
+                        <button onClick={() => doBuy(it)} disabled={!canBuy}
+                          style={{ background: canBuy ? 'linear-gradient(135deg,#00b894,#00cec9)' : theme.bgElevated, border: `1px solid ${canBuy ? 'transparent' : theme.border}`, color: canBuy ? '#fff' : theme.textMuted, padding: '6px 12px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: canBuy ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          {offBuyingId === it.card.id ? '…' : (canGold && canPf) ? t('market_buy_btn') : t('market_insufficient')}
+                        </button>
                       </div>
                     )
-                  })}
-                </div>
+                  }} />
               )
             })()}
           </div>
         )}
 
-        {/* ── HISTORIQUE — 50 dernières ventes/achats ── */}
+        {/* ── HISTORIQUE — toutes les ventes/achats, chargés au fil du défilement ── */}
         {tab === 'historique' && (
-          <TxHistoryModal transactions={transactions.slice(0, 50)} onClose={onClose} embedded cardPool={cardPool} saleTax={saleTax} />
+          <TxHistoryModal transactions={transactions} onClose={onClose} embedded cardPool={cardPool} saleTax={saleTax} />
         )}
 
       </div>

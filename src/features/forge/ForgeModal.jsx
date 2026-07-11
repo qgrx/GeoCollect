@@ -4,6 +4,7 @@ import { apiForgeCard, apiForgeShiny, apiMeltCard, apiMeltShinyCard, apiMeltAllC
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
 import Card from '../../components/Card.jsx'
+import CollectionScroll from '../../components/CollectionScroll.jsx'
 
 // ─── Keyframes injectés une seule fois ───────────────────────────────────────
 const STYLE = `
@@ -475,7 +476,6 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
   const [error, setError]           = useState(null)
   const [recentlyForged, setRecentlyForged] = useState(new Set())
   const [activeTab, setActiveTab]   = useState('normal')
-  const [shinyPage, setShinyPage]   = useState(0)
   const [meltingAll, setMeltingAll] = useState(false)
   const [meltMode, setMeltMode]     = useState('normal') // 'normal' | 'shiny'
   const {
@@ -483,7 +483,15 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
     animateMeltSequence, timerRef,
   } = useMeltAnimation()
 
-  const SHINY_PAGE_SIZE = 12
+  // Taille des lots du défilement continu (remplace l'ancienne pagination)
+  const FORGE_BATCH = 12
+  // Placement du bouton « Haut de page » (au-dessus de la nav mobile)
+  const [isMobileView, setIsMobileView] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
+  useEffect(() => {
+    const h = () => setIsMobileView(window.innerWidth < 640)
+    window.addEventListener('resize', h)
+    return () => window.removeEventListener('resize', h)
+  }, [])
 
   // Un achievement « évolutif » (L'acheteur, Le vendeur, Fidèle…) monte en rareté
   // au fil des paliers. On ne peut le rendre brillant qu'une fois le rang légendaire
@@ -763,8 +771,11 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
           </div>
         )}
 
-        {/* Onglets Forger / Brillance */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        {/* Onglets Forger / Brillance — figés sous le header de l'app (inline)
+            pendant le défilement des grilles */}
+        <div style={inline
+          ? { display: 'flex', gap: 6, position: 'sticky', top: 'var(--header-h, 48px)', zIndex: 50, background: theme.bgMain, padding: '4px 0 10px', marginBottom: 16, boxShadow: '0 10px 14px -12px #000a' }
+          : { display: 'flex', gap: 6, marginBottom: 16 }}>
           {[
             { id: 'normal',    label: t('forge_tab_normal') || 'Forger' },
             { id: 'brillance', label: t('forge_tab_shiny')  || '✨ Brillance' },
@@ -797,8 +808,8 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
             </div>
           )
         ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
-            {forgeableCards.map(card => {
+          <CollectionScroll items={forgeableCards} batch={FORGE_BATCH} theme={theme} isMobile={isMobileView} topLabel={t('coll_back_top')}
+            renderItem={(card) => {
               const { c1, c2 } = cardCC(card.rarity)
               const owned     = (collection[card.id] || 0) > 0
               const justDone  = recentlyForged.has(card.id)
@@ -893,23 +904,17 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                   )}
                 </div>
               )
-            })}
-          </div>
+            }} />
         ))}
 
         {/* Tab Brillance */}
-        {activeTab === 'brillance' && (() => {
-          const totalPages = Math.ceil(ownedCards.length / SHINY_PAGE_SIZE)
-          const page = Math.min(shinyPage, Math.max(0, totalPages - 1))
-          const pageCards = ownedCards.slice(page * SHINY_PAGE_SIZE, (page + 1) * SHINY_PAGE_SIZE)
-          return (
+        {activeTab === 'brillance' && (
             <>
               <div style={{ background: '#a29bfe18', border: '1px solid #a29bfe33', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#a29bfe', lineHeight: 1.6 }}>
                 {t('forge_shiny_desc')}
               </div>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
-                {ownedCards.length === 0 ? (
+              {ownedCards.length === 0 ? (
                   loading ? (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', gap: 10, width: '100%' }}>
                       {[0, 0.18, 0.36].map(d => <div key={d} style={{ width: 10, height: 10, borderRadius: '50%', background: '#f9ca24', animation: `dotBounce 0.9s ${d}s ease-in-out infinite` }} />)}
@@ -920,7 +925,9 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                       <div>{t('forge_no_shiny_cards')}</div>
                     </div>
                   )
-                ) : pageCards.map(card => {
+              ) : (
+                <CollectionScroll items={ownedCards} batch={FORGE_BATCH} theme={theme} isMobile={isMobileView} topLabel={t('coll_back_top')}
+                  renderItem={(card) => {
                   const alreadyShiny = (shinyCollection[card.id] || 0) > 0
                   const needsLegendary = achNeedsLegendary(card)
                   const cost = card.shiny_forge_cost ?? shinyForgeCostByRarity[card.rarity] ?? null
@@ -949,25 +956,10 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                       )}
                     </div>
                   )
-                })}
-              </div>
-
-              {totalPages > 1 && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 18 }}>
-                  <button onClick={() => setShinyPage(p => Math.max(0, p - 1))} disabled={page === 0}
-                    style={{ background: page === 0 ? theme.overlay : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: page === 0 ? theme.textMuted : '#fff', padding: '6px 16px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: page === 0 ? 'default' : 'pointer' }}>
-                    ←
-                  </button>
-                  <span style={{ fontSize: 12, color: theme.textMuted, fontWeight: 700 }}>{page + 1} / {totalPages}</span>
-                  <button onClick={() => setShinyPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
-                    style={{ background: page === totalPages - 1 ? theme.overlay : 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: page === totalPages - 1 ? theme.textMuted : '#fff', padding: '6px 16px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: page === totalPages - 1 ? 'default' : 'pointer' }}>
-                    →
-                  </button>
-                </div>
+                  }} />
               )}
             </>
-          )
-        })()}
+        )}
 
         {/* Tab Fondre */}
         {activeTab === 'fondre' && (
@@ -1024,8 +1016,8 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                       {t('forge_melt_all_btn')} (+{totalMeltPoints} 🔨 {t('forge_melt_points_suffix') || 'PF'})
                     </button>
                   )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
-                    {duplicateCards.map(card => {
+                  <CollectionScroll items={duplicateCards} batch={FORGE_BATCH} theme={theme} isMobile={isMobileView} topLabel={t('coll_back_top')} resetKey={meltMode}
+                    renderItem={(card) => {
                       const points = card.melt_points ?? meltPointsByRarity[card.rarity] ?? null
                       const count = collection[card.id] || 0
                       const isMelting = meltingId === card.id
@@ -1051,8 +1043,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                           </button>
                         </div>
                       )
-                    })}
-                  </div>
+                    }} />
                 </>
               )
             ) : (
@@ -1080,8 +1071,8 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                       {t('forge_melt_all_btn_shiny')} (+{totalMeltPointsShiny} 🔨 {t('forge_melt_points_suffix') || 'PF'})
                     </button>
                   )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14 }}>
-                    {duplicateShinyCards.map(card => {
+                  <CollectionScroll items={duplicateShinyCards} batch={FORGE_BATCH} theme={theme} isMobile={isMobileView} topLabel={t('coll_back_top')} resetKey={meltMode}
+                    renderItem={(card) => {
                       const points = meltPointsByRarityShiny[card.rarity] ?? null
                       const count = shinyCollection[card.id] || 0
                       const isMelting = meltingId === card.id
@@ -1107,8 +1098,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                           </button>
                         </div>
                       )
-                    })}
-                  </div>
+                    }} />
                 </>
               )
             )}
