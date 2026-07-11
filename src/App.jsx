@@ -904,21 +904,22 @@ export default function App() {
 
   // ── Hauteur du header sticky — sert d'offset au bandeau figé de la collection
   // (onglets de types + barre de recherche) qui se cale juste en dessous.
-  // ResizeObserver et non un simple resize : le contenu du header change après
-  // coup (nav desktop montée à la connexion, devises, polices chargées) et une
-  // mesure unique au mount laissait un offset trop court → le bandeau glissait
-  // sous le menu. ─────────────────────────────────────────────────────────────
-  const headerRef = useRef(null)
-  const [headerH, setHeaderH] = useState(48)
+  // Callback ref + ResizeObserver : le header n'existe PAS au premier rendu
+  // (écran de chargement affiché à la place) et son contenu évolue ensuite
+  // (nav desktop à la connexion, polices, devises). Une ref classique lue dans
+  // un effet tournait avant le montage du header → offset resté à la valeur
+  // par défaut et bandeau glissant sous le menu. Ici la mesure s'arme au
+  // montage réel du header et suit chaque variation de hauteur. ───────────────
+  const [headerEl, setHeaderEl] = useState(null)
+  const [headerH,  setHeaderH]  = useState(48)
   useEffect(() => {
-    const el = headerRef.current
-    if (!el) return
-    const measure = () => setHeaderH(el.offsetHeight || 48)
+    if (!headerEl) return
+    const measure = () => setHeaderH(headerEl.offsetHeight || 48)
     measure()
     const ro = new ResizeObserver(measure)
-    ro.observe(el)
+    ro.observe(headerEl)
     return () => ro.disconnect()
-  }, [auth.profile?.id, isMobile])
+  }, [headerEl])
 
   // ── Navigation mobile (onglets) ────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState(() => {
@@ -1858,7 +1859,7 @@ export default function App() {
       {!shinyDayBanner && <div style={{ height: 3, background: 'linear-gradient(90deg,#58a6ff,#bc8cff,#f9ca24,#f85149)', flexShrink: 0 }} />}
 
       {/* ── HEADER ── */}
-      <header ref={headerRef} style={{ position: 'sticky', top: 0, zIndex: 200, background: theme.headerBg, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${theme.border}`, padding: isMobile ? '9px 10px' : '9px 20px', display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, flexShrink: 0 }}>
+      <header ref={setHeaderEl} style={{ position: 'sticky', top: 0, zIndex: 200, background: theme.headerBg, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${theme.border}`, padding: isMobile ? '9px 10px' : '9px 20px', display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, flexShrink: 0 }}>
         <Logo iconSize={isMobile ? 26 : 30} textSize={isMobile ? 15 : 19} />
 
         {/* Desktop tab nav — même style que mobile, centré dans le header */}
