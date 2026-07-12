@@ -318,9 +318,9 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
               return (
                 <div key={p.id || p.pseudo}>
                   {isSeparate && <div style={{ textAlign: 'center', fontSize: 10, color: theme.textMuted, padding: '4px 0 2px', letterSpacing: .5 }}>· · ·</div>}
-                  <div onClick={p.isMe ? undefined : () => setViewing(p)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, background: p.isMe ? 'linear-gradient(135deg,#f9ca2415,#e8439315)' : theme.overlay, border: p.isMe ? '1.5px solid #f9ca2444' : `1.5px solid ${theme.border}`, borderRadius: 11, padding: '9px 13px', cursor: p.isMe ? 'default' : 'pointer', transition: 'transform .12s' }}
-                    onMouseEnter={e => { if (!p.isMe) e.currentTarget.style.transform = 'translateX(4px)' }}
+                  <div onClick={() => setViewing(p)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, background: p.isMe ? 'linear-gradient(135deg,#f9ca2415,#e8439315)' : theme.overlay, border: p.isMe ? '1.5px solid #f9ca2444' : `1.5px solid ${theme.border}`, borderRadius: 11, padding: '9px 13px', cursor: 'pointer', transition: 'transform .12s' }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(4px)' }}
                     onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}>
                     {/* minWidth (et non width fixe) : au-delà de 2 chiffres, « #147 » débordait sur l'avatar */}
                     <div style={{ fontWeight: 900, fontSize: rank >= 99 ? 13 : 16, minWidth: 26, flexShrink: 0, textAlign: 'center' }}>{isSeparate ? '—' : (medal[rank] || `#${rank + 1}`)}</div>
@@ -344,7 +344,7 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
                         {p.shiny_count > 0 ? `✨ ${p.shiny_count}` : 'geocoins'}
                       </div>
                     </div>
-                    <div style={{ width: 12, flexShrink: 0, color: '#888', fontSize: 12, textAlign: 'center' }}>{p.isMe ? '' : '→'}</div>
+                    <div style={{ width: 12, flexShrink: 0, color: '#888', fontSize: 12, textAlign: 'center' }}>→</div>
                   </div>
                 </div>
               );
