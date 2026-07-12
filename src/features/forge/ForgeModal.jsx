@@ -505,13 +505,22 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
   // Geocoins ordinaires + achievements évolutifs (les achievements non évolutifs
   // restent exclus de la forge brillante).
   const ownedCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 0 && (!isAchievement(c) || isEvolutiveAch(c)))
-  // Arrivée depuis la collection (« shiny manquants ») : le geocoin visé est
-  // remonté en tête de l'onglet Brillance et mis en évidence — la grille se
-  // charge par lots, un simple défilement automatique ne le garantirait pas.
-  const shinyGridCards = focusCardId != null
-    ? [...ownedCards.filter(c => c.id === focusCardId), ...ownedCards.filter(c => c.id !== focusCardId)]
-    : ownedCards
-  useEffect(() => { if (focusCardId != null) window.scrollTo({ top: 0 }) }, [focusCardId])
+  // Arrivée depuis la collection (« shiny manquants ») : le geocoin visé reste
+  // à sa place naturelle dans la grille — le remonter en tête cassait le
+  // défilement de l'onglet Brillance. On demande à la grille de charger assez
+  // de lots pour que sa ligne soit rendue, puis on défile jusqu'à lui.
+  const focusIndex = focusCardId != null ? ownedCards.findIndex(c => c.id === focusCardId) : -1
+  const focusScrolledRef = useRef(false)
+  useEffect(() => {
+    if (focusCardId == null) { focusScrolledRef.current = false; return }
+    // focusIndex < 0 tant que la collection charge : on retente à son arrivée
+    if (focusScrolledRef.current || focusIndex < 0) return
+    focusScrolledRef.current = true
+    const raf = requestAnimationFrame(() => {
+      document.getElementById('forge-shiny-focus')?.scrollIntoView({ block: 'center' })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [focusCardId, focusIndex])
   const byRarityDesc = (a, b) => (RC[a.rarity]?.order ?? 99) - (RC[b.rarity]?.order ?? 99)
   const duplicateCards = (cardPool || []).filter(c => (collection[c.id] || 0) > 1 && c.type !== 'Achievement').sort(byRarityDesc)
   const duplicateShinyCards = (cardPool || []).filter(c => (shinyCollection[c.id] || 0) > 1 && c.type !== 'Achievement').sort(byRarityDesc)
@@ -933,7 +942,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                     </div>
                   )
               ) : (
-                <CollectionScroll items={shinyGridCards} batch={FORGE_BATCH} theme={theme} isMobile={isMobileView} topLabel={t('coll_back_top')}
+                <CollectionScroll items={ownedCards} batch={FORGE_BATCH} initialIndex={focusIndex >= 0 ? focusIndex : null} theme={theme} isMobile={isMobileView} topLabel={t('coll_back_top')}
                   renderItem={(card) => {
                   const alreadyShiny = (shinyCollection[card.id] || 0) > 0
                   const needsLegendary = achNeedsLegendary(card)
@@ -941,7 +950,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                   const canAfford = cost != null && forgePoints >= cost
                   const focused = card.id === focusCardId
                   return (
-                    <div key={card.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny || needsLegendary ? 0.5 : 1,
+                    <div key={card.id} id={focused ? 'forge-shiny-focus' : undefined} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny || needsLegendary ? 0.5 : 1,
                       ...(focused ? { padding: 8, borderRadius: 18, animation: 'shinyCardGlow 2s ease-in-out infinite' } : {}) }}>
                       <Card card={card} isShiny={alreadyShiny} />
                       {!needsLegendary && <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>🔨 {cost ?? '—'} pts</div>}

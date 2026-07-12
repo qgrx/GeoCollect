@@ -60,12 +60,18 @@ export function BackToTop({ theme, isMobile, label }) {
   )
 }
 
-export default function CollectionScroll({ items, batch = 24, renderItem, theme, isMobile, resetKey, gridKey, topLabel, layout = 'grid', listGap = 9, showCount = true, showTopBtn = true }) {
-  const [visible, setVisible] = useState(batch)
+export default function CollectionScroll({ items, batch = 24, renderItem, theme, isMobile, resetKey, gridKey, topLabel, layout = 'grid', listGap = 9, showCount = true, showTopBtn = true, initialIndex = null }) {
+  // initialIndex : élément à rendre atteignable dès le départ (ex. geocoin ciblé
+  // depuis la collection) — on charge d'emblée assez de lots pour qu'il soit
+  // dans le DOM, sinon un scrollIntoView ne le trouverait pas.
+  const firstVisible = initialIndex != null && initialIndex >= 0
+    ? Math.ceil((initialIndex + 1) / batch) * batch
+    : batch
+  const [visible, setVisible] = useState(firstVisible)
   const sentinelRef = useRef(null)
 
   // Changement de filtre/tri/recherche → repartir au premier lot
-  useEffect(() => { setVisible(batch) }, [resetKey, batch])
+  useEffect(() => { setVisible(firstVisible) }, [resetKey, firstVisible])
 
   const shown = items.slice(0, visible)
   const hasMore = items.length > shown.length
