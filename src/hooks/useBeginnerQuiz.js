@@ -50,7 +50,6 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
       card,
       q:    trans?.question || data.question,
       a:    trans?.answer ? Array((trans.answer.trim().split(/\s+/).length) || 1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
-      h:    data.hint,
       is_shiny: false,
       started_at: startedAtIso || data.started_at,
       question_id: data.question_id,

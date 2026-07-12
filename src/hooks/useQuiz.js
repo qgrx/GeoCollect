@@ -86,10 +86,13 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
               const card = { ...data.quiz.card, ...poolCard, sellable: true, minPrice: null, desc: '' }
               setPendingQuiz({
                 ...data.quiz,
+                // Skew horloge figé À LA RÉCEPTION (cf. QuizModal) : sert au décompte
+                // handicap « en feu », qui doit continuer de défiler entre deux
+                // ouvertures de la modale.
+                client_skew_ms: data.server_time ? Date.now() - new Date(data.server_time).getTime() : 0,
                 id:   data.quiz.id,
                 q:    trans?.question || data.quiz.question,
                 a:    trans?.answer ? Array((trans.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
-                h:    data.quiz.hint,
                 card,
               })
               setNextCard(card)
@@ -134,10 +137,11 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       const trans2 = data.quiz.translations?.[curLang2]
       quiz = {
         ...data.quiz,
+        // Skew horloge figé à la réception (cf. QuizModal / décompte « en feu »).
+        client_skew_ms: data.server_time ? Date.now() - new Date(data.server_time).getTime() : 0,
         id:   data.quiz.id,
         q:    trans2?.question || data.quiz.question,
         a:    trans2?.answer ? Array((trans2.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
-        h:    data.quiz.hint,
         card: { ...data.quiz.card, ...poolCard, sellable: true, minPrice: null, desc: '' },
       }
     }

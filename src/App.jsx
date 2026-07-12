@@ -359,11 +359,14 @@ export default function App() {
         setPendingQuiz({
           ...data.quiz,
           server_time: data.server_time,   // ancrage horloge pour le décompte handicap (skew device)
+          // Skew figé À LA RÉCEPTION : recalculé au montage de la modale, les Date.now()
+          // s'annulent et elapsed devient la constante server_time−started_at → le
+          // décompte « en feu » repartait du début à chaque réouverture de la fenêtre.
+          client_skew_ms: data.server_time ? Date.now() - new Date(data.server_time).getTime() : 0,
           card,
           id: data.quiz.id,
           q:  initTrans?.question || data.quiz.question,
           a:  initTrans?.answer ? Array((initTrans.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
-          h:  data.quiz.hint,
           answer_length: data.quiz.answer_length,
         })
         setQuizKey(k => k + 1)
@@ -388,11 +391,13 @@ export default function App() {
         const trans = data.translations?.[curLang]
         const q = {
           ...data,
+          // Skew figé à la réception (cf. pull /current) : le décompte handicap doit
+          // continuer de défiler entre deux ouvertures de la modale.
+          client_skew_ms: data.server_time ? Date.now() - new Date(data.server_time).getTime() : 0,
           card,
           id:   data.quiz_id,
           q:    trans?.question || data.question,
           a:    trans?.answer ? Array((trans.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : fakeAnswer,
-          h:    data.hint,
           answer_length: data.answer_length,
         }
         setNextCard(card)
@@ -1341,7 +1346,7 @@ export default function App() {
     const tr = step.translations?.[getLang()]
     const wc = step.answer_word_count || 1
     // _q : données de validation (réponses) embarquées → la démo valide côté client.
-    return { _demoStep: step.step, _q: { answer: step.answer, alt_answers: step.alt_answers, translations: step.translations }, id: undefined, card, q: tr?.question || step.question, a: Array(wc).fill('x').join(' '), h: step.hint, is_shiny: false, started_at: new Date().toISOString() }
+    return { _demoStep: step.step, _q: { answer: step.answer, alt_answers: step.alt_answers, translations: step.translations }, id: undefined, card, q: tr?.question || step.question, a: Array(wc).fill('x').join(' '), is_shiny: false, started_at: new Date().toISOString() }
   }, [gs.cardPool])
 
   const presentDemoStep = useCallback((steps) => {
@@ -2597,7 +2602,6 @@ export default function App() {
           const wc = data.quiz.answer_word_count || 1
           return {
             q: tr?.question || data.quiz.question,
-            h: data.quiz.hint,
             answer_length: data.quiz.answer_length,
             a: tr?.answer ? Array((tr.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
           }

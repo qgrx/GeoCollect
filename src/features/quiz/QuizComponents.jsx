@@ -195,19 +195,20 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   });
   const [elapsed,setElapsed]=useState(()=>{
     if(!quiz.started_at) return 0;
-    // Ancrage sur l'horloge serveur (server_time) plutôt que Date.now() brut : un
-    // décalage d'horloge du device fait démarrer `elapsed` en négatif, ce qui gonfle
-    // le décompte du handicap « cadeau aux autres » au-dessus du plafond annoncé
-    // (ex. +8s affiché en décompte de 10s). started_at et server_time sont tous deux
-    // en horloge serveur → leur différence est exempte de skew.
-    const srvSkew=quiz.server_time?(Date.now()-new Date(quiz.server_time).getTime()):0;
+    // Ancrage sur l'horloge serveur : un décalage d'horloge du device fait démarrer
+    // `elapsed` en négatif, ce qui gonfle le décompte du handicap « cadeau aux autres »
+    // au-dessus du plafond annoncé (ex. +8s affiché en décompte de 10s).
+    // ⚠️ Le skew (client_skew_ms) est figé À LA RÉCEPTION du payload, pas recalculé ici :
+    // recalculé au montage avec le server_time du fetch, les Date.now() s'annulent et
+    // elapsed devient la constante server_time−started_at → fermer/rouvrir la fenêtre
+    // faisait repartir le décompte « en feu » du début au lieu de continuer à défiler.
+    const srvSkew=quiz.client_skew_ms??(quiz.server_time?(Date.now()-new Date(quiz.server_time).getTime()):0);
     return Math.floor((Date.now()-srvSkew-new Date(quiz.started_at).getTime())/1000);
   });
   const [shake,setShake]=useState(false);
   const [upsellBusy,setUpsellBusy]=useState(false);
   const [upsellConfirm,setUpsellConfirm]=useState(null);  // 'pocket' | 'bag' : confirmation d'achat ouverte
   const [npc,setNpc]=useState(null);
-  const [revealedLetters,setRevealedLetters]=useState(0);
   const [isSubmitting,setIsSubmitting]=useState(false);
   const [submitError,setSubmitError]=useState(null);
   // Question récupérée après le délai cadeau (protection anti-domination) : le
@@ -268,11 +269,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
 
   useEffect(()=>{
     if(status!=="open"&&status!=="glory") return;  // glory : on continue de ticker pour rafraîchir le décompte de grâce
-    if(status==="open"){
-      // Indices progressifs : révéler des lettres de la réponse
-      if(elapsed===15) setRevealedLetters(1);      // après 15s
-      else if(elapsed===30) setRevealedLetters(2); // après 30s
-    }
     const t=setTimeout(()=>setElapsed(v=>v+1),1000);
     return()=>clearTimeout(t);
   },[elapsed,status]);
@@ -368,13 +364,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     return ()=>{ cancelled=true; clearTimeout(timer); };
   },[status,isStreakLeader,handicapLeft,displayedQ]);
 
-  // Indice progressif : structure puis premières lettres réelles
-  const maskedHint=useMemo(()=>{
-    if(revealedLetters>=2 && quiz.answer_first_letters) {
-      return quiz.answer_first_letters.split(' ').map(l=>`${l}…`).join('  ');
-    }
-    return null;
-  },[quiz.answer_first_letters,revealedLetters]);
   // Clavier ouvert (ou écran court) → hauteur visible réduite : on bascule en mode
   // compact (vignette au lieu de la grande carte) pour que la question reste
   // entièrement lisible au-dessus du champ de saisie.
@@ -506,10 +495,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
                 <span style={{fontSize:22}}>🔥</span>
                 <span>{handicapLeft>0 ? `${t('quiz_on_fire')} ${handicapLeft}s` : '…'}</span>
               </div>
-            ) : (<>
+            ) : (
               <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1.5,marginBottom:5}}>{displayedQ}</div>
-              {maskedHint&&<div style={{fontSize:10,color:"#f39c12",fontFamily:"monospace",letterSpacing:2,animation:"pulse 1s infinite"}}>🔤 {maskedHint}</div>}
-            </>)}
+            )}
           </div>
         </div>
         </div>
