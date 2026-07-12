@@ -127,6 +127,33 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
               "{card.desc}"
             </div>
           )}
+          {/* Série (« Fidèle ») : série en cours + meilleure série, en deux
+              pastilles compactes. La rareté atteinte est conservée même si la
+              série retombe — seul le compteur repart, jamais le geocoin. */}
+          {card.progressInfo?.best != null && (() => {
+            const cur = card.progressInfo.current || 0
+            const pill = { flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: '#ffffff08', border: '1px solid #ffffff14', borderRadius: 10, padding: '6px 10px' }
+            const label = { fontSize: 9, color: '#888', fontWeight: 800, textTransform: 'uppercase', letterSpacing: .4 }
+            return (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                <div style={pill}>
+                  <span style={{ fontSize: 16, filter: cur > 0 ? 'none' : 'grayscale(1)', opacity: cur > 0 ? 1 : .5 }}>🔥</span>
+                  <div>
+                    <div style={label}>{t('ach_streak_current')}</div>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: cur > 0 ? '#f9ca24' : '#666' }}>{cur} {t('ach_streak_days')}</div>
+                  </div>
+                </div>
+                <div style={pill}>
+                  <span style={{ fontSize: 16 }}>🏆</span>
+                  <div>
+                    <div style={label}>{t('ach_streak_best')}</div>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: '#fff' }}>{card.progressInfo.best} {t('ach_streak_days')}</div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Achievement évolutif : échelle de paliers (commun → légendaire). */}
           {card.progressInfo?.tiers && (() => {
             const { progress, tier, tiers } = card.progressInfo

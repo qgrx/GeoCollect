@@ -19,6 +19,14 @@ import {
 function buildAchievementProgressMap(list) {
   const map = {}
   for (const a of (list || [])) {
+    // Série (« Fidèle ») : le progress stocké côté serveur est la dernière
+    // série évaluée (périmée si la série a cassé depuis) → on affiche la série
+    // courante réelle (current_value) et on expose le record (best_value) pour
+    // le bloc « série en cours / meilleure série » de CardDetailModal. La
+    // rareté acquise (tier) est conservée même quand la série retombe à 0.
+    const isStreak = a.type === 'streak' && a.best_value != null
+    const progress = isStreak ? (a.current_value ?? a.progress) : a.progress
+    const streakExtra = isStreak ? { current: a.current_value ?? 0, best: a.best_value } : {}
     if (a.threshold_rare != null) {
       const tiers = [
         { rarity: 'commun',     threshold: a.threshold,           card_id: a.card_id },
@@ -26,10 +34,10 @@ function buildAchievementProgressMap(list) {
         { rarity: 'épique',     threshold: a.threshold_epic,      card_id: a.card_id_epic },
         { rarity: 'légendaire', threshold: a.threshold_legendary, card_id: a.card_id_legendary },
       ]
-      const info = { type: a.type, progress: a.progress, tier: a.tier || 0, tiers }
+      const info = { type: a.type, progress, tier: a.tier || 0, tiers, ...streakExtra }
       for (const tt of tiers) if (tt.card_id) map[tt.card_id] = info
     } else if (a.card_id) {
-      map[a.card_id] = { progress: a.progress, threshold: a.threshold, type: a.type }
+      map[a.card_id] = { progress, threshold: a.threshold, type: a.type, ...streakExtra }
     }
   }
   return map
