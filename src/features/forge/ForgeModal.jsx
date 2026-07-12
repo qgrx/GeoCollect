@@ -951,7 +951,10 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                   const focused = card.id === focusCardId
                   return (
                     <div key={card.id} id={focused ? 'forge-shiny-focus' : undefined} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 148, opacity: alreadyShiny || needsLegendary ? 0.5 : 1,
-                      ...(focused ? { padding: 8, borderRadius: 18, animation: 'shinyCardGlow 2s ease-in-out infinite' } : {}) }}>
+                      // Surlignage statique : un padding ou une lueur animée décalait la carte
+                      // dans sa ligne et faisait clignoter l'interface (dont le bouton « Haut
+                      // de page » translucide juste au-dessus du halo).
+                      ...(focused ? { borderRadius: 18, boxShadow: '0 0 0 3px #f9ca24, 0 0 22px #f9ca2466' } : {}) }}>
                       <Card card={card} isShiny={alreadyShiny} />
                       {!needsLegendary && <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>🔨 {cost ?? '—'} pts</div>}
                       {needsLegendary ? (
