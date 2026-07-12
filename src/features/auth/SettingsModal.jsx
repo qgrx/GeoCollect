@@ -268,6 +268,11 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
                 ...(limits.quizConsolationForge > 0 ? [{ label: 'Forge de compensation', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
               ].map(({ label, value, cap, info, buy }) => {
                 const unlimited = !cap || cap <= 0
+                // La valeur en base peut dépasser le cap (compteur sur-crédité avant le
+                // correctif de plafonnement, ou cap abaissé par l'admin dans la journée) :
+                // on borne l'affichage au cap comme la barre de progression, sinon on lit
+                // « 250 / 200 ». Le compteur réel se remet à zéro au reset de minuit.
+                const shown = unlimited ? value : Math.min(value, cap)
                 const pct = unlimited ? 0 : Math.min(100, Math.round((value / cap) * 100))
                 return (
                   <div key={label} style={{ marginBottom: 8 }}>
@@ -278,7 +283,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
                           <span onClick={() => setShowCardsInfo(v => !v)} style={{ cursor: 'pointer', marginLeft: 4, fontWeight: 800 }}>ⓘ</span>
                         )}
                       </span>
-                      <span style={{ fontWeight: 700, color: theme.textSecondary }}>{value} / {unlimited ? '∞' : cap}</span>
+                      <span style={{ fontWeight: 700, color: theme.textSecondary }}>{shown} / {unlimited ? '∞' : cap}</span>
                     </div>
                     {!unlimited && (
                       <div style={{ background: theme.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden', marginTop: 3 }}>
