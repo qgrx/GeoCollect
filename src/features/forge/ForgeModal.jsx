@@ -464,6 +464,25 @@ function useMeltAnimation() {
   }
 }
 
+// ─── Enveloppe du panneau ─────────────────────────────────────────────────────
+// Défini HORS de ForgeModal : déclaré à l'intérieur, sa fonction changeait
+// d'identité à chaque rendu et React remontait tout le sous-arbre — l'App se
+// re-rend chaque seconde (tick), donc les grilles repartaient au premier lot
+// en boucle (sentinelle de chargement et bouton « Haut de page » clignotants,
+// bas de page inatteignable).
+function PanelWrapper({ inline, theme, forgingId, onClose, children }) {
+  return inline ? (
+    <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
+  ) : (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end', fontFamily: "'Nunito',sans-serif" }}>
+      <div onClick={() => { if (!forgingId) onClose() }} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
+      <div style={{ position: 'relative', background: theme.bgSurface, width: 'min(100vw, 600px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: `1px solid ${theme.border}`, animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
 export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, onMelted, onMeltedShiny, onMeltedAll, onMeltedAllShiny, inline = false, shinyForgeCostByRarity = {}, forgeCostByRarity = {}, meltPointsByRarity = {}, meltPointsByRarityShiny = {}, achievementProgress = {}, loading = false, initialTab = 'normal', focusCardId = null }) {
   useEffect(() => { injectStyle() }, [])
@@ -675,19 +694,8 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
 
   useEffect(() => () => clearTimers(), [])
 
-  const PanelWrapper = ({ children }) => inline ? (
-    <div style={{ fontFamily: "'Nunito',sans-serif" }}>{children}</div>
-  ) : (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 700, display: 'flex', justifyContent: 'flex-end', fontFamily: "'Nunito',sans-serif" }}>
-      <div onClick={() => { if (!forgingId) onClose() }} style={{ position: 'absolute', inset: 0, background: '#00000070', animation: 'fadeIn .2s ease' }} />
-      <div style={{ position: 'relative', background: theme.bgSurface, width: 'min(100vw, 600px)', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px #000c', borderLeft: `1px solid ${theme.border}`, animation: 'slideFromRight .25s cubic-bezier(.2,0,.2,1)', display: 'flex', flexDirection: 'column' }}>
-        {children}
-      </div>
-    </div>
-  )
-
   return (
-    <PanelWrapper>
+    <PanelWrapper inline={inline} theme={theme} forgingId={forgingId} onClose={onClose}>
 
       {/* Overlay animation de forge / brillance */}
       {forgingId && phase && (() => {
