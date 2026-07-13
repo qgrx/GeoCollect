@@ -9,6 +9,7 @@ import { RC, cardCC, rarityLabel, cardName } from '../../data/cards.js';
 import { getLang } from '../../i18n/translations.js';
 import { QUIZ_INTERVAL } from '../../data/constants.js';
 import Card from '../../components/Card.jsx';
+import Avatar from '../../components/Avatar.jsx';
 import { BTN } from '../../utils/styles.js';
 
 const SNOOZE_OPTIONS = [
@@ -645,7 +646,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1,graceDeadline=null}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1,graceDeadline=null}){
   const {t}=useT(); const {theme}=useTheme();
   // Décompte de grâce « encore Ns pour répondre » (gloire / multi-prix) — ticker local 1 s.
   const [,graceTick]=useState(0)
@@ -694,8 +695,10 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
       <>
         <style>{CW_STYLES}</style>
         <div style={{display:'flex',alignItems:'center',gap:11,background:'linear-gradient(135deg,#f9ca2412,#e1705508)',border:'1.5px solid #f9ca2455',borderRadius:13,padding:'10px 14px',boxShadow:'0 0 28px #f9ca2428',animation:'cgSlide .45s cubic-bezier(.34,1.56,.64,1) both'}}>
-          <div style={{width:40,height:40,flexShrink:0,borderRadius:6,border:'2px solid #f9ca2466',background:'#1e3045',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,animation:'cgTrophy .5s .1s cubic-bezier(.34,1.56,.64,1) both',transform:'scale(0)'}}>
-            🏆
+          <div style={{width:40,height:40,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',animation:'cgTrophy .5s .1s cubic-bezier(.34,1.56,.64,1) both',transform:'scale(0)'}}>
+            {lostToAvatar
+              ? <Avatar pseudo={lostTo} avatarUrl={lostToAvatar} verified size={40} />
+              : <div style={{width:40,height:40,borderRadius:6,border:'2px solid #f9ca2466',background:'#1e3045',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🏆</div>}
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:14,fontWeight:900,color:'#f9ca24',marginBottom:2,animation:'cgFade .35s .2s ease both',opacity:0}}>

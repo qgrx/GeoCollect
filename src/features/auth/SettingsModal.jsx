@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { BTN, INP } from '../../utils/styles.js'
@@ -7,6 +7,8 @@ import { rankCC, getRankLabel } from '../../utils/rankUtils.js'
 import { PSEUDO_CHANGE_DAYS } from '../../data/constants.js'
 import { apiDeleteAccount } from '../../services/api.js'
 import { ReferralPanel } from '../referral/ReferralModal.jsx'
+import GeocachingModal from '../geocaching/GeocachingPanel.jsx'
+import Avatar from '../../components/Avatar.jsx'
 import { todayParis, countOwnedUnique } from '../../utils/gameUtils.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
 
@@ -52,12 +54,18 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
   const [showCardsInfo, setShowCardsInfo] = useState(false)
   const [buying,  setBuying]  = useState(null)   // 'bag' | 'pocket' pendant un achat d'agrandissement
   const [confirmBuy, setConfirmBuy] = useState(null)   // 'bag' | 'pocket' : confirmation Payer/Annuler ouverte
+  const [gcOpen,  setGcOpen]  = useState(false)  // popup « importer ma photo geocaching »
+  const pseudoInputRef = useRef(null)
 
   if (!profile) return null
 
   const lastChange = profile.pseudo_changed_at ? new Date(profile.pseudo_changed_at) : null
   const daysSince  = lastChange ? Math.floor((Date.now() - lastChange.getTime()) / 864e5) : 999
   const canChange  = daysSince >= PSEUDO_CHANGE_DAYS
+  // Profil geocaching vérifié → pseudo verrouillé (il doit rester identique au
+  // pseudo geocaching). Prime sur le délai de 30 jours.
+  const pseudoLocked = !!profile.geocaching_verified
+  const canChangeNow = canChange && !pseudoLocked
   const history    = profile.pseudo_history || []
   const score = scoreProp ?? 0
   const rank = getrank(score, ranks)
@@ -152,14 +160,16 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
 
           {/* Avatar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 20 }}>
-            <div style={{ width: 72, height: 72, borderRadius: '50%',
-              background: `linear-gradient(135deg,${c1},${c2})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 28, fontWeight: 900, color: '#fff', flexShrink: 0,
-              boxShadow: `0 0 24px ${c1}88, 0 4px 12px #0008`,
-              border: '3px solid #ffffff33' }}>
-              {profile.pseudo?.[0]?.toUpperCase() || '?'}
-            </div>
+            <Avatar
+              pseudo={profile.pseudo}
+              avatarUrl={profile.geocaching_avatar_url}
+              verified={profile.geocaching_verified}
+              size={72}
+              gradient={`linear-gradient(135deg,${c1},${c2})`}
+              glow={c1}
+              onAddPhoto={() => setGcOpen(true)}
+              addPhotoTitle={t('gc_add_photo')}
+            />
             <div>
               <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26,
                 textShadow: '0 2px 8px #0006', lineHeight: 1.1 }}>
@@ -215,6 +225,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
           <div style={cardHi}>
             <ReferralPanel theme={theme} />
           </div>
+
 
           {/* Progression de rang */}
           {(() => {
@@ -349,19 +360,22 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
           {/* Changer le pseudo */}
           <div style={card}>
             <div style={cardTitle}>✏️ {t('settings_title')}</div>
-            <div style={{ fontSize: 12, color: canChange ? '#00b894' : '#f39c12',
-              background: canChange ? '#00b89412' : '#f39c1212',
-              border: `1px solid ${canChange ? '#00b89433' : '#f39c1233'}`,
+            <div style={{ fontSize: 12,
+              color: pseudoLocked ? '#17a86a' : (canChange ? '#00b894' : '#f39c12'),
+              background: pseudoLocked ? '#17a86a12' : (canChange ? '#00b89412' : '#f39c1212'),
+              border: `1px solid ${pseudoLocked ? '#17a86a33' : (canChange ? '#00b89433' : '#f39c1233')}`,
               borderRadius: 9, padding: '7px 12px', marginBottom: 12, fontWeight: 700 }}>
-              {canChange ? '✅ Tu peux changer ton pseudo.' : `⏳ ${t('settings_wait').replace('{n}', PSEUDO_CHANGE_DAYS - daysSince)}`}
+              {pseudoLocked
+                ? `🔒 ${t('gc_pseudo_locked')}`
+                : (canChange ? '✅ Tu peux changer ton pseudo.' : `⏳ ${t('settings_wait').replace('{n}', PSEUDO_CHANGE_DAYS - daysSince)}`)}
             </div>
-            <input value={newP} onChange={e => setNewP(e.target.value)}
+            <input ref={pseudoInputRef} value={newP} onChange={e => setNewP(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && doChange()}
               placeholder={t('settings_new_pseudo')}
-              disabled={!canChange || changed || loading}
+              disabled={!canChangeNow || changed || loading}
               maxLength={20}
               style={{ ...INP, background: theme.bgInput, border: `1px solid ${theme.border}`, color: theme.textPrimary,
-                marginBottom: 10, opacity: (!canChange || changed) ? 0.5 : 1 }}/>
+                marginBottom: 10, opacity: (!canChangeNow || changed) ? 0.5 : 1 }}/>
             {msg.text && (
               <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, padding: '7px 12px',
                 borderRadius: 9, background: msg.ok ? '#00b89422' : '#e74c3c22',
@@ -370,10 +384,10 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
                 {msg.text}
               </div>
             )}
-            <button onClick={doChange} disabled={!canChange || changed || loading}
-              style={{ ...BTN(canChange && !changed ? 'linear-gradient(135deg,#6c5ce7,#a29bfe)' : '#333'),
+            <button onClick={doChange} disabled={!canChangeNow || changed || loading}
+              style={{ ...BTN(canChangeNow && !changed ? 'linear-gradient(135deg,#6c5ce7,#a29bfe)' : '#333'),
                 padding: '11px', borderRadius: 11, width: '100%', textAlign: 'center',
-                cursor: canChange && !changed ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}>
+                cursor: canChangeNow && !changed ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}>
               {loading ? '⏳' : t('settings_change_btn')}
             </button>
           </div>
@@ -425,6 +439,28 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
         </div>
 
       </div>
+
+      {gcOpen && (
+        <GeocachingModal
+          theme={theme}
+          gamePseudo={profile.pseudo}
+          canChangePseudo={canChange}
+          onRequestPseudoChange={() => {
+            setGcOpen(false)
+            setTimeout(() => {
+              pseudoInputRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+              pseudoInputRef.current?.focus?.()
+            }, 80)
+          }}
+          onVerified={(res) => auth.setProfile?.(p => p ? {
+            ...p,
+            geocaching_verified: true,
+            geocaching_username: res.username,
+            geocaching_avatar_url: res.avatar_url ?? null,
+          } : p)}
+          onClose={() => setGcOpen(false)}
+        />
+      )}
     </div>
   )
 }

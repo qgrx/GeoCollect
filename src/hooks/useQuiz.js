@@ -17,6 +17,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const [history,       setHistory]      = useState([])
   const [lostToWinner,  setLostToWinner] = useState(null)
   const [lostToGlory,   setLostToGlory]  = useState(false)
+  const [lostToAvatar,  setLostToAvatar] = useState(null)   // avatar geocaching du gagnant (→ remplace 🏆)
   const [quizKey,       setQuizKey]      = useState(0)
   // Durée du cycle (s) pour la barre de progression — suit l'intervalle dynamique serveur
   const [cycleSec,      setCycleSec]     = useState(limits?.quizInterval ?? QUIZ_INTERVAL)
@@ -346,7 +347,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     }
   }, [])
 
-  const handleQuizExpire = useCallback((npc, isBot = false, isGlory = false) => {
+  const handleQuizExpire = useCallback((npc, isBot = false, isGlory = false, winnerAvatar = null) => {
     const solvedAt = Date.now()
 
     if (!activeQuizRef.current) {
@@ -354,9 +355,11 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       if (pending) {
         setLostToWinner(npc)
         setLostToGlory(isGlory)
+        setLostToAvatar(winnerAvatar || null)
         setTimeout(() => {
           setLostToWinner(null)
           setLostToGlory(false)
+          setLostToAvatar(null)
           setPendingQuiz(currentPending => {
             if (currentPending && currentPending.id === pending.id) {
               setNextQuizTime(resolveNextQuizTime(solvedAt))
@@ -396,6 +399,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     quizKey, setQuizKey,
     lostToWinner, setLostToWinner,
     lostToGlory, setLostToGlory,
+    lostToAvatar, setLostToAvatar,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz,
     handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz,

@@ -9,7 +9,7 @@ import Logo from './components/Logo.jsx';
 
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
-import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
+import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, PSEUDO_CHANGE_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
 import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard } from './utils/gameUtils.js';
 import { isCorrectAnswer } from './utils/answer.js';
 
@@ -29,6 +29,8 @@ import CollectionOverview from './components/CollectionOverview.jsx';
 import CardDetailModal from './components/CardDetailModal.jsx';
 import OnboardingTour from './components/OnboardingTour.jsx';
 import PseudoDisplay from './components/PseudoDisplay.jsx';
+import Avatar from './components/Avatar.jsx';
+import GeocachingModal from './features/geocaching/GeocachingPanel.jsx';
 import { getRank, isTopRank, rankCC, getRankLabel } from './utils/rankUtils.js';
 import MaintenanceScreen from './components/MaintenanceScreen.jsx';
 import VolumeControl from './components/VolumeControl.jsx';
@@ -404,6 +406,7 @@ export default function App() {
         setQuizIsShiny(data.is_shiny || false)
         setLostToWinner(null)
         setLostToGlory(false)
+        setLostToAvatar(null)
         setStreakLeader(data.streak_leader || null)
         // Un quiz devient joignable → couper l'annonce « en feu » pour ne pas masquer « Participer »
         if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
@@ -441,7 +444,7 @@ export default function App() {
         // « gagné » tout de suite : handleJoin refuse alors de le rejoindre et la barre
         // ne propose plus « Participer » sur un quiz déjà gagné (robuste aux courses
         // avec quiz:new / au snooze).
-        if (data.quiz_id) setPendingQuiz(p => (p && p.id === data.quiz_id) ? { ...p, winner: data.winner || '?' } : p)
+        if (data.quiz_id) setPendingQuiz(p => (p && p.id === data.quiz_id) ? { ...p, winner: data.winner || '?', winner_avatar: data.winner_avatar || null } : p)
 
         // Mettre à jour le prochain quiz dès quiz:solved (sans attendre quiz:new).
         // applyServerSchedule fait primer l'horaire dynamique serveur sur le calcul local.
@@ -487,7 +490,7 @@ export default function App() {
           || winnersList.some(w => (w.id && w.id === myIdRef.current) || (w.pseudo && w.pseudo === myPseudoRef.current))
 
         if (!iSelf) {
-          handleQuizExpireRef.current(data.winner, data.is_bot)
+          handleQuizExpireRef.current(data.winner, data.is_bot, false, data.winner_avatar || null)
         } else if (activeQuizRef.current && activeQuizRef.current.id === data.quiz_id) {
           // J'ai gagné ce quiz côté serveur. Si la modale est encore ouverte (réponse
           // HTTP perdue / erreur), la fermer proprement plutôt que de laisser re-répondre.
@@ -767,6 +770,7 @@ export default function App() {
   const [showAuth,        setShowAuth]        = useState(false);
   const [showChoosePseudo, setShowChoosePseudo] = useState(false);
   const [showSettings,    setShowSettings]    = useState(false);
+  const [gcModalOpen,     setGcModalOpen]     = useState(false);
   const [showReferral,    setShowReferral]    = useState(false);
   const [showShop,        setShowShop]        = useState(false);
   const [shopPackId,      setShopPackId]       = useState(null);
@@ -1021,6 +1025,7 @@ export default function App() {
     history, setHistory, quizKey, setQuizKey,
     lostToWinner, setLostToWinner,
     lostToGlory, setLostToGlory,
+    lostToAvatar, setLostToAvatar,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
 
@@ -1126,7 +1131,7 @@ export default function App() {
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} revealAnswer={beginner.recap.answer} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
-      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
     // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
     // → barre floutée + message + timer. Dans les deux cas, interaction impossible.
     const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown
@@ -2033,9 +2038,11 @@ export default function App() {
                   <div data-tour="profile" style={{ background: dk.bgSurface, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden', flexShrink: 0, animation: 'fadeUp .4s .05s ease-out both', transition: 'border-color .4s' }}>
                     <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none', transition: 'background .4s' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: `linear-gradient(135deg,${c1},${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#fff', flexShrink: 0, boxShadow: `0 0 14px ${c1}44`, border: `2px solid ${c1}44`, transition: 'background .4s, box-shadow .4s' }}>
-                        {auth.profile.pseudo?.[0]?.toUpperCase() || '?'}
-                      </div>
+                      <Avatar pseudo={auth.profile.pseudo} avatarUrl={auth.profile.geocaching_avatar_url}
+                        verified={auth.profile.geocaching_verified} size={48}
+                        gradient={`linear-gradient(135deg,${c1},${c2})`} glow={c1}
+                        onAddPhoto={auth.isDemo ? null : () => setGcModalOpen(true)}
+                        addPhotoTitle={t('gc_add_photo')} />
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: dk.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           <PseudoDisplay pseudo={auth.profile.pseudo} score={userScore} ranks={gs.limits.playerRanks} style={{ color: dk.textPrimary }}/>
@@ -2877,6 +2884,24 @@ export default function App() {
         )
       })()}
 
+      {gcModalOpen && auth.profile && !auth.isDemo && (
+        <GeocachingModal
+          gamePseudo={auth.profile.pseudo}
+          canChangePseudo={(() => {
+            const lc = auth.profile.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at) : null
+            const days = lc ? Math.floor((Date.now() - lc.getTime()) / 864e5) : 999
+            return days >= PSEUDO_CHANGE_DAYS
+          })()}
+          onRequestPseudoChange={() => { setGcModalOpen(false); setShowSettings(true) }}
+          onVerified={(res) => auth.setProfile?.(p => p ? {
+            ...p,
+            geocaching_verified: true,
+            geocaching_username: res.username,
+            geocaching_avatar_url: res.avatar_url ?? null,
+          } : p)}
+          onClose={() => setGcModalOpen(false)}
+        />
+      )}
       {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} shinyCollection={gs.shinyCollection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} limits={gs.limits} score={userScore} onBuyPocketBoost={auth.isDemo ? null : handleBuyPocketBoost} onBuyBagSlot={auth.isDemo ? null : handleBuyBagSlot} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
       {showReferral && auth.profile && <ReferralModal onClose={() => setShowReferral(false)} />}
       {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0); setRevealPayment('') }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} initialPaymentLabel={revealPayment} />}

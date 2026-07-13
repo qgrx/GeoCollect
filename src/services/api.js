@@ -221,6 +221,8 @@ export const apiAdminDeleteType       = (type) => apiFetch(`/api/admin/cards/typ
 export const apiAdminDeleteCard       = (id)   => apiFetch(`/api/cards/${id}`, { method: 'DELETE' })
 export const apiGetReferral            = ()       => apiFetch('/api/referral/me')
 export const apiClaimReferral          = (code)   => apiFetch('/api/referral/claim', { method: 'POST', body: { code } })
+export const apiGetGeocaching          = ()        => apiFetch('/api/geocaching/me')
+export const apiVerifyGeocaching       = ()        => apiFetch('/api/geocaching/verify', { method: 'POST' })
 export const apiGetAchievements        = ()       => apiFetch('/api/achievements')
 export const apiGetDailyAchievements   = ()       => apiFetch('/api/achievements/daily')
 export const apiGetDailyQuests         = ()       => apiFetch('/api/quests/daily')
