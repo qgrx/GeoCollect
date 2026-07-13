@@ -55,9 +55,17 @@ export function GeocachingPanel({ theme, gamePseudo = '', canChangePseudo = fals
     inputBg: theme.bgInput, inputBorder: theme.border, inputText: theme.textPrimary, track: theme.overlayMd,
   } : DARK
 
+  // Extrait à coller, traduit côté client (le backend ne connaît pas la langue).
+  // La vérification ne teste que la présence du lien, jamais le texte → on peut
+  // le traduire librement. Repli sur l'extrait serveur si l'URL manque.
+  const refUrl = data.referral_url
+  const host = (() => { try { return new URL(refUrl).host } catch { return 'geocoins.fr' } })()
+  const snippetText = refUrl ? t('gc_snippet').replace('{link}', refUrl) : (data.snippet_text || '')
+  const snippetHtml = refUrl ? t('gc_snippet').replace('{link}', `<a href="${refUrl}">${host}</a>`) : (data.snippet_html || '')
+
   const copySnippet = async () => {
     try {
-      await navigator.clipboard.writeText(data.snippet_html || data.snippet_text || '')
+      await navigator.clipboard.writeText(snippetHtml || snippetText || '')
       setCopied(true); setTimeout(() => setCopied(false), 2000)
     } catch { /* presse-papiers indisponible */ }
   }
@@ -141,7 +149,7 @@ export function GeocachingPanel({ theme, gamePseudo = '', canChangePseudo = fals
       <div style={{ background: c.inputBg, border: `1px solid ${c.inputBorder}`, borderRadius: 10,
         color: c.inputText, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.45, marginBottom: 8,
         wordBreak: 'break-word' }}>
-        {data.snippet_text}
+        {snippetText}
       </div>
       <button onClick={copySnippet} style={{ width: '100%', background: 'linear-gradient(135deg,#00b894,#55efc4)',
         border: 'none', color: '#063', padding: '10px 16px', borderRadius: 10, whiteSpace: 'nowrap',
