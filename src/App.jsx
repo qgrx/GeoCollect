@@ -1945,9 +1945,11 @@ export default function App() {
         {/* Avatar — masqué en démo : on affiche barre de langue + « Se connecter » (comme non connecté) */}
         {auth.profile && !auth.isDemo ? (
           <div style={{ position: 'relative' }} ref={avatarMenuRef}>
-            <button onClick={() => setAvatarMenu(v => !v)} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: '2px solid #f9ca2444', cursor: 'pointer', fontSize: 13, fontWeight: 900, color: '#1a2538', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {auth.profile.pseudo[0].toUpperCase()}
-              {hasReleaseNotif && <span style={{ position: 'absolute', top: -2, left: -2, background: '#6c5ce7', borderRadius: '50%', width: 10, height: 10, border: `1.5px solid ${theme.badgeBorder}`, boxShadow: '0 0 6px #6c5ce7' }} />}
+            <button onClick={() => setAvatarMenu(v => !v)} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}>
+              <Avatar pseudo={auth.profile.pseudo} avatarUrl={auth.profile.geocaching_avatar_url}
+                verified={auth.profile.geocaching_verified} size={34}
+                gradient="linear-gradient(135deg,#f9ca24,#e17055)" />
+              {hasReleaseNotif && <span style={{ position: 'absolute', top: -2, left: -2, background: '#6c5ce7', borderRadius: '50%', width: 10, height: 10, border: `1.5px solid ${theme.badgeBorder}`, boxShadow: '0 0 6px #6c5ce7', zIndex: 1 }} />}
             </button>
             {avatarMenu && (
               <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 12, boxShadow: '0 16px 48px #000d', zIndex: 99999, minWidth: 200, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
