@@ -44,7 +44,7 @@ export default function Avatar({
       {/* Icône photo : proposer d'importer OU de ré-importer (photo changée) — donc
           affichée même une fois vérifié. */}
       {onAddPhoto && (
-        <button onClick={onAddPhoto} title={addPhotoTitle} aria-label={addPhotoTitle}
+        <button onClick={(e) => { e.stopPropagation(); onAddPhoto(e) }} title={addPhotoTitle} aria-label={addPhotoTitle}
           style={{
             position: 'absolute', right: -4, bottom: -4, width: badge + 8, height: badge + 8,
             borderRadius: '50%', background: 'linear-gradient(135deg,#02874D,#17a86a)',

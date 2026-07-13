@@ -2039,11 +2039,14 @@ export default function App() {
                 return (
                   <div data-tour="profile" style={{ background: dk.bgSurface, borderRadius: 14, padding: '14px 16px', border: `1px solid ${c1}66`, position: 'relative', overflow: 'hidden', flexShrink: 0, animation: 'fadeUp .4s .05s ease-out both', transition: 'border-color .4s' }}>
                     <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${c1}14`, pointerEvents: 'none', transition: 'background .4s' }} />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <div onClick={auth.isDemo ? undefined : () => setShowSettings(true)}
+                      title={auth.isDemo ? undefined : (t('menu_account') || 'Mon compte')}
+                      style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
+                        cursor: auth.isDemo ? 'default' : 'pointer' }}>
                       <Avatar pseudo={auth.profile.pseudo} avatarUrl={auth.profile.geocaching_avatar_url}
                         verified={auth.profile.geocaching_verified} size={48}
                         gradient={`linear-gradient(135deg,${c1},${c2})`} glow={c1}
-                        onAddPhoto={auth.isDemo ? null : () => setGcModalOpen(true)}
+                        onAddPhoto={auth.isDemo || auth.profile.geocaching_verified ? null : () => setGcModalOpen(true)}
                         addPhotoTitle={t('gc_add_photo')} />
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: dk.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
