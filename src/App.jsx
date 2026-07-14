@@ -1629,7 +1629,13 @@ export default function App() {
   }
 
   // ── Derived display state ─────────────────────────────────────────────────
-  const types = ['Tous', ...new Set(gs.cardPool.filter(c => c.type !== 'Achievement').map(c => c.type).filter(Boolean))];
+  // Brouillons (hidden) : l'ADMIN les reçoit dans cardPool pour la gestion, mais
+  // ils ne doivent JAMAIS entrer dans l'affichage joueur (grille, onglets, totaux).
+  // Sans ce filtre, les variantes d'un achievement en brouillon (déf. masquée de
+  // /api/achievements → jamais repliée par evolutiveHiddenIds) gonflent le total
+  // de l'onglet Achievements (ex. 14 affichés pour 10 publiés).
+  const publicCardPool = useMemo(() => gs.cardPool.filter(c => !c.hidden), [gs.cardPool]);
+  const types = ['Tous', ...new Set(publicCardPool.filter(c => c.type !== 'Achievement').map(c => c.type).filter(Boolean))];
   // Démo : cardPool ne contient que le type jouable. On affiche TOUS les vrais types
   // (vrais totaux fournis par le backend) ; seuls les types présents dans la démo sont
   // consultables, les autres invitent à se connecter.
@@ -1668,8 +1674,8 @@ export default function App() {
     return hide
   }, [gs.achievementProgress])
   const visibleCardPool = useMemo(
-    () => gs.cardPool.filter(c => !evolutiveHiddenIds.has(c.id)),
-    [gs.cardPool, evolutiveHiddenIds]
+    () => publicCardPool.filter(c => !evolutiveHiddenIds.has(c.id)),
+    [publicCardPool, evolutiveHiddenIds]
   )
 
   const typeTabs = useMemo(() => {
@@ -1712,14 +1718,14 @@ export default function App() {
     if (showShiny) {
       const shinyList = Object.entries(gs.shinyCollection || {})
         .filter(([, n]) => n > 0)
-        .map(([id, n]) => ({ card: gs.cardPool.find(c => c.id === +id), count: n, isShiny: true, missing: false }))
+        .map(([id, n]) => ({ card: publicCardPool.find(c => c.id === +id), count: n, isShiny: true, missing: false }))
         .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
       // Si showMissing (ou vue d'ensemble) actif en mode shiny : montrer aussi les cartes possédées sans shiny
       if (showMissing || collViewAll) {
         const shinyIds = new Set(shinyList.map(x => x.card.id))
         const nonShiny = Object.entries(gs.collection)
           .filter(([id, v]) => v > 0 && !shinyIds.has(+id))
-          .map(([id]) => ({ card: gs.cardPool.find(c => c.id === +id), count: 0, isShiny: false, missing: true }))
+          .map(([id]) => ({ card: publicCardPool.find(c => c.id === +id), count: 0, isShiny: false, missing: true }))
           .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
         return [...shinyList, ...nonShiny].sort(sortFn)
       }
@@ -1737,7 +1743,7 @@ export default function App() {
     } else {
       normalList = Object.entries(gs.collection)
         .filter(([, v]) => v > 0)
-        .map(([id, cnt]) => ({ card: gs.cardPool.find(c => c.id === +id), cnt, missing: false }))
+        .map(([id, cnt]) => ({ card: publicCardPool.find(c => c.id === +id), cnt, missing: false }))
         .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
 
       // Sur l'onglet "Achievements" uniquement, afficher aussi les manquants
@@ -1751,7 +1757,7 @@ export default function App() {
       }
     }
     return normalList.sort(sortFn)
-  }, [showMissing, collViewAll, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, gs.cardPool, visibleCardPool, gs.shinyCollection]);
+  }, [showMissing, collViewAll, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, publicCardPool, visibleCardPool, gs.shinyCollection]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0
   const pseudoChanged   = pseudoChangedAt > 0 && (Date.now() - pseudoChangedAt) < PSEUDO_NOTIF_DAYS * 864e5
@@ -2031,7 +2037,7 @@ export default function App() {
                 const sortedRanks = scoreReady ? [...(gs.limits.playerRanks || DEFAULT_RANKS)].sort((a, b) => a.min - b.min) : []
                 const nextRank = scoreReady ? sortedRanks.find(r => r.min > userScore) : null
                 const pct      = scoreReady ? (nextRank ? Math.min(100, Math.round((userScore / nextRank.min) * 100)) : 100) : 0
-                const nonAchievementIds = new Set(gs.cardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement').map(c => String(c.id)))
+                const nonAchievementIds = new Set(publicCardPool.filter(c => c.rarity !== 'achievement' && c.type !== 'Achievement').map(c => String(c.id)))
                 const shinyCards  = gs.collectionLoaded ? Object.keys(gs.shinyCollection || {}).filter(k => (gs.shinyCollection[k] || 0) > 0 && nonAchievementIds.has(k)).length : null
                 // Total de geocoins possédés (cartes achievement incluses) —
                 // cohérent avec le card_count affiché dans le classement.
