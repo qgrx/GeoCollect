@@ -207,9 +207,9 @@ export default function TresorPage({ dailyOffer, onClaim, onReveal, cardPool = [
           const renderSlot = (h, rented, key, boughtPrice = null) => {
             const accent = rented ? { c1: RENT_C1, c2: RENT_C2 } : null
             const slotNote = rented
-              ? <div style={{ fontSize: 8.5, color: RENT_C1, fontWeight: 800, textAlign: 'center', whiteSpace: 'nowrap' }}>✓ {t('hold_slot_rented_note').replace('{price}', holdRentPrice)}</div>
+              ? <div style={{ fontSize: 8.5, color: RENT_C1, fontWeight: 800, textAlign: 'center', width: '100%', lineHeight: 1.15 }}>✓ {t('hold_slot_rented_note').replace('{price}', holdRentPrice)}</div>
               : boughtPrice > 0
-                ? <div style={{ fontSize: 8.5, color: theme.gold, fontWeight: 800, textAlign: 'center', whiteSpace: 'nowrap' }}>✓ {t('hold_slot_bought_note').replace('{price}', boughtPrice)}</div>
+                ? <div style={{ fontSize: 8.5, color: theme.gold, fontWeight: 800, textAlign: 'center', width: '100%', lineHeight: 1.15 }}>✓ {t('hold_slot_bought_note').replace('{price}', boughtPrice)}</div>
                 : null
             if (!h) {
               const c1 = rented ? RENT_C1 : theme.border
