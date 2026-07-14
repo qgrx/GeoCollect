@@ -43,7 +43,9 @@ function memberSince(dateStr) {
 // ─── SettingsModal ────────────────────────────────────────────────────────────
 export default function SettingsModal({ auth, collection = {}, shinyCollection = {}, cardPool = [], ranks = [], limits = {}, score: scoreProp, onBuyPocketBoost = null, onBuyBagSlot = null, onClose, onStartTour }) {
   // Succès = nombre de geocoins d'achievement possédés (variantes évolutives incluses).
-  const achievementsOwned = (cardPool || []).filter(c => (c.type || '').toLowerCase().startsWith('achievement') && (collection[c.id] || 0) > 0).length
+  // On exclut les brouillons (hidden) : l'admin charge le pool COMPLET, donc sans ce
+  // garde son compteur inclurait les geocoins non publiés (14 au lieu de 10).
+  const achievementsOwned = (cardPool || []).filter(c => !c.hidden && (c.type || '').toLowerCase().startsWith('achievement') && (collection[c.id] || 0) > 0).length
   const { t, lang } = useT()
   const { theme } = useTheme()
   const { profile } = auth
