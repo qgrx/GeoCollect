@@ -3,8 +3,10 @@
  *  - Si le profil geocaching est vérifié ET a une photo → affiche la photo,
  *    entourée d'un liseré vert + petit badge geocaching « vérifié ».
  *  - Sinon → initiale du pseudo sur dégradé (repli si la photo ne charge pas).
- *  - onAddPhoto (avatar du joueur uniquement) : petite icône 📷 sur un avatar
- *    non vérifié, invitant à importer sa photo de profil geocaching.
+ *  - onAddPhoto (avatar du joueur uniquement) : petite icône 📷 invitant à
+ *    importer sa photo de profil geocaching. Masquée dès que le compte est
+ *    vérifié, SAUF si forcePhoto est vrai (popup « Mon compte », pour
+ *    ré-importer une photo).
  */
 import { useState } from 'react'
 import GeocachingBadge from './GeocachingBadge.jsx'
@@ -12,7 +14,7 @@ import GeocachingBadge from './GeocachingBadge.jsx'
 export default function Avatar({
   pseudo, avatarUrl = null, verified = false, size = 48,
   gradient = 'linear-gradient(135deg,#6c5ce7,#a29bfe)', glow = null,
-  onAddPhoto = null, addPhotoTitle = '', style = {},
+  onAddPhoto = null, addPhotoTitle = '', forcePhoto = false, style = {},
 }) {
   const [imgError, setImgError] = useState(false)
   const letter = (pseudo || '?')[0]?.toUpperCase() || '?'
@@ -41,9 +43,9 @@ export default function Avatar({
         </span>
       )}
 
-      {/* Icône photo : proposer d'importer OU de ré-importer (photo changée) — donc
-          affichée même une fois vérifié. */}
-      {onAddPhoto && (
+      {/* Icône photo : masquée dès que le compte est vérifié, sauf forcePhoto
+          (popup « Mon compte », pour ré-importer une photo). */}
+      {onAddPhoto && (forcePhoto || !verified) && (
         <button onClick={(e) => { e.stopPropagation(); onAddPhoto(e) }} title={addPhotoTitle} aria-label={addPhotoTitle}
           style={{
             position: 'absolute', right: -4, bottom: -4, width: badge + 8, height: badge + 8,

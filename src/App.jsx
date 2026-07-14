@@ -2046,7 +2046,7 @@ export default function App() {
                       <Avatar pseudo={auth.profile.pseudo} avatarUrl={auth.profile.geocaching_avatar_url}
                         verified={auth.profile.geocaching_verified} size={48}
                         gradient={`linear-gradient(135deg,${c1},${c2})`} glow={c1}
-                        onAddPhoto={auth.isDemo || auth.profile.geocaching_verified ? null : () => setGcModalOpen(true)}
+                        onAddPhoto={auth.isDemo ? null : () => setGcModalOpen(true)}
                         addPhotoTitle={t('gc_add_photo')} />
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: dk.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

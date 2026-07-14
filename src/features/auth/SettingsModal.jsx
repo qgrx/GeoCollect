@@ -171,6 +171,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
               glow={c1}
               onAddPhoto={() => setGcOpen(true)}
               addPhotoTitle={t('gc_add_photo')}
+              forcePhoto
             />
             <div>
               <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 26,
