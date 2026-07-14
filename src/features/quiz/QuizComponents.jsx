@@ -823,6 +823,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
               cursor: hasPendingQuiz?'pointer':'default',
               flexShrink: 0,
               whiteSpace: 'nowrap',
+              touchAction: 'manipulation',
               transition: 'all .4s cubic-bezier(.34,1.56,.64,1)',
               animation: hasPendingQuiz?'joinPulse 1.8s ease-in-out infinite':'none',
             }}>

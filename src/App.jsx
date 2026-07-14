@@ -3,7 +3,7 @@ import { useTheme } from './ThemeContext.jsx';
 import { THEMES } from './theme.js';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
-import { useT, setLang, LANGS, getLang } from './i18n/translations.js'
+import { useT, setLang, LANGS, getLang, TRANSLATIONS } from './i18n/translations.js'
 import LangSelector from './i18n/LangSelector.jsx';
 import Logo from './components/Logo.jsx';
 
@@ -338,9 +338,14 @@ export default function App() {
     if (auth.isDemo) return    // démo : pas de quiz global (parcours solo injecté)
 
     let socket
-    // Pull initial : récupérer le quiz en cours pour aligner le countdown
-    apiGetCurrentQuiz().then(({ data }) => {
+    // Pull « quiz courant » : au montage ET au retour d'onglet après une longue absence
+    // (mobile : quiz:new / quiz:solved perdus pendant la suspension de l'onglet, même
+    // quand le socket se croit encore connecté → bandeau figé jusqu'au rechargement).
+    const syncCurrentQuiz = () => apiGetCurrentQuiz().then(({ data }) => {
       if (!data) return
+      // Plus de quiz actif côté serveur : purger un éventuel quiz en attente périmé
+      // (round résolu pendant la suspension → sinon « Participer » sur un quiz mort).
+      if (!data.quiz) setPendingQuiz(p => (p && !p.winner ? null : p))
       const cycleTime = gs.limits?.quizInterval ?? QUIZ_INTERVAL
 
       // Calcul du countdown à partir de next_quiz_at (nouvelle API)
@@ -381,6 +386,17 @@ export default function App() {
         setQuizSessionActive(true)
       }
     }).catch(() => {})
+    syncCurrentQuiz()
+
+    // Retour au premier plan après > 60 s d'absence : resync immédiat du quiz courant
+    // (complète le kill des sockets zombies dans services/socket.js).
+    let hiddenAt = null
+    const onVisResync = () => {
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return }
+      if (hiddenAt && Date.now() - hiddenAt > 60_000) syncCurrentQuiz()
+      hiddenAt = null
+    }
+    document.addEventListener('visibilitychange', onVisResync)
 
     getSocket().then(s => {
       if (!s) return  // API non configurée
@@ -703,6 +719,7 @@ export default function App() {
     })
 
     return () => {
+      document.removeEventListener('visibilitychange', onVisResync)
       socket?.off('quiz:new')
       socket?.off('quiz:solved')
       socket?.off('quiz:prize_won')
@@ -813,6 +830,9 @@ export default function App() {
   const [showTour, setShowTour] = useState(false);
   const [avatarMenu, setAvatarMenu] = useState(false);
   const avatarMenuRef = useRef(null);
+  // Anti tap-through (iOS) : le menu s'ouvre PAR-DESSUS le bouton « Participer » ;
+  // un 2e tap trop rapide (destiné au bouton dessous) ne doit rien déclencher.
+  const avatarMenuOpenedAtRef = useRef(0);
   const [welcomeCards, setWelcomeCards] = useState([]);
   // Onboarding : null | 'pseudo' | 'gift' | 'card' | 'tour'
   const [onboardingStep, setOnboardingStep] = useState(null);
@@ -1948,26 +1968,38 @@ export default function App() {
 
         {/* Theme toggle — connecté uniquement (pas en démo : header type « non connecté ») */}
         {auth.profile && !auth.isDemo && <button onClick={toggle} title={mode === 'dark' ? 'Mode clair' : 'Mode sombre'}
-          style={{ background: 'none', border: `1px solid ${theme.headerMuted}44`, color: theme.headerMuted, width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          style={{ background: 'none', border: `1px solid ${theme.headerMuted}44`, color: theme.headerMuted, width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, touchAction: 'manipulation' }}>
           {mode === 'dark' ? '☀️' : '🌙'}
         </button>}
 
         {/* Avatar — masqué en démo : on affiche barre de langue + « Se connecter » (comme non connecté) */}
         {auth.profile && !auth.isDemo ? (
           <div style={{ position: 'relative' }} ref={avatarMenuRef}>
-            <button onClick={() => setAvatarMenu(v => !v)} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}>
+            <button onClick={() => setAvatarMenu(v => { if (!v) avatarMenuOpenedAtRef.current = Date.now(); return !v })} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0, touchAction: 'manipulation' }}>
               <Avatar pseudo={auth.profile.pseudo} avatarUrl={auth.profile.geocaching_avatar_url}
                 verified={auth.profile.geocaching_verified} size={34}
                 gradient="linear-gradient(135deg,#f9ca24,#e17055)" />
               {hasReleaseNotif && <span style={{ position: 'absolute', top: -2, left: -2, background: '#6c5ce7', borderRadius: '50%', width: 10, height: 10, border: `1.5px solid ${theme.badgeBorder}`, boxShadow: '0 0 6px #6c5ce7', zIndex: 1 }} />}
             </button>
             {avatarMenu && (
-              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 12, boxShadow: '0 16px 48px #000d', zIndex: 99999, minWidth: 200, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
+              <div
+                // Anti tap-through iOS : le menu recouvre la zone du bouton « Participer » ;
+                // un tap dans les ~400 ms suivant l'ouverture visait très probablement ce qui
+                // était affiché dessous (avatar touché par erreur) → on l'ignore.
+                onClickCapture={e => { if (Date.now() - avatarMenuOpenedAtRef.current < 400) { e.preventDefault(); e.stopPropagation() } }}
+                style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 12, boxShadow: '0 16px 48px #000d', zIndex: 99999, minWidth: 200, overflow: 'hidden', fontFamily: "'Nunito',sans-serif" }}>
                 <div style={{ padding: '8px 10px 6px', borderBottom: `1px solid ${theme.borderLight}` }}>
                   <div style={{ fontSize: 9, color: theme.textSecondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 5, paddingLeft: 4 }}>{t('menu_language')}</div>
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     {Object.entries(LANGS).map(([code, label]) => (
-                      <button key={code} onClick={() => setLang(code)} style={{ background: lang === code ? '#f9ca2420' : theme.bgElevated, border: lang === code ? '1px solid #f9ca2444' : `1px solid ${theme.border}`, color: lang === code ? '#f9ca24' : theme.textSecondary, padding: '3px 9px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>{label}</button>
+                      <button key={code} onClick={() => {
+                        if (code === lang) return
+                        setLang(code)
+                        setAvatarMenu(false)
+                        // Toast dans la NOUVELLE langue : rend visible un changement accidentel
+                        // (tap raté sur « Participer ») et confirme le changement volontaire.
+                        showToast((TRANSLATIONS[code]?.toast_lang_changed || '🌐 Langue : {lang}').replace('{lang}', label))
+                      }} style={{ background: lang === code ? '#f9ca2420' : theme.bgElevated, border: lang === code ? '1px solid #f9ca2444' : `1px solid ${theme.border}`, color: lang === code ? '#f9ca24' : theme.textSecondary, padding: '3px 9px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 11, cursor: 'pointer', touchAction: 'manipulation' }}>{label}</button>
                     ))}
                   </div>
                 </div>

@@ -68,10 +68,21 @@ export function disconnectSocket() {
 // Retour d'arrière-plan (surtout mobile : l'OS suspend souvent le WebSocket sans que
 // socket.io le détecte tout de suite) → relancer la connexion sans attendre le timeout
 // de ping, pour retrouver le temps réel immédiatement.
+// ⚠️ Après une longue suspension (iOS), le socket se déclare souvent encore
+// « connected » alors que la connexion est morte (zombie, jusqu'à ~45 s de ping
+// timeout) : les quiz:new n'arrivent plus et le bandeau reste figé jusqu'à un
+// rechargement manuel. → On force un cycle disconnect/connect dans ce cas.
 if (typeof document !== 'undefined') {
+  let hiddenAt = null
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && _socket && !_socket.connected) {
+    if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return }
+    if (!_socket) { hiddenAt = null; return }
+    if (!_socket.connected) {
+      _socket.connect()
+    } else if (hiddenAt && Date.now() - hiddenAt > 45_000) {
+      _socket.disconnect()
       _socket.connect()
     }
+    hiddenAt = null
   })
 }
