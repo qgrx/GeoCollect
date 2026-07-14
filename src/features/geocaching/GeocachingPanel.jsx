@@ -106,7 +106,6 @@ export function GeocachingPanel({ theme, gamePseudo = '', canChangePseudo = fals
         <Title />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5,
           color: '#17a86a', fontWeight: 800, marginBottom: 14 }}>
-          <GeocachingBadge size={16} />
           {t('gc_verified_as').replace('{u}', data.username || '')}
         </div>
 
