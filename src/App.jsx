@@ -213,6 +213,10 @@ const buildDemoHistory = (pseudos, tribute, n = 8) => {
 
 export default function App() {
   const { t, lang } = useT();
+  // Réf. toujours à jour de `t` : l'effet socket est monté une seule fois (deps
+  // [profile.id]) et fige sinon la langue au moment du login → toasts non traduits
+  // après un changement de langue (ex. « X a répondu pour la gloire »).
+  const tRef = useRef(t); tRef.current = t
   const { theme, mode, toggle } = useTheme();
 
   // ── Game state (all logic lives in the hook) ───────────────────────────────
@@ -234,7 +238,7 @@ export default function App() {
     const type = params.get('type')
     if (type === 'signup') {
       window.history.replaceState({}, '', window.location.pathname)
-      setTimeout(() => showToast('✅ Email confirmé ! Bienvenue 🎉'), 500)
+      setTimeout(() => showToast(t('email_confirmed')), 500)
     }
   }, [])
 
@@ -572,7 +576,7 @@ export default function App() {
         // Toast « X a décroché un geocoin — encore Ns ! » — tu en mode Entraînement (notif PvP).
         if (!beginnerActiveRef.current) {
           const secLeft = graceDeadline ? Math.max(1, Math.ceil((graceDeadline - Date.now()) / 1000)) : (data.prizes_remaining || 1)
-          showToast(t('quiz_prize_taken_toast').replace('{pseudo}', data.winner || '?').replace('{n}', secLeft))
+          showToast(tRef.current('quiz_prize_taken_toast').replace('{pseudo}', data.winner || '?').replace('{n}', secLeft))
         }
 
         // « En feu » : seul le 1er gagnant (prize_index 0) porte la série → MAJ leader (handicap)
@@ -608,7 +612,7 @@ export default function App() {
           setPendingQuiz(patch)
         }
         if (!iSelf && data.winner && !beginnerActiveRef.current) {
-          showToast(t('toast_glory_other').replace('{pseudo}', data.winner))
+          showToast(tRef.current('toast_glory_other').replace('{pseudo}', data.winner))
         }
       })
 
@@ -668,13 +672,13 @@ export default function App() {
       // Publication groupée de cartes (admin) → recharge le pool en temps réel
       s.on('cards:released', () => {
         gs.reloadCards?.()
-        showToast(t('new_cards_released'), 'success')
+        showToast(tRef.current('new_cards_released'), 'success')
       })
 
       // Publication groupée d'achievements (admin) → recharge les achievements
       s.on('achievements:released', () => {
         gs.refreshAchievements?.()
-        showToast(t('new_achievements_released'), 'success')
+        showToast(tRef.current('new_achievements_released'), 'success')
       })
 
       s.on('connect',    () => {
@@ -1211,7 +1215,7 @@ export default function App() {
   // ── Market actions with toasts ─────────────────────────────────────────────
   function handleBuy(listing, index) {
     const res = gs.handleBuy(listing, index);
-    if (res === 'insufficient') { showToast('Pas assez d\'or ! 💸', 'error'); return; }
+    if (res === 'insufficient') { showToast(t('toast_not_enough_gold'), 'error'); return; }
     showToast(t('toast_bought').replace('{card}', listing.card.name).replace('{price}', listing.price));
   }
   async function handleListCard(card, price) {
@@ -1241,7 +1245,7 @@ export default function App() {
   function handleCancelAllListings() {
     if (!window.confirm("Êtes-vous sûr de vouloir retirer toutes vos annonces ?")) return;
     gs.handleCancelAllListings();
-    showToast("Toutes vos annonces ont été retirées !");
+    showToast(t('toast_all_listings_removed'));
   }
   // ── Réclamer la carte du jour ────────────────────────────────────────────────
   async function handleClaimDaily() {
