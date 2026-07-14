@@ -33,6 +33,13 @@ const guestPseudo = () => {
   return GUEST_PSEUDO[l] || GUEST_PSEUDO.fr
 }
 
+// La base stocke la vérification geocaching dans `geocaching_verified_at`
+// (timestamp, NULL = non vérifié) — il n'y a pas de booléen `geocaching_verified`.
+// On le dérive ici pour tout le front (badge « vérifié », icône photo, etc.).
+const normalizeProfile = (p) => p
+  ? { ...p, geocaching_verified: p.geocaching_verified ?? Boolean(p.geocaching_verified_at) }
+  : p
+
 // ─── Hook unique — branch au runtime, pas au niveau hook ──────────────────────
 export function useAuth() {
   const [user,    setUser]    = useState(null)
@@ -61,12 +68,12 @@ export function useAuth() {
       await new Promise(r => setTimeout(r, 800))
       const { data: created } = await supabase
         .from('profiles').select('*').eq('id', supaUser.id).single()
-      if (mounted.current) setProfile(created ?? makeFallback())
+      if (mounted.current) setProfile(normalizeProfile(created) ?? makeFallback())
     } else if (error) {
       console.warn('[Auth] profile error, creating fallback:', error.message)
       if (mounted.current) setProfile(makeFallback())
     } else {
-      if (mounted.current) setProfile(data ?? null)
+      if (mounted.current) setProfile(normalizeProfile(data) ?? null)
     }
   }, [])
 
@@ -200,7 +207,7 @@ export function useAuth() {
       .eq('id', user.id)
       .select().single()
 
-    if (!error && mounted.current) setProfile(data)
+    if (!error && mounted.current) setProfile(normalizeProfile(data))
     return { error }
   }, [user, profile])
 
