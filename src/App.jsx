@@ -537,16 +537,18 @@ export default function App() {
         if (data.multi && winnersList.length) {
           const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
-          const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           const winnerPseudos = winnersList.map(w => w.pseudo)
           const entry = {
             card: fullCard,
             winner: winnerPseudos[0] || null,
+            winner_avatar: winnersList[0]?.avatar || data.winner_avatar || null,
             won: iSelf,
             isBot: !!winnersList[0]?.is_bot,
             isShiny: data.is_shiny || false,
             winners: winnerPseudos,          // liste complète des gagnants du round multi-prix
-            glory_winners: gloryPseudos,
+            // …et la même liste avec avatars pour la fiche « Gagnants »
+            winners_full: winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot })),
+            glory_winners: gloryFull || [],
             quiz_id: data.quiz_id,
           }
           setHistory(h => {
@@ -561,18 +563,16 @@ export default function App() {
         } else if (data.winner && !iSelf) {
           const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
-          const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           setHistory(h => {
             if (data.quiz_id && h.some(e => e.quiz_id === data.quiz_id)) return h
-            return [{ card: fullCard, winner: data.winner, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryPseudos, quiz_id: data.quiz_id }, ...h].slice(0, 10)
+            return [{ card: fullCard, winner: data.winner, winner_avatar: data.winner_avatar || null, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryFull || [], quiz_id: data.quiz_id }, ...h].slice(0, 10)
           })
         } else if (iSelf && (data.glory_winners || []).length > 0) {
           // Le gagnant lui-même : useQuiz ajoute l'entrée → on la patch avec les glory_winners
-          const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           setHistory(h => {
             const idx = h.findIndex(e => e.won && (data.quiz_id ? e.quiz_id === data.quiz_id : e.card?.name === data.card_name))
             if (idx < 0) return h
-            return [...h.slice(0, idx), { ...h[idx], glory_winners: gloryPseudos }, ...h.slice(idx + 1)]
+            return [...h.slice(0, idx), { ...h[idx], glory_winners: gloryFull || [] }, ...h.slice(idx + 1)]
           })
         }
       })
@@ -648,15 +648,16 @@ export default function App() {
       // Quiz — expiré sans réponse
       s.on('quiz:expired', (data) => {
         setQuizSessionActive(false)
+        // Joueurs « pour la gloire » avec avatars (fiche « Gagnants » + bannière).
+        const gloryFull = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold }))
         // Geocoin joué « pour la gloire » mais que personne n'a remporté → l'ajouter au strip
         // des derniers geocoins disputés (winner null, glory_winners renseignés).
-        if ((data.glory_winners || []).length > 0 && data.card_name) {
+        if (gloryFull.length > 0 && data.card_name) {
           const fullCard = cardPoolRef.current?.find(c => c.id === data.card_id || c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: data.card_id || 0 }
-          const gloryPseudos = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
           setHistory(h => {
             if (data.quiz_id && h.some(e => e.quiz_id === data.quiz_id)) return h
-            return [{ card: fullCard, winner: null, won: false, isBot: false, isShiny: data.is_shiny || false, glory_only: true, glory_winners: gloryPseudos, quiz_id: data.quiz_id }, ...h].slice(0, 10)
+            return [{ card: fullCard, winner: null, won: false, isBot: false, isShiny: data.is_shiny || false, glory_only: true, glory_winners: gloryFull, quiz_id: data.quiz_id }, ...h].slice(0, 10)
           })
         }
         if (data.next_quiz_at && data.server_time) {
@@ -667,7 +668,6 @@ export default function App() {
         if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
         // Personne n'a raflé le geocoin ; s'il a été joué pour la gloire, féliciter TOUS
         // les gagnants-gloire dans la barre (« ont joué pour la gloire » + ⓘ), pas « a remporté ».
-        const gloryFull = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold }))
         handleQuizExpireRef.current(gloryFull[0]?.pseudo || null, false, true, gloryFull[0]?.avatar || null,
           gloryFull.length > 1 ? gloryFull : null)
       })
@@ -2205,7 +2205,11 @@ export default function App() {
                           // (sinon, en multi-prix AVEC gloire, les joueurs-gloire n'apparaissaient pas).
                           if (multiWinners || hasGlory) {
                             const gloryArr = hasGlory ? h.glory_winners : [];
-                            const realArr = multiWinners ? multiWinners : (h.winner ? [h.winner] : []);
+                            // Gagnants réels avec avatars ({pseudo, avatar}) si disponibles (winners_full /
+                            // winner_avatar) ; repli sur les pseudos seuls (anciennes entrées).
+                            const realArr = multiWinners
+                              ? (Array.isArray(h.winners_full) && h.winners_full.length ? h.winners_full : multiWinners)
+                              : (h.winner ? [{ pseudo: h.winner, avatar: h.winner_avatar || null }] : []);
                             setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: [...gloryArr, ...realArr], gloryCount: gloryArr.length });
                             return;
                           }

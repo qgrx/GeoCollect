@@ -22,6 +22,15 @@ const SNOOZE_OPTIONS = [
 // « X, Y & Z » — liste de pseudos jointe, neutre pour toutes les langues.
 const joinNames = a => a.length <= 1 ? (a[0] || '') : `${a.slice(0, -1).join(', ')} & ${a[a.length - 1]}`;
 
+// Ordinal localisé (« 1er / 2e », « 1st / 2nd », « 1. », « 1º ») pour le badge de rang.
+const ordinal = n => {
+  const l = getLang();
+  if (l === 'en') return n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;
+  if (l === 'de') return `${n}.`;
+  if (l === 'es') return `${n}º`;
+  return n === 1 ? '1er' : `${n}e`;
+};
+
 // Ligne « Pour la gloire : X, Y » — mini avatars + pseudos, affichée en plus petit
 // sous le(s) gagnant(s) du round (modale de quiz et popup « Trop tard »).
 function GloryRow({ glory, color = '#e9a8a8' }) {
@@ -1308,20 +1317,24 @@ export function GameRulesModal({ onClose }) {
   );
 }
 
-// ─── Liste des gagnants d'une manche (Entraînement ou PVP avec gloire) ───────
+// ─── Liste des gagnants d'une manche (Entraînement ou PVP) ───────────────────
 // Carte CLAIRE (couleurs explicites, indépendantes du thème) pour une lecture nette.
-// gloryCount > 0 : les N premiers sont des glory winners, le dernier est le vrai gagnant.
+// gloryCount > 0 : les N premiers sont des glory winners, les suivants les vrais gagnants.
+// Affichage HOMOGÈNE quel que soit le mode : avatar (photo de profil geocaching ou
+// initiale) + pseudo + badge de rang « 🏆 1er / 2e / 3e » (or / argent / bronze).
 export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClose }) {
   const { t } = useT();
   const RANK = ['#f59e0b', '#9aa6b2', '#b45309'];   // or / argent / bronze
   // winners.length === gloryCount : joué pour la gloire, personne n'a remporté le geocoin.
   const hasGlory = gloryCount > 0 && winners.length >= gloryCount;
   // Après les glory winners peuvent venir PLUSIEURS gagnants réels (round multi-prix).
-  const realWinners = winners.length > gloryCount ? winners.slice(gloryCount) : [];
+  const realWinners = hasGlory ? (winners.length > gloryCount ? winners.slice(gloryCount) : []) : winners;
   const gloryList  = hasGlory ? winners.slice(0, gloryCount) : [];
-  // Chaque gagnant peut être un pseudo (string) ou { pseudo, hold } — gloire (🎖️) vs dépôt (📥).
+  // Chaque gagnant peut être un pseudo (string) ou { pseudo, avatar, hold }.
   const nameOf = w => typeof w === 'string' ? w : (w?.pseudo ?? '');
+  const avatarOf = w => (typeof w === 'object' && w?.avatar) ? w.avatar : null;
   const isHoldEntry = w => typeof w === 'object' && !!w?.hold;
+  const rankColor = i => i < 3 ? RANK[i] : '#94a3b8';
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000b', backdropFilter: 'blur(8px)', padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 18, padding: '18px 18px', maxWidth: 360, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 24px 60px #0009', fontFamily: "'Nunito',sans-serif" }}>
@@ -1338,16 +1351,14 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
         )}
         {winners.length === 0 ? (
           <div style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center', padding: '10px 0' }}>{t('beginner_recap_none') || "Personne n'a trouvé cette fois !"}</div>
-        ) : hasGlory ? (
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {realWinners.length > 0 ? (
               realWinners.map((w, i) => (
-                <div key={`rw${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f59e0b22', border: '1px solid #f59e0b88', borderRadius: 9, padding: '9px 11px' }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>🏆</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: '#1a2538' }}>{nameOf(w)}</div>
-                    <div style={{ fontSize: 10, color: '#78716c', fontWeight: 700 }}>{t('glory_winner_label') || 'A remporté le geocoin'}</div>
-                  </div>
+                <div key={`rw${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, background: `${rankColor(i)}${i < 3 ? '22' : '15'}`, border: `1px solid ${rankColor(i)}88`, borderRadius: 9, padding: '8px 11px' }}>
+                  <Avatar pseudo={nameOf(w)} avatarUrl={avatarOf(w)} verified={!!avatarOf(w)} size={30} />
+                  <span style={{ fontSize: 13, fontWeight: 900, color: '#1a2538', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(w)}</span>
+                  <span style={{ marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3, background: '#ffffff', border: `1.5px solid ${rankColor(i)}`, color: '#334155', fontWeight: 900, fontSize: 10.5, padding: '3px 8px', borderRadius: 20 }}>🏆 {ordinal(i + 1)}</span>
                 </div>
               ))
             ) : (
@@ -1356,29 +1367,25 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
                 <div style={{ fontSize: 12.5, fontWeight: 800, color: '#78716c' }}>{t('glory_nobody_won') || "Personne n'a remporté ce geocoin"}</div>
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, color: '#a8a29e' }}>{t('glory_section_title') || 'Pour la gloire'}</span>
-              <GloryInfoButton size={13} />
-            </div>
-            {gloryList.map((p, i) => {
-              const hold = isHoldEntry(p);
-              return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: hold ? '#6c5ce715' : '#f9ca2412', border: `1px solid ${hold ? '#6c5ce755' : '#f9ca2444'}`, borderRadius: 9, padding: '7px 11px' }}>
-                <span style={{ fontSize: 14, flexShrink: 0 }}>{hold ? '📥' : '🎖️'}</span>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#78716c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(p)}</span>
-                {hold && <span style={{ fontSize: 9, fontWeight: 800, color: '#6c5ce7', marginLeft: 'auto', flexShrink: 0 }}>{t('quiz_choice_deposit') || 'dépôt'}</span>}
-              </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {winners.map((p, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: i < 3 ? `${RANK[i]}22` : '#f1f5f9', border: `1px solid ${i < 3 ? RANK[i] + '88' : '#e2e8f0'}`, borderRadius: 9, padding: '7px 11px' }}>
-                <span style={{ width: 22, height: 22, flexShrink: 0, borderRadius: '50%', background: i < 3 ? RANK[i] : '#cbd5e1', color: i < 3 ? '#1a1205' : '#475569', fontWeight: 900, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#1a2538', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(p)}</span>
-              </div>
-            ))}
+            {gloryList.length > 0 && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, color: '#a8a29e' }}>{t('glory_section_title') || 'Pour la gloire'}</span>
+                  <GloryInfoButton size={13} />
+                </div>
+                {gloryList.map((p, i) => {
+                  const hold = isHoldEntry(p);
+                  return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: hold ? '#6c5ce715' : '#f9ca2412', border: `1px solid ${hold ? '#6c5ce755' : '#f9ca2444'}`, borderRadius: 9, padding: '6px 11px' }}>
+                    <Avatar pseudo={nameOf(p)} avatarUrl={avatarOf(p)} verified={!!avatarOf(p)} size={24} />
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#78716c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(p)}</span>
+                    <span style={{ fontSize: 12, marginLeft: 'auto', flexShrink: 0 }}>{hold ? '📥' : '🎖️'}</span>
+                    {hold && <span style={{ fontSize: 9, fontWeight: 800, color: '#6c5ce7', flexShrink: 0 }}>{t('quiz_choice_deposit') || 'dépôt'}</span>}
+                  </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
       </div>

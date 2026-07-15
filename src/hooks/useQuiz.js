@@ -290,7 +290,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // Inclure d'emblée les joueurs « pour la gloire » (renvoyés par /answer) : sinon
       // l'entrée n'aurait que la coche ✓ et le compteur « (N🏆) » n'apparaîtrait qu'après un
       // rechargement (le patch via quiz:solved peut manquer l'entrée pas encore créée).
-      const meGloryWinners = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold }))
+      const meGloryWinners = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold, avatar: g.avatar || null }))
       setHistory(h => {
         // quiz:solved peut arriver avant la réponse HTTP (race réseau) et avoir déjà inséré
         // une entrée pour ce round : on la patche plutôt que de prepend un doublon.
