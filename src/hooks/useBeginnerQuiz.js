@@ -217,9 +217,11 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     if (data.achievements?.length) cbRef.current.checkAchievements?.(data.achievements)
     if (data.achievement_upgrades?.length) cbRef.current.checkAchievementUpgrades?.(data.achievement_upgrades)
     cbRef.current.refreshProfile?.()   // MAJ last_geocoin_* (protection inter-modes)
+    // Consolation = limite de geocoins (quotidienne ou horaire) atteinte — l'or,
+    // lui, a pu être versé (earnGoldWithFx ci-dessus) : ne pas parler d'or ici.
     showToast(data.card_earned
       ? t('toast_quiz_won').replace('{card}', card.name)
-      : (t('toast_gold_limit') || t('quiz_limit_reached')))
+      : (t('toast_card_limit') || t('quiz_limit_reached')))
     autoClose()
     return { ok: true, outcome: data.card_earned ? 'card' : 'consolation', card }
   }, [])
