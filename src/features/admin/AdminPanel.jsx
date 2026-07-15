@@ -643,6 +643,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [listingsData,setListingsData]=useState({listings:[],total:0,loading:false});
   const [quizStats,setQuizStats]=useState(null);
   const [quizStatsSearch,setQuizStatsSearch]=useState('');
+  const [quizStatsOpen,setQuizStatsOpen]=useState({});
   const [mktHist,setMktHist]=useState({transactions:[],total:0,loading:false});
   const [mktHistPage,setMktHistPage]=useState(0);
   const [mktHistType,setMktHistType]=useState('');
@@ -995,7 +996,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           </div>
 
           {/* Historique apparitions */}
-          <div style={{fontWeight:900,color:"#e74c3c",fontSize:13,marginBottom:10}}>📅 Apparitions sur les 12 derniers mois</div>
+          <div style={{fontWeight:900,color:"#e74c3c",fontSize:13,marginBottom:10}}>📅 Apparitions sur les 3 derniers mois</div>
           <input value={quizStatsSearch} onChange={e=>setQuizStatsSearch(e.target.value)}
             placeholder="Rechercher une carte…" style={{...INP,marginBottom:10,fontSize:12}}/>
           {!quizStats?(
@@ -1008,18 +1009,31 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 {filtered.length===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"16px 0",fontSize:12}}>Aucune apparition.</div>}
                 {filtered.map((s,i)=>{
                   const {c1}=cardCC(s.card?.rarity||'commun');
+                  const key=s.card?.id??i;
+                  const open=!!quizStatsOpen[key];
+                  const shown=open?(s.dates||[]):(s.dates||[]).slice(0,3);
+                  const extra=(s.dates?.length||0)-3;
                   return(
                     <div key={i} style={{display:"flex",alignItems:"center",gap:10,background:"#ffffff07",border:"1px solid #ffffff0e",borderRadius:9,padding:"8px 12px",flexWrap:"wrap"}}>
                       <div style={{width:8,height:8,borderRadius:"50%",background:c1,flexShrink:0}}/>
                       <div style={{flex:1,minWidth:120}}>
                         <div style={{fontSize:12,color:"#fff",fontWeight:700}}>{s.card?.name||`#${s.card?.id}`}</div>
                         <div style={{fontSize:10,color:"#a8bfcf",marginTop:1}}>
-                          {s.dates?.slice(0,3).map(d=>new Date(d).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})).join(' · ')}
+                          {shown.map((d,j)=>(
+                            <span key={j}>{j>0&&' · '}{s.shiny?.[j]&&<span title="Apparition shiny">✨</span>}{new Date(d).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                          ))}
+                          {extra>0&&(
+                            <span onClick={()=>setQuizStatsOpen(o=>({...o,[key]:!open}))}
+                              style={{color:"#f9ca24",cursor:"pointer",fontWeight:700,marginLeft:6}}>
+                              {open?'réduire':`+${extra} autre${extra>1?'s':''}`}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div style={{textAlign:"right",flexShrink:0}}>
                         <div style={{fontWeight:900,fontSize:15,color:c1}}>{s.count}</div>
                         <div style={{fontSize:9,color:"#a8bfcf"}}>apparition{s.count>1?'s':''}</div>
+                        {s.shinyCount>0&&<div style={{fontSize:10,color:"#f9ca24",fontWeight:900}}>✨ {s.shinyCount} shiny</div>}
                       </div>
                     </div>
                   );
