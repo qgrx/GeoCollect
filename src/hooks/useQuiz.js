@@ -18,6 +18,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const [lostToWinner,  setLostToWinner] = useState(null)
   const [lostToGlory,   setLostToGlory]  = useState(false)
   const [lostToAvatar,  setLostToAvatar] = useState(null)   // avatar geocaching du gagnant (→ remplace 🏆)
+  const [lostToWinners, setLostToWinners] = useState(null)  // round multi-prix : TOUS les gagnants [{pseudo, avatar}]
   const [quizKey,       setQuizKey]      = useState(0)
   // Durée du cycle (s) pour la barre de progression — suit l'intervalle dynamique serveur
   const [cycleSec,      setCycleSec]     = useState(limits?.quizInterval ?? QUIZ_INTERVAL)
@@ -347,7 +348,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     }
   }, [])
 
-  const handleQuizExpire = useCallback((npc, isBot = false, isGlory = false, winnerAvatar = null) => {
+  const handleQuizExpire = useCallback((npc, isBot = false, isGlory = false, winnerAvatar = null, winners = null) => {
     const solvedAt = Date.now()
 
     if (!activeQuizRef.current) {
@@ -356,10 +357,12 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         setLostToWinner(npc)
         setLostToGlory(isGlory)
         setLostToAvatar(winnerAvatar || null)
+        setLostToWinners(Array.isArray(winners) && winners.length > 1 ? winners : null)
         setTimeout(() => {
           setLostToWinner(null)
           setLostToGlory(false)
           setLostToAvatar(null)
+          setLostToWinners(null)
           setPendingQuiz(currentPending => {
             if (currentPending && currentPending.id === pending.id) {
               setNextQuizTime(resolveNextQuizTime(solvedAt))
@@ -382,7 +385,8 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     // N'ajouter que si quelqu'un a vraiment gagné (npc = nom du gagnant)
     if (npc) {
       // Histoire gérée par quiz:solved — ici on met juste à jour l'UI de la modale active
-      setActiveQuiz(q => q ? { ...q, winner: npc } : null)
+      // (avatar du gagnant + liste complète des gagnants en round multi-prix).
+      setActiveQuiz(q => q ? { ...q, winner: npc, winner_avatar: winnerAvatar || null, winners: Array.isArray(winners) && winners.length > 1 ? winners : null } : null)
     }
     setTimeout(() => advanceQuiz(solvedAt), wasResolvedByMe ? 1500 : 5000)
   }, [limits])
@@ -400,6 +404,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     lostToWinner, setLostToWinner,
     lostToGlory, setLostToGlory,
     lostToAvatar, setLostToAvatar,
+    lostToWinners, setLostToWinners,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz,
     handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz,

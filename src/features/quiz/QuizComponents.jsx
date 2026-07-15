@@ -19,6 +19,9 @@ const SNOOZE_OPTIONS = [
   { label: '1 heure', ms: 60 * 60_000 },
 ];
 
+// « X, Y & Z » — liste de pseudos jointe, neutre pour toutes les langues.
+const joinNames = a => a.length <= 1 ? (a[0] || '') : `${a.slice(0, -1).join(', ')} & ${a[a.length - 1]}`;
+
 export function ThumbImage({ src, alt, style }) {
   const [failed, setFailed] = useState(false);
   // Si l'image source change (nouveau quiz), on réessaie de charger la miniature
@@ -42,12 +45,18 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
   const [showSnooze,setShowSnooze]=useState(false);
 
   if (quiz.winner) {
+    // Round multi-prix : citer TOUS les gagnants ; avatar(s) à la place du 😤 si dispo.
+    const multiW=Array.isArray(quiz.winners)&&quiz.winners.length>1?quiz.winners:null;
     return (
       <div style={{position:"fixed",bottom:66,left:"50%",transform:"translateX(-50%)",zIndex:900,width:"min(96vw,400px)",background:"linear-gradient(135deg,#1e3045,#1a2d42)",border:`1.5px solid ${c1}66`,borderRadius:20,boxShadow:`0 16px 60px ${c1}33`,fontFamily:"'Nunito',sans-serif",animation:"slideUp 0.4s cubic-bezier(.34,1.56,.64,1) both",textAlign:"center",padding:"16px 20px"}}>
-        <div style={{fontSize:32,marginBottom:8}}>😤</div>
+        {multiW
+          ? <div style={{display:"flex",justifyContent:"center",marginBottom:8}}>{multiW.map((w,i)=>(<Avatar key={i} pseudo={w.pseudo} avatarUrl={w.avatar||null} verified={!!w.avatar} size={36} style={{marginLeft:i?-10:0,zIndex:multiW.length-i}}/>))}</div>
+          : quiz.winner_avatar
+          ? <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><Avatar pseudo={quiz.winner} avatarUrl={quiz.winner_avatar} verified size={36}/></div>
+          : <div style={{fontSize:32,marginBottom:8}}>😤</div>}
         <div style={{fontWeight:900,color:"#fff",fontSize:15,marginBottom:4}}>Trop tard !</div>
         <div style={{color:"#aaa",fontSize:13}}>
-          <span style={{color:"#f9ca24",fontWeight:800}}>{quiz.winner}</span> a remporté la carte <span style={{color:c1,fontWeight:800}}>{cardName(quiz.card, getLang())}</span>.
+          <span style={{color:"#f9ca24",fontWeight:800}}>{multiW?joinNames(multiW.map(w=>w.pseudo)):quiz.winner}</span> {multiW?'ont remporté':'a remporté'} la carte <span style={{color:c1,fontWeight:800}}>{cardName(quiz.card, getLang())}</span>.
         </div>
       </div>
     );
@@ -584,7 +593,32 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             <div style={{color:"#a29bfe",fontWeight:900,fontSize:15,marginTop:6}}>{t('quiz_limit_reached')||'Limite atteinte'}</div>
           </div>
         )}
-        {status==="lost"&&<div style={{textAlign:"center",padding:"14px 0",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}><div style={{fontSize:36}}>😤</div><div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div></div>}
+        {status==="lost"&&(()=>{
+          // Round multi-prix : afficher TOUS les gagnants (avatars + pseudos), pas seulement le 1er.
+          const multiW=Array.isArray(quiz.winners)&&quiz.winners.length>1?quiz.winners:null;
+          // Avatar du gagnant unique — seulement si npc correspond bien au gagnant annoncé
+          // (finish() peut poser « Un autre joueur » sans que quiz.winner soit connu).
+          const lostAvatar=(!multiW&&npc&&quiz.winner===npc)?(quiz.winner_avatar||null):null;
+          return (
+            <div style={{textAlign:"center",padding:"14px 12px",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}>
+              {multiW ? (
+                <>
+                  <div style={{display:"flex",justifyContent:"center"}}>
+                    {multiW.map((w,i)=>(<Avatar key={i} pseudo={w.pseudo} avatarUrl={w.avatar||null} verified={!!w.avatar} size={40} style={{marginLeft:i?-10:0,zIndex:multiW.length-i}}/>))}
+                  </div>
+                  <div style={{color:"#e74c3c",fontWeight:900,fontSize:16,marginTop:7}}>{(t("quiz_lost_multi")||"{names} ont remporté le geocoin !").replace("{names}", joinNames(multiW.map(w=>w.pseudo)))}</div>
+                </>
+              ) : (
+                <>
+                  {lostAvatar
+                    ? <div style={{display:"flex",justifyContent:"center"}}><Avatar pseudo={npc} avatarUrl={lostAvatar} verified size={44}/></div>
+                    : <div style={{fontSize:36}}>😤</div>}
+                  <div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div>
+                </>
+              )}
+            </div>
+          );
+        })()}
         {status==="glory"&&(
           <div style={{textAlign:"center",padding:"16px 12px",background:"linear-gradient(135deg,#f9ca2418,#e1705512)",borderRadius:13,border:"1.5px solid #f9ca2466"}}>
             <div style={{fontSize:34,marginBottom:6}}>🏆</div>
@@ -646,7 +680,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1,graceDeadline=null}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1,graceDeadline=null}){
   const {t}=useT(); const {theme}=useTheme();
   // Décompte de grâce « encore Ns pour répondre » (gloire / multi-prix) — ticker local 1 s.
   const [,graceTick]=useState(0)
@@ -691,18 +725,22 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
   // ── État "Félicitations" — quelqu'un vient de gagner ──────────────────────
   if (lostTo) {
     const {c1:wc1} = nextCard ? cardCC(nextCard.rarity) : {c1:'#f9ca24'}
+    // Round multi-prix : féliciter TOUS les gagnants (avatars empilés + pseudos joints).
+    const lw = Array.isArray(lostToWinners)&&lostToWinners.length>1 ? lostToWinners : null
     return (
       <>
         <style>{CW_STYLES}</style>
         <div style={{display:'flex',alignItems:'center',gap:11,background:'linear-gradient(135deg,#f9ca2412,#e1705508)',border:'1.5px solid #f9ca2455',borderRadius:13,padding:'10px 14px',boxShadow:'0 0 28px #f9ca2428',animation:'cgSlide .45s cubic-bezier(.34,1.56,.64,1) both'}}>
-          <div style={{width:40,height:40,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',animation:'cgTrophy .5s .1s cubic-bezier(.34,1.56,.64,1) both',transform:'scale(0)'}}>
-            {lostToAvatar
+          <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',animation:'cgTrophy .5s .1s cubic-bezier(.34,1.56,.64,1) both',transform:'scale(0)'}}>
+            {lw
+              ? lw.map((w,i)=>(<Avatar key={i} pseudo={w.pseudo} avatarUrl={w.avatar||null} verified={!!w.avatar} size={40} style={{marginLeft:i?-12:0,zIndex:lw.length-i}}/>))
+              : lostToAvatar
               ? <Avatar pseudo={lostTo} avatarUrl={lostToAvatar} verified size={40} />
               : <div style={{width:40,height:40,borderRadius:6,border:'2px solid #f9ca2466',background:'#1e3045',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🏆</div>}
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:14,fontWeight:900,color:'#f9ca24',marginBottom:2,animation:'cgFade .35s .2s ease both',opacity:0}}>
-              🎉 Félicitations à <span style={{color:theme.textPrimary,fontWeight:900}}>{lostTo}</span> !
+              🎉 Félicitations à <span style={{color:theme.textPrimary,fontWeight:900}}>{lw?joinNames(lw.map(w=>w.pseudo)):lostTo}</span> !
             </div>
             {lostToGlory ? (
               <div style={{fontSize:10,color:theme.textSecondary,display:'flex',alignItems:'center',gap:5,animation:'cgFade .35s .35s ease both',opacity:0}}>
@@ -711,7 +749,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
               </div>
             ) : nextCard && (
               <div style={{fontSize:10,color:theme.textSecondary,animation:'cgFade .35s .35s ease both',opacity:0}}>
-                a remporté <span style={{color:wc1,fontWeight:800}}>{cardName(nextCard,getLang())}</span>
+                {lw?'ont remporté':'a remporté'} <span style={{color:wc1,fontWeight:800}}>{cardName(nextCard,getLang())}</span>
               </div>
             )}
             <div style={{background:theme.overlayMd,borderRadius:50,height:3,overflow:'hidden',marginTop:6}}>
