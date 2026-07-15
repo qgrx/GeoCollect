@@ -428,6 +428,7 @@ export default function App() {
         setLostToGlory(false)
         setLostToAvatar(null)
         setLostToWinners(null)
+        setLostToGloryWinners(null)
         setStreakLeader(data.streak_leader || null)
         // Un quiz devient joignable → couper l'annonce « en feu » pour ne pas masquer « Participer »
         if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
@@ -467,12 +468,17 @@ export default function App() {
         const winnersFull = (data.multi && winnersList.length > 1)
           ? winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot }))
           : null
+        // Joueurs « pour la gloire » du round (avatars fournis par l'API) — affichés
+        // en plus petit sous le(s) gagnant(s) dans la modale / bannière / notification.
+        const gloryFull = (data.glory_winners || []).length
+          ? data.glory_winners.map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold }))
+          : null
 
         // Si le quiz résolu est celui actuellement EN ATTENTE (non rejoint), le marquer
         // « gagné » tout de suite : handleJoin refuse alors de le rejoindre et la barre
         // ne propose plus « Participer » sur un quiz déjà gagné (robuste aux courses
         // avec quiz:new / au snooze).
-        if (data.quiz_id) setPendingQuiz(p => (p && p.id === data.quiz_id) ? { ...p, winner: data.winner || '?', winner_avatar: data.winner_avatar || null, winners: winnersFull } : p)
+        if (data.quiz_id) setPendingQuiz(p => (p && p.id === data.quiz_id) ? { ...p, winner: data.winner || '?', winner_avatar: data.winner_avatar || null, winners: winnersFull, glory_winners: gloryFull } : p)
 
         // Mettre à jour le prochain quiz dès quiz:solved (sans attendre quiz:new).
         // applyServerSchedule fait primer l'horaire dynamique serveur sur le calcul local.
@@ -517,7 +523,7 @@ export default function App() {
           || winnersList.some(w => (w.id && w.id === myIdRef.current) || (w.pseudo && w.pseudo === myPseudoRef.current))
 
         if (!iSelf) {
-          handleQuizExpireRef.current(data.winner, data.is_bot, false, data.winner_avatar || null, winnersFull)
+          handleQuizExpireRef.current(data.winner, data.is_bot, false, data.winner_avatar || null, winnersFull, gloryFull)
         } else if (activeQuizRef.current && activeQuizRef.current.id === data.quiz_id) {
           // J'ai gagné ce quiz côté serveur. Si la modale est encore ouverte (réponse
           // HTTP perdue / erreur), la fermer proprement plutôt que de laisser re-répondre.
@@ -659,9 +665,11 @@ export default function App() {
         }
         setQuizIsShiny(data.next_is_shiny || false)
         if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
-        // Personne n'a raflé le geocoin ; s'il a été joué pour la gloire, afficher le 1er
-        // gagnant-gloire dans la barre (« a joué pour la gloire » + ⓘ), pas « a remporté ».
-        handleQuizExpireRef.current((data.glory_winners || [])[0]?.pseudo || null, false, true)
+        // Personne n'a raflé le geocoin ; s'il a été joué pour la gloire, féliciter TOUS
+        // les gagnants-gloire dans la barre (« ont joué pour la gloire » + ⓘ), pas « a remporté ».
+        const gloryFull = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold }))
+        handleQuizExpireRef.current(gloryFull[0]?.pseudo || null, false, true, gloryFull[0]?.avatar || null,
+          gloryFull.length > 1 ? gloryFull : null)
       })
 
       // Teaser mis à jour sans changement de quiz (ex. admin modifie le Shiny Day) :
@@ -1058,6 +1066,7 @@ export default function App() {
     lostToGlory, setLostToGlory,
     lostToAvatar, setLostToAvatar,
     lostToWinners, setLostToWinners,
+    lostToGloryWinners, setLostToGloryWinners,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
 
@@ -1163,7 +1172,7 @@ export default function App() {
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} revealAnswer={beginner.recap.answer} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
-      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} lostToWinners={lostToWinners ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} lostToWinners={lostToWinners ?? null} lostToGloryWinners={lostToGloryWinners ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
     // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
     // → barre floutée + message + timer. Dans les deux cas, interaction impossible.
     const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown

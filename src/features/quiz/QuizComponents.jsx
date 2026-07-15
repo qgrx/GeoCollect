@@ -22,6 +22,24 @@ const SNOOZE_OPTIONS = [
 // « X, Y & Z » — liste de pseudos jointe, neutre pour toutes les langues.
 const joinNames = a => a.length <= 1 ? (a[0] || '') : `${a.slice(0, -1).join(', ')} & ${a[a.length - 1]}`;
 
+// Ligne « Pour la gloire : X, Y » — mini avatars + pseudos, affichée en plus petit
+// sous le(s) gagnant(s) du round (modale de quiz et popup « Trop tard »).
+function GloryRow({ glory, color = '#e9a8a8' }) {
+  const { t } = useT();
+  if (!Array.isArray(glory) || !glory.length) return null;
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:5,marginTop:8,flexWrap:'wrap',padding:'0 8px'}}>
+      <span style={{display:'flex'}}>
+        {glory.map((g,i)=>(<Avatar key={i} pseudo={g.pseudo} avatarUrl={g.avatar||null} verified={!!g.avatar} size={18} style={{marginLeft:i?-6:0,zIndex:glory.length-i}}/>))}
+      </span>
+      <span style={{color,fontWeight:700,fontSize:11}}>
+        🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}', joinNames(glory.map(g=>g.pseudo)))}
+      </span>
+      <GloryInfoButton size={11} />
+    </div>
+  );
+}
+
 export function ThumbImage({ src, alt, style }) {
   const [failed, setFailed] = useState(false);
   // Si l'image source change (nouveau quiz), on réessaie de charger la miniature
@@ -58,6 +76,7 @@ export function QuizNotif({quiz,onJoin,onSkip}){ const {t}=useT();
         <div style={{color:"#aaa",fontSize:13}}>
           <span style={{color:"#f9ca24",fontWeight:800}}>{multiW?joinNames(multiW.map(w=>w.pseudo)):quiz.winner}</span> {multiW?'ont remporté':'a remporté'} la carte <span style={{color:c1,fontWeight:800}}>{cardName(quiz.card, getLang())}</span>.
         </div>
+        <GloryRow glory={Array.isArray(quiz.glory_winners)&&quiz.glory_winners.length?quiz.glory_winners:null} color="#8d9db1" />
       </div>
     );
   }
@@ -599,6 +618,8 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           // Avatar du gagnant unique — seulement si npc correspond bien au gagnant annoncé
           // (finish() peut poser « Un autre joueur » sans que quiz.winner soit connu).
           const lostAvatar=(!multiW&&npc&&quiz.winner===npc)?(quiz.winner_avatar||null):null;
+          // Joueurs « pour la gloire » du round — affichés en plus petit sous le(s) gagnant(s).
+          const gloryW=Array.isArray(quiz.glory_winners)&&quiz.glory_winners.length?quiz.glory_winners:null;
           return (
             <div style={{textAlign:"center",padding:"14px 12px",background:"#e74c3c18",borderRadius:13,border:"1.5px solid #e74c3c44"}}>
               {multiW ? (
@@ -616,6 +637,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
                   <div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div>
                 </>
               )}
+              <GloryRow glory={gloryW} />
             </div>
           );
         })()}
@@ -680,7 +702,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1,graceDeadline=null}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1,graceDeadline=null}){
   const {t}=useT(); const {theme}=useTheme();
   // Décompte de grâce « encore Ns pour répondre » (gloire / multi-prix) — ticker local 1 s.
   const [,graceTick]=useState(0)
@@ -744,12 +766,24 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
             </div>
             {lostToGlory ? (
               <div style={{fontSize:10,color:theme.textSecondary,display:'flex',alignItems:'center',gap:5,animation:'cgFade .35s .35s ease both',opacity:0}}>
-                <span>🏆 {t('glory_played')||'a joué pour la gloire'}</span>
+                <span>🏆 {lw?(t('glory_played_plural')||'ont joué pour la gloire'):(t('glory_played')||'a joué pour la gloire')}</span>
                 <GloryInfoButton size={12} />
               </div>
             ) : nextCard && (
               <div style={{fontSize:10,color:theme.textSecondary,animation:'cgFade .35s .35s ease both',opacity:0}}>
                 {lw?'ont remporté':'a remporté'} <span style={{color:wc1,fontWeight:800}}>{cardName(nextCard,getLang())}</span>
+              </div>
+            )}
+            {/* Joueurs « pour la gloire » du round — en plus petit sous le(s) gagnant(s)
+                (uniquement quand le geocoin a un vrai gagnant ; sinon la bannière entière
+                leur est déjà consacrée via lostToGlory). */}
+            {!lostToGlory && Array.isArray(lostToGloryWinners) && lostToGloryWinners.length>0 && (
+              <div style={{fontSize:10,color:theme.textSecondary,display:'flex',alignItems:'center',gap:4,marginTop:3,minWidth:0,animation:'cgFade .35s .45s ease both',opacity:0}}>
+                <span style={{display:'flex',flexShrink:0}}>
+                  {lostToGloryWinners.map((g,i)=>(<Avatar key={i} pseudo={g.pseudo} avatarUrl={g.avatar||null} verified={!!g.avatar} size={15} style={{marginLeft:i?-5:0,zIndex:lostToGloryWinners.length-i}}/>))}
+                </span>
+                <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}',joinNames(lostToGloryWinners.map(g=>g.pseudo)))}</span>
+                <GloryInfoButton size={11}/>
               </div>
             )}
             <div style={{background:theme.overlayMd,borderRadius:50,height:3,overflow:'hidden',marginTop:6}}>
