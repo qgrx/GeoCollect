@@ -148,6 +148,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         })
         setLimits(prev => ({
           ...prev,
+          connected:         cfg.limits_connected    ?? prev.connected,
           quizInterval:      cfg.quiz_interval       ?? prev.quizInterval,
           quizIntervalTiers: normalizeIntervalTiers(cfg.quiz_interval_tiers ?? prev.quizIntervalTiers),
           quizStreakHandicap: cfg.quiz_streak_handicap ? { ...prev.quizStreakHandicap, ...cfg.quiz_streak_handicap } : prev.quizStreakHandicap,
@@ -320,6 +321,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
           const cfg = pubCfg.config
           setLimits(prev => ({
             ...prev,
+            connected:         cfg.limits_connected    ?? prev.connected,
             quizInterval:      cfg.quiz_interval       ?? prev.quizInterval,
             quizIntervalTiers: normalizeIntervalTiers(cfg.quiz_interval_tiers ?? prev.quizIntervalTiers),
             quizStreakHandicap: cfg.quiz_streak_handicap ? { ...prev.quizStreakHandicap, ...cfg.quiz_streak_handicap } : prev.quizStreakHandicap,
