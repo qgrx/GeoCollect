@@ -10,6 +10,7 @@ export default function OnboardingTour({ onDone, setActiveTab, isMobile }) {
 
   const STEPS = [
     { target: '[data-tour="countdown"]',      title: t('tour_quiz_title'),        text: t('tour_quiz_text'),        mobileTab: 'home'       },
+    { target: '[data-tour="mode-toggle"]',    title: t('tour_mode_title'),        text: t('tour_mode_text'),        mobileTab: 'home'       },
     { target: '[data-tour="profile"]',        title: t('tour_profile_title'),     text: t('tour_profile_text'),     mobileTab: 'home'       },
     { target: '[data-tour="quests"]',         title: t('tour_quests_title'),      text: t('tour_quests_text'),      mobileTab: 'home'       },
     { target: '[data-tour="nav-collection"]', title: t('tour_collection_title'),  text: t('tour_collection_text'),  mobileTab: 'collection' },

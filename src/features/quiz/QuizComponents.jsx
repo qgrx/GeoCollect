@@ -1123,7 +1123,7 @@ export function ModeToggle({ mode, onChange, onOpenRules }) {
   const beginner = mode === 'beginner';
   const accent = beginner ? '#00b894' : '#f9ca24';
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center', flexShrink: 0 }}>
+    <div data-tour="mode-toggle" style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center', flexShrink: 0 }}>
       <button
         onClick={() => onChange(beginner ? 'pvp' : 'beginner')}
         title={beginner ? (t('mode_switch_to_pvp') || 'Passer en mode PVP') : (t('mode_switch_to_beginner') || 'Passer en mode Débutant')}
