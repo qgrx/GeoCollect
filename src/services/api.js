@@ -150,6 +150,7 @@ export const apiAdminSetForgePoints      = (id, forge_points) => apiFetch(`/api/
 export const apiAdminSetPlayerLimits     = (id, limits)       => apiFetch(`/api/admin/players/${id}/limits`, { method: 'PATCH', body: limits })
 export const apiAdminSetPseudo           = (id, pseudo)       => apiFetch(`/api/admin/players/${id}/pseudo`, { method: 'PATCH', body: { pseudo } })
 export const apiAdminGetPlayerCollection = (id)               => apiFetch(`/api/admin/players/${id}/collection`)
+export const apiAdminGetPlayerSpending   = (id, page = 0, currency = '') => apiFetch(`/api/admin/players/${id}/spending?page=${page}${currency ? '&currency=' + currency : ''}`)
 export const apiAdminGetCheatReport      = (id)               => apiFetch(`/api/admin/players/${id}/cheat-report`)
 export const apiAdminGetCheatSuspects    = (min = 1)          => apiFetch(`/api/admin/cheat/suspects?min=${min}`)
 export const apiAdminGetSharedIps        = ()                 => apiFetch('/api/admin/cheat/shared-ips')

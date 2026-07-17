@@ -10,6 +10,7 @@ import {
   apiAdminUndoForgeShiny,
 } from '../../services/api.js';
 import AdminCheatReport from './AdminCheatReport.jsx';
+import AdminPlayerSpending from './AdminPlayerSpending.jsx';
 
 export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMsg }) {
   const { t, lang } = useT();
@@ -270,6 +271,9 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
           }} style={{ ...BTN('linear-gradient(135deg,#00b894,#0984e3)'), padding: '7px 14px', borderRadius: 8, fontSize: 12 }}>Appliquer les limites</button>
         </div>
       </div>
+
+      {/* Journal des dépenses (or + PF) */}
+      <AdminPlayerSpending playerId={playerView.id} />
 
       {/* Inventaire complet */}
       <div style={{ marginTop: 12, background: '#ffffff08', borderRadius: 10, padding: '12px 14px', border: '1px solid #ffffff10' }}>
