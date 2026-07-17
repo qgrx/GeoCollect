@@ -2191,8 +2191,12 @@ export default function App() {
                       // Round MULTI-prix (≥2 gagnants réels) → tuile unique « N🏆 » + popup des gagnants,
                       // comme la gloire (au lieu de dupliquer le même geocoin par gagnant).
                       const multiWinners = (!beginnerActive && Array.isArray(h.winners) && h.winners.length > 1) ? h.winners : null;
-                      // Geocoin joué pour la gloire sans gagnant (winner null) → ne pas ajouter un gagnant fantôme.
-                      const allWinners = hasGlory ? (h.winner ? [...h.glory_winners, h.winner] : [...h.glory_winners]) : null;
+                      // Total affiché sur la tuile = gagnants réels (liste multi-prix, sinon winner —
+                      // null si personne n'a raflé le geocoin) + joueurs « pour la gloire ». Toujours
+                      // additionner les deux : multi-prix AVEC gloire et « moi gagnant + gloire »
+                      // n'affichaient qu'une des deux moitiés (Inde ✨ « 2 » au lieu de 4).
+                      const realCount = multiWinners ? multiWinners.length : (h.winner ? 1 : 0);
+                      const totalWinners = realCount + (h.glory_winners || []).length;
                       const mine = beginnerActive
                         ? (Array.isArray(h.winners) && h.winners.includes(auth.profile?.pseudo))
                         : (h.won || (!!h.winner && h.winner === auth.profile?.pseudo) || (Array.isArray(h.winners) && h.winners.includes(auth.profile?.pseudo)));
@@ -2230,8 +2234,8 @@ export default function App() {
                             {beginnerActive
                               ? `${mine ? '✓ ' : ''}${h.winners_count || 0}🏆`
                               : mine
-                                ? `✓${multiWinners ? ` (${multiWinners.length}🏆)` : hasGlory ? ` (${(h.glory_winners || []).length}🏆)` : ''}`
-                                : multiWinners ? `${multiWinners.length}🏆` : hasGlory ? `${allWinners.length}🏆` : h.winner}
+                                ? `✓${(multiWinners || hasGlory) ? ` (${totalWinners}🏆)` : ''}`
+                                : (multiWinners || hasGlory) ? `${totalWinners}🏆` : h.winner}
                           </div>
                         </div>
                       );
