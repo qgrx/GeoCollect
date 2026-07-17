@@ -81,8 +81,10 @@ export const INIT_LIMITS = {
   meltPointsByRarity:   {},
   meltPointsByRarityShiny: {},
   marketPriceCaps:      { commun: {floor:5,k:2}, rare: {floor:25,k:2.5}, épique: {floor:150,k:3}, légendaire: {floor:1000,k:4} },
-  marketListingFee:     1,
-  marketSaleTax:        0.05,
+  // Alignés sur les défauts en dur de l'API (market.js) — la valeur réellement
+  // débitée si la clé config est absente en base.
+  marketListingFee:     4,
+  marketSaleTax:        0.12,
   dailyOfferGold:       5,
   holdSlotPrices:       [150, 400],
   holdRentPrice:        80,

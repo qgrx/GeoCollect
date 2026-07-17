@@ -653,6 +653,9 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       // Remplacer l'ID temporaire par l'ID réel généré par la base de données
       setMyListings(prev => prev.map(l => l.id === tempId ? { ...l, id: data.listing_id, seller: profile.pseudo } : l))
       setMarket(prev => prev.map(l => l.id === tempId ? { ...l, id: data.listing_id, seller: profile.pseudo } : l))
+      // Frais de publication débités côté serveur → refléter immédiatement sur l'or
+      // affiché (sinon l'écart n'apparaît qu'au prochain rechargement de page).
+      if (data?.listing_fee > 0) setGold(g => Math.max(0, g - data.listing_fee))
       checkAchievementsRef.current?.(data?.achievements || [])
       checkAchievementUpgradesRef.current?.(data?.achievement_upgrades || [])
       setQuestActivitySignal(s => s + 1)
@@ -713,8 +716,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   }, [myListings, profile])
 
   // ── Sale notification depuis WebSocket ────────────────────────────────────
-  const handleSaleNotifFromSocket = useCallback(({ cardName, buyer, price, rarity, achievement_upgrades }) => {
-    setGold(g => g + price)
+  const handleSaleNotifFromSocket = useCallback(({ cardName, buyer, price, received, rarity, achievement_upgrades }) => {
+    // `received` = net après taxe de vente (ventes joueur→joueur) ; les achats de
+    // bots paient le prix plein et n'envoient pas ce champ → repli sur `price`.
+    setGold(g => g + (received ?? price))
     setTotalSells(s => s + 1)
     setTransactions(prev => [{ type: 'vente', cardName, rarity: rarity || 'commun', counterpart: buyer, price, date: new Date().toLocaleDateString('fr-FR'), isNew: true }, ...prev])
     setSaleNotifs(prev => [...prev, { id: Date.now(), cardName, buyer, price }])

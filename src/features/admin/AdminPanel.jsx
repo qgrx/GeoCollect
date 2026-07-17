@@ -1297,14 +1297,14 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 <div style={{display:"flex",gap:16,flexWrap:"wrap",borderTop:"1px solid #ffffff10",paddingTop:12}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12}}>
                     <span style={{color:"#aaa",fontWeight:700}}>Frais de mise en ligne :</span>
-                    <input type="number" min={0} max={100} value={limEdit.marketListingFee??1}
+                    <input type="number" min={0} max={100} value={limEdit.marketListingFee??4}
                       onChange={e=>setLimEdit({...limEdit,marketListingFee:Math.max(0,+e.target.value)})}
                       style={{...INP,width:60}}/>
                     <span style={{color:"#aaa"}}>Or (non remboursable)</span>
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12}}>
                     <span style={{color:"#aaa",fontWeight:700}}>Taxe sur vente :</span>
-                    <input type="number" min={0} max={50} step={1} value={Math.round((limEdit.marketSaleTax??0.05)*100)}
+                    <input type="number" min={0} max={50} step={1} value={Math.round((limEdit.marketSaleTax??0.12)*100)}
                       onChange={e=>setLimEdit({...limEdit,marketSaleTax:Math.min(0.5,Math.max(0,+e.target.value/100))})}
                       style={{...INP,width:55}}/>
                     <span style={{color:"#aaa"}}>% (détruits)</span>
