@@ -516,7 +516,8 @@ export default function App() {
             const entry = { id: w.id || null, pseudo: w.pseudo, streak: w.fire_streak, handicap_seconds: handicap }
             const isNew = !known.has(w.id || w.pseudo)
             noteRoundFire(data.quiz_id, entry)
-            if (isNew && !w.is_bot && w.fire_streak >= threshold && hCfg?.enabled !== false) {
+            // Les bots aussi : Poupy porte sa série comme tout le monde (annonce comprise).
+            if (isNew && w.fire_streak >= threshold && hCfg?.enabled !== false) {
               mergeStreakLeaders(entry)
               setStreakHype({ pseudo: w.pseudo, streak: w.fire_streak, handicap, exempt: false })
               if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
