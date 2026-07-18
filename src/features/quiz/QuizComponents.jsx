@@ -48,12 +48,15 @@ export function FireWrap({ fire = false, streak = null, threshold = 3, size = 30
       <style>{FIRE_WRAP_CSS}</style>
       <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex' }}>{children}</span>
       {blazing ? (
-        // 🔥 unique animée à gauche du chiffre, au-dessus du logo joueur.
-        <span style={{ position: 'absolute', top: Math.round(-size * 0.40), left: '50%', transform: 'translateX(-50%)', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: Math.max(1, Math.round(size * 0.03)), pointerEvents: 'none' }}>
-          <span style={{ fontSize: Math.round(size * 0.50), lineHeight: 1, animation: 'fireDance 1.1s ease-in-out infinite', filter: 'drop-shadow(0 0 3px #ff7043)' }}>🔥</span>
-          {streak != null && (
-            <span style={{ fontSize: Math.max(9, Math.round(size * 0.38)), lineHeight: 1, color: '#fff', fontWeight: 900, fontFamily: "'Nunito',sans-serif", textShadow: '0 1px 3px #000c, 0 0 7px #ff5722' }}>{streak}</span>
-          )}
+        // 🔥 unique animée, chiffre À L'INTÉRIEUR — MÊME position qu'en dessous du
+        // seuil (bas droite de l'avatar) ; seuls le halo et la danse signalent le feu.
+        <span style={{ position: 'absolute', right: Math.round(-size * 0.14), bottom: Math.round(-size * 0.10), zIndex: 2, pointerEvents: 'none' }}>
+          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', animation: 'fireDance 1.1s ease-in-out infinite', filter: 'drop-shadow(0 0 3px #ff7043)' }}>
+            <span style={{ fontSize: Math.max(14, Math.round(size * 0.60)), lineHeight: 1 }}>🔥</span>
+            {streak != null && (
+              <span style={{ position: 'absolute', bottom: '6%', left: '50%', transform: 'translateX(-50%)', fontSize: Math.max(8, Math.round(size * 0.28)), lineHeight: 1, color: '#fff', fontWeight: 900, fontFamily: "'Nunito',sans-serif", textShadow: '0 1px 2px #000d, 0 0 3px #000a' }}>{streak}</span>
+            )}
+          </span>
         </span>
       ) : (
         // Série < seuil : une seule 🔥 (grosse) avec le chiffre À L'INTÉRIEUR — pas de pastille.
