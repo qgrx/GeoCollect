@@ -173,7 +173,7 @@ export function GloryInfoModalHost() {
       <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
         <div style={{ fontSize:15, fontWeight:900, color:'#f9ca24', marginBottom:9 }}>🏆 {t('glory_info_title') || '« Pour la gloire »'}</div>
         <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{t('glory_info_body') || ''}</div>
-        <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('close') || 'Fermer'}</button>
+        <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#f9ca24,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('shop_close') || 'Fermer'}</button>
       </div>
     </div>
   ), document.body);
@@ -211,7 +211,7 @@ export function FireInfoModalHost() {
       <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
         <div style={{ fontSize:15, fontWeight:900, color:'#ff8a5c', marginBottom:9 }}>🔥 {t('fire_info_title') || 'Série « en feu »'}</div>
         <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{t('fire_info_body') || ''}</div>
-        <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#ff8a5c,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('close') || 'Fermer'}</button>
+        <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#ff8a5c,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('shop_close') || 'Fermer'}</button>
       </div>
     </div>
   ), document.body);
