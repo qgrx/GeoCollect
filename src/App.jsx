@@ -643,6 +643,22 @@ export default function App() {
         if (!iSelf && data.winner && !beginnerActiveRef.current) {
           showToast(tRef.current('toast_glory_other').replace('{pseudo}', data.winner))
         }
+
+        // « En feu » : la série est portée par la 1ère bonne réponse du round, GLOIRE
+        // comprise (winner_streak n'est envoyé que dans ce cas) → MAJ leader (handicap)
+        // + animation, comme au quiz:prize_won.
+        const hCfg = gs.limits?.quizStreakHandicap
+        const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
+        if (data.winner_streak != null && data.winner_streak >= threshold && hCfg?.enabled !== false) {
+          const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
+          setStreakLeader({ id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
+          setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: false })
+          if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
+          streakHypeTimerRef.current = setTimeout(() => {
+            setStreakHype(h => h ? { ...h, fading: true } : h)
+            streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 420)
+          }, 10000)
+        }
       })
 
       // Quiz — expiré sans réponse
