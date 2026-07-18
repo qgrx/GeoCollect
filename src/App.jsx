@@ -429,6 +429,7 @@ export default function App() {
         setLostToAvatar(null)
         setLostToWinners(null)
         setLostToGloryWinners(null)
+        setLostToFire(null)
         // Liste serveur = vérité (streak_leaders ; repli sur l'ancien streak_leader seul)
         setStreakLeaders(data.streak_leaders || (data.streak_leader ? [data.streak_leader] : []))
         // Nouveau round → remise à zéro du suivi des places en feu.
@@ -501,7 +502,30 @@ export default function App() {
         const hCfg = gs.limits?.quizStreakHandicap
         const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
         if (data.multi) {
-          // « en feu » géré au prize_won — animation déjà jouée, survivants déjà notés
+          // Le DERNIER claim d'un round multi n'émet PAS de quiz:prize_won (clôture
+          // directe en quiz:solved) : sans ce rattrapage, le gagnant final serait
+          // absent du suivi des survivants (liste vidée à applyRoundFire) et son
+          // passage « en feu » jamais annoncé. On note TOUS les prize_winners en
+          // place en feu (fire_streak) ; l'animation n'est jouée que pour ceux dont
+          // le prize_won n'a pas été vu (= le claim final), pas de re-hype des autres.
+          const known = new Set((roundFireRef.current.quizId === data.quiz_id ? roundFireRef.current.list : [])
+            .map(e => e.id || e.pseudo))
+          for (const w of winnersList) {
+            if (!w.fire || w.fire_streak == null) continue
+            const handicap = computeStreakHandicap(w.fire_streak, hCfg)
+            const entry = { id: w.id || null, pseudo: w.pseudo, streak: w.fire_streak, handicap_seconds: handicap }
+            const isNew = !known.has(w.id || w.pseudo)
+            noteRoundFire(data.quiz_id, entry)
+            if (isNew && !w.is_bot && w.fire_streak >= threshold && hCfg?.enabled !== false) {
+              mergeStreakLeaders(entry)
+              setStreakHype({ pseudo: w.pseudo, streak: w.fire_streak, handicap, exempt: false })
+              if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
+              streakHypeTimerRef.current = setTimeout(() => {
+                setStreakHype(h => h ? { ...h, fading: true } : h)
+                streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 420)
+              }, 10000)
+            }
+          }
         } else if (data.winner_streak >= threshold && hCfg?.enabled !== false && data.winner_fire !== false) {
           // Délai fourni par le serveur (config fraîche) ; repli sur calcul client si absent
           const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
@@ -522,6 +546,13 @@ export default function App() {
           const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
           noteRoundFire(data.quiz_id, { id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
         }
+        // Gloires en place en feu : déjà notées à leur quiz:glory_win — re-notées ici
+        // (idempotent) pour couvrir un event manqué (reconnexion, socket coupé).
+        for (const g of (data.glory_winners || [])) {
+          if (g.fire && g.fire_streak != null) {
+            noteRoundFire(data.quiz_id, { id: g.id || null, pseudo: g.pseudo, streak: g.fire_streak, handicap_seconds: computeStreakHandicap(g.fire_streak, hCfg) })
+          }
+        }
         // CLÔTURE du round : côté serveur, tous les joueurs HORS des places en feu
         // perdent leur série (settleRoundStreaks) sans qu'aucun event ne le signale.
         // On remplace donc la liste affichée par les survivants suivis sur CE round —
@@ -534,8 +565,14 @@ export default function App() {
           || (!!data.winner && data.winner === myPseudoRef.current)
           || winnersList.some(w => (w.id && w.id === myIdRef.current) || (w.pseudo && w.pseudo === myPseudoRef.current))
 
+        // Gagnant unique en place en feu → flammes graduées sur la bannière
+        // « Félicitations » et la modale (le chemin mono ne passe pas par winnersFull).
+        const wFire = data.multi
+          ? (winnersList[0]?.fire ? { fire_streak: winnersList[0].fire_streak ?? null } : null)
+          : (data.winner_fire ? { fire_streak: data.winner_fire_streak ?? data.winner_streak ?? null } : null)
+
         if (!iSelf) {
-          handleQuizExpireRef.current(data.winner, data.is_bot, false, data.winner_avatar || null, winnersFull, gloryFull)
+          handleQuizExpireRef.current(data.winner, data.is_bot, false, data.winner_avatar || null, winnersFull, gloryFull, wFire)
         } else if (activeQuizRef.current && activeQuizRef.current.id === data.quiz_id) {
           // J'ai gagné ce quiz côté serveur. Si la modale est encore ouverte (réponse
           // HTTP perdue / erreur), la fermer proprement plutôt que de laisser re-répondre.
@@ -561,6 +598,9 @@ export default function App() {
             // …et la même liste avec avatars pour la fiche « Gagnants » (+ flammes graduées)
             winners_full: winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, fire: !!w.fire, fire_streak: w.fire_streak ?? null })),
             glory_winners: gloryFull || [],
+            // Pour la fiche « Gagnants » quand un seul prix a été pris (repli mono).
+            winner_fire: !!winnersList[0]?.fire,
+            winner_fire_streak: winnersList[0]?.fire_streak ?? null,
             quiz_id: data.quiz_id,
           }
           setHistory(h => {
@@ -577,7 +617,7 @@ export default function App() {
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
           setHistory(h => {
             if (data.quiz_id && h.some(e => e.quiz_id === data.quiz_id)) return h
-            return [{ card: fullCard, winner: data.winner, winner_avatar: data.winner_avatar || null, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryFull || [], quiz_id: data.quiz_id }, ...h].slice(0, 10)
+            return [{ card: fullCard, winner: data.winner, winner_avatar: data.winner_avatar || null, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryFull || [], winner_fire: !!data.winner_fire, winner_fire_streak: data.winner_fire_streak ?? (data.winner_fire ? data.winner_streak ?? null : null), quiz_id: data.quiz_id }, ...h].slice(0, 10)
           })
         } else if (iSelf && (data.glory_winners || []).length > 0) {
           // Le gagnant lui-même : useQuiz ajoute l'entrée → on la patch avec les glory_winners
@@ -688,9 +728,16 @@ export default function App() {
       s.on('quiz:expired', (data) => {
         setQuizSessionActive(false)
         // CLÔTURE du round (expiration) : mêmes règles que quiz:solved — seules les
-        // places en feu suivies sur ce round conservent leur série affichée.
+        // places en feu suivies sur ce round conservent leur série affichée. Les
+        // gloires en feu du payload sont (re-)notées AVANT le remplacement, pour
+        // couvrir un quiz:glory_win manqué (reconnexion).
         {
           const hCfg = gs.limits?.quizStreakHandicap
+          for (const g of (data.glory_winners || [])) {
+            if (g.fire && g.fire_streak != null) {
+              noteRoundFire(data.quiz_id, { id: g.id || null, pseudo: g.pseudo, streak: g.fire_streak, handicap_seconds: computeStreakHandicap(g.fire_streak, hCfg) })
+            }
+          }
           applyRoundFire(data.quiz_id, Math.max(1, Number(hCfg?.threshold) || 3))
         }
         // Joueurs « pour la gloire » avec avatars (fiche « Gagnants » + bannière).
@@ -1115,6 +1162,7 @@ export default function App() {
     lostToAvatar, setLostToAvatar,
     lostToWinners, setLostToWinners,
     lostToGloryWinners, setLostToGloryWinners,
+    lostToFire, setLostToFire,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
 
@@ -1220,7 +1268,7 @@ export default function App() {
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} revealAnswer={beginner.recap.answer} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
-      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} lostToWinners={lostToWinners ?? null} lostToGloryWinners={lostToGloryWinners ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeaders={streakLeaders} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} lostToWinners={lostToWinners ?? null} lostToGloryWinners={lostToGloryWinners ?? null} lostToFire={lostToFire ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeaders={streakLeaders} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
     // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
     // → barre floutée + message + timer. Dans les deux cas, interaction impossible.
     const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown
@@ -2285,10 +2333,11 @@ export default function App() {
                           if (multiWinners || hasGlory) {
                             const gloryArr = hasGlory ? h.glory_winners : [];
                             // Gagnants réels avec avatars ({pseudo, avatar}) si disponibles (winners_full /
-                            // winner_avatar) ; repli sur les pseudos seuls (anciennes entrées).
+                            // winner_avatar) ; repli sur les pseudos seuls (anciennes entrées). Le gagnant
+                            // unique porte aussi ses flammes (winner_fire / winner_fire_streak).
                             const realArr = multiWinners
                               ? (Array.isArray(h.winners_full) && h.winners_full.length ? h.winners_full : multiWinners)
-                              : (h.winner ? [{ pseudo: h.winner, avatar: h.winner_avatar || null }] : []);
+                              : (h.winner ? [{ pseudo: h.winner, avatar: h.winner_avatar || null, fire: !!h.winner_fire, fire_streak: h.winner_fire_streak ?? null }] : []);
                             setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: [...gloryArr, ...realArr], gloryCount: gloryArr.length });
                             return;
                           }

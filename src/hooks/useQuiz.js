@@ -19,6 +19,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const [lostToGlory,   setLostToGlory]  = useState(false)
   const [lostToAvatar,  setLostToAvatar] = useState(null)   // avatar geocaching du gagnant (→ remplace 🏆)
   const [lostToWinners, setLostToWinners] = useState(null)  // round multi-prix : TOUS les gagnants [{pseudo, avatar}]
+  const [lostToFire,    setLostToFire]    = useState(null)  // gagnant UNIQUE en place en feu : { fire_streak } (flammes graduées bannière)
   const [lostToGloryWinners, setLostToGloryWinners] = useState(null) // joueurs « pour la gloire » du round [{pseudo, avatar}] (affichés en petit)
   const [quizKey,       setQuizKey]      = useState(0)
   // Durée du cycle (s) pour la barre de progression — suit l'intervalle dynamique serveur
@@ -310,11 +311,13 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         if (qid) {
           const idx = h.findIndex(e => e.quiz_id === qid)
           if (idx >= 0) {
-            const updated = { ...h[idx], won: true, glory_winners: meGloryWinners.length ? meGloryWinners : h[idx].glory_winners }
+            const updated = { ...h[idx], won: true, glory_winners: meGloryWinners.length ? meGloryWinners : h[idx].glory_winners,
+              winner_fire: !!data.fire, winner_fire_streak: data.fire_streak ?? null }
             return [...h.slice(0, idx), updated, ...h.slice(idx + 1)]
           }
         }
-        return [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false, glory_winners: meGloryWinners, quiz_id: qid }, ...h].slice(0, 10)
+        return [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false, glory_winners: meGloryWinners, quiz_id: qid,
+          winner_fire: !!data.fire, winner_fire_streak: data.fire_streak ?? null }, ...h].slice(0, 10)
       })
 
       // Déterminer l'issue pour piloter le visuel de résultat de la modale
@@ -361,7 +364,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     }
   }, [])
 
-  const handleQuizExpire = useCallback((npc, isBot = false, isGlory = false, winnerAvatar = null, winners = null, gloryWinners = null) => {
+  const handleQuizExpire = useCallback((npc, isBot = false, isGlory = false, winnerAvatar = null, winners = null, gloryWinners = null, winnerFire = null) => {
     const solvedAt = Date.now()
 
     if (!activeQuizRef.current) {
@@ -372,12 +375,14 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         setLostToAvatar(winnerAvatar || null)
         setLostToWinners(Array.isArray(winners) && winners.length > 1 ? winners : null)
         setLostToGloryWinners(Array.isArray(gloryWinners) && gloryWinners.length ? gloryWinners : null)
+        setLostToFire(winnerFire || null)
         setTimeout(() => {
           setLostToWinner(null)
           setLostToGlory(false)
           setLostToAvatar(null)
           setLostToWinners(null)
           setLostToGloryWinners(null)
+          setLostToFire(null)
           setPendingQuiz(currentPending => {
             if (currentPending && currentPending.id === pending.id) {
               setNextQuizTime(resolveNextQuizTime(solvedAt))
@@ -404,7 +409,8 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // joueurs « pour la gloire », affichés en petit sous le résultat).
       setActiveQuiz(q => q ? { ...q, winner: npc, winner_avatar: winnerAvatar || null,
         winners: Array.isArray(winners) && winners.length > 1 ? winners : null,
-        glory_winners: Array.isArray(gloryWinners) && gloryWinners.length ? gloryWinners : null } : null)
+        glory_winners: Array.isArray(gloryWinners) && gloryWinners.length ? gloryWinners : null,
+        winner_fire_info: winnerFire || null } : null)
     }
     setTimeout(() => advanceQuiz(solvedAt), wasResolvedByMe ? 1500 : 5000)
   }, [limits])
@@ -424,6 +430,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     lostToAvatar, setLostToAvatar,
     lostToWinners, setLostToWinners,
     lostToGloryWinners, setLostToGloryWinners,
+    lostToFire, setLostToFire,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz,
     handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz,

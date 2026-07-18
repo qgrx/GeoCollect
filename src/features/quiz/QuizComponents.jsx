@@ -701,7 +701,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
                   {lostAvatar
                     ? <div style={{display:"flex",justifyContent:"center"}}><Avatar pseudo={npc} avatarUrl={lostAvatar} verified size={44}/></div>
                     : <div style={{fontSize:36}}>😤</div>}
-                  <div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div>
+                  <div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", `${npc}${fireMark(quiz.winner_fire_info?{fire:true,fire_streak:quiz.winner_fire_info.fire_streak}:null)}`)}</div>
                 </>
               )}
               <GloryRow glory={gloryW} />
@@ -769,7 +769,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeaders=null,prizesTotal=1,graceDeadline=null}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,lostToFire=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeaders=null,prizesTotal=1,graceDeadline=null}){
   const {t}=useT(); const {theme}=useTheme();
   // Décompte de grâce « encore Ns pour répondre » (gloire / multi-prix) — ticker local 1 s.
   const [,graceTick]=useState(0)
@@ -832,7 +832,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:14,fontWeight:900,color:'#f9ca24',marginBottom:2,animation:'cgFade .35s .2s ease both',opacity:0}}>
-              🎉 Félicitations à <span style={{color:theme.textPrimary,fontWeight:900}}>{lw?joinNames(lw.map(w=>`${w.pseudo}${fireMark(w)}`)):lostTo}</span> !
+              🎉 Félicitations à <span style={{color:theme.textPrimary,fontWeight:900}}>{lw?joinNames(lw.map(w=>`${w.pseudo}${fireMark(w)}`)):`${lostTo}${fireMark(lostToFire?{fire:true,fire_streak:lostToFire.fire_streak}:null)}`}</span> !
             </div>
             {lostToGlory ? (
               <div style={{fontSize:10,color:theme.textSecondary,display:'flex',alignItems:'center',gap:5,animation:'cgFade .35s .35s ease both',opacity:0}}>
