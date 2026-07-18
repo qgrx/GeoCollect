@@ -33,19 +33,38 @@ const ordinal = n => {
 
 // Ligne « Pour la gloire : X, Y » — mini avatars + pseudos, affichée en plus petit
 // sous le(s) gagnant(s) du round (modale de quiz et popup « Trop tard »).
-// ── Gradation « en feu » ─────────────────────────────────────────────────────
-// Distingue « plus rapide à répondre » (place en feu) de « vraiment en feu » :
-// 🔥 = série 1, 🔥🔥 = série 2, 🔥🔥🔥 + effet discret = série ≥ seuil (en feu).
-// Entrées anciennes sans fire_streak (historique) → simple 🔥.
-const fireIconCount = w => Math.max(1, Math.min(3, Number(w?.fire_streak) || 1));
-const fireMark = w => w?.fire ? ` ${'🔥'.repeat(fireIconCount(w))}` : '';
-export function FireBadge({ streak = null, threshold = 3, hint = null }) {
-  const n = fireIconCount({ fire_streak: streak });
-  const blazing = (Number(streak) || 0) >= threshold;
+// ── Design « en feu » collé à l'avatar ───────────────────────────────────────
+// Série 1..seuil-1 : petite pastille 🔥+chiffre en bas à droite de l'avatar.
+// Série ≥ seuil (« vraiment en feu ») : avatar ENFLAMMÉ — halo animé + flammes
+// dansantes derrière le haut du cercle + pastille chiffre seul (3, 4, 5…).
+// Entrées anciennes sans fire_streak (historique pré-snapshot) : 🔥 sans chiffre.
+const FIRE_WRAP_CSS = `@keyframes fireGlow{0%,100%{filter:drop-shadow(0 0 3px #ff7043aa)}50%{filter:drop-shadow(0 0 10px #ff5722)}}
+@keyframes fireDance{0%,100%{transform:translateY(0) scale(1) rotate(-4deg);opacity:.9}50%{transform:translateY(-16%) scale(1.15) rotate(5deg);opacity:1}}`;
+export function FireWrap({ fire = false, streak = null, threshold = 3, size = 30, hint = null, style = {}, children }) {
+  if (!fire) return <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0, ...style }}>{children}</span>;
+  const blazing = (Number(streak) || 0) >= Math.max(1, threshold);
   return (
-    <span title={hint || undefined} style={{ marginLeft: 4, display: 'inline-flex', flexShrink: 0, ...(blazing ? { animation: 'fireBlaze 1.6s ease-in-out infinite', filter: 'drop-shadow(0 0 3px #ff7043)' } : {}) }}>
-      {blazing && <style>{'@keyframes fireBlaze{0%,100%{opacity:1}50%{opacity:.55}}'}</style>}
-      {'🔥'.repeat(n)}
+    <span title={hint || undefined} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0, ...(blazing ? { animation: 'fireGlow 1.5s ease-in-out infinite' } : {}), ...style }}>
+      <style>{FIRE_WRAP_CSS}</style>
+      {blazing && (
+        <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: Math.round(-size * 0.30), display: 'flex', justifyContent: 'space-between', padding: `0 ${Math.round(size * 0.06)}px`, zIndex: 0, pointerEvents: 'none' }}>
+          <span style={{ fontSize: Math.round(size * 0.40), lineHeight: 1, animation: 'fireDance 1.1s ease-in-out infinite' }}>🔥</span>
+          <span style={{ fontSize: Math.round(size * 0.56), lineHeight: 1, animation: 'fireDance 1.3s ease-in-out .25s infinite' }}>🔥</span>
+          <span style={{ fontSize: Math.round(size * 0.40), lineHeight: 1, animation: 'fireDance 1.2s ease-in-out .5s infinite' }}>🔥</span>
+        </span>
+      )}
+      <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex' }}>{children}</span>
+      <span style={{
+        position: 'absolute', right: Math.round(-size * 0.10), bottom: Math.round(-size * 0.08), zIndex: 2,
+        display: 'inline-flex', alignItems: 'center', gap: 1, pointerEvents: 'none',
+        background: blazing ? 'linear-gradient(135deg,#ff9330,#e6330f)' : 'linear-gradient(135deg,#ff7043,#e74c3c)',
+        borderRadius: 999, padding: `0 ${Math.max(2, Math.round(size * 0.08))}px`,
+        height: Math.max(11, Math.round(size * 0.40)),
+        boxShadow: '0 1px 4px #0007', border: '1px solid #ffffffaa',
+      }}>
+        {!blazing && <span style={{ fontSize: Math.max(7, Math.round(size * 0.26)), lineHeight: 1 }}>🔥</span>}
+        {streak != null && <span style={{ fontSize: Math.max(8, Math.round(size * 0.30)), lineHeight: 1, color: '#fff', fontWeight: 900, fontFamily: "'Nunito',sans-serif" }}>{streak}</span>}
+      </span>
     </span>
   );
 }
@@ -56,10 +75,14 @@ function GloryRow({ glory, color = '#e9a8a8' }) {
   return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:5,marginTop:8,flexWrap:'wrap',padding:'0 8px'}}>
       <span style={{display:'flex'}}>
-        {glory.map((g,i)=>(<Avatar key={i} pseudo={g.pseudo} avatarUrl={g.avatar||null} verified={!!g.avatar} size={18} style={{marginLeft:i?-6:0,zIndex:glory.length-i}}/>))}
+        {glory.map((g,i)=>(
+          <FireWrap key={i} fire={!!g.fire} streak={g.fire_streak ?? null} size={18} style={{marginLeft:i?-6:0,zIndex:glory.length-i}}>
+            <Avatar pseudo={g.pseudo} avatarUrl={g.avatar||null} verified={!!g.avatar} size={18}/>
+          </FireWrap>
+        ))}
       </span>
       <span style={{color,fontWeight:700,fontSize:11}}>
-        🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}', joinNames(glory.map(g=>`${g.pseudo}${fireMark(g)}`)))}
+        🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}', joinNames(glory.map(g=>g.pseudo)))}
       </span>
       <GloryInfoButton size={11} />
     </div>
@@ -692,16 +715,24 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
               {multiW ? (
                 <>
                   <div style={{display:"flex",justifyContent:"center"}}>
-                    {multiW.map((w,i)=>(<Avatar key={i} pseudo={w.pseudo} avatarUrl={w.avatar||null} verified={!!w.avatar} size={40} style={{marginLeft:i?-10:0,zIndex:multiW.length-i}}/>))}
+                    {multiW.map((w,i)=>(
+                      <FireWrap key={i} fire={!!w.fire} streak={w.fire_streak ?? null} size={40} style={{marginLeft:i?-10:0,zIndex:multiW.length-i}}>
+                        <Avatar pseudo={w.pseudo} avatarUrl={w.avatar||null} verified={!!w.avatar} size={40}/>
+                      </FireWrap>
+                    ))}
                   </div>
-                  <div style={{color:"#e74c3c",fontWeight:900,fontSize:16,marginTop:7}}>{(t("quiz_lost_multi")||"{names} ont remporté le geocoin !").replace("{names}", joinNames(multiW.map(w=>`${w.pseudo}${fireMark(w)}`)))}</div>
+                  <div style={{color:"#e74c3c",fontWeight:900,fontSize:16,marginTop:7}}>{(t("quiz_lost_multi")||"{names} ont remporté le geocoin !").replace("{names}", joinNames(multiW.map(w=>w.pseudo)))}</div>
                 </>
               ) : (
                 <>
                   {lostAvatar
-                    ? <div style={{display:"flex",justifyContent:"center"}}><Avatar pseudo={npc} avatarUrl={lostAvatar} verified size={44}/></div>
+                    ? <div style={{display:"flex",justifyContent:"center"}}>
+                        <FireWrap fire={!!quiz.winner_fire_info} streak={quiz.winner_fire_info?.fire_streak ?? null} size={44}>
+                          <Avatar pseudo={npc} avatarUrl={lostAvatar} verified size={44}/>
+                        </FireWrap>
+                      </div>
                     : <div style={{fontSize:36}}>😤</div>}
-                  <div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", `${npc}${fireMark(quiz.winner_fire_info?{fire:true,fire_streak:quiz.winner_fire_info.fire_streak}:null)}`)}</div>
+                  <div style={{color:"#e74c3c",fontWeight:900,fontSize:17,marginTop:7}}>{t("quiz_lost").replace("{npc}", npc)}</div>
                 </>
               )}
               <GloryRow glory={gloryW} />
@@ -825,14 +856,20 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
         <div style={{display:'flex',alignItems:'center',gap:11,background:'linear-gradient(135deg,#f9ca2412,#e1705508)',border:'1.5px solid #f9ca2455',borderRadius:13,padding:'10px 14px',boxShadow:'0 0 28px #f9ca2428',animation:'cgSlide .45s cubic-bezier(.34,1.56,.64,1) both'}}>
           <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',animation:'cgTrophy .5s .1s cubic-bezier(.34,1.56,.64,1) both',transform:'scale(0)'}}>
             {lw
-              ? lw.map((w,i)=>(<Avatar key={i} pseudo={w.pseudo} avatarUrl={w.avatar||null} verified={!!w.avatar} size={40} style={{marginLeft:i?-12:0,zIndex:lw.length-i}}/>))
-              : lostToAvatar
-              ? <Avatar pseudo={lostTo} avatarUrl={lostToAvatar} verified size={40} />
-              : <div style={{width:40,height:40,borderRadius:6,border:'2px solid #f9ca2466',background:'#1e3045',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🏆</div>}
+              ? lw.map((w,i)=>(
+                  <FireWrap key={i} fire={!!w.fire} streak={w.fire_streak ?? null} size={40} style={{marginLeft:i?-12:0,zIndex:lw.length-i}}>
+                    <Avatar pseudo={w.pseudo} avatarUrl={w.avatar||null} verified={!!w.avatar} size={40}/>
+                  </FireWrap>
+                ))
+              : <FireWrap fire={!!lostToFire} streak={lostToFire?.fire_streak ?? null} size={40}>
+                  {lostToAvatar
+                    ? <Avatar pseudo={lostTo} avatarUrl={lostToAvatar} verified size={40} />
+                    : <div style={{width:40,height:40,borderRadius:6,border:'2px solid #f9ca2466',background:'#1e3045',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🏆</div>}
+                </FireWrap>}
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:14,fontWeight:900,color:'#f9ca24',marginBottom:2,animation:'cgFade .35s .2s ease both',opacity:0}}>
-              🎉 Félicitations à <span style={{color:theme.textPrimary,fontWeight:900}}>{lw?joinNames(lw.map(w=>`${w.pseudo}${fireMark(w)}`)):`${lostTo}${fireMark(lostToFire?{fire:true,fire_streak:lostToFire.fire_streak}:null)}`}</span> !
+              🎉 Félicitations à <span style={{color:theme.textPrimary,fontWeight:900}}>{lw?joinNames(lw.map(w=>w.pseudo)):lostTo}</span> !
             </div>
             {lostToGlory ? (
               <div style={{fontSize:10,color:theme.textSecondary,display:'flex',alignItems:'center',gap:5,animation:'cgFade .35s .35s ease both',opacity:0}}>
@@ -850,9 +887,13 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
             {!lostToGlory && Array.isArray(lostToGloryWinners) && lostToGloryWinners.length>0 && (
               <div style={{fontSize:10,color:theme.textSecondary,display:'flex',alignItems:'center',gap:4,marginTop:3,minWidth:0,animation:'cgFade .35s .45s ease both',opacity:0}}>
                 <span style={{display:'flex',flexShrink:0}}>
-                  {lostToGloryWinners.map((g,i)=>(<Avatar key={i} pseudo={g.pseudo} avatarUrl={g.avatar||null} verified={!!g.avatar} size={15} style={{marginLeft:i?-5:0,zIndex:lostToGloryWinners.length-i}}/>))}
+                  {lostToGloryWinners.map((g,i)=>(
+                    <FireWrap key={i} fire={!!g.fire} streak={g.fire_streak ?? null} size={15} style={{marginLeft:i?-5:0,zIndex:lostToGloryWinners.length-i}}>
+                      <Avatar pseudo={g.pseudo} avatarUrl={g.avatar||null} verified={!!g.avatar} size={15}/>
+                    </FireWrap>
+                  ))}
                 </span>
-                <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}',joinNames(lostToGloryWinners.map(g=>`${g.pseudo}${fireMark(g)}`)))}</span>
+                <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}',joinNames(lostToGloryWinners.map(g=>g.pseudo)))}</span>
                 <GloryInfoButton size={11}/>
               </div>
             )}
@@ -1425,8 +1466,10 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
             {realWinners.length > 0 ? (
               realWinners.map((w, i) => (
                 <div key={`rw${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, background: `${rankColor(i)}${i < 3 ? '22' : '15'}`, border: `1px solid ${rankColor(i)}88`, borderRadius: 9, padding: '8px 11px' }}>
-                  <Avatar pseudo={nameOf(w)} avatarUrl={avatarOf(w)} verified={!!avatarOf(w)} size={30} />
-                  <span style={{ fontSize: 13, fontWeight: 900, color: '#1a2538', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>{nameOf(w)}{isFireEntry(w) && <FireBadge streak={w.fire_streak} threshold={fireThreshold} hint={fireHint(w)} />}</span>
+                  <FireWrap fire={isFireEntry(w)} streak={w.fire_streak ?? null} threshold={fireThreshold} hint={fireHint(w)} size={30}>
+                    <Avatar pseudo={nameOf(w)} avatarUrl={avatarOf(w)} verified={!!avatarOf(w)} size={30} />
+                  </FireWrap>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: '#1a2538', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(w)}</span>
                   <span style={{ marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3, background: '#ffffff', border: `1.5px solid ${rankColor(i)}`, color: '#334155', fontWeight: 900, fontSize: 10.5, padding: '3px 8px', borderRadius: 20 }}>🏆 {ordinal(i + 1)}</span>
                 </div>
               ))
@@ -1446,8 +1489,10 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
                   const hold = isHoldEntry(p);
                   return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: hold ? '#6c5ce715' : '#f9ca2412', border: `1px solid ${hold ? '#6c5ce755' : '#f9ca2444'}`, borderRadius: 9, padding: '6px 11px' }}>
-                    <Avatar pseudo={nameOf(p)} avatarUrl={avatarOf(p)} verified={!!avatarOf(p)} size={24} />
-                    <span style={{ fontSize: 13, fontWeight: 800, color: '#78716c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>{nameOf(p)}{isFireEntry(p) && <FireBadge streak={p.fire_streak} threshold={fireThreshold} hint={fireHint(p)} />}</span>
+                    <FireWrap fire={isFireEntry(p)} streak={p.fire_streak ?? null} threshold={fireThreshold} hint={fireHint(p)} size={24}>
+                      <Avatar pseudo={nameOf(p)} avatarUrl={avatarOf(p)} verified={!!avatarOf(p)} size={24} />
+                    </FireWrap>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#78716c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(p)}</span>
                     <span style={{ fontSize: 12, marginLeft: 'auto', flexShrink: 0 }}>{hold ? '📥' : '🎖️'}</span>
                     {hold && <span style={{ fontSize: 9, fontWeight: 800, color: '#6c5ce7', flexShrink: 0 }}>{t('quiz_choice_deposit') || 'dépôt'}</span>}
                   </div>
