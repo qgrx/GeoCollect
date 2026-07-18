@@ -35,36 +35,35 @@ const ordinal = n => {
 // sous le(s) gagnant(s) du round (modale de quiz et popup « Trop tard »).
 // ── Design « en feu » collé à l'avatar ───────────────────────────────────────
 // Série 1..seuil-1 : petite pastille 🔥+chiffre en bas à droite de l'avatar.
-// Série ≥ seuil (« vraiment en feu ») : avatar ENFLAMMÉ — halo animé + flammes
-// dansantes derrière le haut du cercle + pastille chiffre seul (3, 4, 5…).
+// Série ≥ seuil (« vraiment en feu ») : avatar ENFLAMMÉ — halo animé + UNE flamme
+// dansante à gauche du chiffre, centrées au-dessus de l'avatar (3, 4, 5…).
 // Entrées anciennes sans fire_streak (historique pré-snapshot) : 🔥 sans chiffre.
 const FIRE_WRAP_CSS = `@keyframes fireGlow{0%,100%{filter:drop-shadow(0 0 3px #ff7043aa)}50%{filter:drop-shadow(0 0 10px #ff5722)}}
-@keyframes fireDance{0%,100%{transform:translateY(0) scale(1) rotate(-4deg);opacity:.9}50%{transform:translateY(-16%) scale(1.15) rotate(5deg);opacity:1}}`;
+@keyframes fireDance{0%,100%{transform:translateY(0) scale(1) rotate(-6deg);opacity:.9}50%{transform:translateY(-12%) scale(1.18) rotate(6deg);opacity:1}}`;
 export function FireWrap({ fire = false, streak = null, threshold = 3, size = 30, hint = null, style = {}, children }) {
   if (!fire) return <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0, ...style }}>{children}</span>;
   const blazing = (Number(streak) || 0) >= Math.max(1, threshold);
   return (
     <span title={hint || undefined} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0, ...(blazing ? { animation: 'fireGlow 1.5s ease-in-out infinite' } : {}), ...style }}>
       <style>{FIRE_WRAP_CSS}</style>
-      {blazing && (
-        <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: Math.round(-size * 0.30), display: 'flex', justifyContent: 'space-between', padding: `0 ${Math.round(size * 0.06)}px`, zIndex: 0, pointerEvents: 'none' }}>
-          <span style={{ fontSize: Math.round(size * 0.40), lineHeight: 1, animation: 'fireDance 1.1s ease-in-out infinite' }}>🔥</span>
-          <span style={{ fontSize: Math.round(size * 0.56), lineHeight: 1, animation: 'fireDance 1.3s ease-in-out .25s infinite' }}>🔥</span>
-          <span style={{ fontSize: Math.round(size * 0.40), lineHeight: 1, animation: 'fireDance 1.2s ease-in-out .5s infinite' }}>🔥</span>
+      <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex' }}>{children}</span>
+      {blazing ? (
+        // 🔥 unique animée à gauche du chiffre, au-dessus du logo joueur.
+        <span style={{ position: 'absolute', top: Math.round(-size * 0.40), left: '50%', transform: 'translateX(-50%)', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: Math.max(1, Math.round(size * 0.03)), pointerEvents: 'none' }}>
+          <span style={{ fontSize: Math.round(size * 0.50), lineHeight: 1, animation: 'fireDance 1.1s ease-in-out infinite', filter: 'drop-shadow(0 0 3px #ff7043)' }}>🔥</span>
+          {streak != null && (
+            <span style={{ fontSize: Math.max(9, Math.round(size * 0.38)), lineHeight: 1, color: '#fff', fontWeight: 900, fontFamily: "'Nunito',sans-serif", textShadow: '0 1px 3px #000c, 0 0 7px #ff5722' }}>{streak}</span>
+          )}
+        </span>
+      ) : (
+        // Série < seuil : une seule 🔥 (grosse) avec le chiffre À L'INTÉRIEUR — pas de pastille.
+        <span style={{ position: 'absolute', right: Math.round(-size * 0.14), bottom: Math.round(-size * 0.10), zIndex: 2, pointerEvents: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', filter: 'drop-shadow(0 1px 2px #0009)' }}>
+          <span style={{ fontSize: Math.max(13, Math.round(size * 0.55)), lineHeight: 1 }}>🔥</span>
+          {streak != null && (
+            <span style={{ position: 'absolute', bottom: '6%', left: '50%', transform: 'translateX(-50%)', fontSize: Math.max(8, Math.round(size * 0.26)), lineHeight: 1, color: '#fff', fontWeight: 900, fontFamily: "'Nunito',sans-serif", textShadow: '0 1px 2px #000d, 0 0 3px #000a' }}>{streak}</span>
+          )}
         </span>
       )}
-      <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex' }}>{children}</span>
-      <span style={{
-        position: 'absolute', right: Math.round(-size * 0.10), bottom: Math.round(-size * 0.08), zIndex: 2,
-        display: 'inline-flex', alignItems: 'center', gap: 1, pointerEvents: 'none',
-        background: blazing ? 'linear-gradient(135deg,#ff9330,#e6330f)' : 'linear-gradient(135deg,#ff7043,#e74c3c)',
-        borderRadius: 999, padding: `0 ${Math.max(2, Math.round(size * 0.08))}px`,
-        height: Math.max(11, Math.round(size * 0.40)),
-        boxShadow: '0 1px 4px #0007', border: '1px solid #ffffffaa',
-      }}>
-        {!blazing && <span style={{ fontSize: Math.max(7, Math.round(size * 0.26)), lineHeight: 1 }}>🔥</span>}
-        {streak != null && <span style={{ fontSize: Math.max(8, Math.round(size * 0.30)), lineHeight: 1, color: '#fff', fontWeight: 900, fontFamily: "'Nunito',sans-serif" }}>{streak}</span>}
-      </span>
     </span>
   );
 }
