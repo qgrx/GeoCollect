@@ -179,6 +179,44 @@ export function GloryInfoModalHost() {
   ), document.body);
 }
 
+// Petit bouton « ⓘ » qui explique la règle de la série « en feu » dans une popup
+// fermable manuellement. Affiché dans la barre en feu (bandeau leader + annonce).
+//
+// ⚠️ Comme « Pour la gloire », la popup est DÉCOUPLÉE du bouton : rendue par un
+// hôte permanent (FireInfoModalHost, monté une fois dans App) piloté par un
+// singleton de module — la barre en feu est éphémère (teaser), son démontage ne
+// doit pas fermer la popup en pleine lecture.
+let _openFireInfo = null;
+
+export function FireInfoButton({ size = 15 }) {
+  const { t } = useT();
+  return (
+    <button onClick={e => { e.stopPropagation(); _openFireInfo?.(); }} title={t('fire_info_title') || 'Série « en feu »'}
+      style={{ background:'#ff704322', border:'1px solid #ff704366', color:'#ff8a5c', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
+  );
+}
+
+// Hôte permanent de la popup « Série en feu ». À monter UNE SEULE FOIS à la
+// racine (App) pour que la popup survive au démontage du bouton déclencheur.
+export function FireInfoModalHost() {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    _openFireInfo = () => setOpen(true);
+    return () => { if (_openFireInfo) _openFireInfo = null; };
+  }, []);
+  if (!open) return null;
+  return createPortal((
+    <div onClick={() => setOpen(false)} style={{ position:'fixed', inset:0, zIndex:4000, display:'flex', alignItems:'center', justifyContent:'center', background:'#000b', backdropFilter:'blur(6px)', padding:16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
+        <div style={{ fontSize:15, fontWeight:900, color:'#ff8a5c', marginBottom:9 }}>🔥 {t('fire_info_title') || 'Série « en feu »'}</div>
+        <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{t('fire_info_body') || ''}</div>
+        <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#ff8a5c,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('close') || 'Fermer'}</button>
+      </div>
+    </div>
+  ), document.body);
+}
+
 // Petit bouton « ⓘ » qui explique la limite atteinte (titre + délai de reset + ce
 // qu'on gagne quand même) dans une popup. Permet de garder le bandeau du quiz sur
 // une seule ligne pour que la question reste visible sans scroll.
@@ -739,8 +777,9 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
         <div style={{position:'relative',overflow:'hidden',display:'flex',alignItems:'center',gap:12,background:'linear-gradient(135deg,#3a1a0e,#7a2a10,#3a1a0e)',border:'1.5px solid #ff7043aa',borderRadius:13,padding:'12px 16px',boxShadow:'0 0 30px #ff704344',animation:streakHype.fading?'cgFadeOut .4s ease forwards':'cgSlide .4s cubic-bezier(.34,1.56,.64,1) both'}}>
           <div style={{fontSize:34,flexShrink:0,animation:'cdShake .5s ease-out'}}>🔥</div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:15,fontWeight:900,color:'#ffd28a',lineHeight:1.2}}>
-              {t('streak_hype_big').replace('{pseudo}', streakHype.pseudo).replace('{n}', streakHype.streak)}
+            <div style={{fontSize:15,fontWeight:900,color:'#ffd28a',lineHeight:1.2,display:'flex',alignItems:'center',gap:6}}>
+              <span>{t('streak_hype_big').replace('{pseudo}', streakHype.pseudo).replace('{n}', streakHype.streak)}</span>
+              <FireInfoButton size={12}/>
             </div>
             {!streakHype.exempt && streakHype.handicap > 0 && (
               <div style={{fontSize:11,color:'#ffb07a',fontWeight:800,marginTop:3}}>
@@ -883,7 +922,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
                 : hasCard
                 ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}{prizesTotal>1&&<span style={{color:'#a29bfe',fontWeight:900,marginLeft:6}}>🎁 {(t('quiz_prizes_to_win')||'{n} à gagner').replace('{n}',prizesTotal)}</span>}</>
                 : onFire
-                  ? <span style={{color:'#ff8a5c',fontWeight:800}}>🔥 {t('streak_bar_small').replace('{pseudo}',streakLeader.pseudo).replace('{n}',streakLeader.streak).replace('{x}',streakLeader.handicap_seconds)}</span>
+                  ? <><span style={{color:'#ff8a5c',fontWeight:800}}>🔥 {t('streak_bar_small').replace('{pseudo}',streakLeader.pseudo).replace('{n}',streakLeader.streak).replace('{x}',streakLeader.handicap_seconds)}</span><FireInfoButton size={11}/></>
                   : <span style={{color:theme.textMuted,fontStyle:'italic'}}>{t('next_card')}</span>}
             </div>
           )}

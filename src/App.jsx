@@ -41,7 +41,7 @@ import SettingsModal from './features/auth/SettingsModal.jsx';
 import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
 import { DemoComplete } from './features/demo/DemoGame.jsx';
-import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, BeginnerRecap, BeginnerWinnersModal, GameRulesModal, GloryInfoModalHost, LimitInfoModalHost } from './features/quiz/QuizComponents.jsx';
+import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, BeginnerRecap, BeginnerWinnersModal, GameRulesModal, GloryInfoModalHost, LimitInfoModalHost, FireInfoModalHost } from './features/quiz/QuizComponents.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
@@ -608,13 +608,18 @@ export default function App() {
           showToast(tRef.current('quiz_prize_taken_toast').replace('{pseudo}', data.winner || '?').replace('{n}', secLeft))
         }
 
-        // « En feu » : seul le 1er gagnant (prize_index 0) porte la série → MAJ leader (handicap)
-        // + animation. Le quiz:solved multi ne la rejouera pas (guard data.multi).
+        // « En feu » : l'API n'envoie winner_streak que pour une bonne réponse dans les
+        // places en feu du round (P premières, P = geocoins offerts) → MAJ leader
+        // (handicap) + animation. Plusieurs gagnants d'un round multi peuvent porter une
+        // série : on ne garde comme leader que la plus haute (comme getStreakLeader côté
+        // serveur). Le quiz:solved multi ne rejouera pas l'animation (guard data.multi).
         const hCfg = gs.limits?.quizStreakHandicap
         const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
-        if (data.prize_index === 0 && data.winner_streak != null && data.winner_streak >= threshold && hCfg?.enabled !== false) {
+        if (data.winner_streak != null && data.winner_streak >= threshold && hCfg?.enabled !== false) {
           const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
-          setStreakLeader({ id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
+          setStreakLeader(prev => (prev && (prev.streak || 0) > data.winner_streak && prev.id !== data.winner_id)
+            ? prev
+            : { id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
           setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: false })
           if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
           streakHypeTimerRef.current = setTimeout(() => {
@@ -644,14 +649,16 @@ export default function App() {
           showToast(tRef.current('toast_glory_other').replace('{pseudo}', data.winner))
         }
 
-        // « En feu » : la série est portée par la 1ère bonne réponse du round, GLOIRE
-        // comprise (winner_streak n'est envoyé que dans ce cas) → MAJ leader (handicap)
-        // + animation, comme au quiz:prize_won.
+        // « En feu » : la série est portée par les premières bonnes réponses du round,
+        // GLOIRE comprise (winner_streak n'est envoyé que pour une place en feu) → MAJ
+        // leader (la plus haute série gagne) + animation, comme au quiz:prize_won.
         const hCfg = gs.limits?.quizStreakHandicap
         const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
         if (data.winner_streak != null && data.winner_streak >= threshold && hCfg?.enabled !== false) {
           const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
-          setStreakLeader({ id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
+          setStreakLeader(prev => (prev && (prev.streak || 0) > data.winner_streak && prev.id !== data.winner_id)
+            ? prev
+            : { id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
           setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: false })
           if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
           streakHypeTimerRef.current = setTimeout(() => {
@@ -2674,6 +2681,7 @@ export default function App() {
       {/* Popup « Pour la gloire » — hôte permanent : découplée de son bouton
           déclencheur pour survivre au démontage des bannières éphémères. */}
       <GloryInfoModalHost />
+      <FireInfoModalHost />
       {/* Popup « Limites atteintes » — même hôte permanent, découplé du bouton ⓘ du
           bandeau de quiz pour survivre au démontage du QuizModal entre les manches. */}
       <LimitInfoModalHost />
