@@ -208,6 +208,8 @@ export const apiBuyPocketBoost = () => apiFetch('/api/limits/pocket/boost', { me
 export const apiBuyBagSlot     = () => apiFetch('/api/limits/bag/buy', { method: 'POST' })
 export const apiAdminGetStats         = () => apiFetch('/api/admin/stats')
 export const apiAdminGetOnlineHistory = (hours = 24) => apiFetch(`/api/admin/online-history?hours=${hours}`)
+export const apiAdminGetSignupsHistory = (days = 30) => apiFetch(`/api/admin/signups-history?days=${days}`)
+export const apiAdminGetGeocoinsPerPlayer = () => apiFetch('/api/admin/geocoins-per-player')
 export const apiAdminGetBots          = () => apiFetch('/api/admin/bots')
 export const apiAdminCreateBot        = (body) => apiFetch('/api/admin/bots', { method: 'POST', body })
 export const apiAdminUpdateBot        = (id, body) => apiFetch(`/api/admin/bots/${id}`, { method: 'PATCH', body })

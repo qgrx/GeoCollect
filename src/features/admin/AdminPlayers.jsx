@@ -12,6 +12,9 @@ import {
 import AdminCheatReport from './AdminCheatReport.jsx';
 import AdminPlayerSpending from './AdminPlayerSpending.jsx';
 
+// Code pays ISO (FR) → emoji drapeau (🇫🇷) via les indicateurs régionaux Unicode.
+const flagEmoji = cc => cc ? cc.toUpperCase().replace(/./g, ch => String.fromCodePoint(ch.charCodeAt(0) + 127397)) : '';
+
 export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMsg }) {
   const { t, lang } = useT();
   const [page, setPage]               = useState(0);
@@ -50,6 +53,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
               joined: p.joined_at ? new Date(p.joined_at).toLocaleDateString('fr-FR') : '?',
               lastSeen: p.last_seen_at ? new Date(p.last_seen_at).toLocaleDateString('fr-FR') : '?',
               ip: p.ip || 'Inconnue',
+              geo: p.geo ? `${flagEmoji(p.geo_cc)} ${p.geo}`.trim() : null,
               ua: p.ua || 'Inconnu',
             }));
             setPlayersData({ players: mapped, total: d.total || 0, loading: false });
@@ -146,7 +150,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
       <div style={{ fontWeight: 900, color: '#e74c3c', fontSize: 15, marginBottom: 14 }}>Fiche de {playerView.name}</div>
 
       {/* Infos */}
-      {[['Email', playerView.email], ['IP', playerView.ip], ['UA', playerView.ua], ['Inscrit', playerView.joined], ['Dernière co.', playerView.lastSeen], ['Statut', playerView.status]].map(([lbl, val]) => (
+      {[['Email', playerView.email], ['IP', playerView.ip], ['Localisation', playerView.geo || 'Inconnue'], ['UA', playerView.ua], ['Inscrit', playerView.joined], ['Dernière co.', playerView.lastSeen], ['Statut', playerView.status]].map(([lbl, val]) => (
         <div key={lbl} style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
           <div style={{ fontSize: 11, color: '#a8bfcf', width: 100, flexShrink: 0 }}>{lbl}</div>
           <div style={{ fontSize: 12, color: '#fff', fontWeight: 700, fontFamily: lbl === 'IP' || lbl === 'UA' ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{val}</div>
@@ -498,7 +502,7 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
                       {p.can_sell === false && <span style={{ fontSize: 9, background: '#e74c3c22', color: '#e74c3c', borderRadius: 50, padding: '1px 6px', fontWeight: 700 }}>vente interdite</span>}
                       {p.email_confirmed === false && <span style={{ fontSize: 9, background: '#e17055aa', color: '#fff', borderRadius: 50, padding: '1px 6px', fontWeight: 700 }}>✉️ non vérifié</span>}
                     </div>
-                    <div style={{ fontSize: 9, color: '#fff', fontFamily: 'monospace', marginTop: 1 }}>{p.ip} · {p.lastSeen}</div>
+                    <div style={{ fontSize: 9, color: '#fff', fontFamily: 'monospace', marginTop: 1 }}>{p.ip}{p.geo ? ` · ${p.geo}` : ''} · {p.lastSeen}</div>
                   </div>
                   <div style={{ fontSize: 10, color: banned ? '#e74c3c' : '#00b894', fontWeight: 700 }}>{banned ? '🔴' : '🟢'}</div>
                   <div style={{ display: 'flex', gap: 5 }}>
