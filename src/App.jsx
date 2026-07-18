@@ -469,13 +469,13 @@ export default function App() {
         // les afficher TOUS (modale, bannière, notification) — pas seulement le premier.
         const winnersList = Array.isArray(data.prize_winners) ? data.prize_winners : []
         const winnersFull = (data.multi && winnersList.length > 1)
-          ? winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, fire: !!w.fire }))
+          ? winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, fire: !!w.fire, fire_streak: w.fire_streak ?? null }))
           : null
         // Joueurs « pour la gloire » du round (avatars fournis par l'API) — affichés
         // en plus petit sous le(s) gagnant(s) dans la modale / bannière / notification.
         // `fire` = bonne réponse dans les places en feu (petite flamme à côté du pseudo).
         const gloryFull = (data.glory_winners || []).length
-          ? data.glory_winners.map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, fire: !!g.fire }))
+          ? data.glory_winners.map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, fire: !!g.fire, fire_streak: g.fire_streak ?? null }))
           : null
 
         // Si le quiz résolu est celui actuellement EN ATTENTE (non rejoint), le marquer
@@ -558,8 +558,8 @@ export default function App() {
             isBot: !!winnersList[0]?.is_bot,
             isShiny: data.is_shiny || false,
             winners: winnerPseudos,          // liste complète des gagnants du round multi-prix
-            // …et la même liste avec avatars pour la fiche « Gagnants » (+ flamme places en feu)
-            winners_full: winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, fire: !!w.fire })),
+            // …et la même liste avec avatars pour la fiche « Gagnants » (+ flammes graduées)
+            winners_full: winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, fire: !!w.fire, fire_streak: w.fire_streak ?? null })),
             glory_winners: gloryFull || [],
             quiz_id: data.quiz_id,
           }
@@ -694,7 +694,7 @@ export default function App() {
           applyRoundFire(data.quiz_id, Math.max(1, Number(hCfg?.threshold) || 3))
         }
         // Joueurs « pour la gloire » avec avatars (fiche « Gagnants » + bannière).
-        const gloryFull = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, fire: !!g.fire }))
+        const gloryFull = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, fire: !!g.fire, fire_streak: g.fire_streak ?? null }))
         // Geocoin joué « pour la gloire » mais que personne n'a remporté → l'ajouter au strip
         // des derniers geocoins disputés (winner null, glory_winners renseignés).
         if (gloryFull.length > 0 && data.card_name) {
@@ -2745,7 +2745,7 @@ export default function App() {
       {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
 
       {/* Liste des gagnants d'une manche Entraînement (clic sur le feed) */}
-      {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} onClose={() => setBeginnerWinnersPopup(null)} />}
+      {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} fireThreshold={Math.max(1, Number(gs.limits?.quizStreakHandicap?.threshold) || 3)} onClose={() => setBeginnerWinnersPopup(null)} />}
 
       {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits, { shinyCard: !!(activeQuiz?.is_shiny ?? quizIsShiny) })} upsell={limitUpsell} streakLeaders={auth.isDemo ? null : streakLeaders} myId={auth.profile?.id} alreadyOwned={!!activeQuiz?.card?.id && ((activeQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[activeQuiz.card.id] || 0) > 0 : (gs.collection?.[activeQuiz.card.id] || 0) > 0)} holdState={{ holds, holdSlots, holdRentActive, rentPrice: gs.limits?.holdRentPrice ?? 80, replacePrice: gs.limits?.holdReplacePrice ?? 50, gold: gs.gold }} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {
