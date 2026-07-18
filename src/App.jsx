@@ -2780,7 +2780,7 @@ export default function App() {
       {/* Popup « Pour la gloire » — hôte permanent : découplée de son bouton
           déclencheur pour survivre au démontage des bannières éphémères. */}
       <GloryInfoModalHost />
-      <FireInfoModalHost />
+      <FireInfoModalHost threshold={Math.max(1, Number(gs.limits?.quizStreakHandicap?.threshold) || 3)} />
       {/* Popup « Limites atteintes » — même hôte permanent, découplé du bouton ⓘ du
           bandeau de quiz pour survivre au démontage du QuizModal entre les manches. */}
       <LimitInfoModalHost />

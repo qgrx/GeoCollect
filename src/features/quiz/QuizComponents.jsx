@@ -39,7 +39,7 @@ const ordinal = n => {
 // dansante à gauche du chiffre, centrées au-dessus de l'avatar (3, 4, 5…).
 // Entrées anciennes sans fire_streak (historique pré-snapshot) : 🔥 sans chiffre.
 const FIRE_WRAP_CSS = `@keyframes fireGlow{0%,100%{filter:drop-shadow(0 0 3px #ff7043aa)}50%{filter:drop-shadow(0 0 10px #ff5722)}}
-@keyframes fireDance{0%,100%{transform:translateY(0) scale(1) rotate(-6deg);opacity:.9}50%{transform:translateY(-12%) scale(1.18) rotate(6deg);opacity:1}}`;
+@keyframes fireDance{0%,100%{transform:translateY(4%) scale(1) rotate(-6deg);opacity:.9}50%{transform:translateY(-6%) scale(1.18) rotate(6deg);opacity:1}}`;
 export function FireWrap({ fire = false, streak = null, threshold = 3, size = 30, hint = null, style = {}, children }) {
   if (!fire) return <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0, ...style }}>{children}</span>;
   const blazing = (Number(streak) || 0) >= Math.max(1, threshold);
@@ -50,7 +50,9 @@ export function FireWrap({ fire = false, streak = null, threshold = 3, size = 30
       {blazing ? (
         // 🔥 unique animée, chiffre À L'INTÉRIEUR — MÊME position qu'en dessous du
         // seuil (bas droite de l'avatar) ; seuls le halo et la danse signalent le feu.
-        <span style={{ position: 'absolute', right: Math.round(-size * 0.14), bottom: Math.round(-size * 0.10), zIndex: 2, pointerEvents: 'none' }}>
+        // bottom plus bas que la version statique : glyphe plus gros + danse vers le
+        // haut, sinon la flamme animée paraît plus haute que les flammes fixes.
+        <span style={{ position: 'absolute', right: Math.round(-size * 0.14), bottom: Math.round(-size * 0.145), zIndex: 2, pointerEvents: 'none' }}>
           <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', animation: 'fireDance 1.1s ease-in-out infinite', filter: 'drop-shadow(0 0 3px #ff7043)' }}>
             <span style={{ fontSize: Math.max(14, Math.round(size * 0.60)), lineHeight: 1 }}>🔥</span>
             {streak != null && (
@@ -196,7 +198,7 @@ export function GloryInfoButton({ size = 15 }) {
   const { t } = useT();
   return (
     <button onClick={e => { e.stopPropagation(); _openGloryInfo?.(); }} title={t('glory_info_title') || 'Pour la gloire ?'}
-      style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
+      style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-3, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>i</button>
   );
 }
 
@@ -234,13 +236,15 @@ export function FireInfoButton({ size = 15 }) {
   const { t } = useT();
   return (
     <button onClick={e => { e.stopPropagation(); _openFireInfo?.(); }} title={t('fire_info_title') || 'Série « en feu »'}
-      style={{ background:'#ff704322', border:'1px solid #ff704366', color:'#ff8a5c', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
+      style={{ background:'#ff704322', border:'1px solid #ff704366', color:'#ff8a5c', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-3, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>i</button>
   );
 }
 
 // Hôte permanent de la popup « Série en feu ». À monter UNE SEULE FOIS à la
 // racine (App) pour que la popup survive au démontage du bouton déclencheur.
-export function FireInfoModalHost() {
+// threshold = seuil « en feu » (config admin quiz_streak_handicap) : injecté dans
+// le texte via {n}, pour que la popup suive automatiquement le paramétrage.
+export function FireInfoModalHost({ threshold = 3 }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -252,7 +256,7 @@ export function FireInfoModalHost() {
     <div onClick={() => setOpen(false)} style={{ position:'fixed', inset:0, zIndex:4000, display:'flex', alignItems:'center', justifyContent:'center', background:'#000b', backdropFilter:'blur(6px)', padding:16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background:'#1a2744', border:'1px solid #ffffff22', borderRadius:16, padding:'18px 20px', maxWidth:360, width:'100%', boxShadow:'0 20px 50px #0009', fontFamily:"'Nunito',sans-serif" }}>
         <div style={{ fontSize:15, fontWeight:900, color:'#ff8a5c', marginBottom:9 }}>🔥 {t('fire_info_title') || 'Série « en feu »'}</div>
-        <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{t('fire_info_body') || ''}</div>
+        <div style={{ fontSize:12.5, color:'#cfd8e3', lineHeight:1.65, whiteSpace:'pre-line' }}>{(t('fire_info_body') || '').replaceAll('{n}', threshold)}</div>
         <button onClick={() => setOpen(false)} style={{ marginTop:15, background:'linear-gradient(135deg,#ff8a5c,#e17055)', border:'none', color:'#1e3045', padding:'8px 18px', borderRadius:10, fontWeight:900, cursor:'pointer', fontSize:12.5 }}>{t('shop_close') || 'Fermer'}</button>
       </div>
     </div>
@@ -274,7 +278,7 @@ let _openLimitInfo = null;
 export function LimitInfoButton({ title, body, size = 14 }) {
   return (
     <button onClick={e => { e.stopPropagation(); _openLimitInfo?.(title, body); }} title={title}
-      style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-4, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>ⓘ</button>
+      style={{ background:'#f9ca2422', border:'1px solid #f9ca2566', color:'#f9ca24', width:size+5, height:size+5, minWidth:size+5, borderRadius:'50%', fontSize:size-3, fontWeight:900, cursor:'pointer', lineHeight:1, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0 }}>i</button>
   );
 }
 
