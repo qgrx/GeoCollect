@@ -1385,7 +1385,7 @@ export function GameRulesModal({ onClose }) {
 // gloryCount > 0 : les N premiers sont des glory winners, les suivants les vrais gagnants.
 // Affichage HOMOGÈNE quel que soit le mode : avatar (photo de profil geocaching ou
 // initiale) + pseudo + badge de rang « 🏆 1er / 2e / 3e » (or / argent / bronze).
-export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClose, fireThreshold = 3 }) {
+export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClose, fireThreshold = 3, isShiny = false, onCardClick }) {
   const { t } = useT();
   const RANK = ['#f59e0b', '#9aa6b2', '#b45309'];   // or / argent / bronze
   // winners.length === gloryCount : joué pour la gloire, personne n'a remporté le geocoin.
@@ -1415,7 +1415,7 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
         </div>
         {card && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-            <Card card={card} />
+            <Card card={card} isShiny={isShiny} onClick={onCardClick} />
           </div>
         )}
         {winners.length === 0 ? (

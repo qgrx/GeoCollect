@@ -1195,7 +1195,7 @@ export default function App() {
   // du mode compétitif quand l'utilisateur est en mode Entraînement (piste débutant).
   const beginnerActiveRef = useRef(beginnerActive)
   useEffect(() => { beginnerActiveRef.current = beginnerActive })
-  const [beginnerWinnersPopup, setBeginnerWinnersPopup] = useState(null)   // { card, winners }
+  const [beginnerWinnersPopup, setBeginnerWinnersPopup] = useState(null)   // { card, winners, gloryCount, isShiny }
   // ── Protection inter-modes — AUTORITÉ SERVEUR UNIQUE ────────────────────────
   // Le serveur calcule cross_blocked dans /current (round-based : bloque la manche
   // en cours / la prochaine au moment du gain, puis se libère après une manche ;
@@ -2326,22 +2326,20 @@ export default function App() {
                       return (
                         <div key={i} title={h.card?.name} onClick={() => {
                           if (!h.card) return;
-                          if (beginnerActive) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: h.winners || [] }); return; }
-                          // Round multi-prix et/ou gloire : liste unifiée [gloire…, gagnants réels…].
-                          // gloryCount = nb de « pour la gloire » → la modale sépare les deux sections
-                          // (sinon, en multi-prix AVEC gloire, les joueurs-gloire n'apparaissaient pas).
-                          if (multiWinners || hasGlory) {
-                            const gloryArr = hasGlory ? h.glory_winners : [];
-                            // Gagnants réels avec avatars ({pseudo, avatar}) si disponibles (winners_full /
-                            // winner_avatar) ; repli sur les pseudos seuls (anciennes entrées). Le gagnant
-                            // unique porte aussi ses flammes (winner_fire / winner_fire_streak).
-                            const realArr = multiWinners
-                              ? (Array.isArray(h.winners_full) && h.winners_full.length ? h.winners_full : multiWinners)
-                              : (h.winner ? [{ pseudo: h.winner, avatar: h.winner_avatar || null, fire: !!h.winner_fire, fire_streak: h.winner_fire_streak ?? null }] : []);
-                            setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: [...gloryArr, ...realArr], gloryCount: gloryArr.length });
-                            return;
-                          }
-                          setSelectedCard(gs.cardPool.find(c => c.id === h.card.id) || h.card); setSelectedCardIsShiny(h.isShiny || false); setSelectedCardFromHistory(true);
+                          if (beginnerActive) { setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: h.winners || [], isShiny: h.isShiny || false }); return; }
+                          // Affichage HOMOGÈNE : toujours la popup des gagnants, y compris pour un
+                          // gagnant unique sans gloire (avant : carte en grand directement). Le geocoin
+                          // dans la popup reste cliquable pour l'afficher en grand.
+                          // Liste unifiée [gloire…, gagnants réels…] ; gloryCount = nb de « pour la
+                          // gloire » → la modale sépare les deux sections.
+                          const gloryArr = hasGlory ? h.glory_winners : [];
+                          // Gagnants réels avec avatars ({pseudo, avatar}) si disponibles (winners_full /
+                          // winner_avatar) ; repli sur les pseudos seuls (anciennes entrées). Le gagnant
+                          // unique porte aussi ses flammes (winner_fire / winner_fire_streak).
+                          const realArr = multiWinners
+                            ? (Array.isArray(h.winners_full) && h.winners_full.length ? h.winners_full : multiWinners)
+                            : (h.winner ? [{ pseudo: h.winner, avatar: h.winner_avatar || null, fire: !!h.winner_fire, fire_streak: h.winner_fire_streak ?? null }] : []);
+                          setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: [...gloryArr, ...realArr], gloryCount: gloryArr.length, isShiny: h.isShiny || false });
                         }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, minWidth: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
                             onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.zIndex = 10; }}
@@ -2358,8 +2356,8 @@ export default function App() {
                             {beginnerActive
                               ? `${mine ? '✓ ' : ''}${h.winners_count || 0}🏆`
                               : mine
-                                ? `✓${(multiWinners || hasGlory) ? ` (${totalWinners}🏆)` : ''}`
-                                : (multiWinners || hasGlory) ? `${totalWinners}🏆` : h.winner}
+                                ? `✓ (${totalWinners}🏆)`
+                                : `${totalWinners}🏆`}
                           </div>
                         </div>
                       );
@@ -2794,7 +2792,10 @@ export default function App() {
       {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
 
       {/* Liste des gagnants d'une manche Entraînement (clic sur le feed) */}
-      {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} fireThreshold={Math.max(1, Number(gs.limits?.quizStreakHandicap?.threshold) || 3)} onClose={() => setBeginnerWinnersPopup(null)} />}
+      {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} isShiny={beginnerWinnersPopup.isShiny || false} fireThreshold={Math.max(1, Number(gs.limits?.quizStreakHandicap?.threshold) || 3)} onClose={() => setBeginnerWinnersPopup(null)}
+        // Clic sur le geocoin de la popup → vue en grand (CardDetailModal est sous la
+        // popup en z-index, donc on ferme la popup avant d'ouvrir la carte).
+        onCardClick={() => { setSelectedCard(beginnerWinnersPopup.card); setSelectedCardIsShiny(beginnerWinnersPopup.isShiny || false); setSelectedCardFromHistory(true); setBeginnerWinnersPopup(null); }} />}
 
       {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits, { shinyCard: !!(activeQuiz?.is_shiny ?? quizIsShiny) })} upsell={limitUpsell} streakLeaders={auth.isDemo ? null : streakLeaders} myId={auth.profile?.id} alreadyOwned={!!activeQuiz?.card?.id && ((activeQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[activeQuiz.card.id] || 0) > 0 : (gs.collection?.[activeQuiz.card.id] || 0) > 0)} holdState={{ holds, holdSlots, holdRentActive, rentPrice: gs.limits?.holdRentPrice ?? 80, replacePrice: gs.limits?.holdReplacePrice ?? 50, gold: gs.gold }} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {
