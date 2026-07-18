@@ -430,7 +430,8 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
               <button onClick={async () => {
                 if (!window.confirm(t('account_deactivate_confirm'))) return
                 const { error } = await auth.deactivateAccount()
-                if (error) alert('Erreur : ' + error.message)
+                // error = chaîne (apiFetch) ou objet { message } (garde not_authenticated)
+                if (error) alert('Erreur : ' + (error.message || error))
                 else onClose()
               }} style={{ background: '#e74c3c22', border: '1px solid #e74c3c44', color: '#e74c3c', padding: '9px 18px', borderRadius: 10, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
                 {t('account_deactivate_btn')}

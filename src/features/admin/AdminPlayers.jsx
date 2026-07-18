@@ -174,9 +174,15 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
         </button>
         {(playerView.status === 'supprimé' || playerView.deleted_at) && (
           <button onClick={async () => {
-            const { data, error } = await apiAdminReactivate(playerView.id);
+            let { data, error, status } = await apiAdminReactivate(playerView.id);
+            // 409 = pseudo repris par un compte actif depuis la suppression → en saisir un nouveau
+            if (status === 409) {
+              const np = window.prompt(`${error}\n\nNouveau pseudo pour ce compte :`);
+              if (np === null || !np.trim()) return;
+              ({ data, error, status } = await apiAdminReactivate(playerView.id, np.trim()));
+            }
             if (error) { setMsg('❌ ' + error); return; }
-            setPlayerView({ ...playerView, status: data?.status ?? 'actif', deleted_at: data?.deleted_at ?? null });
+            setPlayerView({ ...playerView, status: data?.status ?? 'actif', deleted_at: data?.deleted_at ?? null, ...(data?.pseudo ? { name: data.pseudo } : {}) });
             setMsg('✅ Compte réactivé.');
           }} style={{ ...BTN('linear-gradient(135deg,#00b894,#00cec9)'), padding: '8px 14px', borderRadius: 9, fontSize: 12 }}>🔄 Réactiver le compte</button>
         )}

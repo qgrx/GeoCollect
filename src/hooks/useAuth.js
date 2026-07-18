@@ -33,6 +33,21 @@ const guestPseudo = () => {
   return GUEST_PSEUDO[l] || GUEST_PSEUDO.fr
 }
 
+// Compte soft-supprimé : message affiché avant la déconnexion forcée quand le
+// joueur tente de se reconnecter (seul un admin peut restaurer le compte).
+const DELETED_ACCOUNT_MSG = {
+  fr: 'Ce compte a été supprimé. Contacte un administrateur si tu souhaites le restaurer.',
+  en: 'This account has been deleted. Contact an administrator if you wish to restore it.',
+  de: 'Dieses Konto wurde gelöscht. Wende dich an einen Administrator, um es wiederherzustellen.',
+  es: 'Esta cuenta ha sido eliminada. Contacta con un administrador si deseas restaurarla.',
+}
+const deletedAccountMsg = () => {
+  let l = null
+  try { l = localStorage.getItem('geocards_lang') } catch { /* private mode */ }
+  if (!l) { try { l = (navigator.language || 'fr').slice(0, 2) } catch { l = 'fr' } }
+  return DELETED_ACCOUNT_MSG[l] || DELETED_ACCOUNT_MSG.fr
+}
+
 // La base stocke la vérification geocaching dans `geocaching_verified_at`
 // (timestamp, NULL = non vérifié) — il n'y a pas de booléen `geocaching_verified`.
 // On le dérive ici pour tout le front (badge « vérifié », icône photo, etc.).
@@ -73,6 +88,14 @@ export function useAuth() {
       console.warn('[Auth] profile error, creating fallback:', error.message)
       if (mounted.current) setProfile(makeFallback())
     } else {
+      // Compte soft-supprimé : l'API refuse ses requêtes (403) — on informe le
+      // joueur puis on ferme la session au lieu de laisser une app cassée.
+      if (data?.deleted_at || data?.status === 'supprimé') {
+        try { window.alert(deletedAccountMsg()) } catch { /* environnement sans alert */ }
+        await supabase.auth.signOut()
+        if (mounted.current) { setUser(null); setProfile(null) }
+        return
+      }
       if (mounted.current) setProfile(normalizeProfile(data) ?? null)
     }
   }, [])

@@ -143,7 +143,8 @@ export const apiDeleteAccount   = ()       => apiFetch('/api/profile/account',  
 export const apiWelcomeCard     = ()       => apiFetch('/api/profile/welcome-card', { method: 'POST' })
 export const apiOnboardingDone       = ()  => apiFetch('/api/profile/onboarding-done', { method: 'POST' })
 export const apiResetAchievements    = ()  => apiFetch('/api/achievements/reset', { method: 'DELETE' })
-export const apiAdminReactivate         = (id)          => apiFetch(`/api/admin/players/${id}/reactivate`, { method: 'PATCH' })
+// pseudo optionnel : requis (409 sinon) quand le pseudo d'origine a été repris par un compte actif
+export const apiAdminReactivate         = (id, pseudo)  => apiFetch(`/api/admin/players/${id}/reactivate`, { method: 'PATCH', ...(pseudo ? { body: { pseudo } } : {}) })
 export const apiAdminResetOnboarding    = (id)          => apiFetch(`/api/admin/players/${id}/reset-onboarding`, { method: 'PATCH' })
 export const apiAdminSetGold             = (id, gold)         => apiFetch(`/api/admin/players/${id}/gold`, { method: 'PATCH', body: { gold } })
 export const apiAdminSetForgePoints      = (id, forge_points) => apiFetch(`/api/admin/players/${id}/forge-points`, { method: 'PATCH', body: { forge_points } })
