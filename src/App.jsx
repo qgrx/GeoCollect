@@ -429,7 +429,10 @@ export default function App() {
         setLostToAvatar(null)
         setLostToWinners(null)
         setLostToGloryWinners(null)
-        setStreakLeader(data.streak_leader || null)
+        // Liste serveur = vérité (streak_leaders ; repli sur l'ancien streak_leader seul)
+        setStreakLeaders(data.streak_leaders || (data.streak_leader ? [data.streak_leader] : []))
+        // Nouveau round → remise à zéro du suivi des places en feu.
+        roundFireRef.current = { quizId: data.quiz_id, list: [] }
         // Un quiz devient joignable → couper l'annonce « en feu » pour ne pas masquer « Participer »
         if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
         setStreakHype(null)
@@ -466,12 +469,13 @@ export default function App() {
         // les afficher TOUS (modale, bannière, notification) — pas seulement le premier.
         const winnersList = Array.isArray(data.prize_winners) ? data.prize_winners : []
         const winnersFull = (data.multi && winnersList.length > 1)
-          ? winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot }))
+          ? winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, fire: !!w.fire }))
           : null
         // Joueurs « pour la gloire » du round (avatars fournis par l'API) — affichés
         // en plus petit sous le(s) gagnant(s) dans la modale / bannière / notification.
+        // `fire` = bonne réponse dans les places en feu (petite flamme à côté du pseudo).
         const gloryFull = (data.glory_winners || []).length
-          ? data.glory_winners.map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold }))
+          ? data.glory_winners.map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, fire: !!g.fire }))
           : null
 
         // Si le quiz résolu est celui actuellement EN ATTENTE (non rejoint), le marquer
@@ -497,24 +501,32 @@ export default function App() {
         const hCfg = gs.limits?.quizStreakHandicap
         const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
         if (data.multi) {
-          // « en feu » géré au prize_won — ne rien faire
-        } else if (data.winner_streak >= threshold && hCfg?.enabled !== false) {
+          // « en feu » géré au prize_won — animation déjà jouée, survivants déjà notés
+        } else if (data.winner_streak >= threshold && hCfg?.enabled !== false && data.winner_fire !== false) {
           // Délai fourni par le serveur (config fraîche) ; repli sur calcul client si absent
           const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
           // Prochaine carte exemptée (légendaire / épique brillante) → pas de « cadeau » annoncé
           const nextExempt = isHandicapExemptCard(data.next_card_rarity, data.next_is_shiny)
           setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: nextExempt })
-          // MAJ immédiate du leader (évite le décalage de 1 victoire pendant le teaser)
-          setStreakLeader({ id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
+          // MAJ immédiate de l'entrée du gagnant (évite le décalage de 1 victoire pendant le teaser)
+          mergeStreakLeaders({ id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
           if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
           // 10 s d'affichage, puis fondu sortant (~400 ms) avant démontage
           streakHypeTimerRef.current = setTimeout(() => {
             setStreakHype(h => h ? { ...h, fading: true } : h)
             streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 420)
           }, 10000)
-        } else {
-          setStreakLeader(null) // série cassée (gagnant sous le seuil)
         }
+        // Gagnant mono-prix en place en feu → survivant du round (même sous le seuil).
+        if (!data.multi && data.winner_fire && data.winner_streak != null) {
+          const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
+          noteRoundFire(data.quiz_id, { id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
+        }
+        // CLÔTURE du round : côté serveur, tous les joueurs HORS des places en feu
+        // perdent leur série (settleRoundStreaks) sans qu'aucun event ne le signale.
+        // On remplace donc la liste affichée par les survivants suivis sur CE round —
+        // c'est ce qui évite le « leader fantôme » (ex-leader cassé encore affiché).
+        applyRoundFire(data.quiz_id, threshold)
 
         // winner_id (id exact) prioritaire ; repli pseudo. En multi-prix, je suis « gagnant »
         // si je figure dans prize_winners (je peux avoir pris le 2e prix). Via refs → jamais périmé.
@@ -546,8 +558,8 @@ export default function App() {
             isBot: !!winnersList[0]?.is_bot,
             isShiny: data.is_shiny || false,
             winners: winnerPseudos,          // liste complète des gagnants du round multi-prix
-            // …et la même liste avec avatars pour la fiche « Gagnants »
-            winners_full: winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot })),
+            // …et la même liste avec avatars pour la fiche « Gagnants » (+ flamme places en feu)
+            winners_full: winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, fire: !!w.fire })),
             glory_winners: gloryFull || [],
             quiz_id: data.quiz_id,
           }
@@ -609,23 +621,24 @@ export default function App() {
         }
 
         // « En feu » : l'API n'envoie winner_streak que pour une bonne réponse dans les
-        // places en feu du round (P premières, P = geocoins offerts) → MAJ leader
-        // (handicap) + animation. Plusieurs gagnants d'un round multi peuvent porter une
-        // série : on ne garde comme leader que la plus haute (comme getStreakLeader côté
-        // serveur). Le quiz:solved multi ne rejouera pas l'animation (guard data.multi).
+        // places en feu du round (P premières, P = geocoins offerts) → survivant noté
+        // (clôture) + MAJ de SON entrée dans la liste (chaque joueur en feu garde la
+        // sienne) + animation. Le quiz:solved multi ne la rejouera pas (guard data.multi).
         const hCfg = gs.limits?.quizStreakHandicap
         const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
-        if (data.winner_streak != null && data.winner_streak >= threshold && hCfg?.enabled !== false) {
+        if (data.winner_streak != null) {
           const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
-          setStreakLeader(prev => (prev && (prev.streak || 0) > data.winner_streak && prev.id !== data.winner_id)
-            ? prev
-            : { id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
-          setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: false })
-          if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
-          streakHypeTimerRef.current = setTimeout(() => {
-            setStreakHype(h => h ? { ...h, fading: true } : h)
-            streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 420)
-          }, 10000)
+          const entry = { id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap }
+          noteRoundFire(data.quiz_id, entry)
+          if (data.winner_streak >= threshold && hCfg?.enabled !== false) {
+            mergeStreakLeaders(entry)
+            setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: false })
+            if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
+            streakHypeTimerRef.current = setTimeout(() => {
+              setStreakHype(h => h ? { ...h, fading: true } : h)
+              streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 420)
+            }, 10000)
+          }
         }
       })
 
@@ -650,29 +663,38 @@ export default function App() {
         }
 
         // « En feu » : la série est portée par les premières bonnes réponses du round,
-        // GLOIRE comprise (winner_streak n'est envoyé que pour une place en feu) → MAJ
-        // leader (la plus haute série gagne) + animation, comme au quiz:prize_won.
+        // GLOIRE comprise (winner_streak n'est envoyé que pour une place en feu) →
+        // survivant noté (clôture) + MAJ de SON entrée dans la liste + animation,
+        // comme au quiz:prize_won.
         const hCfg = gs.limits?.quizStreakHandicap
         const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
-        if (data.winner_streak != null && data.winner_streak >= threshold && hCfg?.enabled !== false) {
+        if (data.winner_streak != null) {
           const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
-          setStreakLeader(prev => (prev && (prev.streak || 0) > data.winner_streak && prev.id !== data.winner_id)
-            ? prev
-            : { id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap })
-          setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: false })
-          if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
-          streakHypeTimerRef.current = setTimeout(() => {
-            setStreakHype(h => h ? { ...h, fading: true } : h)
-            streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 420)
-          }, 10000)
+          const entry = { id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap }
+          noteRoundFire(data.quiz_id, entry)
+          if (data.winner_streak >= threshold && hCfg?.enabled !== false) {
+            mergeStreakLeaders(entry)
+            setStreakHype({ pseudo: data.winner, streak: data.winner_streak, handicap, exempt: false })
+            if (streakHypeTimerRef.current) clearTimeout(streakHypeTimerRef.current)
+            streakHypeTimerRef.current = setTimeout(() => {
+              setStreakHype(h => h ? { ...h, fading: true } : h)
+              streakHypeTimerRef.current = setTimeout(() => setStreakHype(null), 420)
+            }, 10000)
+          }
         }
       })
 
       // Quiz — expiré sans réponse
       s.on('quiz:expired', (data) => {
         setQuizSessionActive(false)
+        // CLÔTURE du round (expiration) : mêmes règles que quiz:solved — seules les
+        // places en feu suivies sur ce round conservent leur série affichée.
+        {
+          const hCfg = gs.limits?.quizStreakHandicap
+          applyRoundFire(data.quiz_id, Math.max(1, Number(hCfg?.threshold) || 3))
+        }
         // Joueurs « pour la gloire » avec avatars (fiche « Gagnants » + bannière).
-        const gloryFull = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold }))
+        const gloryFull = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, fire: !!g.fire }))
         // Geocoin joué « pour la gloire » mais que personne n'a remporté → l'ajouter au strip
         // des derniers geocoins disputés (winner null, glory_winners renseignés).
         if (gloryFull.length > 0 && data.card_name) {
@@ -879,7 +901,9 @@ export default function App() {
   const [toast,           setToast]           = useState(null);
   const [socketOnline,    setSocketOnline]    = useState(true);
   const [onlineCount,     setOnlineCount]     = useState(0);
-  const [streakLeader,    setStreakLeader]    = useState(null);   // { id, pseudo, streak, handicap_seconds }
+  // TOUS les joueurs en feu (règle « P places par round ») : [{ id, pseudo, streak,
+  // handicap_seconds }], triés série décroissante. Chacun subit SON délai cadeau.
+  const [streakLeaders,   setStreakLeaders]   = useState([]);
   const [streakHype,      setStreakHype]      = useState(null);   // annonce 5s { pseudo, streak, handicap }
   // Mode de quiz courant — préférence MÉMORISÉE PAR COMPTE (cf. effet plus bas).
   // Défaut neutre 'pvp' avant chargement du profil ; un nouveau compte est basculé
@@ -1074,7 +1098,8 @@ export default function App() {
     showGoldFlash,
     t,
     onStreakUpdate: gs.setStreak,
-    onStreakLeader: setStreakLeader,
+    // Accepte la liste streak_leaders (API à jour) ou l'ancien streak_leader seul.
+    onStreakLeader: (v) => setStreakLeaders(Array.isArray(v) ? v : (v ? [v] : [])),
     onQuizEnd: () => setQuizSessionActive(false),
     cardPool: gs.cardPool,
     checkAchievements: gs.checkAchievements,
@@ -1195,7 +1220,7 @@ export default function App() {
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} revealAnswer={beginner.recap.answer} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
-      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} lostToWinners={lostToWinners ?? null} lostToGloryWinners={lostToGloryWinners ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeader={streakLeader} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} lostToWinners={lostToWinners ?? null} lostToGloryWinners={lostToGloryWinners ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeaders={streakLeaders} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
     // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
     // → barre floutée + message + timer. Dans les deux cas, interaction impossible.
     const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown
@@ -1226,6 +1251,33 @@ export default function App() {
   }
 
   const streakHypeTimerRef = useRef(null)
+  // Places « en feu » du round en cours : entrées { id, pseudo, streak, handicap_seconds }
+  // posées par les events (prize_won / glory_win / solved quand winner_streak est envoyé —
+  // l'API ne l'envoie QUE pour une bonne réponse dans les P premières). À la CLÔTURE du
+  // round, ces survivants REMPLACENT la liste affichée : les séries de tous les autres
+  // sont cassées côté serveur (settleRoundStreaks) sans qu'aucun event ne le dise — sans
+  // ce remplacement, un ex-leader cassé resterait affiché indéfiniment.
+  const roundFireRef = useRef({ quizId: null, list: [] })
+  const noteRoundFire = (quizId, entry) => {
+    if (!quizId) return
+    const rf = roundFireRef.current
+    if (rf.quizId !== quizId) roundFireRef.current = { quizId, list: [] }
+    roundFireRef.current.list = [
+      ...roundFireRef.current.list.filter(e => (entry.id ? e.id !== entry.id : e.pseudo !== entry.pseudo)),
+      entry,
+    ]
+  }
+  const applyRoundFire = (quizId, threshold) => {
+    const rf = roundFireRef.current
+    if (!quizId || rf.quizId !== quizId) return   // round non suivi (reconnexion…) → quiz:new resynchronisera
+    setStreakLeaders(rf.list
+      .filter(e => (e.streak || 0) >= threshold)
+      .sort((a, b) => (b.streak || 0) - (a.streak || 0)))
+  }
+  // MAJ de l'entrée d'UN joueur dans la liste affichée (les autres restent en place).
+  const mergeStreakLeaders = (entry) => setStreakLeaders(prev =>
+    [...prev.filter(p => (entry.id ? p.id !== entry.id : p.pseudo !== entry.pseudo)), entry]
+      .sort((a, b) => (b.streak || 0) - (a.streak || 0)))
   // Ref pour éviter la capture stale de handleQuizExpire dans les handlers socket
   const handleQuizExpireRef = useRef(handleQuizExpire)
   useEffect(() => { handleQuizExpireRef.current = handleQuizExpire }, [handleQuizExpire])
@@ -2695,7 +2747,7 @@ export default function App() {
       {/* Liste des gagnants d'une manche Entraînement (clic sur le feed) */}
       {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} onClose={() => setBeginnerWinnersPopup(null)} />}
 
-      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits, { shinyCard: !!(activeQuiz?.is_shiny ?? quizIsShiny) })} upsell={limitUpsell} streakLeader={auth.isDemo ? null : streakLeader} myId={auth.profile?.id} alreadyOwned={!!activeQuiz?.card?.id && ((activeQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[activeQuiz.card.id] || 0) > 0 : (gs.collection?.[activeQuiz.card.id] || 0) > 0)} holdState={{ holds, holdSlots, holdRentActive, rentPrice: gs.limits?.holdRentPrice ?? 80, replacePrice: gs.limits?.holdReplacePrice ?? 50, gold: gs.gold }} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
+      {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits, { shinyCard: !!(activeQuiz?.is_shiny ?? quizIsShiny) })} upsell={limitUpsell} streakLeaders={auth.isDemo ? null : streakLeaders} myId={auth.profile?.id} alreadyOwned={!!activeQuiz?.card?.id && ((activeQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[activeQuiz.card.id] || 0) > 0 : (gs.collection?.[activeQuiz.card.id] || 0) > 0)} holdState={{ holds, holdSlots, holdRentActive, rentPrice: gs.limits?.holdRentPrice ?? 80, replacePrice: gs.limits?.holdReplacePrice ?? 50, gold: gs.gold }} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {
           // Délai cadeau écoulé : le serveur autorise enfin la question au leader.
           const { data } = await apiGetCurrentQuiz().catch(() => ({ data: null }))

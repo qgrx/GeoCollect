@@ -42,7 +42,7 @@ function GloryRow({ glory, color = '#e9a8a8' }) {
         {glory.map((g,i)=>(<Avatar key={i} pseudo={g.pseudo} avatarUrl={g.avatar||null} verified={!!g.avatar} size={18} style={{marginLeft:i?-6:0,zIndex:glory.length-i}}/>))}
       </span>
       <span style={{color,fontWeight:700,fontSize:11}}>
-        🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}', joinNames(glory.map(g=>g.pseudo)))}
+        🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}', joinNames(glory.map(g=>g.fire?`${g.pseudo} 🔥`:g.pseudo)))}
       </span>
       <GloryInfoButton size={11} />
     </div>
@@ -257,7 +257,7 @@ export function LimitInfoModalHost() {
   ), document.body);
 }
 
-export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,upsell=null,streakLeader=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,holdState=null}){ const {t}=useT();
+export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitStatus=null,upsell=null,streakLeaders=null,myId=null,onNeedQuestion=null,beginner=false,roundDuration=null,graceDeadline=null,alreadyOwned=false,holdState=null}){ const {t}=useT();
   const [inp,setInp]=useState("");
   const [status,setStatus]=useState("open");
   // Sélecteur de dépôt (remplacer / louer) ouvert quand le joueur choisit « dépôt » sans
@@ -406,8 +406,11 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // Handicap anti-domination : si je suis le joueur en série, mon bouton est bloqué le temps du cadeau.
   // Exemption : pas de pénalité sur une carte rare (légendaire / épique brillante) → course équitable.
   const cardExempt     = isHandicapExemptCard(quiz.card.rarity, isShinyFrozen);
-  const isStreakLeader = !!(streakLeader && myId && streakLeader.id === myId) && !cardExempt;
-  const myHandicap     = isStreakLeader ? (streakLeader.handicap_seconds || 0) : 0;
+  // PLUSIEURS joueurs peuvent être en feu (P places par round) : chacun subit SON
+  // délai — on cherche MON entrée dans la liste au lieu du seul leader.
+  const myFire         = (Array.isArray(streakLeaders) && myId) ? streakLeaders.find(l => l && l.id === myId) : null;
+  const isStreakLeader = !!myFire && !cardExempt;
+  const myHandicap     = isStreakLeader ? (myFire.handicap_seconds || 0) : 0;
   // Plafonné à myHandicap : le décompte affiché ne doit jamais dépasser la pénalité
   // annoncée (« +8s »), même en cas de skew résiduel ou de server_time absent.
   const handicapLeft   = Math.max(0, Math.min(myHandicap, Math.ceil(myHandicap - elapsed)));
@@ -674,7 +677,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
                   <div style={{display:"flex",justifyContent:"center"}}>
                     {multiW.map((w,i)=>(<Avatar key={i} pseudo={w.pseudo} avatarUrl={w.avatar||null} verified={!!w.avatar} size={40} style={{marginLeft:i?-10:0,zIndex:multiW.length-i}}/>))}
                   </div>
-                  <div style={{color:"#e74c3c",fontWeight:900,fontSize:16,marginTop:7}}>{(t("quiz_lost_multi")||"{names} ont remporté le geocoin !").replace("{names}", joinNames(multiW.map(w=>w.pseudo)))}</div>
+                  <div style={{color:"#e74c3c",fontWeight:900,fontSize:16,marginTop:7}}>{(t("quiz_lost_multi")||"{names} ont remporté le geocoin !").replace("{names}", joinNames(multiW.map(w=>w.fire?`${w.pseudo} 🔥`:w.pseudo)))}</div>
                 </>
               ) : (
                 <>
@@ -749,7 +752,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeader=null,prizesTotal=1,graceDeadline=null}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeaders=null,prizesTotal=1,graceDeadline=null}){
   const {t}=useT(); const {theme}=useTheme();
   // Décompte de grâce « encore Ns pour répondre » (gloire / multi-prix) — ticker local 1 s.
   const [,graceTick]=useState(0)
@@ -765,8 +768,10 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
   const colorRarity = hasPendingQuiz ? nextCard?.rarity : (urgent ? nextQuizRarity : null)
   const {c1,c2}    = (colorRarity && showColors) ? cardCC(colorRarity) : {c1:'#6c7c93',c2:'#48576b'}
   const shinyActive = isShiny && (hasPendingQuiz || urgent)
-  // Joueur « en feu » (série de victoires) à signaler pour la prochaine carte.
-  const onFire = !!streakLeader && streakLeader.handicap_seconds > 0 && !isHandicapExemptCard(nextCard?.rarity, isShiny)
+  // Joueurs « en feu » (série de victoires) à signaler pour la prochaine carte —
+  // ils peuvent être PLUSIEURS (P places par round), chacun avec son délai.
+  const fireList = (Array.isArray(streakLeaders) ? streakLeaders : []).filter(l => l && l.handicap_seconds > 0)
+  const onFire   = fireList.length > 0 && !isHandicapExemptCard(nextCard?.rarity, isShiny)
 
   // ── Annonce « en feu » (série de victoires) — en grand, mais JAMAIS quand un
   // quiz est joignable (le bouton « Participer » reste prioritaire) ───────────
@@ -810,7 +815,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:14,fontWeight:900,color:'#f9ca24',marginBottom:2,animation:'cgFade .35s .2s ease both',opacity:0}}>
-              🎉 Félicitations à <span style={{color:theme.textPrimary,fontWeight:900}}>{lw?joinNames(lw.map(w=>w.pseudo)):lostTo}</span> !
+              🎉 Félicitations à <span style={{color:theme.textPrimary,fontWeight:900}}>{lw?joinNames(lw.map(w=>w.fire?`${w.pseudo} 🔥`:w.pseudo)):lostTo}</span> !
             </div>
             {lostToGlory ? (
               <div style={{fontSize:10,color:theme.textSecondary,display:'flex',alignItems:'center',gap:5,animation:'cgFade .35s .35s ease both',opacity:0}}>
@@ -830,7 +835,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
                 <span style={{display:'flex',flexShrink:0}}>
                   {lostToGloryWinners.map((g,i)=>(<Avatar key={i} pseudo={g.pseudo} avatarUrl={g.avatar||null} verified={!!g.avatar} size={15} style={{marginLeft:i?-5:0,zIndex:lostToGloryWinners.length-i}}/>))}
                 </span>
-                <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}',joinNames(lostToGloryWinners.map(g=>g.pseudo)))}</span>
+                <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}',joinNames(lostToGloryWinners.map(g=>g.fire?`${g.pseudo} 🔥`:g.pseudo)))}</span>
                 <GloryInfoButton size={11}/>
               </div>
             )}
@@ -922,7 +927,9 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
                 : hasCard
                 ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}{prizesTotal>1&&<span style={{color:'#a29bfe',fontWeight:900,marginLeft:6}}>🎁 {(t('quiz_prizes_to_win')||'{n} à gagner').replace('{n}',prizesTotal)}</span>}</>
                 : onFire
-                  ? <><span style={{color:'#ff8a5c',fontWeight:800}}>🔥 {t('streak_bar_small').replace('{pseudo}',streakLeader.pseudo).replace('{n}',streakLeader.streak).replace('{x}',streakLeader.handicap_seconds)}</span><FireInfoButton size={11}/></>
+                  ? <><span style={{color:'#ff8a5c',fontWeight:800}}>🔥 {fireList.length>1
+                      ? (t('streak_bar_small_multi')||'{names} sont en feu').replace('{names}',fireList.map(l=>`${l.pseudo} (${l.streak})`).join(', '))
+                      : t('streak_bar_small').replace('{pseudo}',fireList[0].pseudo).replace('{n}',fireList[0].streak).replace('{x}',fireList[0].handicap_seconds)}</span><FireInfoButton size={11}/></>
                   : <span style={{color:theme.textMuted,fontStyle:'italic'}}>{t('next_card')}</span>}
             </div>
           )}
@@ -1373,6 +1380,9 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
   const nameOf = w => typeof w === 'string' ? w : (w?.pseudo ?? '');
   const avatarOf = w => (typeof w === 'object' && w?.avatar) ? w.avatar : null;
   const isHoldEntry = w => typeof w === 'object' && !!w?.hold;
+  // Place « en feu » : bonne réponse parmi les P premières du round → petite flamme
+  // à côté du pseudo (rend la règle lisible : les plus rapides portent la série).
+  const isFireEntry = w => typeof w === 'object' && !!w?.fire;
   const rankColor = i => i < 3 ? RANK[i] : '#94a3b8';
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000b', backdropFilter: 'blur(8px)', padding: 16 }}>
@@ -1396,7 +1406,7 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
               realWinners.map((w, i) => (
                 <div key={`rw${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, background: `${rankColor(i)}${i < 3 ? '22' : '15'}`, border: `1px solid ${rankColor(i)}88`, borderRadius: 9, padding: '8px 11px' }}>
                   <Avatar pseudo={nameOf(w)} avatarUrl={avatarOf(w)} verified={!!avatarOf(w)} size={30} />
-                  <span style={{ fontSize: 13, fontWeight: 900, color: '#1a2538', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(w)}</span>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: '#1a2538', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(w)}{isFireEntry(w) && <span title={t('fire_slot_hint') || 'Parmi les premières bonnes réponses : la série « en feu » continue'} style={{ marginLeft: 4 }}>🔥</span>}</span>
                   <span style={{ marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3, background: '#ffffff', border: `1.5px solid ${rankColor(i)}`, color: '#334155', fontWeight: 900, fontSize: 10.5, padding: '3px 8px', borderRadius: 20 }}>🏆 {ordinal(i + 1)}</span>
                 </div>
               ))
@@ -1417,7 +1427,7 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
                   return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: hold ? '#6c5ce715' : '#f9ca2412', border: `1px solid ${hold ? '#6c5ce755' : '#f9ca2444'}`, borderRadius: 9, padding: '6px 11px' }}>
                     <Avatar pseudo={nameOf(p)} avatarUrl={avatarOf(p)} verified={!!avatarOf(p)} size={24} />
-                    <span style={{ fontSize: 13, fontWeight: 800, color: '#78716c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(p)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#78716c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(p)}{isFireEntry(p) && <span title={t('fire_slot_hint') || 'Parmi les premières bonnes réponses : la série « en feu » continue'} style={{ marginLeft: 4 }}>🔥</span>}</span>
                     <span style={{ fontSize: 12, marginLeft: 'auto', flexShrink: 0 }}>{hold ? '📥' : '🎖️'}</span>
                     {hold && <span style={{ fontSize: 9, fontWeight: 800, color: '#6c5ce7', flexShrink: 0 }}>{t('quiz_choice_deposit') || 'dépôt'}</span>}
                   </div>

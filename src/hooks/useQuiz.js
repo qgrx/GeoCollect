@@ -79,7 +79,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
           // Utilisateur connecté : on interroge l'API pour récupérer le quiz prêt
           isFetchingRef.current = true
           apiGetCurrentQuiz().then(({ data }) => {
-            if (data) cbRef.current.onStreakLeader?.(data.streak_leader ?? null)
+            if (data) cbRef.current.onStreakLeader?.(data.streak_leaders ?? data.streak_leader ?? null)
             if (data?.quiz) {
               if (resolvedQuizIdsRef.current.has(data.quiz.id)) { isFetchingRef.current = false; return }
               const wc = data.quiz.answer_word_count || 1
@@ -130,10 +130,10 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     if (!quiz) {
       const { data } = await apiGetCurrentQuiz()
       if (!data?.quiz) return
-      // Propager le joueur en série : sans ça, en rejoignant via /current (rechargement,
-      // participation tardive, event quiz:new manqué) le leader n'aurait pas son statut
-      // « en feu » → masquage/blocage absents → la pénalité ne s'applique pas côté UI.
-      cbRef.current.onStreakLeader?.(data.streak_leader ?? null)
+      // Propager les joueurs en série : sans ça, en rejoignant via /current (rechargement,
+      // participation tardive, event quiz:new manqué) un joueur en feu n'aurait pas son
+      // statut → masquage/blocage absents → la pénalité ne s'applique pas côté UI.
+      cbRef.current.onStreakLeader?.(data.streak_leaders ?? data.streak_leader ?? null)
       const wc = data.quiz.answer_word_count || 1
       const poolCard = cbRef.current.cardPool?.find(c => c.id === data.quiz.card?.id) || {}
       const curLang2 = getLang()
@@ -207,6 +207,18 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         if (status === 409 || status === 404) { resolvedQuizIdsRef.current.add(activeQuiz.id); return 'late' }  // déjà résolu / expiré
         if (status === 422) return false     // vraie mauvaise réponse
         return 'error'                        // réseau / 5xx / inconnu : la réponse a pu aboutir serveur
+      }
+      // Règle « en feu » rendue lisible : bonne réponse HORS des places en feu alors
+      // qu'une série était en cours → le serveur dit QUI a été plus rapide. Toast
+      // différé pour ne pas écraser le toast de victoire affiché par les branches.
+      if (Array.isArray(data.streak_broken_by) && data.streak_broken_by.length) {
+        const names = data.streak_broken_by.join(', ')
+        setTimeout(() => {
+          cbRef.current.showToast?.(
+            (cbRef.current.t('toast_streak_broken_faster') || '💔 Série cassée : {names} a répondu avant toi').replace('{names}', names),
+            'error'
+          )
+        }, 3000)
       }
       // Victoire « pour la gloire » — toutes limites atteintes : le quiz reste actif
       // pour les autres joueurs. On ferme la modale avec un résultat spécial,
