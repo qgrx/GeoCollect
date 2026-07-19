@@ -7,7 +7,7 @@ import {
   apiBuyCard, apiListCard, apiCancelListing, apiGetTransactions,
   apiPingProfile, apiSetConfig, apiGetAdminConfig, apiGetPublicConfig,
   apiAdminGetCards, apiAdminAddCard, apiAdminEditCard, apiAdminDeleteCard, apiAdminDeleteType, apiAdminRenameType,
-  apiGetDailyQuests, apiQuestCheckin, apiGetAchievements, apiClaimReferral,
+  apiGetDailyQuests, apiQuestCheckin, apiRerollDailyQuest, apiGetAchievements, apiClaimReferral,
 } from '../services/api.js'
 
 
@@ -75,6 +75,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [saleNotifs,          setSaleNotifs]         = useState([])
   const [unreadSales,         _setUnreadSales]       = useState(0)
   const [quests,              setQuests]            = useState(null)
+  const [questRerollUsed,     setQuestRerollUsed]   = useState(false)
   const [forgePoints,         setForgePoints]       = useState(Number(profile?.forge_points ?? 0))
   const [forgePointsSignal,   setForgePointsSignal]  = useState(0)
   const [questActivitySignal, setQuestActivitySignal] = useState(0)
@@ -104,8 +105,22 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       if (seq !== questsReqSeq.current) return
       ;({ data } = await apiGetDailyQuests())
     }
-    if (data?.quests && mounted.current && seq === questsReqSeq.current) setQuests(data.quests)
+    if (data?.quests && mounted.current && seq === questsReqSeq.current) {
+      setQuests(data.quests)
+      setQuestRerollUsed(!!data.reroll_used)
+    }
   }, [])
+
+  // Remplacement d'une quête du jour (1×/jour, choisie par le joueur, définitif).
+  // Le serveur applique toutes les règles ; ici on ne fait que relayer + recharger.
+  const rerollQuest = useCallback(async (questId) => {
+    const { data, error } = await apiRerollDailyQuest(questId)
+    if (!error) {
+      setQuestRerollUsed(true)
+      refreshQuests()
+    }
+    return { data, error }
+  }, [refreshQuests])
 
   // Recharger après chaque action de jeu pertinente (signal bumpé par
   // addForgePoints, triggerQuestRefresh, achats/ventes…)
@@ -886,7 +901,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,
     // Derived
     isGuest, uniqueCards, totalUnique, myScore,
-    quests, setQuests, forgePoints, forgePointsSignal, questActivitySignal,
+    quests, setQuests, questRerollUsed, rerollQuest, forgePoints, forgePointsSignal, questActivitySignal,
     addForgePoints: (pts) => {
       setQuestActivitySignal(s => s + 1)
       if (!pts) return

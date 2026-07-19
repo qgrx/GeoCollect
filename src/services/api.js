@@ -231,6 +231,7 @@ export const apiGetAchievements        = ()       => apiFetch('/api/achievements
 export const apiGetDailyAchievements   = ()       => apiFetch('/api/achievements/daily')
 export const apiGetDailyQuests         = ()       => apiFetch('/api/quests/daily')
 export const apiQuestCheckin           = ()       => apiFetch('/api/quests/checkin', { method: 'POST' })
+export const apiRerollDailyQuest       = (questId) => apiFetch('/api/quests/reroll', { method: 'POST', body: { quest_id: questId } })
 export const apiForgeCard              = (cardId) => apiFetch(`/api/forge/${cardId}`, { method: 'POST' })
 export const apiForgeShiny             = (cardId) => apiFetch('/api/forge/shiny', { method: 'POST', body: { cardId } })
 export const apiMeltCard               = (cardId) => apiFetch(`/api/forge/melt/${cardId}`, { method: 'POST' })

@@ -2294,7 +2294,8 @@ export default function App() {
 
               {/* Daily quests */}
               <div data-tour="quests">
-                <DailyQuests quests={gs.quests} />
+                <DailyQuests quests={gs.quests} rerollUsed={gs.questRerollUsed}
+                  onReroll={auth.isDemo ? null : gs.rerollQuest} />
               </div>
 
               {/* Last 8 geocoins — 4×2 (feed propre au mode courant). En Entraînement,

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
 
@@ -10,14 +11,21 @@ export const questText = (txt, threshold) => (txt || '').replace(/\{n\}/g, thres
 // Affichage pur : le chargement et les rechargements des quêtes vivent dans
 // useGameState (refreshQuests), qui garantit qu'une réponse périmée n'écrase
 // jamais une progression plus fraîche.
-export default function DailyQuests({ quests }) {
+// rerollUsed/onReroll : remplacement d'UNE quête du jour (1×/jour, définitif,
+// impossible sur une quête déjà réussie) — écran de confirmation intégré,
+// règles de tirage côté serveur. onReroll absent (démo) → pas de bouton.
+export default function DailyQuests({ quests, rerollUsed, onReroll }) {
   const { theme } = useTheme()
   const { t, lang } = useT()
+  const [confirmQuest, setConfirmQuest] = useState(null)  // quête en attente de confirmation
+  const [rerollBusy,   setRerollBusy]   = useState(false)
+  const [rerollErr,    setRerollErr]    = useState('')
 
   if (!quests) return null
   if (!quests.length) return null
 
   const allDone = quests.every(q => q.completed_at)
+  const canReroll = !!onReroll && !rerollUsed
 
   return (
     <div style={{
@@ -70,6 +78,19 @@ export default function DailyQuests({ quests }) {
                 )}
               </div>
 
+              {/* Remplacement (1×/jour) — pas sur une quête déjà réussie */}
+              {canReroll && !done && (
+                <button
+                  onClick={() => { setRerollErr(''); setConfirmQuest(q) }}
+                  title={t('quest_reroll_btn')} aria-label={t('quest_reroll_btn')}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 12, padding: '0 2px', flexShrink: 0, opacity: .6, lineHeight: 1,
+                  }}>
+                  🔄
+                </button>
+              )}
+
               {/* Récompenses */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
                 {q.forge_points > 0 && (
@@ -101,6 +122,70 @@ export default function DailyQuests({ quests }) {
           </div>
         )
       })}
+
+      {/* Écran de confirmation du remplacement */}
+      {confirmQuest && (
+        <div
+          onClick={() => !rerollBusy && setConfirmQuest(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 3000,
+            background: 'rgba(0,0,0,.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+          }}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: theme.bgSurface, border: `1px solid ${theme.border}`,
+              borderRadius: 14, padding: '18px 20px', maxWidth: 340, width: '100%',
+              boxShadow: '0 12px 40px rgba(0,0,0,.35)',
+              fontFamily: "'Nunito',sans-serif",
+            }}>
+            <div style={{ fontSize: 14, fontWeight: 900, color: theme.textPrimary, marginBottom: 8 }}>
+              🔄 {t('quest_reroll_title')}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: theme.textPrimary, marginBottom: 6 }}>
+              {questText(confirmQuest.translations?.[lang]?.name || confirmQuest.name, confirmQuest.threshold)}
+            </div>
+            <div style={{ fontSize: 11, color: theme.textSecondary, lineHeight: 1.5, marginBottom: 12 }}>
+              {t('quest_reroll_body')}
+            </div>
+            {rerollErr && (
+              <div style={{ fontSize: 11, color: '#e74c3c', fontWeight: 800, marginBottom: 10 }}>
+                ⚠️ {rerollErr}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                disabled={rerollBusy}
+                onClick={() => setConfirmQuest(null)}
+                style={{
+                  background: theme.overlayMd, border: 'none', color: theme.textPrimary,
+                  padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 800,
+                  cursor: 'pointer', fontFamily: "'Nunito',sans-serif",
+                }}>
+                {t('quest_reroll_cancel')}
+              </button>
+              <button
+                disabled={rerollBusy}
+                onClick={async () => {
+                  setRerollBusy(true); setRerollErr('')
+                  const { error } = await onReroll(confirmQuest.id)
+                  setRerollBusy(false)
+                  if (error) setRerollErr(typeof error === 'string' ? error : (t('quest_reroll_error') || 'Remplacement impossible'))
+                  else setConfirmQuest(null)
+                }}
+                style={{
+                  background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff',
+                  padding: '7px 16px', borderRadius: 8, fontSize: 11, fontWeight: 800,
+                  cursor: rerollBusy ? 'wait' : 'pointer', opacity: rerollBusy ? .7 : 1,
+                  fontFamily: "'Nunito',sans-serif",
+                }}>
+                {rerollBusy ? '…' : `🔄 ${t('quest_reroll_confirm')}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
