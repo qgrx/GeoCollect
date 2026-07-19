@@ -54,13 +54,26 @@ export default function DailyQuests({ quests, rerollUsed, onReroll }) {
             transition: 'all .2s',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              {/* Statut */}
-              <span style={{
-                fontSize: 12, flexShrink: 0,
-                color: done ? '#00b894' : theme.textMuted,
-              }}>
-                {done ? '✔' : '○'}
-              </span>
+              {/* Statut — remplacé par le bouton reroll (1×/jour) tant qu'il est
+                  disponible et que la quête n'est pas réussie */}
+              {canReroll && !done ? (
+                <button
+                  onClick={() => { setRerollErr(''); setConfirmQuest(q) }}
+                  title={t('quest_reroll_btn')} aria-label={t('quest_reroll_btn')}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 12, padding: 0, flexShrink: 0, opacity: .7, lineHeight: 1,
+                  }}>
+                  🔄
+                </button>
+              ) : (
+                <span style={{
+                  fontSize: 12, flexShrink: 0,
+                  color: done ? '#00b894' : theme.textMuted,
+                }}>
+                  {done ? '✔' : '○'}
+                </span>
+              )}
 
               {/* Texte */}
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -77,19 +90,6 @@ export default function DailyQuests({ quests, rerollUsed, onReroll }) {
                   </div>
                 )}
               </div>
-
-              {/* Remplacement (1×/jour) — pas sur une quête déjà réussie */}
-              {canReroll && !done && (
-                <button
-                  onClick={() => { setRerollErr(''); setConfirmQuest(q) }}
-                  title={t('quest_reroll_btn')} aria-label={t('quest_reroll_btn')}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: 12, padding: '0 2px', flexShrink: 0, opacity: .6, lineHeight: 1,
-                  }}>
-                  🔄
-                </button>
-              )}
 
               {/* Récompenses */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
