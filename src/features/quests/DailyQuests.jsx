@@ -56,8 +56,9 @@ export default function DailyQuests({ quests, rerollUsed, onReroll }) {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               {/* Statut — remplacé par le bouton reroll (1×/jour) tant qu'il est
-                  disponible et que la quête n'est pas réussie */}
-              {canReroll && !done ? (
+                  disponible et que la quête n'est pas réussie. La quête
+                  « connexion du jour » n'est pas remplaçable (refusée côté API). */}
+              {canReroll && !done && q.type !== 'daily_connection' ? (
                 <button
                   onClick={() => { setRerollErr(''); setConfirmQuest(q) }}
                   title={t('quest_reroll_btn')} aria-label={t('quest_reroll_btn')}
