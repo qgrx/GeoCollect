@@ -1991,9 +1991,10 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           {/* Formulaire création */}
           {newQuest&&(
             <div style={{marginBottom:16,padding:14,background:"#6c5ce710",border:"1px solid #6c5ce744",borderRadius:12}}>
+              <div style={{fontSize:10,color:"#a8bfcf",marginBottom:8}}>💡 Utilise <b>{'{n}'}</b> dans le nom, la description et les traductions : remplacé automatiquement par le seuil à l'affichage (pas besoin de retraduire quand le seuil change).</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
                 <Fld lbl="Nom"><input value={newQuest.name} onChange={e=>setNewQuest({...newQuest,name:e.target.value})} placeholder="Quiz enchaîné" style={INP}/></Fld>
-                <Fld lbl="Description"><input value={newQuest.description} onChange={e=>setNewQuest({...newQuest,description:e.target.value})} placeholder="Remporte 2 quiz" style={INP}/></Fld>
+                <Fld lbl="Description"><input value={newQuest.description} onChange={e=>setNewQuest({...newQuest,description:e.target.value})} placeholder="Remporte {n} quiz" style={INP}/></Fld>
                 <Fld lbl="Trigger">
                   <select value={newQuest.type} onChange={e=>setNewQuest({...newQuest,type:e.target.value})} style={SEL}>
                     {QUEST_TYPES.map(t=><option key={t} value={t}>{t}</option>)}

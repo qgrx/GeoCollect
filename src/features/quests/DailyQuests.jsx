@@ -2,6 +2,11 @@ import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
 
 
+// Les textes de quête (nom/description, toutes langues) stockent le seuil sous
+// forme de placeholder {n} : changer le seuil dans l'admin adapte le texte
+// partout, sans retraduire. Substitution à l'affichage uniquement.
+export const questText = (txt, threshold) => (txt || '').replace(/\{n\}/g, threshold)
+
 // Affichage pur : le chargement et les rechargements des quêtes vivent dans
 // useGameState (refreshQuests), qui garantit qu'une réponse périmée n'écrase
 // jamais une progression plus fraîche.
@@ -56,7 +61,7 @@ export default function DailyQuests({ quests }) {
                   color: done ? '#00b894' : theme.textPrimary,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
-                  {q.translations?.[lang]?.name || q.name}
+                  {questText(q.translations?.[lang]?.name || q.name, q.threshold)}
                 </div>
                 {!done && (
                   <div style={{ fontSize: 9, color: theme.textSecondary, marginTop: 1 }}>
