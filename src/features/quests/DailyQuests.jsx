@@ -7,7 +7,7 @@ import { useT } from '../../i18n/translations.js'
 // Les textes de quête (nom/description, toutes langues) stockent le seuil sous
 // forme de placeholder {n} : changer le seuil dans l'admin adapte le texte
 // partout, sans retraduire. Substitution à l'affichage uniquement.
-export const questText = (txt, threshold) => (txt || '').replace(/\{n\}/g, threshold)
+const questText = (txt, threshold) => (txt || '').replace(/\{n\}/g, threshold)
 
 // Affichage pur : le chargement et les rechargements des quêtes vivent dans
 // useGameState (refreshQuests), qui garantit qu'une réponse périmée n'écrase
