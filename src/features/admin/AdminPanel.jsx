@@ -163,6 +163,15 @@ const TRIGGER_META = {
 const TRIGGER_KEYS = Object.keys(TRIGGER_META);
 const triggerLabel = t => TRIGGER_META[t]?.label || t;
 
+// ─── Types de quêtes quotidiennes ────────────────────────────────────────────
+// Doit refléter VALID_QUEST_TYPES de l'API (routes/admin.js) : tout autre type
+// serait refusé à la création (ex. l'ancien « streak », jamais déclenché).
+// win_streak = atteindre une série de N victoires consécutives (places en feu) ·
+// fire_count = nombre de paliers « en feu » du jour (+1 à 3, 6, 9… victoires
+// consécutives, série remise à 0 si cassée — comme l'achievement « En feu ») ·
+// glory_win = nombre de victoires « pour la gloire » dans la journée.
+const QUEST_TYPES = ['buy_count','sell_count','quiz_win','new_card','win_streak','fire_count','glory_win','daily_connection','forge_card','forge_shiny','daily_treasure'];
+
 // ─── Composants utilitaires (hors du composant pour éviter remounts) ─────────
 function Fld({lbl,children}){
   return <div style={{marginBottom:10}}><div style={{fontSize:10,color:"#aaa",fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:.8}}>{lbl}</div>{children}</div>;
@@ -1987,7 +1996,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 <Fld lbl="Description"><input value={newQuest.description} onChange={e=>setNewQuest({...newQuest,description:e.target.value})} placeholder="Remporte 2 quiz" style={INP}/></Fld>
                 <Fld lbl="Trigger">
                   <select value={newQuest.type} onChange={e=>setNewQuest({...newQuest,type:e.target.value})} style={SEL}>
-                    {['buy_count','sell_count','quiz_win','new_card','streak','daily_connection','forge_card','forge_shiny','daily_treasure'].map(t=><option key={t} value={t}>{t}</option>)}
+                    {QUEST_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
                 </Fld>
                 <Fld lbl="Seuil"><input type="number" value={newQuest.threshold} onChange={e=>setNewQuest({...newQuest,threshold:+e.target.value})} min={1} style={INP}/></Fld>
@@ -2049,7 +2058,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         <Fld lbl="Description (FR)"><input value={editQuest.description||''} onChange={e=>setEditQuest({...editQuest,description:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
                         <Fld lbl="Trigger">
                           <select value={editQuest.type} onChange={e=>setEditQuest({...editQuest,type:e.target.value})} style={{...SEL,fontSize:11}}>
-                            {['buy_count','sell_count','quiz_win','new_card','streak','daily_connection','forge_card','forge_shiny','daily_treasure'].map(t=><option key={t} value={t}>{t}</option>)}
+                            {QUEST_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
                           </select>
                         </Fld>
                         <Fld lbl="Seuil"><input type="number" value={editQuest.threshold} onChange={e=>setEditQuest({...editQuest,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
