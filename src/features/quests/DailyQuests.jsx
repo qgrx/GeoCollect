@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
 
@@ -123,12 +124,15 @@ export default function DailyQuests({ quests, rerollUsed, onReroll }) {
         )
       })}
 
-      {/* Écran de confirmation du remplacement */}
-      {confirmQuest && (
+      {/* Écran de confirmation du remplacement — porté sur <body> (portal) :
+          le conteneur des quêtes est animé (stacking context), un position:fixed
+          local pourrait rester piégé sous d'autres éléments. z-index au-dessus
+          de tout le reste de l'app. */}
+      {confirmQuest && createPortal(
         <div
           onClick={() => !rerollBusy && setConfirmQuest(null)}
           style={{
-            position: 'fixed', inset: 0, zIndex: 3000,
+            position: 'fixed', inset: 0, zIndex: 100001,
             background: 'rgba(0,0,0,.55)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
           }}>
@@ -184,7 +188,8 @@ export default function DailyQuests({ quests, rerollUsed, onReroll }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
