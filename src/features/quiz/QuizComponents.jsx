@@ -520,7 +520,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
                     </div>
             )}
           </div>
-          {status==="open"&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:26,height:26,borderRadius:"50%",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
+          {/* glory : la modale reste sinon ouverte jusqu'à la fin de la fenêtre de grâce
+              (~20 s) — le joueur doit pouvoir la fermer sans attendre. */}
+          {(status==="open"||status==="glory")&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:26,height:26,borderRadius:"50%",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
         </div>
         {/* Signalement — en haut, loin du bouton Répondre pour éviter les clics par erreur.
             Masqué en mode démo (pas de question_id) : rien à signaler côté visiteur. */}
