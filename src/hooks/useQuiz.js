@@ -283,7 +283,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       if (data.already_won) {
         earnCard(card, data.is_shiny || false)
         setHistory(h => h.some(e => e.won && e.card?.id === card.id) ? h
-          : [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false }, ...h].slice(0, 10))
+          : [{ card, winner: profile?.pseudo || 'Moi', winner_avatar: profile?.geocaching_avatar_url || null, won: true, isShiny: data.is_shiny || false }, ...h].slice(0, 10))
         setTimeout(() => advanceQuiz(Date.now()), 2200)
         return { ok: true, outcome: 'card', forge: 0 }
       }
@@ -316,7 +316,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
             return [...h.slice(0, idx), updated, ...h.slice(idx + 1)]
           }
         }
-        return [{ card, winner: 'Moi', won: true, isShiny: data.is_shiny || false, glory_winners: meGloryWinners, quiz_id: qid,
+        // Pseudo + avatar réels (et non « Moi » sans avatar) : la fiche « Gagnants »
+        // affiche la même chose que ce que voient les autres joueurs et qu'après rechargement.
+        return [{ card, winner: profile?.pseudo || 'Moi', winner_avatar: profile?.geocaching_avatar_url || null, won: true, isShiny: data.is_shiny || false, glory_winners: meGloryWinners, quiz_id: qid,
           winner_fire: !!data.fire, winner_fire_streak: data.fire_streak ?? null }, ...h].slice(0, 10)
       })
 
