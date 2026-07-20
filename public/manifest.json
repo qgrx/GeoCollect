@@ -1,7 +1,7 @@
 {
   "name": "Geocoins",
   "short_name": "Geocoins",
-  "description": "Collecte des cartes en répondant à des quiz de géocaching !",
+  "description": "Collectionne des geocoins uniques en répondant à des quiz sur le geocaching !",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f0c29",
