@@ -301,11 +301,11 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       }
       // Toujours notifier l'activité quête (même si forge_points = 0, la progression change)
       cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
-      if (data.gold_earned) earnGoldWithFx(data.gold_earned)
+      if (data.gold_earned) earnGoldWithFx(data.gold_earned, data.quest_gold)
       // Flash « +N PF 🔨 » : forge_points_earned est le total serveur (consolation hors-limite
       // + PF de quête), c.-à-d. tout ce que cette bonne réponse rapporte en PF. Affiché sous
       // le +G, ou seul quand l'or est plafonné et qu'il ne reste qu'une compensation en PF.
-      if (data.forge_points_earned > 0) cbRef.current.showForgeFlash?.(data.forge_points_earned)
+      if (data.forge_points_earned > 0) cbRef.current.showForgeFlash?.(data.forge_points_earned, data.quest_forge)
       if (data.streak != null) cbRef.current.onStreakUpdate?.(data.streak)
       // Inclure d'emblée les joueurs « pour la gloire » (renvoyés par /answer) : sinon
       // l'entrée n'aurait que la coche ✓ et le compteur « (N🏆) » n'apparaîtrait qu'après un

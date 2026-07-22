@@ -973,7 +973,9 @@ export default function App() {
   const [showRules,       setShowRules]       = useState(false);
   const modePrefUserRef = useRef(null);   // id du compte pour lequel la préférence a été appliquée
   const [goldFlash,       setGoldFlash]       = useState(null);
+  const [goldFlashQuest,  setGoldFlashQuest]  = useState(false);   // « Quête réussie ! » au-dessus du flash or
   const [forgeFlash,      setForgeFlash]      = useState(null);
+  const [forgeFlashQuest, setForgeFlashQuest] = useState(false);   // « Quête réussie ! » au-dessus du flash PF
   const openDiscord = () => {
     window.open(DISCORD_URL, '_blank', 'noopener,noreferrer');
   };
@@ -1141,23 +1143,25 @@ export default function App() {
     setToast({ msg, type });
     toastTimerRef.current = setTimeout(() => setToast(null), 3500);
   }
-  function showGoldFlash(n) {
+  function showGoldFlash(n, questCompleted = false) {
     setGoldFlash(n);
-    setTimeout(() => setGoldFlash(null), 1800);
+    setGoldFlashQuest(!!questCompleted);
+    setTimeout(() => { setGoldFlash(null); setGoldFlashQuest(false); }, 1800);
   }
   // Flash « +N PF 🔨 » (points de forge) : même effet que le flash d'or, affiché
   // juste sous le +G — ou seul quand la limite d'or est atteinte et que le joueur
   // n'a plus qu'une compensation en PF. La valeur (config admin quiz_consolation_forge
   // + PF de quête) arrive dans la réponse serveur.
-  function showForgeFlash(n) {
+  function showForgeFlash(n, questCompleted = false) {
     setForgeFlash(n);
-    setTimeout(() => setForgeFlash(null), 1800);
+    setForgeFlashQuest(!!questCompleted);
+    setTimeout(() => { setForgeFlash(null); setForgeFlashQuest(false); }, 1800);
   }
 
   // ── Gold / card earn wrappers ─────────────────────────────────────────────
-  function earnGoldWithFx(n) {
+  function earnGoldWithFx(n, questCompleted = false) {
     const gained = gs.earnGold(n);
-    if (gained > 0) showGoldFlash(gained);
+    if (gained > 0) showGoldFlash(gained, questCompleted);
     return gained;
   }
 
@@ -2732,15 +2736,33 @@ export default function App() {
 
       {/* ── Gold flash ── */}
       {goldFlash && (
-        <div style={{ position: 'fixed',top: '50%',left: '50%',zIndex: 4000,pointerEvents: 'none',animation: 'goldPop 1.8s ease-out forwards',fontFamily: "'Fredoka One',sans-serif",fontSize: 52,color: theme.gold,textShadow: '0 4px 24px #f9ca2488',whiteSpace: 'nowrap' }}>
-          +{goldFlash}G 💰
+        <div style={{ position: 'fixed',top: '50%',left: '50%',zIndex: 4000,pointerEvents: 'none',animation: 'goldPop 1.8s ease-out forwards',fontFamily: "'Fredoka One',sans-serif",textAlign: 'center',whiteSpace: 'nowrap' }}>
+          {/* « Quête réussie ! » : uniquement quand une quête quotidienne rapportant de
+              l'or a été validée (pas sur un simple gain de quiz / consolation). */}
+          {goldFlashQuest && (
+            <div style={{ fontSize: 24, color: '#f9ca24', textShadow: '0 3px 16px #f9ca2488', marginBottom: 4 }}>
+              🎯 {t('quest_completed_flash')}
+            </div>
+          )}
+          <div style={{ fontSize: 52, color: theme.gold, textShadow: '0 4px 24px #f9ca2488' }}>
+            +{goldFlash}G 💰
+          </div>
         </div>
       )}
 
       {/* ── Forge points (PF) flash ── juste sous le +G (ou seul si l'or est plafonné) */}
       {forgeFlash > 0 && (
-        <div style={{ position: 'fixed',top: 'calc(50% + 64px)',left: '50%',zIndex: 4000,pointerEvents: 'none',animation: 'goldPop 1.8s ease-out .35s both',fontFamily: "'Fredoka One',sans-serif",fontSize: 44,color: '#a29bfe',textShadow: '0 4px 24px #a29bfe88',whiteSpace: 'nowrap' }}>
-          +{forgeFlash} PF 🔨
+        <div style={{ position: 'fixed',top: 'calc(50% + 64px)',left: '50%',zIndex: 4000,pointerEvents: 'none',animation: 'goldPop 1.8s ease-out .35s both',fontFamily: "'Fredoka One',sans-serif",textAlign: 'center',whiteSpace: 'nowrap' }}>
+          {/* « Quête réussie ! » : uniquement quand une quête quotidienne a été validée
+              (pas sur un simple flash de consolation / victoire pour la gloire). */}
+          {forgeFlashQuest && (
+            <div style={{ fontSize: 22, color: '#f9ca24', textShadow: '0 3px 16px #f9ca2488', marginBottom: 4 }}>
+              🎯 {t('quest_completed_flash')}
+            </div>
+          )}
+          <div style={{ fontSize: 44, color: '#a29bfe', textShadow: '0 4px 24px #a29bfe88' }}>
+            +{forgeFlash} PF 🔨
+          </div>
         </div>
       )}
 
