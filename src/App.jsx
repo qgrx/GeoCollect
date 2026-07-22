@@ -512,7 +512,8 @@ export default function App() {
             .map(e => e.id || e.pseudo))
           for (const w of winnersList) {
             if (!w.fire || w.fire_streak == null) continue
-            const handicap = computeStreakHandicap(w.fire_streak, hCfg)
+            // Handicap autoritatif du serveur (config admin) ; repli calcul client si absent.
+            const handicap = w.fire_handicap != null ? w.fire_handicap : computeStreakHandicap(w.fire_streak, hCfg)
             const entry = { id: w.id || null, pseudo: w.pseudo, streak: w.fire_streak, handicap_seconds: handicap }
             const isNew = !known.has(w.id || w.pseudo)
             noteRoundFire(data.quiz_id, entry)
@@ -551,7 +552,7 @@ export default function App() {
         // (idempotent) pour couvrir un event manqué (reconnexion, socket coupé).
         for (const g of (data.glory_winners || [])) {
           if (g.fire && g.fire_streak != null) {
-            noteRoundFire(data.quiz_id, { id: g.id || null, pseudo: g.pseudo, streak: g.fire_streak, handicap_seconds: computeStreakHandicap(g.fire_streak, hCfg) })
+            noteRoundFire(data.quiz_id, { id: g.id || null, pseudo: g.pseudo, streak: g.fire_streak, handicap_seconds: g.fire_handicap != null ? g.fire_handicap : computeStreakHandicap(g.fire_streak, hCfg) })
           }
         }
         // CLÔTURE du round : côté serveur, tous les joueurs HORS des places en feu
@@ -736,7 +737,7 @@ export default function App() {
           const hCfg = gs.limits?.quizStreakHandicap
           for (const g of (data.glory_winners || [])) {
             if (g.fire && g.fire_streak != null) {
-              noteRoundFire(data.quiz_id, { id: g.id || null, pseudo: g.pseudo, streak: g.fire_streak, handicap_seconds: computeStreakHandicap(g.fire_streak, hCfg) })
+              noteRoundFire(data.quiz_id, { id: g.id || null, pseudo: g.pseudo, streak: g.fire_streak, handicap_seconds: g.fire_handicap != null ? g.fire_handicap : computeStreakHandicap(g.fire_streak, hCfg) })
             }
           }
           applyRoundFire(data.quiz_id, Math.max(1, Number(hCfg?.threshold) || 3))
