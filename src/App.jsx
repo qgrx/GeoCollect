@@ -947,6 +947,7 @@ export default function App() {
   const [onboardingCardReady, setOnboardingCardReady] = useState(false);
   const [marketUnlockBanner, setMarketUnlockBanner] = useState(false);
   const [toast,           setToast]           = useState(null);
+  const toastTimerRef = useRef(null);
   const [socketOnline,    setSocketOnline]    = useState(true);
   const [onlineCount,     setOnlineCount]     = useState(0);
   // TOUS les joueurs en feu (règle « P places par round ») : [{ id, pseudo, streak,
@@ -1120,8 +1121,12 @@ export default function App() {
 
   // ── Toast / Gold flash ─────────────────────────────────────────────────────
   function showToast(msg, type = 'success') {
+    // Annuler le timer d'un toast précédent : sinon son setTimeout(null) peut se
+    // déclencher APRÈS ce nouveau toast et l'effacer prématurément (ex. toast « série
+    // cassée » affiché 3s après le toast de victoire, effacé ~500ms après son affichage).
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3500);
   }
   function showGoldFlash(n) {
     setGoldFlash(n);
