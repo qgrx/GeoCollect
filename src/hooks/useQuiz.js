@@ -3,9 +3,9 @@ import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetCurrentQuiz, apiJoinQuiz, apiAnswerQuiz } from '../services/api.js'
 import { getLang } from '../i18n/translations.js'
 
-export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onGoldSync }) {
+export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, showForgeFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onGoldSync }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onGoldSync, limits }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, showForgeFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onGoldSync, limits }
 
   const [nextQuizTime,  setNextQuizTime] = useState(Date.now() + QUIZ_INTERVAL * 1000)
   const [countdown,     setCountdown]    = useState(QUIZ_INTERVAL)
@@ -232,6 +232,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         // Gloire : pas de geocoin, mais on crédite les consolations cumulées (or + PF).
         if (data.gold_earned) earnGoldWithFx(data.gold_earned)
         cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
+        // Flash « +N PF 🔨 » : la gloire ne rapporte souvent QUE des PF (or plafonné) →
+        // souvent le seul flash affiché.
+        if (data.forge_points_earned > 0) cbRef.current.showForgeFlash?.(data.forge_points_earned)
         // Choix « dépôt » refusé par le serveur (plein / or insuffisant) → gloire quand même.
         showToast(data.hold_declined === 'full'              ? (t('toast_deposit_declined_full') || '🗄️ Dépôt plein — victoire pour la gloire !')
                 : data.hold_declined === 'insufficient_gold' ? (t('toast_deposit_declined_gold') || '💰 Or insuffisant pour le dépôt — victoire pour la gloire !')
@@ -299,6 +302,10 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // Toujours notifier l'activité quête (même si forge_points = 0, la progression change)
       cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
       if (data.gold_earned) earnGoldWithFx(data.gold_earned)
+      // Flash « +N PF 🔨 » : forge_points_earned est le total serveur (consolation hors-limite
+      // + PF de quête), c.-à-d. tout ce que cette bonne réponse rapporte en PF. Affiché sous
+      // le +G, ou seul quand l'or est plafonné et qu'il ne reste qu'une compensation en PF.
+      if (data.forge_points_earned > 0) cbRef.current.showForgeFlash?.(data.forge_points_earned)
       if (data.streak != null) cbRef.current.onStreakUpdate?.(data.streak)
       // Inclure d'emblée les joueurs « pour la gloire » (renvoyés par /answer) : sinon
       // l'entrée n'aurait que la coche ✓ et le compteur « (N🏆) » n'apparaîtrait qu'après un

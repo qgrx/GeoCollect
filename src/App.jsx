@@ -967,6 +967,7 @@ export default function App() {
   const [showRules,       setShowRules]       = useState(false);
   const modePrefUserRef = useRef(null);   // id du compte pour lequel la préférence a été appliquée
   const [goldFlash,       setGoldFlash]       = useState(null);
+  const [forgeFlash,      setForgeFlash]      = useState(null);
   const openDiscord = () => {
     window.open(DISCORD_URL, '_blank', 'noopener,noreferrer');
   };
@@ -1138,6 +1139,14 @@ export default function App() {
     setGoldFlash(n);
     setTimeout(() => setGoldFlash(null), 1800);
   }
+  // Flash « +N PF 🔨 » (points de forge) : même effet que le flash d'or, affiché
+  // juste sous le +G — ou seul quand la limite d'or est atteinte et que le joueur
+  // n'a plus qu'une compensation en PF. La valeur (config admin quiz_consolation_forge
+  // + PF de quête) arrive dans la réponse serveur.
+  function showForgeFlash(n) {
+    setForgeFlash(n);
+    setTimeout(() => setForgeFlash(null), 1800);
+  }
 
   // ── Gold / card earn wrappers ─────────────────────────────────────────────
   function earnGoldWithFx(n) {
@@ -1155,6 +1164,7 @@ export default function App() {
     earnCard: gs.earnCard,
     showToast,
     showGoldFlash,
+    showForgeFlash,
     t,
     onStreakUpdate: gs.setStreak,
     // Accepte la liste streak_leaders (API à jour) ou l'ancien streak_leader seul.
@@ -2718,6 +2728,13 @@ export default function App() {
       {goldFlash && (
         <div style={{ position: 'fixed',top: '50%',left: '50%',zIndex: 4000,pointerEvents: 'none',animation: 'goldPop 1.8s ease-out forwards',fontFamily: "'Fredoka One',sans-serif",fontSize: 52,color: theme.gold,textShadow: '0 4px 24px #f9ca2488',whiteSpace: 'nowrap' }}>
           +{goldFlash}G 💰
+        </div>
+      )}
+
+      {/* ── Forge points (PF) flash ── juste sous le +G (ou seul si l'or est plafonné) */}
+      {forgeFlash > 0 && (
+        <div style={{ position: 'fixed',top: 'calc(50% + 64px)',left: '50%',zIndex: 4000,pointerEvents: 'none',animation: 'goldPop 1.8s ease-out .35s both',fontFamily: "'Fredoka One',sans-serif",fontSize: 44,color: '#a29bfe',textShadow: '0 4px 24px #a29bfe88',whiteSpace: 'nowrap' }}>
+          +{forgeFlash} PF 🔨
         </div>
       )}
 
