@@ -383,6 +383,12 @@ export default function App() {
         setQuizKey(k => k + 1)
         setNextCard(card)
         setQuizIsShiny(data.quiz.is_shiny || false)
+        // Liste serveur = vérité, comme dans quiz:new. SANS ça, un joueur en feu qui
+        // resync via /current (retour au premier plan iOS, reconnexion) recevait la
+        // question RETENUE (question_delayed) mais streakLeaders restait vide →
+        // isStreakLeader=false → carte muette sans 🔥 et la récupération différée
+        // (onNeedQuestion) ne se déclenchait jamais. « Pas de question pour celle-là ».
+        setStreakLeaders(data.streak_leaders || (data.streak_leader ? [data.streak_leader] : []))
         setQuizSessionActive(true)
       }
     }).catch(() => {})
