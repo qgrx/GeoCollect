@@ -941,6 +941,11 @@ export default function App() {
   // Anti tap-through (iOS) : le menu s'ouvre PAR-DESSUS le bouton « Participer » ;
   // un 2e tap trop rapide (destiné au bouton dessous) ne doit rien déclencher.
   const avatarMenuOpenedAtRef = useRef(0);
+  // Anti ghost-click (iOS) sur le toggle thème : un tap raté sur « Participer » (juste
+  // sous le header sticky) est parfois rejoué par Safari en un « click » synthétique sur
+  // ce bouton, SANS pointerdown réel dessus → le thème s'inverse « tout seul ». On ne
+  // toggle que si un vrai appui a eu lieu sur le bouton juste avant (cf. onClick plus bas).
+  const themeBtnDownRef = useRef(0);
   const [welcomeCards, setWelcomeCards] = useState([]);
   // Onboarding : null | 'pseudo' | 'gift' | 'card' | 'tour'
   const [onboardingStep, setOnboardingStep] = useState(null);
@@ -2113,7 +2118,16 @@ export default function App() {
         )}
 
         {/* Theme toggle — connecté uniquement (pas en démo : header type « non connecté ») */}
-        {auth.profile && !auth.isDemo && <button onClick={toggle} title={mode === 'dark' ? 'Mode clair' : 'Mode sombre'}
+        {auth.profile && !auth.isDemo && <button
+          onPointerDown={() => { themeBtnDownRef.current = Date.now() }}
+          onClick={e => {
+            // detail === 0 = activation clavier (Entrée/Espace) → toujours acceptée.
+            // Sinon on exige un pointerdown réel sur ce bouton dans les 700 ms : un
+            // « click » synthétique venu d'un tap-through (Participer) n'en a pas → ignoré.
+            if (e.detail !== 0 && Date.now() - themeBtnDownRef.current > 700) return
+            toggle()
+          }}
+          title={mode === 'dark' ? 'Mode clair' : 'Mode sombre'}
           style={{ background: 'none', border: `1px solid ${theme.headerMuted}44`, color: theme.headerMuted, width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, touchAction: 'manipulation' }}>
           {mode === 'dark' ? '☀️' : '🌙'}
         </button>}
