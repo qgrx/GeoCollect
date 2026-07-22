@@ -55,7 +55,7 @@ import SeasonPopup  from './components/SeasonPopup.jsx';
 import DocsLayout   from './features/docs/DocsLayout.jsx';
 
 // Lien d'invitation Discord (menu avatar)
-const DISCORD_URL = 'https://discord.gg/QE5fM6H6n';
+const DISCORD_URL = 'https://discord.gg/NEnNv5bPu5';
 
 function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
   const imgRef = useRef(null)
