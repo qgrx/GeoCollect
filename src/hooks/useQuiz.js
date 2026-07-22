@@ -342,9 +342,12 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         setHoldOffer(data.hold_card)
       } else {
         // Consolation simple (commun/rare hors-limite) : conversion automatique en PF.
+        // On NE re-crédite PAS ici : forge_points_earned (crédité plus haut) inclut déjà
+        // consolation_forge côté serveur — le refaire doublait le solde local (corrigé
+        // ensuite par le resync du profil, mais visible en scintillement). `forge` ne sert
+        // qu'à piloter l'outcome/le retour.
         outcome = 'consolation'
         forge = data.consolation_forge ?? 0
-        if (forge > 0) cbRef.current.onForgePointsEarned?.(forge)
       }
 
       const solvedAt = Date.now()
