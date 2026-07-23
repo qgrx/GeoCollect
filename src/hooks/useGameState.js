@@ -11,6 +11,12 @@ import {
 } from '../services/api.js'
 
 
+// Parrainage — refus définitifs renvoyés par POST /api/referral/claim : inutile
+// de retenter, on peut oublier le code. Tout le reste (panne réseau, 5xx,
+// 'referrer_inactive' — un parrain désactivé peut être réactivé) est considéré
+// comme récupérable : le code reste en localStorage pour le prochain essai.
+const REFERRAL_FINAL_REASONS = new Set(['already_referred', 'self_referral', 'code_not_found', 'not_new_player'])
+
 // Construit la map card_id → infos de progression d'achievement, consommée par
 // CardDetailModal. Pour un achievement évolutif (threshold_rare défini), on
 // indexe CHAQUE carte-variante (commun/rare/épique/légendaire) sur la même
@@ -246,17 +252,31 @@ export function useGameState(auth, { onAchievementCard } = {}) {
       setLoadingData(true)
 
       // ── Parrainage : réclamer le code suivi via un lien ?ref= ──────────────
-      // Source 1 : localStorage (même navigateur que le clic).
+      // Source 1 : localStorage (même navigateur que le clic) — prioritaire, c'est
+      //            le DERNIER lien cliqué (main.jsx écrase à chaque clic).
       // Source 2 : user_metadata.ref attaché au compte au signUp — survit à une
       //            validation d'email depuis un autre appareil.
-      // Fire-and-forget, une seule fois (set-once + garde côté serveur).
+      // Fire-and-forget (set-once côté serveur). Le code n'est effacé du
+      // localStorage que sur un verdict DÉFINITIF du serveur : une panne réseau
+      // ou un 500 laisse le code en place pour retenter au prochain chargement,
+      // sinon un seul échec perd le parrainage pour toujours.
       try {
         let lsRef = null
         try { lsRef = localStorage.getItem('geocoins_ref') } catch { /* ignore */ }
         const refCode = lsRef || auth?.user?.user_metadata?.ref || null
-        if (refCode && !profile.referred_by) {
+        const forgetRef = () => { try { localStorage.removeItem('geocoins_ref') } catch { /* ignore */ } }
+        if (profile.referred_by) {
+          forgetRef()                                  // déjà parrainé : code devenu inutile
+        } else if (refCode && refCode.length < 3) {
+          forgetRef()                                  // trop court : rejeté par le serveur, inutile d'insister
+        } else if (refCode) {
           apiClaimReferral(refCode)
-            .then(() => { try { localStorage.removeItem('geocoins_ref') } catch { /* ignore */ } })
+            .then(({ data, error }) => {
+              if (error) return                        // transport/serveur → on retente plus tard
+              // reason absent = claimed. 'referrer_inactive' est récupérable
+              // (le parrain peut être réactivé) → on garde le code.
+              if (data?.claimed || REFERRAL_FINAL_REASONS.has(data?.reason)) forgetRef()
+            })
             .catch(() => {})
         }
       } catch { /* ignore */ }
