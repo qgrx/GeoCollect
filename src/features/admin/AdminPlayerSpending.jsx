@@ -12,6 +12,7 @@ const SPEND_LABELS = {
   hold_slot_buy:      'Emplacement de dépôt',
   pocket_boost:       'Poche (+geocoins/h)',
   bag_slot:           'Emplacement de sac',
+  shiny_bag_slot:     'Emplacement de sac brillant (PF)',
   forge_card:         'Forge de geocoin',
   forge_shiny:        'Forge brillante',
 };

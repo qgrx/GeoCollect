@@ -149,6 +149,7 @@ export const apiAdminResetOnboarding    = (id)          => apiFetch(`/api/admin/
 export const apiAdminSetGold             = (id, gold)         => apiFetch(`/api/admin/players/${id}/gold`, { method: 'PATCH', body: { gold } })
 export const apiAdminSetForgePoints      = (id, forge_points) => apiFetch(`/api/admin/players/${id}/forge-points`, { method: 'PATCH', body: { forge_points } })
 export const apiAdminSetPlayerLimits     = (id, limits)       => apiFetch(`/api/admin/players/${id}/limits`, { method: 'PATCH', body: limits })
+export const apiAdminSetWeeklyMax        = (id, reset = false) => apiFetch(`/api/admin/players/${id}/weekly-max`, { method: 'POST', body: { reset } })
 export const apiAdminSetPseudo           = (id, pseudo)       => apiFetch(`/api/admin/players/${id}/pseudo`, { method: 'PATCH', body: { pseudo } })
 export const apiAdminGetPlayerCollection = (id)               => apiFetch(`/api/admin/players/${id}/collection`)
 export const apiAdminGetPlayerSpending   = (id, page = 0, currency = '') => apiFetch(`/api/admin/players/${id}/spending?page=${page}${currency ? '&currency=' + currency : ''}`)
@@ -203,9 +204,14 @@ export const apiBuyHoldSlot  = ()                       => apiFetch('/api/hold/s
 export const apiRentHoldSlot = ()                       => apiFetch('/api/hold/slots/rent', { method: 'POST' })
 export const apiTakeForgeInsteadOfHold = ()             => apiFetch('/api/hold/forge-point', { method: 'POST' })
 
+// ─── Mécénat (offrir un geocoin qu'on ne peut plus acquérir) ──────────────────
+export const apiPatronageDonate  = (quiz_id, criterion) => apiFetch('/api/patronage/donate', { method: 'POST', body: { quiz_id, criterion } })
+export const apiGetPatronagePending = ()                => apiFetch('/api/patronage/pending')
+
 // ─── Limites — agrandir les poches (horaire) / le sac (quotidien) ─────────────
 export const apiBuyPocketBoost = () => apiFetch('/api/limits/pocket/boost', { method: 'POST' })
 export const apiBuyBagSlot     = () => apiFetch('/api/limits/bag/buy', { method: 'POST' })
+export const apiBuyShinyBagSlot = () => apiFetch('/api/limits/shiny-bag/buy', { method: 'POST' })
 export const apiAdminGetStats         = () => apiFetch('/api/admin/stats')
 export const apiAdminGetOnlineHistory = (hours = 24) => apiFetch(`/api/admin/online-history?hours=${hours}`)
 export const apiAdminGetSignupsHistory = (days = 30) => apiFetch(`/api/admin/signups-history?days=${days}`)

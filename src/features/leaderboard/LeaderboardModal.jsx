@@ -117,7 +117,7 @@ function ProfileView({ player, cardPool, myScore, myGold, myForgePoints, ranks, 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                 <Avatar pseudo={player.pseudo} avatarUrl={player.geocaching_avatar_url}
                   verified={player.geocaching_verified} size={48}
-                  gradient={`linear-gradient(135deg,${c1},${c2})`} glow={c1} />
+                  gradient={`linear-gradient(135deg,${c1},${c2})`} glow={c1} halo={player.patronage_halo} />
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 16, color: theme.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     <PseudoDisplay pseudo={player.pseudo + (player.isMe ? ` ${t('lb_you')}` : '')} score={score} ranks={ranks} style={{ color: theme.textPrimary }} />
@@ -327,7 +327,7 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
                     <div style={{ fontWeight: 900, fontSize: rank >= 99 ? 13 : 16, minWidth: 26, flexShrink: 0, textAlign: 'center' }}>{isSeparate ? '—' : (medal[rank] || `#${rank + 1}`)}</div>
                     <Avatar pseudo={p.pseudo || p.name} avatarUrl={p.geocaching_avatar_url}
                       verified={p.geocaching_verified} size={32}
-                      gradient={p.isMe ? 'linear-gradient(135deg,#f9ca24,#e17055)' : 'linear-gradient(135deg,#6c5ce7,#a29bfe)'} />
+                      gradient={p.isMe ? 'linear-gradient(135deg,#f9ca24,#e17055)' : 'linear-gradient(135deg,#6c5ce7,#a29bfe)'} halo={p.patronage_halo} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 900, fontSize: 13 }}>
                         <PseudoDisplay pseudo={(p.pseudo||p.name)+(p.isMe?` ${t('lb_you')}`:'')} score={p.score||0} ranks={ranks} style={{ color: p.isMe ? theme.gold : theme.textPrimary }}/>

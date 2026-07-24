@@ -9,7 +9,7 @@ import { apiDeleteAccount } from '../../services/api.js'
 import { ReferralPanel } from '../referral/ReferralModal.jsx'
 import GeocachingModal from '../geocaching/GeocachingPanel.jsx'
 import Avatar from '../../components/Avatar.jsx'
-import { todayParis, countOwnedUnique } from '../../utils/gameUtils.js'
+import { todayParis, countOwnedUnique, patronageHaloColor } from '../../utils/gameUtils.js'
 import PseudoDisplay from '../../components/PseudoDisplay.jsx'
 
 import { DEFAULT_RANKS } from '../../data/constants.js'
@@ -41,11 +41,28 @@ function memberSince(dateStr) {
 }
 
 // ─── SettingsModal ────────────────────────────────────────────────────────────
-export default function SettingsModal({ auth, collection = {}, shinyCollection = {}, cardPool = [], ranks = [], limits = {}, score: scoreProp, onBuyPocketBoost = null, onBuyBagSlot = null, onClose, onStartTour }) {
-  // Succès = nombre de geocoins d'achievement possédés (variantes évolutives incluses).
-  // On exclut les brouillons (hidden) : l'admin charge le pool COMPLET, donc sans ce
-  // garde son compteur inclurait les geocoins non publiés (14 au lieu de 10).
-  const achievementsOwned = (cardPool || []).filter(c => !c.hidden && (c.type || '').toLowerCase().startsWith('achievement') && (collection[c.id] || 0) > 0).length
+// Jauge-plafond compacte : label + « valeur/cap » superposés sur une barre de
+// remplissage. Une seule ligne (24px) par métrique → les sections « Plafonds »
+// (quotidien, semaine, mécénat) prennent bien moins de place, avec un rendu homogène.
+function CapMeter({ label, value, cap, c1, c2, theme, title }) {
+  const unlimited = !cap || cap <= 0
+  const shown = unlimited ? value : Math.min(value, cap)
+  const pct = unlimited ? 0 : Math.min(100, Math.round((value / cap) * 100))
+  const over = !unlimited && pct >= 100
+  return (
+    <div title={title} style={{ position: 'relative', height: 24, borderRadius: 8, overflow: 'hidden', background: theme.overlayMd }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${pct}%`,
+        background: over ? '#eb4d4b40' : `linear-gradient(90deg,${c1}44,${c2}55)`, transition: 'width .5s' }}/>
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        height: '100%', padding: '0 10px', fontSize: 10.5, gap: 8 }}>
+        <span style={{ color: theme.textSecondary, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+        <span style={{ color: over ? '#eb4d4b' : theme.textSecondary, fontWeight: 800, flexShrink: 0 }}>{shown}/{unlimited ? '∞' : cap}</span>
+      </div>
+    </div>
+  )
+}
+
+export default function SettingsModal({ auth, collection = {}, shinyCollection = {}, cardPool = [], ranks = [], limits = {}, score: scoreProp, onBuyPocketBoost = null, onBuyBagSlot = null, onBuyShinyBagSlot = null, onClose, onStartTour }) {
   const { t, lang } = useT()
   const { theme } = useTheme()
   const { profile } = auth
@@ -53,7 +70,6 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
   const [msg,     setMsg]     = useState({ text: '', ok: false })
   const [loading, setLoading] = useState(false)
   const [changed, setChanged] = useState(false)
-  const [showCardsInfo, setShowCardsInfo] = useState(false)
   const [buying,  setBuying]  = useState(null)   // 'bag' | 'pocket' pendant un achat d'agrandissement
   const [confirmBuy, setConfirmBuy] = useState(null)   // 'bag' | 'pocket' : confirmation Payer/Annuler ouverte
   const [gcOpen,  setGcOpen]  = useState(false)  // popup « importer ma photo geocaching »
@@ -75,6 +91,11 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
   const uniqueCards = countOwnedUnique(collection)
   const shinyCards  = countOwnedUnique(shinyCollection)
   const memberStr   = memberSince(profile.joined_at)
+  // Halo « mécénat » : couleur si le plafond hebdo de DONS d'une rareté est atteint.
+  const patronageHalo = patronageHaloColor(
+    { rare: profile.patronage?.given_rare, epique: profile.patronage?.given_epique, legendaire: profile.patronage?.given_legendaire },
+    { rare: limits.patronageWeeklyCapRare, epique: limits.patronageWeeklyCapEpique, legendaire: limits.patronageWeeklyCapLegendaire }
+  )
 
   // Limites quotidiennes — affichées à tous les joueurs pour comprendre
   // leur progression vis-à-vis des limites de gold/cartes/forge.
@@ -88,9 +109,11 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
     // Caps effectifs : sac permanent (+1 geocoin/jour par emplacement) et poches
     // boostées du jour (+N geocoins/heure jusqu'à minuit) — miroir de computeCardLimitStatus.
     const bagSlots      = Math.max(0, Number(profile.bag_slots) || 0)
+    const shinyBagSlots = Math.max(0, Number(profile.shiny_bag_slots) || 0)
     const pocketBoost   = profile.pocket_boost_day === today ? Math.max(0, Number(profile.pocket_boost) || 0) : 0
     const baseDailyCap  = limits.quizDailyCardCap  || 0
     const baseHourlyCap = limits.quizHourlyCardCap || 0
+    const baseShinyCap  = limits.quizDailyShinyCap || 0
     limitsDebug = {
       dailyGold:        isNewDay ? 0 : (profile.daily_gold || 0),
       dailyGoldCap:     limits.connected?.dailyGold || 0,
@@ -99,12 +122,14 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
       dailyCards:       isNewDay ? 0 : (profile.daily_cards || 0),
       dailyCardsCap:    baseDailyCap > 0 ? baseDailyCap + bagSlots : 0,
       dailyShiny:       isNewDay ? 0 : (profile.daily_shiny || 0),
-      dailyShinyCap:    limits.quizDailyShinyCap || 0,
+      dailyShinyCap:    baseShinyCap > 0 ? baseShinyCap + shinyBagSlots : 0,
       hourlyCards:      hourlyReset ? 0 : (profile.hourly_cards || 0),
       hourlyCardsCap:   baseHourlyCap > 0 ? baseHourlyCap + pocketBoost : 0,
       bagSlots,
+      shinyBagSlots,
       canBuyBag:        baseDailyCap  > 0,
       canBuyPocket:     baseHourlyCap > 0,
+      canBuyShinyBag:   baseShinyCap  > 0,
       dailyForgeConsolation:    isNewDay ? 0 : (profile.daily_forge_consolation || 0),
       dailyForgeConsolationCap: limits.quizDailyForgeCap || 0,
       isNewDay,
@@ -169,6 +194,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
               size={72}
               gradient={`linear-gradient(135deg,${c1},${c2})`}
               glow={c1}
+              halo={patronageHalo}
               onAddPhoto={() => setGcOpen(true)}
               addPhotoTitle={t('gc_add_photo')}
               forcePhoto
@@ -186,39 +212,47 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
                     padding: '1px 7px', borderRadius: 50, fontWeight: 900, marginLeft: 2 }}>ADMIN</span>
                 )}
               </div>
+              {memberStr && (
+                <div style={{ fontSize: 10.5, color: '#ffffff88', fontWeight: 700, marginTop: 3 }}>
+                  Membre {memberStr}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Stats row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
             {[
-              { icon: '💰', value: profile.gold ?? 0,  label: 'Or' },
-              { icon: '🃏', value: uniqueCards,          label: 'Geocoins', shiny: shinyCards },
-              { icon: '🏆', value: achievementsOwned,  label: 'Succès' },
-            ].map(({ icon, value, label, shiny }) => (
+              { icon: '🃏', value: uniqueCards, label: 'Geocoins' },
+              { icon: '✨', value: shinyCards,  label: 'Shiny' },
+            ].map(({ icon, value, label }) => (
               <div key={label} style={{ background: '#00000033', borderRadius: 12,
                 padding: '10px 6px', textAlign: 'center', backdropFilter: 'blur(4px)' }}>
                 <div style={{ fontSize: 18, marginBottom: 2 }}>{icon}</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
-                  <span style={{ fontWeight: 900, fontSize: 16, color: '#fff' }}>{value}</span>
-                  {shiny > 0 && <span style={{ fontWeight: 800, fontSize: 11, color: '#f9ca24' }}>✨{shiny}</span>}
-                </div>
+                <div style={{ fontWeight: 900, fontSize: 16, color: '#fff' }}>{value}</div>
                 <div style={{ fontSize: 9, color: '#ffffff88', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5 }}>{label}</div>
               </div>
             ))}
           </div>
 
-          {/* Score + membre depuis */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-            <div style={{ fontSize: 11, color: '#ffffff88' }}>
-              Score : <span style={{ color: theme.gold, fontWeight: 900 }}>{score} pts</span>
-            </div>
-            {memberStr && (
-              <div style={{ fontSize: 11, color: '#ffffff66' }}>
-                Membre {memberStr}
+          {/* Progression de rang — compacte, sous les stats */}
+          {(() => {
+            const activeRanks = ranks?.length ? [...ranks].sort((a,b) => a.min - b.min) : DEFAULT_RANKS
+            const nextRank = activeRanks.find(r => r.min > score)
+            if (!nextRank) return <div style={{ marginTop: 14, fontSize: 11, fontWeight: 800, color: '#fff' }}>🏆 {t('rank_max')}</div>
+            const pct = Math.min(100, Math.round((score / nextRank.min) * 100))
+            return (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11, marginBottom: 4 }}>
+                  <span style={{ color: '#fff', fontWeight: 800 }}>{nextRank.icon} {getRankLabel(nextRank, lang)}</span>
+                  <span style={{ color: '#ffffffcc', fontWeight: 700 }}>{score}/{nextRank.min} pts</span>
+                </div>
+                <div style={{ background: '#00000033', borderRadius: 50, height: 6, overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: 'linear-gradient(90deg,#ffffff,#ffffffcc)', transition: 'width .5s' }}/>
+                </div>
               </div>
-            )}
-          </div>
+            )
+          })()}
         </div>
 
         {/* ── Contenu (cartes homogènes) ── */}
@@ -230,132 +264,146 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
           </div>
 
 
-          {/* Progression de rang */}
-          {(() => {
-            const activeRanks = ranks?.length ? [...ranks].sort((a,b) => a.min - b.min) : DEFAULT_RANKS
-            const nextRank = activeRanks.find(r => r.min > score)
+          {/* Plafonds quotidien */}
+          {limitsDebug && (() => {
+            // Agrandissements (déplacés côte à côte en bas de section).
+            const bagBuy = (onBuyBagSlot && limitsDebug.canBuyBag) ? (() => {
+              const prices = Array.isArray(limits.bagSlotPrices) ? limits.bagSlotPrices : []
+              const price  = Number(prices[limitsDebug.bagSlots])
+              return Number.isFinite(price) ? { icon: '🎒', kind: 'bag', title: 'Agrandir le sac', sub: '+1 geocoin/jour · permanent', price, currency: 'Or' } : null
+            })() : null
+            const pocketBuy = (onBuyPocketBoost && limitsDebug.canBuyPocket)
+              ? { icon: '🧤', kind: 'pocket', title: 'Agrandir les poches', sub: `+${limits.pocketBoostCards ?? 10}/heure · jusqu'à minuit`, price: limits.pocketBoostPrice ?? 100, cards: limits.pocketBoostCards ?? 10, currency: 'Or' }
+              : null
+            // Sac brillant : +1 shiny/jour permanent, payé en POINTS DE FORGE (3 max).
+            const shinyBagBuy = (onBuyShinyBagSlot && limitsDebug.canBuyShinyBag) ? (() => {
+              const prices = Array.isArray(limits.shinyBagSlotPrices) ? limits.shinyBagSlotPrices : []
+              const price  = Number(prices[limitsDebug.shinyBagSlots])
+              return Number.isFinite(price) ? { icon: '✨', kind: 'shinybag', title: 'Agrandir le sac brillant', sub: '+1 shiny/jour · permanent', price, currency: 'PF' } : null
+            })() : null
+            const onBuy = { bag: onBuyBagSlot, pocket: onBuyPocketBoost, shinybag: onBuyShinyBagSlot }
+            const buys  = [pocketBuy, bagBuy, shinyBagBuy].filter(Boolean)
+            const dailyMetrics = [
+              { label: 'Or (sauf quêtes)', value: limitsDebug.dailyGold, cap: limitsDebug.dailyGoldCap },
+              ...(limits.quizJoinGold > 0 ? [{ label: 'Or de participation', value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap }] : []),
+              { label: 'Geocoins', value: limitsDebug.dailyCards, cap: limitsDebug.dailyCardsCap },
+              ...(limitsDebug.dailyShinyCap > 0 ? [{ label: '✨ Shiny', value: limitsDebug.dailyShiny, cap: limitsDebug.dailyShinyCap }] : []),
+              ...(limits.quizConsolationForge > 0 ? [{ label: 'Points de forge (sauf quêtes et mécénat)', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
+            ]
             return (
               <div style={card}>
-                <div style={cardTitle}>🎖️ {t('rank_next')}</div>
-                {!nextRank ? (
-                  <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 800, color: theme.gold }}>{t('rank_max')}</div>
-                ) : (() => {
-                  const pct = Math.min(100, Math.round((score / nextRank.min) * 100))
+                <div style={cardTitle}>📊 Plafonds quotidien</div>
+
+                {/* Geocoins/heure en premier, avec le prochain reset horaire juste à côté */}
+                <CapMeter label="Geocoins/heure" value={limitsDebug.hourlyCards} cap={limitsDebug.hourlyCardsCap} c1={c1} c2={c2} theme={theme} />
+                <div style={{ fontSize: 9.5, color: theme.textMuted, marginTop: 3 }}>
+                  ⏱️ Prochain reset dans {limitsDebug.hourlyResetInMin != null ? `${limitsDebug.hourlyResetInMin} min` : '—'}
+                </div>
+
+                {/* Séparateur */}
+                <div style={{ height: 1, background: theme.borderLight, margin: '10px 0' }}/>
+
+                {/* Plafonds quotidiens — jauges compactes */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {dailyMetrics.map(m => (
+                    <CapMeter key={m.label} label={m.label} title={m.label} value={m.value} cap={m.cap} c1={c1} c2={c2} theme={theme} />
+                  ))}
+                </div>
+
+                {/* Agrandissements — « cartes boutique » côte à côte (repli sur 2 lignes si écran étroit) */}
+                {buys.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                    {buys.map(buy => {
+                      const balance = buy.currency === 'PF' ? (profile.forge_points ?? 0) : (profile.gold ?? 0)
+                      const poor = balance < buy.price
+                      return (
+                        <button key={buy.kind}
+                          onClick={() => { if (!buying && !poor) setConfirmBuy(buy.kind) }}
+                          disabled={!!buying || poor}
+                          title={poor ? (buy.currency === 'PF' ? 'Points de forge insuffisants' : t('limit_upsell_no_gold')) : undefined}
+                          style={{ flex: '1 1 90px', minWidth: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, textAlign: 'center',
+                            background: poor ? theme.overlayMd : `linear-gradient(150deg,${theme.gold}26,${theme.gold}0d)`,
+                            border: `1.5px solid ${theme.gold}${poor ? '33' : '66'}`, borderRadius: 13, padding: '12px 8px',
+                            cursor: poor ? 'not-allowed' : 'pointer', fontFamily: "'Nunito',sans-serif", opacity: buying ? 0.6 : 1 }}>
+                          <span style={{ fontSize: 26, lineHeight: 1 }}>{buy.icon}</span>
+                          <span style={{ fontWeight: 900, fontSize: 12, color: poor ? theme.textMuted : theme.textPrimary, lineHeight: 1.15,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 28 }}>{buy.title}</span>
+                          <span style={{ marginTop: 'auto', fontSize: 9.5, color: theme.textMuted, lineHeight: 1.2, minHeight: 23, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{buy.sub}</span>
+                          <span style={{ background: poor ? theme.overlayMd : `linear-gradient(135deg,${theme.gold},#f1c40f)`,
+                            color: poor ? theme.textMuted : '#1e3045', fontWeight: 900, fontSize: 11, padding: '3px 12px', borderRadius: 50 }}>{buy.price} {buy.currency}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+                {/* Confirmation d'achat (Payer / Annuler) */}
+                {confirmBuy && (() => {
+                  const buy = confirmBuy === 'bag' ? bagBuy : confirmBuy === 'shinybag' ? shinyBagBuy : pocketBuy
+                  if (!buy) return null
                   return (
-                    <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11, color: theme.textMuted }}>
-                        <span style={{ color: nextRank.color, fontWeight: 800 }}>{nextRank.icon} {getRankLabel(nextRank, lang)}</span>
-                        <span style={{ fontWeight: 700, color: theme.textSecondary }}>{t('rank_progress').replace('{score}',score).replace('{max}',nextRank.min)}</span>
+                    <div style={{ marginTop: 8, background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '10px 12px' }}>
+                      <div style={{ fontSize: 11, color: theme.textSecondary, lineHeight: 1.5, marginBottom: 8 }}>
+                        {buy.kind === 'pocket'
+                          ? t('pocket_buy_confirm').replace('{price}', buy.price).replace('{n}', buy.cards)
+                          : buy.kind === 'shinybag'
+                          ? `Agrandir le sac brillant (+1 shiny/jour, permanent) pour ${buy.price} PF ?`
+                          : t('bag_buy_confirm').replace('{price}', buy.price)}
                       </div>
-                      <div style={{ background: theme.overlayMd, borderRadius: 50, height: 6, overflow: 'hidden' }}>
-                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50,
-                          background: `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button disabled={!!buying}
+                          onClick={async () => { if (buying) return; setBuying(buy.kind); try { await onBuy[buy.kind]?.() } finally { setBuying(null); setConfirmBuy(null) } }}
+                          style={{ flex: 1, background: `linear-gradient(135deg,${theme.gold},#f1c40f)`, border: 'none', color: '#1e3045', padding: '8px 0', borderRadius: 9,
+                            fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: buying ? 'default' : 'pointer', opacity: buying === buy.kind ? 0.6 : 1 }}>
+                          {buying === buy.kind ? '…' : `${t('hold_confirm_pay')} — ${buy.price} ${buy.currency === 'PF' ? 'PF' : 'G'}`}
+                        </button>
+                        <button disabled={!!buying} onClick={() => setConfirmBuy(null)}
+                          style={{ flex: 1, background: '#ffffff18', border: 'none', color: theme.textSecondary, padding: '8px 0', borderRadius: 9,
+                            fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
+                          {t('cancel')}
+                        </button>
                       </div>
-                    </>
+                    </div>
                   )
                 })()}
+
+                <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 10, lineHeight: 1.45 }}>
+                  Au-delà du plafond, un point de forge est offert en compensation pour chaque quiz gagné. Il reste possible de stocker un geocoin au dépôt.
+                </div>
+                {limitsDebug.isNewDay && (
+                  <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 6, lineHeight: 1.4 }}>
+                    ✅ Compteurs quotidiens réinitialisés (dernière activité : {limitsDebug.lastActivityDate ?? 'jamais'}, aujourd'hui {todayParis()})
+                  </div>
+                )}
               </div>
             )
           })()}
 
-          {/* Limites du jour */}
-          {limitsDebug && (
+          {/* ── Plafonds HEBDOMADAIRES par rareté (frein d'inflation) ── */}
+          {profile.weekly && (
             <div style={card}>
-              <div style={cardTitle}>📊 Limites du jour</div>
-              {[
-                { label: 'Or quotidien',       value: limitsDebug.dailyGold,     cap: limitsDebug.dailyGoldCap },
-                ...(limits.quizJoinGold > 0 ? [{ label: 'Or de participation', value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap }] : []),
-                { label: 'Geocoins du jour',   value: limitsDebug.dailyCards,    cap: limitsDebug.dailyCardsCap, info: true,
-                  // Agrandir le sac : +1 geocoin/jour permanent, prix du prochain emplacement (masqué si 5/5).
-                  buy: (() => {
-                    if (!onBuyBagSlot || !limitsDebug.canBuyBag) return null
-                    const prices = Array.isArray(limits.bagSlotPrices) ? limits.bagSlotPrices : []
-                    const price  = Number(prices[limitsDebug.bagSlots])
-                    return Number.isFinite(price) ? { icon: '🎒', kind: 'bag', label: t('limit_bag_buy'), price, onClick: onBuyBagSlot } : null
-                  })() },
-                { label: 'Geocoins/heure',     value: limitsDebug.hourlyCards,   cap: limitsDebug.hourlyCardsCap,
-                  // Agrandir les poches : +N geocoins/heure jusqu'à minuit (cumulable).
-                  buy: (onBuyPocketBoost && limitsDebug.canBuyPocket)
-                    ? { icon: '🧤', kind: 'pocket', label: t('limit_pocket_buy').replace('{n}', limits.pocketBoostCards ?? 10), price: limits.pocketBoostPrice ?? 100, cards: limits.pocketBoostCards ?? 10, onClick: onBuyPocketBoost }
-                    : null },
-                ...(limitsDebug.dailyShinyCap > 0 ? [{ label: '✨ Shiny du jour', value: limitsDebug.dailyShiny, cap: limitsDebug.dailyShinyCap }] : []),
-                ...(limits.quizConsolationForge > 0 ? [{ label: 'Forge de compensation', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
-              ].map(({ label, value, cap, info, buy }) => {
-                const unlimited = !cap || cap <= 0
-                // La valeur en base peut dépasser le cap (compteur sur-crédité avant le
-                // correctif de plafonnement, ou cap abaissé par l'admin dans la journée) :
-                // on borne l'affichage au cap comme la barre de progression, sinon on lit
-                // « 250 / 200 ». Le compteur réel se remet à zéro au reset de minuit.
-                const shown = unlimited ? value : Math.min(value, cap)
-                const pct = unlimited ? 0 : Math.min(100, Math.round((value / cap) * 100))
-                return (
-                  <div key={label} style={{ marginBottom: 8 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: theme.textMuted }}>
-                      <span>
-                        {label}
-                        {info && (
-                          <span onClick={() => setShowCardsInfo(v => !v)} style={{ cursor: 'pointer', marginLeft: 4, fontWeight: 800 }}>ⓘ</span>
-                        )}
-                      </span>
-                      <span style={{ fontWeight: 700, color: theme.textSecondary }}>{shown} / {unlimited ? '∞' : cap}</span>
-                    </div>
-                    {!unlimited && (
-                      <div style={{ background: theme.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden', marginTop: 3 }}>
-                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 50, background: pct >= 100 ? '#eb4d4b' : `linear-gradient(90deg,${c1},${c2})`, transition: 'width .5s' }}/>
-                      </div>
-                    )}
-                    {/* Achat en 2 temps : bouton → panneau de confirmation Payer/Annuler
-                        inline (même pattern que l'achat d'emplacement du dépôt, TresorPage) —
-                        fiable sur mobile comme desktop, pas de window.confirm. */}
-                    {buy && (() => {
-                      const poor = (profile.gold ?? 0) < buy.price
-                      if (confirmBuy === buy.kind) {
-                        return (
-                          <div style={{ marginTop: 6, background: theme.overlay, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '10px 12px' }}>
-                            <div style={{ fontSize: 11, color: theme.textSecondary, lineHeight: 1.5, marginBottom: 8 }}>
-                              {buy.kind === 'pocket'
-                                ? t('pocket_buy_confirm').replace('{price}', buy.price).replace('{n}', buy.cards)
-                                : t('bag_buy_confirm').replace('{price}', buy.price)}
-                            </div>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <button disabled={!!buying}
-                                onClick={async () => { if (buying) return; setBuying(buy.kind); try { await buy.onClick() } finally { setBuying(null); setConfirmBuy(null) } }}
-                                style={{ flex: 1, background: `linear-gradient(135deg,${theme.gold},#f1c40f)`, border: 'none', color: '#1e3045', padding: '8px 0', borderRadius: 9,
-                                  fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: buying ? 'default' : 'pointer', opacity: buying === buy.kind ? 0.6 : 1 }}>
-                                {buying === buy.kind ? '…' : `${t('hold_confirm_pay')} — ${buy.price} G`}
-                              </button>
-                              <button disabled={!!buying} onClick={() => setConfirmBuy(null)}
-                                style={{ flex: 1, background: '#ffffff18', border: 'none', color: theme.textSecondary, padding: '8px 0', borderRadius: 9,
-                                  fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
-                                {t('cancel')}
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      }
-                      return (
-                        <button
-                          onClick={() => { if (!buying && !poor) setConfirmBuy(buy.kind) }}
-                          disabled={!!buying || poor}
-                          title={poor ? t('limit_upsell_no_gold') : undefined}
-                          style={{ marginTop: 4, background: poor ? theme.overlayMd : `${theme.gold}22`, border: `1px solid ${theme.gold}55`,
-                            color: poor ? theme.textMuted : theme.gold, fontWeight: 800, fontSize: 10.5, padding: '5px 10px', borderRadius: 8,
-                            cursor: poor ? 'not-allowed' : 'pointer', fontFamily: "'Nunito',sans-serif" }}>
-                          {buy.icon} {buy.label} · {buy.price} Or
-                        </button>
-                      )
-                    })()}
-                    {info && showCardsInfo && (
-                      <div style={{ marginTop: 4, padding: 8, borderRadius: 8, background: theme.overlayMd, fontSize: 10, color: theme.textSecondary, lineHeight: 1.4 }}>
-                        Pas de panique, si un geocoin vous intéresse alors que vous avez atteint la limite, il y a le dépôt d'attente. Un point de forge est également offert en compensation pour chaque quiz gagné.
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-              <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 6, lineHeight: 1.4 }}>
-                {limitsDebug.isNewDay && <>✅ Compteurs quotidiens réinitialisés (dernière activité : {limitsDebug.lastActivityDate ?? 'jamais'}, aujourd'hui {todayParis()}) · </>}
-                Prochain reset horaire dans {limitsDebug.hourlyResetInMin != null ? `${limitsDebug.hourlyResetInMin}min` : '—'}
+              <div style={cardTitle}>📅 Plafonds de la semaine</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <CapMeter label="Rares"         value={profile.weekly.rare       || 0} cap={limits.quizWeeklyCapRare       || 0} c1={c1} c2={c2} theme={theme} />
+                <CapMeter label="Épiques"       value={profile.weekly.epique     || 0} cap={limits.quizWeeklyCapEpique     || 0} c1={c1} c2={c2} theme={theme} />
+                <CapMeter label="★ Légendaires" value={profile.weekly.legendaire || 0} cap={limits.quizWeeklyCapLegendaire || 0} c1={c1} c2={c2} theme={theme} />
+              </div>
+              <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 8, lineHeight: 1.4 }}>
+                Au-delà du plafond, un geocoin gagné peut être offert (mécénat). Offrir un geocoin rapporte des points de forge, de la gloire, et fait progresser l'achievement « Le mécène ».<br/><br/>Le shiny n'est pas soumis à cette restriction. Remise à zéro chaque lundi.
+              </div>
+            </div>
+          )}
+
+          {/* ── Mécénat — dons de la semaine + total offert ── */}
+          {profile.patronage && (
+            <div style={card}>
+              <div style={cardTitle}>🎁 Mécénat de la semaine</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <CapMeter label="Rares"         value={profile.patronage.given_rare       || 0} cap={limits.patronageWeeklyCapRare       || 0} c1={c1} c2={c2} theme={theme} />
+                <CapMeter label="Épiques"       value={profile.patronage.given_epique     || 0} cap={limits.patronageWeeklyCapEpique     || 0} c1={c1} c2={c2} theme={theme} />
+                <CapMeter label="★ Légendaires" value={profile.patronage.given_legendaire || 0} cap={limits.patronageWeeklyCapLegendaire || 0} c1={c1} c2={c2} theme={theme} />
+              </div>
+              <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 8, lineHeight: 1.4 }}>
+                Au-delà de la limite de mécénat, votre pseudonyme s'affiche avec un halo lumineux et vous ne jouez plus que pour la gloire, quelque-soit la rareté du geocoin à gagner.
               </div>
             </div>
           )}

@@ -10,15 +10,15 @@ import Logo from './components/Logo.jsx';
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, PSEUDO_CHANGE_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
-import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard } from './utils/gameUtils.js';
+import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard, patronageHaloColor } from './utils/gameUtils.js';
 import { isCorrectAnswer } from './utils/answer.js';
 
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
 import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard } from './services/api.js'
-import { soundQuizNew, soundMarketSale, useVolume } from './utils/sounds.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiBuyShinyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard, apiGetPatronagePending } from './services/api.js'
+import { soundQuizNew, soundMarketSale, soundCorrect, useVolume } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
 
@@ -42,6 +42,7 @@ import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
 import { DemoComplete } from './features/demo/DemoGame.jsx';
 import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, BeginnerRecap, BeginnerWinnersModal, GameRulesModal, GloryInfoModalHost, LimitInfoModalHost, FireInfoModalHost } from './features/quiz/QuizComponents.jsx';
+import { PatronageModal, PatronageGiftPopup } from './features/patronage/PatronageModal.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
@@ -227,6 +228,13 @@ export default function App() {
 
   const cardPoolRef = useRef(gs.cardPool);
   useEffect(() => { cardPoolRef.current = gs.cardPool }, [gs.cardPool]);
+
+  // Halo « mécénat » du joueur (plafond hebdo de dons atteint) — affiché autour de
+  // son avatar dans l'accueil. Bleu rare / violet épique / orange légendaire.
+  const myPatronageHalo = patronageHaloColor(
+    { rare: auth.profile?.patronage?.given_rare, epique: auth.profile?.patronage?.given_epique, legendaire: auth.profile?.patronage?.given_legendaire },
+    { rare: gs.limits.patronageWeeklyCapRare, epique: gs.limits.patronageWeeklyCapEpique, legendaire: gs.limits.patronageWeeklyCapLegendaire }
+  );
 
   const [pendingCheckout, setPendingCheckout] = useState(
     () => new URLSearchParams(window.location.search).get('checkout_id') || null
@@ -784,6 +792,13 @@ export default function App() {
       s.on('beginner:closed',   (data) => beginnerRef.current?.applyBeginnerClosed(data))
       s.on('beginner:answered', ()     => beginnerRef.current?.refreshHistory())
 
+      // Mécénat — un joueur m'a offert un geocoin (diffusion filtrée sur recipient_id)
+      s.on('patronage:gift', (data) => {
+        if (!data || data.recipient_id !== auth.profile?.id) return
+        setPatronageGift({ donor_pseudo: data.donor_pseudo, rarity: data.rarity, card: data.card })
+        try { soundCorrect() } catch { /* audio bloqué */ }
+      })
+
       // Marché — ma carte vendue
       s.on('market:sold', (data) => {
         gs.handleSaleNotifFromSocket(data)
@@ -933,6 +948,7 @@ export default function App() {
   const [holds,      setHolds]      = useState([]);          // geocoins en attente (multi-emplacements)
   const [holdSlots,  setHoldSlots]  = useState(0);           // emplacements permanents achetés (0→2)
   const [holdRentActive, setHoldRentActive] = useState(false); // emplacement 4 loué actif
+  const [patronageGift, setPatronageGift] = useState(null);  // don reçu (popup bénéficiaire)
   const [seasonPopup, setSeasonPopup] = useState(null); // { season, cards }
   const COLL_PAGE_SIZE = 24;
   const [menuOpen,        setMenuOpen]        = useState(false);
@@ -1115,6 +1131,16 @@ export default function App() {
     })
   }, [auth.profile?.id, activeTab === 'tresors'])
 
+  // Dons de mécénat reçus hors ligne : afficher le plus récent à la connexion
+  // (les dons reçus en direct arrivent via le socket 'patronage:gift').
+  useEffect(() => {
+    if (!auth.profile || auth.isDemo) return
+    apiGetPatronagePending().then(({ data }) => {
+      const g = data?.gifts?.[0]
+      if (g) setPatronageGift(prev => prev || { donor_pseudo: g.donor_pseudo, rarity: g.rarity, card: g.card })
+    }).catch(() => {})
+  }, [auth.profile?.id])
+
   // Vérifier la saison en cours à la connexion — afficher la popup si nouvelle saison
   useEffect(() => {
     if (!auth.profile || auth.isDemo) return
@@ -1188,6 +1214,7 @@ export default function App() {
   })
   const { countdown, setNextQuizTime, cycleSec, applyServerSchedule, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
     nextCard, setNextCard, nextQuizRarity, setNextQuizRarity, holdOffer, setHoldOffer,
+    patronageOffer, setPatronageOffer,
     history, setHistory, quizKey, setQuizKey,
     lostToWinner, setLostToWinner,
     lostToGlory, setLostToGlory,
@@ -1510,6 +1537,15 @@ export default function App() {
     if (typeof data.gold === 'number') gs.setGold(data.gold)
     auth.setProfile(p => p ? { ...p, ...(typeof data.gold === 'number' ? { gold: data.gold } : {}), bag_slots: data.bag_slots } : p)
     showToast(t('toast_bag_bought'))
+  }
+
+  // Sac brillant : +1 shiny/jour permanent, payé en POINTS DE FORGE. La mise à jour
+  // de forge_points sur le profil rafraîchit aussi gs.forgePoints (effet de sync).
+  async function handleBuyShinyBagSlot() {
+    const { data, error } = await apiBuyShinyBagSlot()
+    if (error) { showToast(error, 'error'); return }
+    auth.setProfile(p => p ? { ...p, ...(typeof data.forge_points === 'number' ? { forge_points: data.forge_points } : {}), shiny_bag_slots: data.shiny_bag_slots } : p)
+    showToast('✨ Sac brillant agrandi : +1 shiny/jour !')
   }
 
   // Offre d'agrandissement affichée dans la bannière « limite atteinte » du quiz :
@@ -2159,7 +2195,7 @@ export default function App() {
             <button onClick={() => setAvatarMenu(v => { if (!v) avatarMenuOpenedAtRef.current = Date.now(); return !v })} style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0, touchAction: 'manipulation' }}>
               <Avatar pseudo={auth.profile.pseudo} avatarUrl={auth.profile.geocaching_avatar_url}
                 verified={auth.profile.geocaching_verified} size={34}
-                gradient="linear-gradient(135deg,#f9ca24,#e17055)" />
+                gradient="linear-gradient(135deg,#f9ca24,#e17055)" halo={myPatronageHalo} />
               {hasReleaseNotif && <span style={{ position: 'absolute', top: -2, left: -2, background: '#6c5ce7', borderRadius: '50%', width: 10, height: 10, border: `1.5px solid ${theme.badgeBorder}`, boxShadow: '0 0 6px #6c5ce7', zIndex: 1 }} />}
             </button>
             {avatarMenu && (
@@ -2268,7 +2304,7 @@ export default function App() {
                         cursor: auth.isDemo ? 'default' : 'pointer' }}>
                       <Avatar pseudo={auth.profile.pseudo} avatarUrl={auth.profile.geocaching_avatar_url}
                         verified={auth.profile.geocaching_verified} size={48}
-                        gradient={`linear-gradient(135deg,${c1},${c2})`} glow={c1}
+                        gradient={`linear-gradient(135deg,${c1},${c2})`} glow={c1} halo={myPatronageHalo}
                         onAddPhoto={auth.isDemo ? null : () => setGcModalOpen(true)}
                         addPhotoTitle={t('gc_add_photo')} />
                       <div style={{ minWidth: 0, flex: 1 }}>
@@ -2768,7 +2804,7 @@ export default function App() {
 
       {/* ── Toast ── */}
       {toast && (
-        <div style={{ position: 'fixed',bottom: 28,right: 28,zIndex: 3000,background: toast.type === 'error' ? '#d63031' : '#00b894',color: '#fff',padding: '11px 18px',borderRadius: 12,fontWeight: 800,fontSize: 13,boxShadow: '0 8px 32px #0006',animation: 'toastIn .4s cubic-bezier(.34,1.56,.64,1) both' }}>
+        <div style={{ position: 'fixed',bottom: 28,right: 28,zIndex: 3000,pointerEvents: 'none',maxWidth: 'min(80vw,340px)',background: toast.type === 'error' ? '#d63031' : '#00b894',color: '#fff',padding: '11px 18px',borderRadius: 12,fontWeight: 800,fontSize: 13,boxShadow: '0 8px 32px #0006',animation: 'toastIn .4s cubic-bezier(.34,1.56,.64,1) both' }}>
           {toast.msg}
         </div>
       )}
@@ -2841,6 +2877,23 @@ export default function App() {
             showToast(fp > 0 ? t('toast_quiz_forge_taken').replace('{n}', fp) : t('toast_forge_limit'), fp > 0 ? 'success' : 'error')
           }}
         />
+      )}
+
+      {/* ── Mécénat — plafond hebdo atteint : offrir le geocoin ou jouer pour la gloire ── */}
+      {patronageOffer && (
+        <PatronageModal
+          offer={patronageOffer}
+          rewardPf={{ rare: gs.limits.patronageRewardPfRare, epique: gs.limits.patronageRewardPfEpique, legendaire: gs.limits.patronageRewardPfLegendaire }}
+          showToast={showToast}
+          checkAchievements={gs.checkAchievements}
+          checkAchievementUpgrades={gs.checkAchievementUpgrades}
+          onForgePointsEarned={gs.addForgePoints}
+          onClose={() => setPatronageOffer(null)}
+        />
+      )}
+      {/* ── Popup bénéficiaire d'un don (temps réel via socket / à la connexion) ── */}
+      {patronageGift && (
+        <PatronageGiftPopup gift={patronageGift} onClose={() => setPatronageGift(null)} />
       )}
 
       {/* ── Modals ── */}
@@ -3167,7 +3220,7 @@ export default function App() {
           onClose={() => setGcModalOpen(false)}
         />
       )}
-      {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} shinyCollection={gs.shinyCollection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} limits={gs.limits} score={userScore} onBuyPocketBoost={auth.isDemo ? null : handleBuyPocketBoost} onBuyBagSlot={auth.isDemo ? null : handleBuyBagSlot} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
+      {showSettings && auth.profile && <SettingsModal auth={auth} collection={gs.collection} shinyCollection={gs.shinyCollection} cardPool={gs.cardPool} unlockedAch={gs.unlockedAch} ranks={gs.limits.playerRanks} limits={gs.limits} score={userScore} onBuyPocketBoost={auth.isDemo ? null : handleBuyPocketBoost} onBuyBagSlot={auth.isDemo ? null : handleBuyBagSlot} onBuyShinyBagSlot={auth.isDemo ? null : handleBuyShinyBagSlot} onStartTour={() => { setShowSettings(false); setShowTour(true) }} onClose={() => setShowSettings(false)} />}
       {showReferral && auth.profile && <ReferralModal onClose={() => setShowReferral(false)} />}
       {showShop && <ShopModal onClose={() => { setShowShop(false); setShopPackId(null); setRevealCards(null); setRevealGold(0); setRevealPayment('') }} cardPool={gs.cardPool} onPurchase={handlePurchase} shopPacksConfig={gs.limits?.shopPacks || {}} initialPackId={shopPackId} initialCards={revealCards} initialGold={revealGold} initialPaymentLabel={revealPayment} />}
       {/* CGV désactivée temporairement */}
@@ -3176,6 +3229,8 @@ export default function App() {
           cardPool={gs.cardPool} cardTypes={gs.cardTypes} questions={questions} limits={gs.limits}
           maintenanceMode={gs.maintenance.on} maintenanceText={gs.maintenance.text}
           bannedIPs={gs.bannedIPs}
+          onTestPatronage={() => { setShowAdmin(false); setPatronageOffer({ preview: true, rarity: 'rare', card: { id: 0, name: 'Geocoin de test', rarity: 'rare' }, remaining: 5 }); }}
+          onTestPatronageGift={() => { setShowAdmin(false); setPatronageGift({ donor_pseudo: 'Alizée', rarity: 'rare', card: { id: 0, name: 'Geocoin de test', rarity: 'rare' } }); }}
           onClose={() => { setShowAdmin(false); window.history.pushState({}, '', '/') }}
           onAddCard={gs.adminAddCard} onEditCard={gs.adminEditCard} onDeleteCard={gs.adminDeleteCard}
           onAddType={gs.adminAddType} onDeleteType={gs.adminDeleteType} onRenameType={gs.adminRenameType}
@@ -3229,6 +3284,21 @@ export default function App() {
                 apiSetConfig('quiz_consolation_gold',  limEdit.quizConsolationGold  ?? 5),
                 apiSetConfig('quiz_consolation_forge', limEdit.quizConsolationForge ?? 1),
                 apiSetConfig('quiz_daily_forge_cap',   limEdit.quizDailyForgeCap    ?? 0),
+                apiSetConfig('quiz_weekly_cap_rare',       limEdit.quizWeeklyCapRare       ?? 100),
+                apiSetConfig('quiz_weekly_cap_epique',     limEdit.quizWeeklyCapEpique     ?? 40),
+                apiSetConfig('quiz_weekly_cap_legendaire', limEdit.quizWeeklyCapLegendaire ?? 1),
+                apiSetConfig('patronage_weekly_cap_rare',       limEdit.patronageWeeklyCapRare       ?? 10),
+                apiSetConfig('patronage_weekly_cap_epique',     limEdit.patronageWeeklyCapEpique     ?? 4),
+                apiSetConfig('patronage_weekly_cap_legendaire', limEdit.patronageWeeklyCapLegendaire ?? 1),
+                apiSetConfig('patronage_reward_pf_rare',        limEdit.patronageRewardPfRare        ?? 1),
+                apiSetConfig('patronage_reward_pf_epique',      limEdit.patronageRewardPfEpique      ?? 5),
+                apiSetConfig('patronage_reward_pf_legendaire',  limEdit.patronageRewardPfLegendaire  ?? 100),
+                apiSetConfig('patronage_new_days',              limEdit.patronageNewDays             ?? 30),
+                apiSetConfig('patronage_old_days',              limEdit.patronageOldDays             ?? 30),
+                apiSetConfig('patronage_fast_seconds',          limEdit.patronageFastSeconds         ?? 5),
+                apiSetConfig('patronage_collection_threshold',  limEdit.patronageCollectionThreshold ?? 80),
+                apiSetConfig('patronage_criteria_enabled',      limEdit.patronageCriteriaEnabled ?? { nouveau:true, ancien:true, rapide:true, fidele:true, petite_collection:true, grande_collection:true }),
+                apiSetConfig('patronage_test_recipient',        (limEdit.patronageTestRecipient ?? '').trim()),
                 apiSetConfig('beginner_quiz_enabled',  limEdit.beginnerEnabled  !== false),
                 apiSetConfig('beginner_quiz_duration', limEdit.beginnerDuration ?? 60),
                 apiSetConfig('hold_slot_prices',       limEdit.holdSlotPrices   ?? [150, 400]),
@@ -3237,6 +3307,7 @@ export default function App() {
                 apiSetConfig('pocket_boost_price',     limEdit.pocketBoostPrice ?? 100),
                 apiSetConfig('pocket_boost_cards',     limEdit.pocketBoostCards ?? 10),
                 apiSetConfig('bag_slot_prices',        limEdit.bagSlotPrices    ?? [500, 1000, 2000, 4000, 6000]),
+                apiSetConfig('shiny_bag_slot_prices',  limEdit.shinyBagSlotPrices ?? [200, 400, 600]),
                 apiSetConfig('forge_cost_by_rarity',   limEdit.forgeCostByRarity   ?? { commun:60,rare:180,épique:600,légendaire:1800 }),
                 apiSetConfig('melt_points_by_rarity',  limEdit.meltPointsByRarity  ?? {}),
                 apiSetConfig('melt_points_by_rarity_shiny', limEdit.meltPointsByRarityShiny ?? {}),

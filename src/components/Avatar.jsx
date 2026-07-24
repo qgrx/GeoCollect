@@ -11,9 +11,17 @@
 import { useState } from 'react'
 import GeocachingBadge from './GeocachingBadge.jsx'
 
+// Anneau lumineux animé du halo « mécénat » — glow coloré qui respire et dérive
+// légèrement (effet stylé), pensé pour ressortir sur fond foncé. Une seule keyframe
+// pour toutes les couleurs (couleur passée via la variable CSS --h).
+const AVATAR_HALO_KEYFRAMES = `@keyframes gcAvatarHalo{
+  0%,100%{box-shadow:0 0 3px 1px var(--h),0 0 8px 2px var(--h);transform:translate(.5px,-.5px) scale(1);opacity:.85}
+  50%    {box-shadow:0 0 6px 2px var(--h),0 0 14px 5px var(--h);transform:translate(-.5px,.5px) scale(1.03);opacity:1}
+}`
+
 export default function Avatar({
   pseudo, avatarUrl = null, verified = false, size = 48,
-  gradient = 'linear-gradient(135deg,#6c5ce7,#a29bfe)', glow = null,
+  gradient = 'linear-gradient(135deg,#6c5ce7,#a29bfe)', glow = null, halo = null,
   onAddPhoto = null, addPhotoTitle = '', forcePhoto = false, style = {},
 }) {
   const [imgError, setImgError] = useState(false)
@@ -23,11 +31,19 @@ export default function Avatar({
 
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0, ...style }}>
+      {halo && (
+        <>
+          <style>{AVATAR_HALO_KEYFRAMES}</style>
+          <div aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: '50%', pointerEvents: 'none',
+            '--h': halo, animation: 'gcAvatarHalo 2.6s ease-in-out infinite' }}/>
+        </>
+      )}
       <div style={{
+        position: 'relative',
         width: size, height: size, borderRadius: '50%', overflow: 'hidden',
         background: gradient, display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: Math.round(size * 0.42), fontWeight: 900, color: '#fff',
-        border: verified ? '2px solid #17a86a' : '2px solid #ffffff33',
+        border: verified ? '2px solid #17a86a' : (halo ? `2px solid ${halo}` : '2px solid #ffffff33'),
         boxShadow: glow ? `0 0 ${Math.round(size * 0.3)}px ${glow}88, 0 4px 12px #0008` : 'none',
       }}>
         {showImg

@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { apiDeleteAccount } from '../services/api.js'
+import { normalizeProfile } from '../utils/profile.js'
 
 // Profil factice du mode démo (visiteur non connecté). Reproduit les défauts d'un
 // profil réel pour que le vrai app s'affiche sans compte. Les appels API sont
@@ -47,13 +48,6 @@ const deletedAccountMsg = () => {
   if (!l) { try { l = (navigator.language || 'fr').slice(0, 2) } catch { l = 'fr' } }
   return DELETED_ACCOUNT_MSG[l] || DELETED_ACCOUNT_MSG.fr
 }
-
-// La base stocke la vérification geocaching dans `geocaching_verified_at`
-// (timestamp, NULL = non vérifié) — il n'y a pas de booléen `geocaching_verified`.
-// On le dérive ici pour tout le front (badge « vérifié », icône photo, etc.).
-const normalizeProfile = (p) => p
-  ? { ...p, geocaching_verified: p.geocaching_verified ?? Boolean(p.geocaching_verified_at) }
-  : p
 
 // ─── Hook unique — branch au runtime, pas au niveau hook ──────────────────────
 export function useAuth() {

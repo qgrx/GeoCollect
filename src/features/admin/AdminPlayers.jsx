@@ -5,7 +5,7 @@ import { getRankLabel } from '../../utils/rankUtils.js';
 import { cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
 import {
-  apiAdminSetCanSell, apiAdminReactivate, apiAdminSetGold, apiAdminSetForgePoints, apiAdminSetPlayerLimits,
+  apiAdminSetCanSell, apiAdminReactivate, apiAdminSetGold, apiAdminSetForgePoints, apiAdminSetPlayerLimits, apiAdminSetWeeklyMax,
   apiAdminGetPlayerCollection, apiAdminGiveCard, apiAdminTakeCard, apiAdminSetPseudo,
   apiAdminUndoForgeShiny,
 } from '../../services/api.js';
@@ -279,6 +279,19 @@ export default function AdminPlayers({ cardPool, limEdit, onBanIP, setTab, setMs
             setPlayerLimitsEdit({});
             setMsg('✅ Limites du joueur mises à jour.');
           }} style={{ ...BTN('linear-gradient(135deg,#00b894,#0984e3)'), padding: '7px 14px', borderRadius: 8, fontSize: 12 }}>Appliquer les limites</button>
+        </div>
+        {/* Mécénat (outil de test) : forcer les plafonds hebdo d'acquisition au max → toute
+            bonne réponse sur un précieux non-shiny déclenche « don ou gloire ». */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, paddingTop: 8, borderTop: '1px solid #ffffff10' }}>
+          <span style={{ color: '#8daacc', fontSize: 10, fontWeight: 800, width: '100%' }}>🎁 Test mécénat — plafonds hebdo d'acquisition</span>
+          <button onClick={async () => {
+            const { error } = await apiAdminSetWeeklyMax(playerView.id, false);
+            setMsg(error ? '❌ ' + error : '✅ Plafonds hebdo au max — le prochain précieux déclenchera le mécénat.');
+          }} style={{ ...BTN('linear-gradient(135deg,#f9ca24,#e17055)', '#1e3045'), padding: '7px 14px', borderRadius: 8, fontSize: 12 }}>Mettre aux plafonds max</button>
+          <button onClick={async () => {
+            const { error } = await apiAdminSetWeeklyMax(playerView.id, true);
+            setMsg(error ? '❌ ' + error : '✅ Compteurs hebdo remis à zéro.');
+          }} style={{ ...BTN('linear-gradient(135deg,#636e72,#2d3436)'), padding: '7px 14px', borderRadius: 8, fontSize: 12 }}>Remettre à zéro</button>
         </div>
       </div>
 

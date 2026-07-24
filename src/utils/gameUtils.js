@@ -37,6 +37,28 @@ export function todayParis(date = new Date()) {
   }).format(date);
 }
 
+// Lundi de la semaine courante (YYYY-MM-DD) à Paris — borne des resets HEBDO (plafonds
+// par rareté, dons de mécénat). Miroir exact de weekStartParis() côté API : on ancre la
+// date de Paris à midi UTC (insensible au changement d'heure) puis on recule au lundi.
+export function weekStartParis(date = new Date()) {
+  const anchor = new Date(todayParis(date) + 'T12:00:00Z');
+  const sinceMonday = (anchor.getUTCDay() + 6) % 7;   // 0 si lundi
+  anchor.setUTCDate(anchor.getUTCDate() - sinceMonday);
+  return anchor.toISOString().slice(0, 10);
+}
+
+// Halo « mécénat » : couleur du halo affiché autour du pseudo d'un joueur ayant
+// ATTEINT son plafond hebdo de DONS pour une rareté (bleu rare, violet épique, orange
+// légendaire). La rareté la plus haute atteinte l'emporte. null si aucun plafond atteint.
+// Le halo disparaît de lui-même au reset hebdo (les compteurs `given` repassent à 0).
+export const PATRONAGE_HALO = { rare: '#3aa0ff', epique: '#a970ff', legendaire: '#ff8c42' };
+export function patronageHaloColor({ rare = 0, epique = 0, legendaire = 0 } = {}, caps = {}) {
+  if (caps.legendaire > 0 && legendaire >= caps.legendaire) return PATRONAGE_HALO.legendaire;
+  if (caps.epique     > 0 && epique     >= caps.epique)     return PATRONAGE_HALO.epique;
+  if (caps.rare       > 0 && rare       >= caps.rare)       return PATRONAGE_HALO.rare;
+  return null;
+}
+
 // ─── Statut des limites de geocoins (horaire / quotidienne) ───────────────────
 // Détermine si le joueur a atteint une limite l'empêchant d'obtenir le prochain
 // geocoin, et laquelle. Le quotidien prime (reset le plus lointain).

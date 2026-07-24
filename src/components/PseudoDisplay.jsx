@@ -5,11 +5,14 @@
 import { useMemo } from 'react'
 import { getRank, isTopRank } from '../utils/rankUtils.js'
 
-export default function PseudoDisplay({ pseudo, score, ranks, style = {}, tag = 'span' }) {
+export default function PseudoDisplay({ pseudo, score, ranks, style = {}, tag = 'span', halo = null }) {
   const top = useMemo(() => isTopRank(score, ranks), [score, ranks])
   const rank = useMemo(() => getRank(score, ranks), [score, ranks])
 
   const Tag = tag
+  // Halo « mécénat » : lueur colorée autour du pseudo (drop-shadow → fonctionne aussi
+  // avec l'effet brillant du rang max, qui rend le texte transparent).
+  const haloStyle = halo ? { filter: `drop-shadow(0 0 4px ${halo}) drop-shadow(0 0 9px ${halo}cc)` } : null
   return (
     <>
       {top && (
@@ -29,7 +32,7 @@ export default function PseudoDisplay({ pseudo, score, ranks, style = {}, tag = 
           }
         `}</style>
       )}
-      <Tag className={top ? 'pseudo-shine' : ''} style={style}>
+      <Tag className={top ? 'pseudo-shine' : ''} style={{ ...style, ...haloStyle }}>
         {pseudo}
       </Tag>
     </>

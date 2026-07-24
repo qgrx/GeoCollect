@@ -14,6 +14,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const [nextCard,      setNextCard]     = useState(null)
   const [nextQuizRarity,setNextQuizRarity]=useState(null)
   const [holdOffer,     setHoldOffer]    = useState(null)
+  const [patronageOffer,setPatronageOffer]=useState(null)   // { quiz_id, rarity, card, remaining } — plafond hebdo atteint → don ou gloire
   const [history,       setHistory]      = useState([])
   const [lostToWinner,  setLostToWinner] = useState(null)
   const [lostToGlory,   setLostToGlory]  = useState(false)
@@ -194,13 +195,13 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     if (snoozeMs > 0) snoozedUntilRef.current = Date.now() + snoozeMs
   }, [pendingQuiz, limits])
 
-  const handleQuizAnswer = useCallback(async (userAnswer, choice, holdAction) => {
+  const handleQuizAnswer = useCallback(async (userAnswer) => {
     if (!activeQuiz) return 'error'  // fenêtre fermée entre-temps (ex. revalidation tardive)
     const card = activeQuiz.card
     const { earnCard, earnGoldWithFx, showToast, t } = cbRef.current
     if (profile && activeQuiz.id) {
       // Honeypot anti-bot : on renvoie le nonce émis par /current (présent via ...data.quiz).
-      const { data, error, status, body } = await apiAnswerQuiz(activeQuiz.id, userAnswer, activeQuiz.nonce, choice, holdAction)
+      const { data, error, status, body } = await apiAnswerQuiz(activeQuiz.id, userAnswer, activeQuiz.nonce)
       if (error) {
         if (status === 425) return { handicap: true, wait_ms: body?.wait_ms || 0 } // série : délai cadeau
         if (status === 423) return 'blocked' // protection inter-modes (prochaine manche)
@@ -249,8 +250,14 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
           setActiveQuiz(q => q ? { ...q, graceDeadline } : q)
           if (activeQuizRef.current) activeQuizRef.current = { ...activeQuizRef.current, graceDeadline }
         }
+        // Mécénat : plafond hebdo de la rareté atteint → proposer le don (la gloire
+        // ci-dessus est le repli). La modale s'ouvre après la fermeture du quiz.
+        if (data.patronage_offer) {
+          const offer = data.patronage_offer
+          setTimeout(() => setPatronageOffer(offer), Math.min(1200, graceDeadline ? 900 : 1200))
+        }
         const closeIn = graceDeadline ? Math.max(2000, graceDeadline - Date.now() + 1200) : 3500
-        setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, closeIn)
+        setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, data.patronage_offer ? 1400 : closeIn)
         return { ok: true, outcome: 'glory', forge: data.forge_points_earned || 0 }
       }
 
@@ -435,6 +442,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     nextCard, setNextCard,
     nextQuizRarity, setNextQuizRarity,
     holdOffer, setHoldOffer,
+    patronageOffer, setPatronageOffer,
     history, setHistory,
     quizKey, setQuizKey,
     lostToWinner, setLostToWinner,

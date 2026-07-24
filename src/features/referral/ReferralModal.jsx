@@ -18,6 +18,7 @@ export function ReferralPanel({ showTitle = true, theme }) {
   const { t } = useT()
   const [ref, setRef]       = useState(null)
   const [copied, setCopied] = useState(false)
+  const [showFilleuls, setShowFilleuls] = useState(false)   // « Mes filleuls » replié par défaut
 
   useEffect(() => {
     let alive = true
@@ -67,12 +68,14 @@ export function ReferralPanel({ showTitle = true, theme }) {
         </button>
       </div>
 
-      <div style={{ fontSize: 10, color: c.label, fontWeight: 800, textTransform: 'uppercase',
-        letterSpacing: .5, marginBottom: 8 }}>
-        {t('referral_godchildren')}
+      <div onClick={() => setShowFilleuls(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6,
+        cursor: 'pointer', userSelect: 'none', fontSize: 10, color: c.label, fontWeight: 800,
+        textTransform: 'uppercase', letterSpacing: .5, marginBottom: showFilleuls ? 8 : 0 }}>
+        <span style={{ fontSize: 9 }}>{showFilleuls ? '▾' : '▸'}</span>
+        {t('referral_godchildren')} ({filleuls.length})
       </div>
 
-      {filleuls.length === 0 ? (
+      {showFilleuls && (filleuls.length === 0 ? (
         <div style={{ fontSize: 12, color: c.empty, fontStyle: 'italic' }}>{t('referral_no_godchildren')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
@@ -97,7 +100,7 @@ export function ReferralPanel({ showTitle = true, theme }) {
             )
           })}
         </div>
-      )}
+      ))}
     </div>
   )
 }
