@@ -138,6 +138,7 @@ import Card from '../../components/Card.jsx';
 import AdminCards from './AdminCards.jsx';
 import AdminPlayers from './AdminPlayers.jsx';
 import AdminReferrals from './AdminReferrals.jsx';
+import AdminPatronage from './AdminPatronage.jsx';
 import AdminSeasons from './AdminSeasons.jsx';
 import AdminShop    from './AdminShop.jsx';
 
@@ -757,7 +758,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
     {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'},{id:'demo',icon:'🎮',label:'Démo'}]},
     {label:'Récompenses',items:[{id:'quests',icon:'🔨',label:'Quêtes'},{id:'achievements',icon:'🏆',label:'Achievements'},{id:'ranks',icon:'🎖️',label:'Rangs'}]},
     {label:'Économie & Marché',items:[{id:'limits',icon:'💰',label:'Limites & Prix'},{id:'shop',icon:'🛍️',label:'Boutique'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_activity',icon:'📊',label:'Activité marché'}]},
-    {label:'Joueurs',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'referrals',icon:'🤝',label:'Parrainage'},{id:'bots',icon:'🤖',label:'Bots'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
+    {label:'Joueurs',items:[{id:'players',icon:'👤',label:'Joueurs'},{id:'referrals',icon:'🤝',label:'Parrainage'},{id:'patronage',icon:'🎁',label:'Mécénat'},{id:'bots',icon:'🤖',label:'Bots'},{id:'ips',icon:'🌐',label:`IPs${bannedIPs.length?` (${bannedIPs.length})`:''}`}]},
     {label:'Système',items:[{id:'stats',icon:'📈',label:'Stats & Version'},{id:'maintenance',icon:'🛠️',label:'Maintenance'},{id:'interface',icon:'📱',label:'Interface'},{id:'domains',icon:'🔒',label:'Domaines'}]},
   ]
   const activeItem=NAV.flatMap(g=>g.items).find(i=>i.id===tab);
@@ -1540,6 +1541,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {/* ── PARRAINAGE ── */}
         {tab==="referrals" && (
           <AdminReferrals setMsg={setMsg} />
+        )}
+
+        {/* ── MÉCÉNAT ── */}
+        {tab==="patronage" && (
+          <AdminPatronage setMsg={setMsg} />
         )}
 
         {/* ── IPs ── */}

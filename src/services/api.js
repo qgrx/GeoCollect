@@ -186,6 +186,7 @@ export const apiAdminGetMarketHistory = (params = {}) => { const qs = new URLSea
 export const apiAdminGetMarketVolume  = (params = {}) => { const qs = new URLSearchParams(params).toString(); return apiFetch(`/api/admin/market-volume${qs ? '?' + qs : ''}`) }
 export const apiAdminGetCardQuizStats = () => apiFetch('/api/admin/cards/quiz-stats')
 export const apiAdminGetReferrals     = () => apiFetch('/api/admin/referrals')
+export const apiAdminGetPatronageStats = () => apiFetch('/api/admin/patronage-stats')
 export const apiAdminAssignReferral   = (filleulId, parrainId) => apiFetch(`/api/admin/referrals/${filleulId}`, { method: 'PATCH', body: { parrain_id: parrainId } })
 export const apiAdminUnassignReferral = (filleulId)            => apiFetch(`/api/admin/referrals/${filleulId}`, { method: 'DELETE' })
 export const apiAdminSearchPlayers    = (q)                    => apiFetch(`/api/admin/players?page=0&q=${encodeURIComponent(q)}`)
