@@ -43,7 +43,11 @@ export default function RichContent({ html, style }) {
   return (
     <div
       className="docs-rich"
-      style={{ lineHeight: 1.7, wordBreak: 'break-word', ...style }}
+      // minWidth:0 : indispensable quand le composant est un enfant flex (flex:1).
+      // Sans ça, min-width:auto empêche l'élément de rétrécir sous la largeur
+      // min-content de son contenu (ex. une table en min-width:413px), ce qui
+      // pousse toute la page au-delà du viewport et fait déborder même le texte.
+      style={{ lineHeight: 1.7, wordBreak: 'break-word', minWidth: 0, ...style }}
       dangerouslySetInnerHTML={{ __html }}
     />
   )
