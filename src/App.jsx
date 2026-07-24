@@ -2888,6 +2888,15 @@ export default function App() {
           checkAchievements={gs.checkAchievements}
           checkAchievementUpgrades={gs.checkAchievementUpgrades}
           onForgePointsEarned={gs.addForgePoints}
+          onDonated={() => {
+            if (!auth.profile || !import.meta.env.VITE_API_URL) return
+            import('./services/api.js').then(({ apiGetCollection }) => {
+              apiGetCollection?.().then(({ data }) => {
+                if (data?.collection) gs.setCollection(data.collection)
+                if (data?.shiny_collection) gs.setShinyCollection(data.shiny_collection)
+              }).catch(() => {})
+            })
+          }}
           onClose={() => setPatronageOffer(null)}
         />
       )}

@@ -43,7 +43,7 @@ function ProfileChip({ p, active, won }) {
  * serveur, puis confirmation. « Jouer pour la gloire » ferme (la gloire — or + PF —
  * est déjà créditée côté serveur au moment de la réponse).
  */
-export function PatronageModal({ offer, onClose, showToast, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, rewardPf = { rare: 1, epique: 5, legendaire: 100 } }) {
+export function PatronageModal({ offer, onClose, showToast, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onDonated, rewardPf = { rare: 1, epique: 5, legendaire: 100 } }) {
   const { t } = useT();
   const [phase, setPhase] = useState('choose');   // 'choose' | 'roulette' | 'done'
   const [busy, setBusy] = useState(false);
@@ -108,6 +108,9 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
             if (data.reward_pf > 0) onForgePointsEarned?.(data.reward_pf);
             if (data.achievements?.length) checkAchievements?.(data.achievements);
             if (data.achievement_upgrades?.length) checkAchievementUpgrades?.(data.achievement_upgrades);
+            // Resynchro collection depuis la DB : garantit l'apparition du geocoin
+            // d'achievement (« Mecenat ») dans l'inventaire sans rechargement manuel.
+            onDonated?.();
           }
         }, 700));
       }
