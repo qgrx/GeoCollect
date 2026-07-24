@@ -80,11 +80,6 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
       onClose?.();
       return;
     }
-    if (!offer.preview) {
-      if (data.achievements?.length) checkAchievements?.(data.achievements);
-      if (data.achievement_upgrades?.length) checkAchievementUpgrades?.(data.achievement_upgrades);
-      if (data.reward_pf > 0) onForgePointsEarned?.(data.reward_pf);
-    }
     setResult(data);
     // Roulette : recipient + jusqu'à 2 leurres, mélangés.
     const pool = [data.recipient, ...(data.decoys || [])].slice(0, 3);
@@ -105,7 +100,16 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
       } else {
         setActiveIdx(winIdx);
         setWonIdx(winIdx);
-        timers.current.push(setTimeout(() => setPhase('done'), 700));
+        timers.current.push(setTimeout(() => {
+          setPhase('done');
+          // Révéler récompense + achievement APRÈS l'animation : sinon la notification
+          // « achievement débloqué » s'affiche par-dessus la roulette encore en cours.
+          if (!offer.preview) {
+            if (data.reward_pf > 0) onForgePointsEarned?.(data.reward_pf);
+            if (data.achievements?.length) checkAchievements?.(data.achievements);
+            if (data.achievement_upgrades?.length) checkAchievementUpgrades?.(data.achievement_upgrades);
+          }
+        }, 700));
       }
     };
     tick();
