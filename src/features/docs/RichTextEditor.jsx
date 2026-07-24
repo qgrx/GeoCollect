@@ -6,6 +6,7 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
+import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table'
 import ResizableImage from './ResizableImage.jsx'
 import { neutralizeDarkText } from '../../utils/sanitize.js'
 
@@ -66,6 +67,11 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
       color: #8a96a3; opacity: .65;
       float: left; height: 0; pointer-events: none;
     }
+    .rte-content .ProseMirror table { border-collapse: collapse; table-layout: fixed; width: 100%; margin: 8px 0; overflow: hidden; }
+    .rte-content .ProseMirror td, .rte-content .ProseMirror th { border: 1px solid #7f8c9a66; padding: 5px 8px; vertical-align: top; box-sizing: border-box; min-width: 40px; position: relative; }
+    .rte-content .ProseMirror th { background: #7f8c9a26; font-weight: 800; text-align: left; }
+    .rte-content .ProseMirror .selectedCell:after { content: ''; position: absolute; inset: 0; background: #f9ca2422; pointer-events: none; }
+    .rte-content .ProseMirror .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: -2px; width: 4px; background: #f9ca24; pointer-events: none; }
   `
   document.head.appendChild(el)
 }
@@ -127,6 +133,10 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
       // allowBase64 indispensable : sinon les images intégrées (data URI) sont
       // bien insérées mais SUPPRIMÉES à la relecture/ouverture de l'éditeur.
       ResizableImage.configure({ inline: false, allowBase64: true }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Placeholder.configure({ placeholder }),
     ],
     content: neutralizeDarkText(value || ''),
@@ -201,6 +211,18 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
 
         {/* Liste à puces */}
         <ToolBtn label="•" title="Liste à puces" onClick={() => editor?.chain().focus().toggleBulletList().run()} active={editor?.isActive('bulletList')} />
+
+        <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
+
+        {/* Tableau : insertion, puis contrôles lignes/colonnes quand on est dedans */}
+        <ToolBtn label="⊞" title="Insérer un tableau (3×3)" onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} active={editor?.isActive('table')} />
+        {editor?.isActive('table') && (<>
+          <ToolBtn label="+Col" title="Ajouter une colonne" onClick={() => editor?.chain().focus().addColumnAfter().run()} style={{ fontSize: 11 }} />
+          <ToolBtn label="−Col" title="Supprimer la colonne" onClick={() => editor?.chain().focus().deleteColumn().run()} style={{ fontSize: 11 }} />
+          <ToolBtn label="+Lig" title="Ajouter une ligne" onClick={() => editor?.chain().focus().addRowAfter().run()} style={{ fontSize: 11 }} />
+          <ToolBtn label="−Lig" title="Supprimer la ligne" onClick={() => editor?.chain().focus().deleteRow().run()} style={{ fontSize: 11 }} />
+          <ToolBtn label="🗑" title="Supprimer le tableau" onClick={() => editor?.chain().focus().deleteTable().run()} style={{ color: '#e74c3c88' }} />
+        </>)}
 
         <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
 
