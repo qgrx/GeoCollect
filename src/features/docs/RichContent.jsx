@@ -29,17 +29,25 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
   document.head.appendChild(el)
 }
 
-// Enveloppe chaque table dans un conteneur défilable. Fait APRÈS la sanitisation
-// (DOMPurify n'autorise pas <div>) : les tables ne pouvant pas être imbriquées ici,
-// une simple substitution suffit.
-function wrapTables(clean) {
+// Normalise les tables APRÈS la sanitisation (DOMPurify n'autorise pas <div>) :
+//  1. Retire les largeurs de colonnes imposées par l'éditeur (colgroup/col, attribut
+//     colwidth, min-width/width inline de la table). Sur mobile elles plafonnent la
+//     table et écrasent les colonnes non dimensionnées (caractères empilés) ; sans
+//     elles, le navigateur répartit les colonnes selon leur contenu.
+//  2. Enveloppe chaque table dans un conteneur défilable (filet de sécurité si une
+//     table reste plus large que l'écran). Les tables ne pouvant pas être imbriquées
+//     ici, de simples substitutions suffisent.
+function normalizeTables(clean) {
   return clean
+    .replace(/<colgroup[\s\S]*?<\/colgroup>/gi, '')
+    .replace(/ colwidth="[^"]*"/gi, '')
+    .replace(/(<table\b[^>]*?) style="[^"]*"/gi, '$1')
     .replace(/<table/gi, '<div class="docs-rich-table-wrap"><table')
     .replace(/<\/table>/gi, '</table></div>')
 }
 
 export default function RichContent({ html, style }) {
-  const __html = wrapTables(sanitizeHtml(neutralizeDarkText(html)))
+  const __html = normalizeTables(sanitizeHtml(neutralizeDarkText(html)))
   return (
     <div
       className="docs-rich"
