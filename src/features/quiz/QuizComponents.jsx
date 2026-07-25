@@ -453,7 +453,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // PLUSIEURS joueurs peuvent être en feu (P places par round) : chacun subit SON
   // délai — on cherche MON entrée dans la liste au lieu du seul leader.
   const myFire         = (Array.isArray(streakLeaders) && myId) ? streakLeaders.find(l => l && l.id === myId) : null;
-  const isStreakLeader = !!myFire && !cardExempt;
+  // Pas de handicap sur un geocoin que je ne possède pas encore : une PREMIÈRE
+  // acquisition reste une course équitable (miroir de la garde serveur ownsQuizCard).
+  const isStreakLeader = !!myFire && !cardExempt && alreadyOwned;
   const myHandicap     = isStreakLeader ? (myFire.handicap_seconds || 0) : 0;
   // Plafonné à myHandicap : le décompte affiché ne doit jamais dépasser la pénalité
   // annoncée (« +8s »), même en cas de skew résiduel ou de server_time absent.
