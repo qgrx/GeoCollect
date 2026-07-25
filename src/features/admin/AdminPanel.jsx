@@ -1310,6 +1310,19 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       onChange={e=>setLimEdit({...limEdit,maxActiveListings:Math.max(1,+e.target.value)})}
                       style={{...INP,width:60}}/>
                   </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12,flexWrap:"wrap"}}>
+                    <span style={{color:"#aaa",fontWeight:700}}>…dont max par rareté :</span>
+                    {['commun','rare','épique','légendaire'].map(r=>(
+                      <span key={r} style={{display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{color:"#aaa",textTransform:"capitalize"}}>{r}</span>
+                        <input type="number" min={0} max={100}
+                          value={(limEdit.maxActiveListingsByRarity ?? {})[r] ?? 0}
+                          onChange={e=>setLimEdit({...limEdit,maxActiveListingsByRarity:{...(limEdit.maxActiveListingsByRarity ?? {commun:0,rare:0,épique:0,légendaire:0}),[r]:Math.max(0,+e.target.value)}})}
+                          style={{...INP,width:52}}/>
+                      </span>
+                    ))}
+                    <span style={{color:"#7d8b96",fontSize:10,width:"100%"}}>0 = aucune limite spécifique (seul le total ci-dessus s'applique).</span>
+                  </div>
                   <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12}}>
                     <span style={{color:"#aaa",fontWeight:700}}>Expiration :</span>
                     <input type="number" min={1} max={365} value={limEdit.marketExpireDays??30}

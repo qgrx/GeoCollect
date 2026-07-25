@@ -3336,6 +3336,7 @@ export default function App() {
                 ...(limEdit.playerRanks !== DEFAULT_RANKS ? [apiSetConfig('player_ranks', limEdit.playerRanks)] : []),
                 apiSetConfig('market_sales_open',   limEdit.marketSalesOpen   ?? true),
                 apiSetConfig('max_active_listings', limEdit.maxActiveListings ?? 10),
+                apiSetConfig('max_active_listings_by_rarity', limEdit.maxActiveListingsByRarity ?? { commun:0, rare:0, épique:0, légendaire:0 }),
                 apiSetConfig('bots_visible',        limEdit.botsVisible       ?? false),
                 apiSetConfig('support_visible',     limEdit.supportVisible    ?? true),
                 apiSetConfig('leaderboard_visible', limEdit.leaderboardVisible?? true),
