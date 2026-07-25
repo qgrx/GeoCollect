@@ -205,7 +205,12 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       if (error) {
         if (status === 425) return { handicap: true, wait_ms: body?.wait_ms || 0 } // série : délai cadeau
         if (status === 423) return 'blocked' // protection inter-modes (prochaine manche)
-        if (status === 429) return 'fast'    // trop rapide
+        if (status === 429) {
+          // Deux 429 distincts : anti-spam gradué (trop d'essais → pénalité chronométrée
+          // et affichée) vs réponse « trop rapide » (< 1 s après la question).
+          if (body?.error === 'too_many_attempts') return { throttled: true, wait_ms: body.retry_after_ms || 0 }
+          return 'fast'
+        }
         if (status === 409 || status === 404) { resolvedQuizIdsRef.current.add(activeQuiz.id); return 'late' }  // déjà résolu / expiré
         if (status === 422) return false     // vraie mauvaise réponse
         return 'error'                        // réseau / 5xx / inconnu : la réponse a pu aboutir serveur

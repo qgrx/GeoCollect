@@ -330,6 +330,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   const [npc,setNpc]=useState(null);
   const [isSubmitting,setIsSubmitting]=useState(false);
   const [submitError,setSubmitError]=useState(null);
+  // Anti-spam gradué : timestamp jusqu'auquel la saisie est bloquée (pénalité serveur
+  // « trop d'essais »). Le décompte (penaltyLeft) se rafraîchit au ticker `elapsed`.
+  const [penaltyUntil,setPenaltyUntil]=useState(0);
   // Question récupérée après le délai cadeau (protection anti-domination) : le
   // serveur ne l'envoie pas au leader tant que sa fenêtre n'est pas écoulée.
   const [revealed,setRevealed]=useState(null);
@@ -350,6 +353,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // à tous (« encore Ns pour répondre »). À 0, la réponse est bloquée (round bientôt clos).
   // graceLeft se recalcule à chaque tick de `elapsed` (ticker actif tant que status='open').
   const graceLeft=(!beginner&&graceDeadline)?Math.max(0,Math.ceil((graceDeadline-Date.now())/1000)):null;
+  // Décompte de pénalité anti-spam (recalculé à chaque tick de `elapsed` tant que la
+  // modale est ouverte) : > 0 ⇒ saisie/bouton bloqués, bannière affichée.
+  const penaltyLeft=penaltyUntil?Math.max(0,Math.ceil((penaltyUntil-Date.now())/1000)):0;
   const graceOver=graceLeft!=null&&graceLeft<=0;
   const tooLate=(beginner&&timeLeft!=null&&timeLeft<=0&&status==="open")||(graceOver&&status==="open");
   useEffect(() => {
@@ -391,6 +397,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     if(status!=="open") return;
     if(tooLate) return;  // mode débutant : décompte terminé, réponse bloquée
     if(handicapLeft>0) return;  // série : cadeau aux autres, envoi bloqué côté client
+    if(penaltyLeft>0) return;  // anti-spam : pénalité en cours, on attend la fin du décompte
     if(submittingRef.current) return
     submittingRef.current = true
     setIsSubmitting(true)
@@ -403,6 +410,13 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     if (result && result.ok) { doneRef.current=true; setOutcome(result.outcome||'card'); setResultForge(result.forge||0); setStatus(result.outcome==='glory'?"glory":"won"); soundCorrect(); retryRef.current=0; }
     else if (result && result.handicap) { setSubmitError(t('streak_handicap_wait')); } // série : délai cadeau pas encore écoulé
     else if (result === 'fast') { setSubmitError("⏱️ Réponse trop rapide ! Lis bien la question."); setIsSubmitting(false); submittingRef.current=false; return; }
+    else if (result && result.throttled) {
+      // Anti-spam gradué : trop d'essais → pénalité chronométrée. On arme le décompte,
+      // on vide l'input et on efface l'erreur (la bannière de pénalité prend le relais).
+      setPenaltyUntil(Date.now() + (result.wait_ms || 0));
+      setSubmitError(null); setInp(""); soundWrong();
+      setIsSubmitting(false); submittingRef.current=false; retryRef.current=0; return;
+    }
     else if (result === 'blocked') { onClose?.(); }   // protection inter-modes (prochaine manche)
     else if (result === 'late') { if (beginner) { onClose?.(); } else finish(null); }
     else if (result === 'error') {
@@ -635,12 +649,24 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
               ⏳ Validation côté serveur en cours…
             </div>
           )}
+          {/* Erreur ponctuelle (« trop rapide », souci réseau) : bloc PLEINE LARGEUR
+              AU-DESSUS de la ligne de saisie. Auparavant il était DANS la rangée flex
+              input+bouton → un texte long poussait le bouton Répondre hors de l'écran
+              (cf. capture Caro93220). */}
+          {submitError&&<div style={{fontSize:12,color:"#f39c12",fontWeight:700,padding:"7px 10px",background:"#f39c1218",borderRadius:9,marginBottom:8,border:"1px solid #f39c1233"}}>{submitError}</div>}
+          {/* Pénalité anti-spam graduée : décompte explicite pour que le joueur comprenne
+              pourquoi il patiente (5 s puis 10 s, 1 essai sur 2, selon le nombre d'essais). */}
+          {penaltyLeft>0&&(
+            <div style={{fontSize:12.5,fontWeight:800,color:"#ffd28a",background:"#e74c3c1a",border:"1px solid #e74c3caa",borderRadius:11,padding:"9px 12px",marginBottom:8,display:"flex",alignItems:"center",gap:9}}>
+              <span style={{fontSize:19,flexShrink:0}}>⏱️</span>
+              <span>{(t('quiz_penalty_wait')||'Trop d\'essais — prends le temps de lire la question. Nouvelle tentative dans {n}s.').replace('{n}',penaltyLeft)}</span>
+            </div>
+          )}
           <div style={{display:"flex",gap:9}}>
-            {submitError&&<div style={{fontSize:12,color:"#f39c12",fontWeight:700,padding:"7px 10px",background:"#f39c1218",borderRadius:9,marginBottom:6,border:"1px solid #f39c1233"}}>{submitError}</div>}
-            <input ref={ref} value={inp} disabled={isSubmitting||questionMasked} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0&&!questionMasked)submit()}} placeholder={questionMasked ? (handicapLeft>0?`🎁 ${handicapLeft}s`:"…") : (wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc))}
-              style={{flex:1,background:(isSubmitting||questionMasked)?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":(isSubmitting||questionMasked)?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:(isSubmitting||questionMasked)?0.6:1}}/>
-          <button onClick={()=>submit()} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked} style={{...BTN(handicapLeft>0?"linear-gradient(135deg,#ff7043,#e17055)":"linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 16px",borderRadius:11,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked)?"not-allowed":"pointer",minWidth:90,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-              {handicapLeft>0 ? `🎁 ${handicapLeft}s` : isSubmitting ? (<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #1e3045",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.6s linear infinite"}}/>{t("quiz_validating") || "Validation…"}</>) : t("quiz_submit")}
+            <input ref={ref} value={inp} disabled={isSubmitting||questionMasked||penaltyLeft>0} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0&&!questionMasked&&penaltyLeft===0)submit()}} placeholder={penaltyLeft>0 ? `⏱️ ${penaltyLeft}s` : questionMasked ? (handicapLeft>0?`🎁 ${handicapLeft}s`:"…") : (wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc))}
+              style={{flex:1,minWidth:0,background:(isSubmitting||questionMasked||penaltyLeft>0)?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":(isSubmitting||questionMasked||penaltyLeft>0)?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:(isSubmitting||questionMasked||penaltyLeft>0)?0.6:1}}/>
+          <button onClick={()=>submit()} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||penaltyLeft>0} style={{...BTN(handicapLeft>0?"linear-gradient(135deg,#ff7043,#e17055)":"linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 16px",borderRadius:11,flexShrink:0,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||penaltyLeft>0)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||penaltyLeft>0)?"not-allowed":"pointer",minWidth:90,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              {penaltyLeft>0 ? `⏱️ ${penaltyLeft}s` : handicapLeft>0 ? `🎁 ${handicapLeft}s` : isSubmitting ? (<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #1e3045",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.6s linear infinite"}}/>{t("quiz_validating") || "Validation…"}</>) : t("quiz_submit")}
             </button>
           </div>
           <style>{`@keyframes spin{to{transform:rotate(360deg)} } @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}`}</style>
