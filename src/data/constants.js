@@ -84,6 +84,8 @@ export const INIT_LIMITS = {
   patronageOldDays:             30,
   patronageFastSeconds:         5,
   patronageCollectionThreshold: 80,
+  patronageMinGeocoins:         10,
+  patronageSeenDays:            7,
   patronageCriteriaEnabled:     { nouveau: true, ancien: true, rapide: true, fidele: true, petite_collection: true, grande_collection: true },
   patronageTestRecipient:       '',
   quizIntervalTiers:    [{ players: 1, seconds: 300 }, { players: 2, seconds: 90 }, { players: 3, seconds: 60 }, { players: 4, seconds: 30 }],
