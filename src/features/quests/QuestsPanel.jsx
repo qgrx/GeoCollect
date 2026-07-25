@@ -57,21 +57,25 @@ export default function QuestsPanel({ daily, weekly }) {
       width: '100%',
       animation: 'fadeUp .4s ease-out both',
     }}>
-      {/* En-tête : titre + onglets segmentés (ou badge « complètes » si période unique) */}
+      {/* En-tête : onglets segmentés seuls (leurs libellés « Quotidiennes / Hebdo »
+          suffisent), OU titre + badge « complètes » quand une seule période existe. */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        display: 'flex', alignItems: 'center',
+        justifyContent: periods.length > 1 ? 'flex-end' : 'space-between',
         gap: 6, marginBottom: 2,
       }}>
-        <div style={{
-          fontSize: 9, color: theme.textMuted, fontWeight: 700,
-          textTransform: 'uppercase', letterSpacing: 1,
-          display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-        }}>
-          {t('quest_title_generic')}
-          {periods.length === 1 && allDone && (
-            <span style={{ color: theme.gold, fontSize: 8 }}>{t('quest_all_done')}</span>
-          )}
-        </div>
+        {periods.length === 1 && (
+          <div style={{
+            fontSize: 9, color: theme.textMuted, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: 1,
+            display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+          }}>
+            {t('quest_title_generic')}
+            {allDone && (
+              <span style={{ color: theme.gold, fontSize: 8 }}>{t('quest_all_done')}</span>
+            )}
+          </div>
+        )}
 
         {periods.length > 1 && (
           <div style={{
