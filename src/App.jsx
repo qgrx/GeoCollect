@@ -484,13 +484,13 @@ export default function App() {
         // les afficher TOUS (modale, bannière, notification) — pas seulement le premier.
         const winnersList = Array.isArray(data.prize_winners) ? data.prize_winners : []
         const winnersFull = (data.multi && winnersList.length > 1)
-          ? winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, fire: !!w.fire, fire_streak: w.fire_streak ?? null }))
+          ? winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, patronage_halo: w.patronage_halo || null, fire: !!w.fire, fire_streak: w.fire_streak ?? null }))
           : null
         // Joueurs « pour la gloire » du round (avatars fournis par l'API) — affichés
         // en plus petit sous le(s) gagnant(s) dans la modale / bannière / notification.
         // `fire` = bonne réponse dans les places en feu (petite flamme à côté du pseudo).
         const gloryFull = (data.glory_winners || []).length
-          ? data.glory_winners.map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, fire: !!g.fire, fire_streak: g.fire_streak ?? null }))
+          ? data.glory_winners.map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, patronage_halo: g.patronage_halo || null, fire: !!g.fire, fire_streak: g.fire_streak ?? null }))
           : null
 
         // Si le quiz résolu est celui actuellement EN ATTENTE (non rejoint), le marquer
@@ -612,7 +612,7 @@ export default function App() {
             isShiny: data.is_shiny || false,
             winners: winnerPseudos,          // liste complète des gagnants du round multi-prix
             // …et la même liste avec avatars pour la fiche « Gagnants » (+ flammes graduées)
-            winners_full: winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, fire: !!w.fire, fire_streak: w.fire_streak ?? null })),
+            winners_full: winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, patronage_halo: w.patronage_halo || null, fire: !!w.fire, fire_streak: w.fire_streak ?? null })),
             glory_winners: gloryFull || [],
             // Pour la fiche « Gagnants » quand un seul prix a été pris (repli mono).
             winner_fire: !!winnersList[0]?.fire,
@@ -633,7 +633,7 @@ export default function App() {
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
           setHistory(h => {
             if (data.quiz_id && h.some(e => e.quiz_id === data.quiz_id)) return h
-            return [{ card: fullCard, winner: data.winner, winner_avatar: data.winner_avatar || null, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryFull || [], winner_fire: !!data.winner_fire, winner_fire_streak: data.winner_fire_streak ?? (data.winner_fire ? data.winner_streak ?? null : null), quiz_id: data.quiz_id }, ...h].slice(0, 10)
+            return [{ card: fullCard, winner: data.winner, winner_avatar: data.winner_avatar || null, winner_halo: data.winner_halo || null, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryFull || [], winner_fire: !!data.winner_fire, winner_fire_streak: data.winner_fire_streak ?? (data.winner_fire ? data.winner_streak ?? null : null), quiz_id: data.quiz_id }, ...h].slice(0, 10)
           })
         } else if (iSelf && (data.glory_winners || []).length > 0) {
           // Le gagnant lui-même : useQuiz ajoute l'entrée → on la patch avec les glory_winners
@@ -757,7 +757,7 @@ export default function App() {
           applyRoundFire(data.quiz_id, Math.max(1, Number(hCfg?.threshold) || 3))
         }
         // Joueurs « pour la gloire » avec avatars (fiche « Gagnants » + bannière).
-        const gloryFull = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, fire: !!g.fire, fire_streak: g.fire_streak ?? null }))
+        const gloryFull = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, patronage_halo: g.patronage_halo || null, fire: !!g.fire, fire_streak: g.fire_streak ?? null }))
         // Geocoin joué « pour la gloire » mais que personne n'a remporté → l'ajouter au strip
         // des derniers geocoins disputés (winner null, glory_winners renseignés).
         if (gloryFull.length > 0 && data.card_name) {
@@ -2416,7 +2416,7 @@ export default function App() {
                           // unique porte aussi ses flammes (winner_fire / winner_fire_streak).
                           const realArr = multiWinners
                             ? (Array.isArray(h.winners_full) && h.winners_full.length ? h.winners_full : multiWinners)
-                            : (h.winner ? [{ pseudo: h.winner, avatar: h.winner_avatar || null, fire: !!h.winner_fire, fire_streak: h.winner_fire_streak ?? null }] : []);
+                            : (h.winner ? [{ pseudo: h.winner, avatar: h.winner_avatar || null, patronage_halo: h.winner_halo || null, fire: !!h.winner_fire, fire_streak: h.winner_fire_streak ?? null }] : []);
                           setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: [...gloryArr, ...realArr], gloryCount: gloryArr.length, isShiny: h.isShiny || false });
                         }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, minWidth: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}

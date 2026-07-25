@@ -1426,6 +1426,8 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
   // Chaque gagnant peut être un pseudo (string) ou { pseudo, avatar, hold }.
   const nameOf = w => typeof w === 'string' ? w : (w?.pseudo ?? '');
   const avatarOf = w => (typeof w === 'object' && w?.avatar) ? w.avatar : null;
+  // Halo « mécénat » (anneau lumineux du mécène) autour de l'avatar du gagnant.
+  const haloOf = w => (typeof w === 'object' && w?.patronage_halo) ? w.patronage_halo : null;
   const isHoldEntry = w => typeof w === 'object' && !!w?.hold;
   // Place « en feu » : bonne réponse parmi les P premières du round → flammes graduées
   // à côté du pseudo (🔥 série 1, 🔥🔥 série 2, 🔥🔥🔥 animé ≥ seuil = vraiment en feu).
@@ -1456,7 +1458,7 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
               realWinners.map((w, i) => (
                 <div key={`rw${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, background: `${rankColor(i)}${i < 3 ? '22' : '15'}`, border: `1px solid ${rankColor(i)}88`, borderRadius: 9, padding: '8px 11px' }}>
                   <FireWrap fire={isFireEntry(w)} streak={w.fire_streak ?? null} threshold={fireThreshold} hint={fireHint(w)} size={30}>
-                    <Avatar pseudo={nameOf(w)} avatarUrl={avatarOf(w)} verified={!!avatarOf(w)} size={30} />
+                    <Avatar pseudo={nameOf(w)} avatarUrl={avatarOf(w)} verified={!!avatarOf(w)} halo={haloOf(w)} size={30} />
                   </FireWrap>
                   <span style={{ fontSize: 13, fontWeight: 900, color: '#1a2538', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(w)}</span>
                   <span style={{ marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3, background: '#ffffff', border: `1.5px solid ${rankColor(i)}`, color: '#334155', fontWeight: 900, fontSize: 10.5, padding: '3px 8px', borderRadius: 20 }}>🏆 {ordinal(i + 1)}</span>
@@ -1479,7 +1481,7 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
                   return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: hold ? '#6c5ce715' : '#f9ca2412', border: `1px solid ${hold ? '#6c5ce755' : '#f9ca2444'}`, borderRadius: 9, padding: '6px 11px' }}>
                     <FireWrap fire={isFireEntry(p)} streak={p.fire_streak ?? null} threshold={fireThreshold} hint={fireHint(p)} size={24}>
-                      <Avatar pseudo={nameOf(p)} avatarUrl={avatarOf(p)} verified={!!avatarOf(p)} size={24} />
+                      <Avatar pseudo={nameOf(p)} avatarUrl={avatarOf(p)} verified={!!avatarOf(p)} halo={haloOf(p)} size={24} />
                     </FireWrap>
                     <span style={{ fontSize: 13, fontWeight: 800, color: '#78716c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(p)}</span>
                     <span style={{ fontSize: 12, marginLeft: 'auto', flexShrink: 0 }}>{hold ? '📥' : '🎖️'}</span>
