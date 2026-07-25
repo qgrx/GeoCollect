@@ -207,7 +207,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         if (status === 423) return 'blocked' // protection inter-modes (prochaine manche)
         if (status === 429) {
           // Deux 429 distincts : anti-spam gradué (trop d'essais → pénalité chronométrée
-          // et affichée) vs réponse « trop rapide » (< 1 s après la question).
+          // et affichée) vs réponse « trop rapide » (< 500 ms après la question).
           if (body?.error === 'too_many_attempts') return { throttled: true, wait_ms: body.retry_after_ms || 0 }
           return 'fast'
         }
