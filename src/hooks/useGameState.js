@@ -7,7 +7,7 @@ import {
   apiBuyCard, apiListCard, apiCancelListing, apiGetTransactions,
   apiPingProfile, apiSetConfig, apiGetAdminConfig, apiGetPublicConfig,
   apiAdminGetCards, apiAdminAddCard, apiAdminEditCard, apiAdminDeleteCard, apiAdminDeleteType, apiAdminRenameType,
-  apiGetDailyQuests, apiQuestCheckin, apiRerollDailyQuest, apiGetAchievements, apiClaimReferral,
+  apiGetDailyQuests, apiQuestCheckin, apiRerollDailyQuest, apiGetWeeklyQuests, apiRerollWeeklyQuest, apiGetAchievements, apiClaimReferral,
 } from '../services/api.js'
 
 
@@ -82,6 +82,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [unreadSales,         _setUnreadSales]       = useState(0)
   const [quests,              setQuests]            = useState(null)
   const [questRerollUsed,     setQuestRerollUsed]   = useState(false)
+  const [weeklyQuests,        setWeeklyQuests]      = useState(null)
+  const [weeklyQuestRerollUsed, setWeeklyQuestRerollUsed] = useState(false)
   const [forgePoints,         setForgePoints]       = useState(Number(profile?.forge_points ?? 0))
   const [forgePointsSignal,   setForgePointsSignal]  = useState(0)
   const [questActivitySignal, setQuestActivitySignal] = useState(0)
@@ -128,11 +130,37 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     return { data, error }
   }, [refreshQuests])
 
+  // ── Quêtes de la semaine — même garde de séquence anti-réponse-périmée ──────
+  const weeklyReqSeq = useRef(0)
+  const refreshWeeklyQuests = useCallback(async () => {
+    const seq = ++weeklyReqSeq.current
+    let { data } = await apiGetWeeklyQuests()
+    if (!data?.quests && mounted.current) {
+      await new Promise(r => setTimeout(r, 1200))
+      if (seq !== weeklyReqSeq.current) return
+      ;({ data } = await apiGetWeeklyQuests())
+    }
+    if (data?.quests && mounted.current && seq === weeklyReqSeq.current) {
+      setWeeklyQuests(data.quests)
+      setWeeklyQuestRerollUsed(!!data.reroll_used)
+    }
+  }, [])
+
+  // Remplacement d'une quête de la semaine (1×/semaine, définitif).
+  const rerollWeeklyQuest = useCallback(async (questId) => {
+    const { data, error } = await apiRerollWeeklyQuest(questId)
+    if (!error) {
+      setWeeklyQuestRerollUsed(true)
+      refreshWeeklyQuests()
+    }
+    return { data, error }
+  }, [refreshWeeklyQuests])
+
   // Recharger après chaque action de jeu pertinente (signal bumpé par
   // addForgePoints, triggerQuestRefresh, achats/ventes…)
   useEffect(() => {
-    if (questActivitySignal > 0) refreshQuests()
-  }, [questActivitySignal, refreshQuests])
+    if (questActivitySignal > 0) { refreshQuests(); refreshWeeklyQuests() }
+  }, [questActivitySignal, refreshQuests, refreshWeeklyQuests])
 
   // Recharge la progression des achievements (compteurs comme « Roi du savoir »)
   // — à appeler après un événement qui la fait évoluer (victoire de quiz, achat…).
@@ -506,8 +534,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         // Ping last_seen
         apiPingProfile()
 
-        // Quêtes du jour — en parallèle, déclenche aussi la génération lazy du planning
+        // Quêtes du jour + de la semaine — en parallèle, déclenche aussi la génération
+        // lazy des plannings (quotidien et hebdo)
         refreshQuests()
+        refreshWeeklyQuests()
 
       } catch (err) {
         if (import.meta.env.DEV) console.warn('[useGameState] load failed:', err.message)
@@ -957,6 +987,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     // Derived
     isGuest, uniqueCards, totalUnique, myScore,
     quests, setQuests, questRerollUsed, rerollQuest, forgePoints, forgePointsSignal, questActivitySignal,
+    weeklyQuests, setWeeklyQuests, weeklyQuestRerollUsed, rerollWeeklyQuest, refreshWeeklyQuests,
     addForgePoints: (pts) => {
       setQuestActivitySignal(s => s + 1)
       if (!pts) return

@@ -235,12 +235,14 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         resolvedQuizIdsRef.current.add(activeQuiz.id)
         if (data.achievements?.length) cbRef.current.checkAchievements?.(data.achievements)
         if (data.achievement_upgrades?.length) cbRef.current.checkAchievementUpgrades?.(data.achievement_upgrades)
-        // Gloire : pas de geocoin, mais on crédite les consolations cumulées (or + PF).
-        if (data.gold_earned) earnGoldWithFx(data.gold_earned)
+        // Gloire : pas de geocoin, mais on crédite les consolations cumulées (or + PF)
+        // + les récompenses de quêtes HEBDO complétées (quest_gold/quest_forge légendent
+        // le flash « Quête réussie ! »).
+        if (data.gold_earned) earnGoldWithFx(data.gold_earned, data.quest_gold)
         cbRef.current.onForgePointsEarned?.(data.forge_points_earned || 0)
         // Flash « +N PF 🔨 » : la gloire ne rapporte souvent QUE des PF (or plafonné) →
         // souvent le seul flash affiché.
-        if (data.forge_points_earned > 0) cbRef.current.showForgeFlash?.(data.forge_points_earned)
+        if (data.forge_points_earned > 0) cbRef.current.showForgeFlash?.(data.forge_points_earned, data.quest_forge)
         // Choix « dépôt » refusé par le serveur (plein / or insuffisant) → gloire quand même.
         showToast(data.hold_declined === 'full'              ? (t('toast_deposit_declined_full') || '🗄️ Dépôt plein — victoire pour la gloire !')
                 : data.hold_declined === 'insufficient_gold' ? (t('toast_deposit_declined_gold') || '💰 Or insuffisant pour le dépôt — victoire pour la gloire !')

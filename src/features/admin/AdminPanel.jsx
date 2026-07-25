@@ -18,6 +18,8 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiAdminAddCard,
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
   apiGetDailySchedule, apiRegenerateDailySchedule,
+  apiGetAdminWeeklyQuests, apiCreateAdminWeeklyQuest, apiUpdateAdminWeeklyQuest, apiDeleteAdminWeeklyQuest,
+  apiGetWeeklySchedule, apiRegenerateWeeklySchedule,
   apiResetQuestionReports, apiAdminGetQuestions,
   apiGetAdminConfig, apiSetConfig,
   apiAdminGetVersion,
@@ -172,6 +174,13 @@ const triggerLabel = t => TRIGGER_META[t]?.label || t;
 // consécutives, série remise à 0 si cassée — comme l'achievement « En feu ») ·
 // glory_win = nombre de victoires « pour la gloire » dans la journée.
 const QUEST_TYPES = ['buy_count','sell_count','quiz_win','new_card','win_streak','fire_count','glory_win','daily_connection','forge_card','forge_shiny','daily_treasure'];
+
+// ─── Types de quêtes HEBDOMADAIRES ───────────────────────────────────────────
+// Doit refléter VALID_WEEKLY_QUEST_TYPES de l'API (routes/admin.js).
+// quiz_answer_pvp / quiz_answer_beginner = bonnes réponses de la semaine dans
+// chaque mode · weekly_connection = jours distincts joués · patronage = dons ·
+// forge_card / fire_count / glory_win = repris du quotidien.
+const WEEKLY_QUEST_TYPES = ['quiz_answer_pvp','quiz_answer_beginner','weekly_connection','patronage','forge_card','fire_count','glory_win'];
 
 // ─── Composants utilitaires (hors du composant pour éviter remounts) ─────────
 function Fld({lbl,children}){
@@ -607,11 +616,14 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const newAchFileRef=useRef();
   const achImgFileRef=useRef();   // upload d'image sur un achievement existant (panneau d'édition)
   const [dailyQuests,setDailyQuests]=useState([]);
+  const [weeklyQuestsAdmin,setWeeklyQuestsAdmin]=useState([]);
+  const [questPeriod,setQuestPeriod]=useState('daily');   // 'daily' | 'weekly'
   const [editQuest,setEditQuest]=useState(null);
   const [newQuest,setNewQuest]=useState(null);
   const [questSort,setQuestSort]=useState({col:'id',dir:'asc'});
   const [questTransOpen,setQuestTransOpen]=useState(false);
   const [questSchedule,setQuestSchedule]=useState([]);
+  const [weeklySchedule,setWeeklySchedule]=useState([]);
   const achFileRef=useRef();
   const [listingsData,setListingsData]=useState({listings:[],total:0,loading:false});
   const [quizStats,setQuizStats]=useState(null);
@@ -704,9 +716,15 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
   useEffect(()=>{
     if(tab!=='quests') return;
-    apiGetAdminDailyQuests().then(({data})=>{ if(data?.quests) setDailyQuests(data.quests); });
-    apiGetDailySchedule().then(({data})=>{ if(data?.schedule) setQuestSchedule(data.schedule); });
-  },[tab]);
+    if(questPeriod==='weekly'){
+      apiGetAdminWeeklyQuests().then(({data})=>{ if(data?.quests) setWeeklyQuestsAdmin(data.quests); });
+      apiGetWeeklySchedule().then(({data})=>{ if(data?.schedule) setWeeklySchedule(data.schedule); });
+    } else {
+      apiGetAdminDailyQuests().then(({data})=>{ if(data?.quests) setDailyQuests(data.quests); });
+      apiGetDailySchedule().then(({data})=>{ if(data?.schedule) setQuestSchedule(data.schedule); });
+    }
+    setEditQuest(null); setNewQuest(null);
+  },[tab,questPeriod]);
 
   useEffect(()=>{
     if(tab!=='bots') return;
@@ -2036,10 +2054,32 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         </div>}
 
         {/* ── QUÊTES QUOTIDIENNES ── */}
-        {tab==="quests"&&<div>
+        {tab==="quests"&&(()=>{
+          const isW=questPeriod==='weekly';
+          const questList=isW?weeklyQuestsAdmin:dailyQuests;
+          const setQuestList=isW?setWeeklyQuestsAdmin:setDailyQuests;
+          const scheduleList=isW?weeklySchedule:questSchedule;
+          const setScheduleList=isW?setWeeklySchedule:setQuestSchedule;
+          const TYPES=isW?WEEKLY_QUEST_TYPES:QUEST_TYPES;
+          const apiCreate=isW?apiCreateAdminWeeklyQuest:apiCreateAdminDailyQuest;
+          const apiUpdate=isW?apiUpdateAdminWeeklyQuest:apiUpdateAdminDailyQuest;
+          const apiDelete=isW?apiDeleteAdminWeeklyQuest:apiDeleteAdminDailyQuest;
+          const apiRegen=isW?apiRegenerateWeeklySchedule:apiRegenerateDailySchedule;
+          const apiGetSched=isW?apiGetWeeklySchedule:apiGetDailySchedule;
+          const schedDefKey=isW?'weekly_quest_definitions':'daily_quest_definitions';
+          const defaultType=isW?'quiz_answer_pvp':'quiz_win';
+          const TABBTN=(p,label)=>(
+            <button onClick={()=>{setQuestPeriod(p);setEditQuest(null);setNewQuest(null);}}
+              style={{...BTN(questPeriod===p?"linear-gradient(135deg,#6c5ce7,#a29bfe)":"#ffffff12"),padding:"5px 14px",borderRadius:8,fontSize:11,opacity:questPeriod===p?1:.75}}>{label}</button>
+          );
+          return <div>
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            {TABBTN('daily','📅 Quotidiennes')}
+            {TABBTN('weekly','🗓️ Hebdomadaires')}
+          </div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-            <div style={{fontWeight:900,color:"#a29bfe",fontSize:14}}>🔨 Pool de quêtes quotidiennes</div>
-            <button onClick={()=>setNewQuest({name:'',description:'',type:'quiz_win',threshold:1,forge_points:10,gold_reward:0})}
+            <div style={{fontWeight:900,color:"#a29bfe",fontSize:14}}>🔨 Pool de quêtes {isW?'hebdomadaires':'quotidiennes'}</div>
+            <button onClick={()=>setNewQuest({name:'',description:'',type:defaultType,threshold:1,forge_points:10,gold_reward:0})}
               style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"6px 14px",borderRadius:8,fontSize:11}}>
               {newQuest?"✕ Annuler":"+ Nouvelle quête"}
             </button>
@@ -2054,7 +2094,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 <Fld lbl="Description"><input value={newQuest.description} onChange={e=>setNewQuest({...newQuest,description:e.target.value})} placeholder="Remporte {n} quiz" style={INP}/></Fld>
                 <Fld lbl="Trigger">
                   <select value={newQuest.type} onChange={e=>setNewQuest({...newQuest,type:e.target.value})} style={SEL}>
-                    {QUEST_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+                    {TYPES.map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
                 </Fld>
                 <Fld lbl="Seuil"><input type="number" value={newQuest.threshold} onChange={e=>setNewQuest({...newQuest,threshold:+e.target.value})} min={1} style={INP}/></Fld>
@@ -2064,9 +2104,9 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               <div style={{display:"flex",gap:8}}>
                 <button onClick={async()=>{
                   if(!newQuest.name.trim()){setMsg("❌ Nom requis.");return;}
-                  const {data,error}=await apiCreateAdminDailyQuest(newQuest);
+                  const {data,error}=await apiCreate(newQuest);
                   if(error){setMsg("❌ "+error);return;}
-                  setDailyQuests(prev=>[...prev,data.quest]);
+                  setQuestList(prev=>[...prev,data.quest]);
                   setNewQuest(null);setMsg("✅ Quête créée !");
                 }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"7px 16px",borderRadius:8,fontSize:11}}>Créer</button>
                 <button onClick={()=>setNewQuest(null)} style={{...BTN("#ffffff18"),padding:"7px 12px",borderRadius:8,fontSize:11}}>Annuler</button>
@@ -2086,7 +2126,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               {key:'',lbl:''},
             ]
             const sortQ=(col)=>setQuestSort(s=>s.col===col?{col,dir:s.dir==='asc'?'desc':'asc'}:{col,dir:'asc'})
-            const sorted=[...dailyQuests].sort((a,b)=>{
+            const sorted=[...questList].sort((a,b)=>{
               const {col,dir}=questSort
               if(!col) return 0
               const av=a[col]??'', bv=b[col]??''
@@ -2116,7 +2156,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                         <Fld lbl="Description (FR)"><input value={editQuest.description||''} onChange={e=>setEditQuest({...editQuest,description:e.target.value})} style={{...INP,fontSize:11}}/></Fld>
                         <Fld lbl="Trigger">
                           <select value={editQuest.type} onChange={e=>setEditQuest({...editQuest,type:e.target.value})} style={{...SEL,fontSize:11}}>
-                            {QUEST_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+                            {TYPES.map(t=><option key={t} value={t}>{t}</option>)}
                           </select>
                         </Fld>
                         <Fld lbl="Seuil"><input type="number" value={editQuest.threshold} onChange={e=>setEditQuest({...editQuest,threshold:+e.target.value})} min={1} style={{...INP,fontSize:11}}/></Fld>
@@ -2147,17 +2187,17 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       )}
                       <div style={{display:"flex",gap:6}}>
                         <button onClick={async()=>{
-                          const {data,error}=await apiUpdateAdminDailyQuest(editQuest.id,editQuest);
+                          const {data,error}=await apiUpdate(editQuest.id,editQuest);
                           if(error){setMsg("❌ "+error);return;}
-                          setDailyQuests(prev=>prev.map(d=>d.id===editQuest.id?data.quest:d));
+                          setQuestList(prev=>prev.map(d=>d.id===editQuest.id?data.quest:d));
                           setEditQuest(null);setMsg("✅ Mis à jour !");
                         }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"5px 12px",borderRadius:7,fontSize:11}}>Enregistrer</button>
                         <button onClick={()=>setEditQuest(null)} style={{...BTN("#ffffff18"),padding:"5px 10px",borderRadius:7,fontSize:11}}>Annuler</button>
                         <button onClick={async()=>{
                           if(!window.confirm(`Supprimer "${q.name}" ?`)) return;
-                          const {error}=await apiDeleteAdminDailyQuest(q.id);
+                          const {error}=await apiDelete(q.id);
                           if(error){setMsg("❌ "+error);return;}
-                          setDailyQuests(prev=>prev.filter(d=>d.id!==q.id));
+                          setQuestList(prev=>prev.filter(d=>d.id!==q.id));
                           setEditQuest(null);setMsg("✅ Supprimée.");
                         }} style={{...BTN("#e74c3c22"),border:"1px solid #e74c3c44",color:"#e74c3c",padding:"5px 10px",borderRadius:7,fontSize:11,marginLeft:"auto"}}>🗑 Supprimer</button>
                       </div>
@@ -2180,27 +2220,27 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
           )
           })()}
 
-          {/* Planning du jour */}
+          {/* Planning courant (du jour ou de la semaine) */}
           <div style={{background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:12,padding:14}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
               <div style={{fontWeight:900,color:"#f9ca24",fontSize:12}}>
-                📅 Quêtes du jour — {new Date().toLocaleDateString('fr-FR')}
-                <span style={{fontSize:10,color:"#a8bfcf",fontWeight:400,marginLeft:8}}>({questSchedule.length}/3)</span>
+                {isW?'🗓️ Quêtes de la semaine':`📅 Quêtes du jour — ${new Date().toLocaleDateString('fr-FR')}`}
+                <span style={{fontSize:10,color:"#a8bfcf",fontWeight:400,marginLeft:8}}>({scheduleList.length}/3)</span>
               </div>
               <button onClick={async()=>{
-                if(!window.confirm("Régénérer aléatoirement les 3 quêtes du jour ?")) return;
-                const {error}=await apiRegenerateDailySchedule();
+                if(!window.confirm(isW?"Régénérer aléatoirement les 3 quêtes de la semaine ?":"Régénérer aléatoirement les 3 quêtes du jour ?")) return;
+                const {error}=await apiRegen();
                 if(error){setMsg("❌ "+error);return;}
-                const {data}=await apiGetDailySchedule();
-                if(data?.schedule) setQuestSchedule(data.schedule);
-                setMsg("✅ Quêtes du jour régénérées !");
+                const {data}=await apiGetSched();
+                if(data?.schedule) setScheduleList(data.schedule);
+                setMsg(isW?"✅ Quêtes de la semaine régénérées !":"✅ Quêtes du jour régénérées !");
               }} style={{...BTN("#ffffff18"),padding:"5px 12px",borderRadius:8,fontSize:11}}>🎲 Régénérer</button>
             </div>
-            {questSchedule.length===0
-              ?<div style={{color:"#a8bfcf",fontSize:11}}>Aucune quête planifiée. Le planning se crée automatiquement à la première connexion du jour.</div>
+            {scheduleList.length===0
+              ?<div style={{color:"#a8bfcf",fontSize:11}}>Aucune quête planifiée. Le planning se crée automatiquement à la première connexion {isW?'de la semaine':'du jour'}.</div>
               :<div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {questSchedule.map((s,i)=>{
-                  const q=s.daily_quest_definitions;
+                {scheduleList.map((s,i)=>{
+                  const q=s[schedDefKey];
                   return(
                     <div key={i} style={{display:"flex",alignItems:"center",gap:10,background:"#ffffff08",borderRadius:8,padding:"6px 12px"}}>
                       <span style={{color:"#a29bfe",fontWeight:900,fontSize:11}}>#{i+1}</span>
@@ -2214,7 +2254,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
               </div>
             }
           </div>
-        </div>}
+        </div>;})()}
 
         {/* ── BOTS ── */}
         {tab==="bots"&&(()=>{

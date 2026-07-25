@@ -213,7 +213,9 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
     const autoClose = () => setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 2500)
     if (data.already_won) { autoClose(); return { ok: true, outcome: 'card', card } }
     if (data.card_earned) earnCard(card, false)
-    if (data.gold_earned) earnGoldWithFx(data.gold_earned)
+    // quest_gold : une quête HEBDO en or (ex. Assidu) complétée sur cette réponse →
+    // légende le flash +G « Quête réussie ! ».
+    if (data.gold_earned) earnGoldWithFx(data.gold_earned, data.quest_gold)
     if (data.achievements?.length) cbRef.current.checkAchievements?.(data.achievements)
     if (data.achievement_upgrades?.length) cbRef.current.checkAchievementUpgrades?.(data.achievement_upgrades)
     cbRef.current.refreshProfile?.()   // MAJ last_geocoin_* (protection inter-modes)

@@ -30,6 +30,10 @@ vi.mock('../services/api.js', () => {
     apiGetAchievements: okNull,
     apiClaimReferral:   okNull,
     apiGetDailyQuests:  vi.fn(() => new Promise(resolve => questCalls.push(resolve))),
+    // Quêtes hebdo : hors du champ de ce test (garde de séquence du quotidien) —
+    // renvoie une liste vide immédiate pour ne pas déclencher de relance différée.
+    apiGetWeeklyQuests: async () => ({ data: { quests: [], reroll_used: false }, error: null }),
+    apiRerollWeeklyQuest: okNull,
   }
 })
 
