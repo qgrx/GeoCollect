@@ -3,24 +3,53 @@ import { createPortal } from 'react-dom'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
 
+// Panneau de quêtes unifié : onglets « Jour / Semaine » — on n'affiche que les 3
+// quêtes de la période active (moitié de la hauteur vs deux listes empilées),
+// chaque quête gardant tout son détail (progression, récompenses, reroll).
+//
+// Remplace DailyQuests + WeeklyQuests. Chaque période reçoit ses propres données
+// et son handler de reroll ; « weekly » peut être null (mode démo) → seul l'onglet
+// Jour s'affiche, sans barre d'onglets.
 
-// Jumeau de DailyQuests pour les quêtes HEBDOMADAIRES (reset le lundi). Même
-// présentation ; la quête non-remplaçable est « weekly_connection » (au lieu de
-// « daily_connection »). Les textes stockent le seuil sous forme de placeholder {n}.
 const questText = (txt, threshold) => (txt || '').replace(/\{n\}/g, threshold)
 
-export default function WeeklyQuests({ quests, rerollUsed, onReroll }) {
+// Type de quête non remplaçable (récompense quasi-automatique) par période.
+const NON_REROLLABLE = { daily: 'daily_connection', weekly: 'weekly_connection' }
+// Clés i18n du texte de reroll (bouton + corps de confirmation) par période.
+const REROLL_KEYS = {
+  daily:  { btn: 'quest_reroll_btn',        body: 'quest_reroll_body' },
+  weekly: { btn: 'weekly_quest_reroll_btn', body: 'weekly_quest_reroll_body' },
+}
+
+export default function QuestsPanel({ daily, weekly }) {
   const { theme } = useTheme()
   const { t, lang } = useT()
+  const [active, setActive] = useState('daily')
   const [confirmQuest, setConfirmQuest] = useState(null)
   const [rerollBusy,   setRerollBusy]   = useState(false)
   const [rerollErr,    setRerollErr]    = useState('')
 
-  if (!quests) return null
-  if (!quests.length) return null
+  // Périodes réellement disponibles (weekly absent en démo → onglet unique).
+  const periods = [
+    daily?.quests?.length ? { key: 'daily',  label: t('quest_tab_day'),  ...daily }  : null,
+    weekly?.quests?.length ? { key: 'weekly', label: t('quest_tab_week'), ...weekly } : null,
+  ].filter(Boolean)
 
-  const allDone = quests.every(q => q.completed_at)
-  const canReroll = !!onReroll && !rerollUsed
+  if (!periods.length) return null
+
+  // Onglet actif (retombe sur le 1er dispo si l'actif a disparu).
+  const cur = periods.find(p => p.key === active) || periods[0]
+  const quests   = cur.quests
+  const onReroll = cur.onReroll
+  const rerollUsed = cur.rerollUsed
+  const canReroll  = !!onReroll && !rerollUsed
+  const nonReroll  = NON_REROLLABLE[cur.key]
+  const rerollKeys = REROLL_KEYS[cur.key]
+
+  const doneCount = quests.filter(q => q.completed_at).length
+  const allDone   = doneCount === quests.length
+
+  const switchTo = (key) => { if (key !== active) { setActive(key); setConfirmQuest(null); setRerollErr('') } }
 
   return (
     <div style={{
@@ -28,34 +57,80 @@ export default function WeeklyQuests({ quests, rerollUsed, onReroll }) {
       width: '100%',
       animation: 'fadeUp .4s ease-out both',
     }}>
+      {/* En-tête : titre + onglets segmentés (ou badge « complètes » si période unique) */}
       <div style={{
-        fontSize: 9, color: theme.textMuted, fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2,
-        display: 'flex', alignItems: 'center', gap: 4,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 6, marginBottom: 2,
       }}>
-        {t('weekly_quest_title')}
-        {allDone && <span style={{ color: theme.gold, fontSize: 8 }}>{t('quest_all_done')}</span>}
+        <div style={{
+          fontSize: 9, color: theme.textMuted, fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: 1,
+          display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+        }}>
+          {t('quest_title_generic')}
+          {periods.length === 1 && allDone && (
+            <span style={{ color: theme.gold, fontSize: 8 }}>{t('quest_all_done')}</span>
+          )}
+        </div>
+
+        {periods.length > 1 && (
+          <div style={{
+            display: 'flex', gap: 2, padding: 2,
+            background: theme.overlay, borderRadius: 999,
+            border: `1px solid ${theme.border}`,
+          }}>
+            {periods.map(p => {
+              const on   = p.key === cur.key
+              const dc   = p.quests.filter(q => q.completed_at).length
+              const done = dc === p.quests.length
+              return (
+                <button
+                  key={p.key}
+                  onClick={() => switchTo(p.key)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    border: 'none', cursor: 'pointer', borderRadius: 999,
+                    padding: '3px 9px', fontSize: 9.5, fontWeight: 800,
+                    letterSpacing: .3, lineHeight: 1,
+                    fontFamily: "'Nunito',sans-serif",
+                    background: on ? 'linear-gradient(135deg,#6c5ce7,#a29bfe)' : 'transparent',
+                    color: on ? '#fff' : theme.textSecondary,
+                    transition: 'all .15s',
+                  }}>
+                  {p.label}
+                  <span style={{
+                    fontSize: 8.5, fontWeight: 900,
+                    color: done ? (on ? '#ffe9a8' : theme.gold) : (on ? 'rgba(255,255,255,.75)' : theme.textMuted),
+                  }}>
+                    {done ? '✦' : `${dc}/${p.quests.length}`}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
+      {/* Liste des quêtes de la période active */}
       {quests.map(q => {
         const done = !!q.completed_at
         const pct  = Math.min(100, Math.round((q.progress / q.threshold) * 100))
 
         return (
-          <div key={q.id} style={{
+          <div key={`${cur.key}-${q.id}`} style={{
             background: done ? '#00b89410' : theme.overlay,
             border: `1px solid ${done ? '#00b89433' : theme.border}`,
             borderRadius: 8, padding: '5px 8px',
             transition: 'all .2s',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              {/* Statut — remplacé par le bouton reroll (1×/semaine) tant qu'il est
-                  disponible et que la quête n'est pas réussie. La quête
-                  « weekly_connection » n'est pas remplaçable (refusée côté API). */}
-              {canReroll && !done && q.type !== 'weekly_connection' ? (
+              {/* Statut — remplacé par le bouton reroll tant qu'il est disponible et
+                  que la quête n'est pas réussie. La quête « connexion » (jour ou
+                  semaine) n'est pas remplaçable (refusée côté API). */}
+              {canReroll && !done && q.type !== nonReroll ? (
                 <button
                   onClick={() => { setRerollErr(''); setConfirmQuest(q) }}
-                  title={t('weekly_quest_reroll_btn')} aria-label={t('weekly_quest_reroll_btn')}
+                  title={t(rerollKeys.btn)} aria-label={t(rerollKeys.btn)}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
                     fontSize: 12, padding: 0, flexShrink: 0, opacity: .7, lineHeight: 1,
@@ -119,7 +194,7 @@ export default function WeeklyQuests({ quests, rerollUsed, onReroll }) {
         )
       })}
 
-      {/* Écran de confirmation du remplacement (portal sur <body>, cf. DailyQuests). */}
+      {/* Écran de confirmation du remplacement — porté sur <body> (portal). */}
       {confirmQuest && createPortal(
         <div
           onClick={() => !rerollBusy && setConfirmQuest(null)}
@@ -143,7 +218,7 @@ export default function WeeklyQuests({ quests, rerollUsed, onReroll }) {
               {questText(confirmQuest.translations?.[lang]?.name || confirmQuest.name, confirmQuest.threshold)}
             </div>
             <div style={{ fontSize: 11, color: theme.textSecondary, lineHeight: 1.5, marginBottom: 12 }}>
-              {t('weekly_quest_reroll_body')}
+              {t(rerollKeys.body)}
             </div>
             {rerollErr && (
               <div style={{ fontSize: 11, color: '#e74c3c', fontWeight: 800, marginBottom: 10 }}>

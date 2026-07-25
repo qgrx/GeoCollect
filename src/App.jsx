@@ -49,8 +49,7 @@ import AdminPanel from './features/admin/AdminPanel.jsx';
 import CgvPage from './features/cgv/CgvPage.jsx';
 import ShopModal from './features/shop/ShopModal.jsx';
 import { AchievementToast, AchievementUpgradePopup, SaleNotif, TxHistoryModal } from './features/achievements/NotifComponents.jsx';
-import DailyQuests from './features/quests/DailyQuests.jsx';
-import WeeklyQuests from './features/quests/WeeklyQuests.jsx';
+import QuestsPanel from './features/quests/QuestsPanel.jsx';
 import ForgeModal  from './features/forge/ForgeModal.jsx'
 import TresorPage  from './features/treasures/TresorPage.jsx';
 import SeasonPopup  from './components/SeasonPopup.jsx';
@@ -2369,19 +2368,15 @@ export default function App() {
                 )
               })()}
 
-              {/* Daily quests */}
+              {/* Quêtes — panneau unifié à onglets Jour / Semaine (hauteur compacte :
+                  seules les 3 quêtes de la période active s'affichent). En démo, seul
+                  l'onglet Jour existe (weekly=null → pas de barre d'onglets). */}
               <div data-tour="quests">
-                <DailyQuests quests={gs.quests} rerollUsed={gs.questRerollUsed}
-                  onReroll={auth.isDemo ? null : gs.rerollQuest} />
+                <QuestsPanel
+                  daily={{ quests: gs.quests, rerollUsed: gs.questRerollUsed, onReroll: auth.isDemo ? null : gs.rerollQuest }}
+                  weekly={auth.isDemo ? null : { quests: gs.weeklyQuests, rerollUsed: gs.weeklyQuestRerollUsed, onReroll: gs.rerollWeeklyQuest }}
+                />
               </div>
-
-              {/* Weekly quests (reset le lundi) — masquées en mode démo/invité */}
-              {!auth.isDemo && (
-                <div data-tour="weekly-quests" style={{ marginTop: 8 }}>
-                  <WeeklyQuests quests={gs.weeklyQuests} rerollUsed={gs.weeklyQuestRerollUsed}
-                    onReroll={gs.rerollWeeklyQuest} />
-                </div>
-              )}
 
               {/* Last 8 geocoins — 4×2 (feed propre au mode courant). En Entraînement,
                   on n'affiche que les manches AVEC au moins un gagnant. */}
