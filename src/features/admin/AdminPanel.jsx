@@ -179,8 +179,8 @@ const QUEST_TYPES = ['buy_count','sell_count','quiz_win','new_card','win_streak'
 // Doit refléter VALID_WEEKLY_QUEST_TYPES de l'API (routes/admin.js).
 // quiz_answer_pvp / quiz_answer_beginner = bonnes réponses de la semaine dans
 // chaque mode · weekly_connection = jours distincts joués · patronage = dons ·
-// forge_card / fire_count / glory_win = repris du quotidien.
-const WEEKLY_QUEST_TYPES = ['quiz_answer_pvp','quiz_answer_beginner','weekly_connection','patronage','forge_card','fire_count','glory_win'];
+// melt_count = geocoins FONDUS (Fondeur) · fire_count / glory_win = repris du quotidien.
+const WEEKLY_QUEST_TYPES = ['quiz_answer_pvp','quiz_answer_beginner','weekly_connection','patronage','melt_count','fire_count','glory_win'];
 
 // ─── Composants utilitaires (hors du composant pour éviter remounts) ─────────
 function Fld({lbl,children}){
