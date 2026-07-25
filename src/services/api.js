@@ -203,7 +203,7 @@ export const apiStoreHold = (card_id, is_shiny, rent, replace_id) => apiFetch('/
 export const apiClaimHold = (hold_id)                   => apiFetch('/api/hold/claim', { method: 'POST', body: { hold_id } })
 export const apiBuyHoldSlot  = ()                       => apiFetch('/api/hold/slots/buy', { method: 'POST' })
 export const apiRentHoldSlot = ()                       => apiFetch('/api/hold/slots/rent', { method: 'POST' })
-export const apiTakeForgeInsteadOfHold = ()             => apiFetch('/api/hold/forge-point', { method: 'POST' })
+export const apiTakeForgeInsteadOfHold = (card_id, is_shiny) => apiFetch('/api/hold/forge-point', { method: 'POST', body: { card_id, is_shiny } })
 
 // ─── Mécénat (offrir un geocoin qu'on ne peut plus acquérir) ──────────────────
 export const apiPatronageDonate  = (quiz_id, criterion) => apiFetch('/api/patronage/donate', { method: 'POST', body: { quiz_id, criterion } })

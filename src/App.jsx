@@ -2870,7 +2870,9 @@ export default function App() {
               : t('toast_hold_stored').replace('{card}', card.name))
           }}
           onTakeForgePoint={async () => {
-            const { data } = await apiTakeForgeInsteadOfHold()
+            // Transmettre la carte : le serveur consomme le dépôt en attente correspondant
+            // (renoncement) → il ne pourra pas être déposé plus tard (double compensation).
+            const { data } = await apiTakeForgeInsteadOfHold(holdOffer.id, holdOffer.is_shiny || false)
             const fp = data?.forge_points_earned || 0
             if (fp > 0) gs.addForgePoints(fp)
             setHoldOffer(null)

@@ -291,6 +291,15 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // le serveur confirme que CE joueur a déjà gagné → on referme en « gagné » et on
       // synchronise la collection localement, sans toast/or/quête (déjà fait au 1er essai).
       if (data.already_won) {
+        // Le geocoin gagné était précieux/hors-limite et son dépôt est TOUJOURS en
+        // attente côté serveur (le 1er /answer était hold-eligible, sa réponse s'est
+        // perdue avant l'ouverture de la HoldModal) → on rouvre la modale au lieu de
+        // le comptabiliser en collection (il n'y est pas). Sinon geocoin perdu.
+        if (data.hold_eligible && data.hold_card) {
+          setHoldOffer(data.hold_card)
+          setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 600)
+          return { ok: true, outcome: 'hold', forge: 0 }
+        }
         earnCard(card, data.is_shiny || false)
         setHistory(h => h.some(e => e.won && e.card?.id === card.id) ? h
           : [{ card, winner: profile?.pseudo || 'Moi', winner_avatar: profile?.geocaching_avatar_url || null, won: true, isShiny: data.is_shiny || false }, ...h].slice(0, 10))
