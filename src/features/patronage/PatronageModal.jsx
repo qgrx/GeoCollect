@@ -54,9 +54,28 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
   const [profiles, setProfiles] = useState([]);   // [recipient + decoys] mélangés (roulette)
   const [activeIdx, setActiveIdx] = useState(0);
   const [wonIdx, setWonIdx] = useState(-1);
+  const [secsLeft, setSecsLeft] = useState(null);   // décompte « encore X s pour choisir »
   const timers = useRef([]);
+  const deadlineRef = useRef(null);
+  const autoRef = useRef(null);                      // callback d'auto-roulette (fixé à chaque render)
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  // Décompte de choix : le mécène a `choice_seconds` pour choisir un critère, sinon
+  // l'auto-roulette (critère au hasard) part toute seule — miroir client du délai après
+  // lequel le serveur attribue d'office un bénéficiaire (patronage_choice_seconds).
+  useEffect(() => {
+    if (!offer || offer.preview) { setSecsLeft(null); return; }
+    deadlineRef.current = Date.now() + (Number(offer.choice_seconds) || 20) * 1000;
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000));
+      setSecsLeft(left);
+      if (left <= 0) { clearInterval(iv); autoRef.current?.(); }
+    };
+    const iv = setInterval(tick, 250);
+    tick();
+    return () => clearInterval(iv);
+  }, [offer]);
 
   if (!offer) return null;
   const card = offer.card || {};
@@ -90,6 +109,19 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
     setResult(data);
     // Roulette : recipient + jusqu'à 2 leurres, mélangés.
     const pool = [data.recipient, ...(data.decoys || [])].slice(0, 3);
+    // Pas assez de profils pour une vraie roulette (bénéficiaire déjà attribué par le
+    // filet serveur, ou toute petite communauté) → afficher directement le résultat au
+    // lieu d'une « roulette » à un seul profil.
+    if (pool.length < 2 || data.already_delivered) {
+      setPhase('done');
+      if (!offer.preview) {
+        if (data.reward_pf > 0) onForgePointsEarned?.(data.reward_pf);
+        if (data.achievements?.length) checkAchievements?.(data.achievements);
+        if (data.achievement_upgrades?.length) checkAchievementUpgrades?.(data.achievement_upgrades);
+        onDonated?.();
+      }
+      return;
+    }
     const shuffled = pool.map(v => ({ v, r: Math.random() })).sort((a, b) => a.r - b.r).map(o => o.v);
     const winIdx = shuffled.findIndex(p => p.id === data.recipient.id);
     setProfiles(shuffled);
@@ -125,6 +157,10 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
     tick();
   }
 
+  // Callback d'auto-roulette (délai écoulé) : critère au hasard, seulement si le mécène
+  // n'a pas déjà choisi / lancé. Réassigné à chaque render pour capter phase/busy à jour.
+  autoRef.current = () => { if (phase === 'choose' && !busy) donate(randomCriterion()); };
+
   return (
     <div style={OVERLAY} onClick={phase === 'done' ? onClose : undefined}>
       <div onClick={e => e.stopPropagation()} style={{
@@ -150,10 +186,16 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
             <div style={{ fontSize: 13, fontWeight: 900, color: '#f9ca24', marginBottom: 4 }}>
               🎁 {t('patronage_title') || 'Mécénat (plafond hebdomadaire atteint)'}
             </div>
-            <div style={{ fontSize: 12, color: '#cfd8e3', lineHeight: 1.5, marginBottom: 14 }}>
+            <div style={{ fontSize: 12, color: '#cfd8e3', lineHeight: 1.5, marginBottom: 10 }}>
               {(t('patronage_body') || "Tu ne peux plus gagner de geocoin de cette rareté cette semaine. Offre-le à un autre joueur — tu gagnes {rare} PF pour un rare, {epique} PF pour un épique et {legendaire} PF pour un légendaire.")
                 .replace('{rare}', rewardPf.rare).replace('{epique}', rewardPf.epique).replace('{legendaire}', rewardPf.legendaire)}
             </div>
+            {/* Décompte : passé le délai, l'auto-roulette part toute seule (critère au hasard). */}
+            {secsLeft != null && !busy && (
+              <div style={{ fontSize: 12, fontWeight: 900, color: secsLeft <= 5 ? '#e17055' : '#f9ca24', marginBottom: 12, textAlign: 'center' }}>
+                ⏳ {(t('patronage_countdown') || 'Encore {n} s pour choisir').replace('{n}', secsLeft)}
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 7, marginBottom: 12 }}>
               {enabledCriteria.map(c => (
                 <button key={c.key} disabled={busy} onClick={() => donate(c.key)} style={{
