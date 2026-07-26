@@ -50,6 +50,7 @@ import CgvPage from './features/cgv/CgvPage.jsx';
 import ShopModal from './features/shop/ShopModal.jsx';
 import { AchievementToast, AchievementUpgradePopup, SaleNotif, TxHistoryModal } from './features/achievements/NotifComponents.jsx';
 import QuestsPanel from './features/quests/QuestsPanel.jsx';
+import OverflowDebug from './features/debug/OverflowDebug.jsx';   // TEMP debug overflow (gaté par pseudo) — à retirer
 import ForgeModal  from './features/forge/ForgeModal.jsx'
 import TresorPage  from './features/treasures/TresorPage.jsx';
 import SeasonPopup  from './components/SeasonPopup.jsx';
@@ -2870,6 +2871,12 @@ export default function App() {
           <SaleNotif notif={n} ranks={gs.limits.playerRanks} onClose={() => gs.setSaleNotifs(prev => prev.filter(x => x.id !== n.id))} />
         </div>
       ))}
+
+      {/* ── TEMP : overlay de debug overflow, UNIQUEMENT pour le compte ciblé ──
+           Traque les éléments qui dépassent le viewport (barres de défilement H).
+           À RETIRER une fois le coupable identifié (import + ce bloc). Adapter le
+           pseudo si celui d'Agarion en jeu diffère du pseudo Discord. */}
+      <OverflowDebug enabled={(auth.profile?.pseudo || '').trim().toLowerCase() === 'agarion'} />
 
       {/* ── Guest banner ── */}
       {!import.meta.env.VITE_API_URL && (
