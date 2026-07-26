@@ -1899,8 +1899,33 @@ export default function App() {
       if (!activeId) continue
       for (const tt of info.tiers) if (tt.card_id && tt.card_id !== activeId) hide.add(tt.card_id)
     }
+
+    // Filet de sécurité pour les achievements évolutifs EN BROUILLON (définition
+    // masquée → absente de /api/achievements → non repliée ci-dessus). Sans lui,
+    // l'admin voit les 4 variantes (commun→légendaire) en autant de geocoins.
+    // On regroupe par nom les cartes d'achievement NON couvertes par une définition
+    // publiée et on ne garde qu'un représentant (la variante possédée, sinon la
+    // rareté la plus basse). Cf. bug « 14 succès affichés pour 10 publiés ».
+    const covered = new Set()
+    for (const info of Object.values(gs.achievementProgress || {})) {
+      if (info?.tiers) for (const tt of info.tiers) if (tt.card_id) covered.add(tt.card_id)
+    }
+    const RANK = { commun: 0, rare: 1, 'épique': 2, 'légendaire': 3 }
+    const byName = new Map()
+    for (const c of publicCardPool) {
+      if (!String(c.type || '').toLowerCase().startsWith('achievement')) continue
+      if (covered.has(c.id)) continue
+      const arr = byName.get(c.name) || []
+      arr.push(c); byName.set(c.name, arr)
+    }
+    for (const arr of byName.values()) {
+      if (arr.length < 2) continue
+      const owned = arr.find(c => (gs.collection[c.id] || 0) > 0)
+      const rep = owned || [...arr].sort((a, b) => (RANK[a.rarity] ?? 0) - (RANK[b.rarity] ?? 0))[0]
+      for (const c of arr) if (c.id !== rep.id) hide.add(c.id)
+    }
     return hide
-  }, [gs.achievementProgress])
+  }, [gs.achievementProgress, publicCardPool, gs.collection])
   const visibleCardPool = useMemo(
     () => publicCardPool.filter(c => !evolutiveHiddenIds.has(c.id)),
     [publicCardPool, evolutiveHiddenIds]
