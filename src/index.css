@@ -19,9 +19,21 @@ html, body {
   overflow-x: clip;
 }
 
-::-webkit-scrollbar { width: 6px; }
+/* Barre de défilement fine et dorée. On double les règles WebKit par les
+   propriétés STANDARD (scrollbar-width/color) : certains WebView (ex. MIUI)
+   ignorent ::-webkit-scrollbar et affichent sinon une grosse barre native grise
+   « moche » (retour Agarion — barre verticale du document). */
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #f9ca2466; border-radius: 3px; }
+html, body { scrollbar-width: thin; scrollbar-color: #f9ca2466 transparent; }
+
+/* Sur mobile le défilement est tactile : on MASQUE toute barre (document +
+   conteneurs internes) pour retrouver le rendu « app ». */
+@media (max-width: 640px) {
+  html, body { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
+}
 
 select option { background: #1e3045; color: #fff; }
 
