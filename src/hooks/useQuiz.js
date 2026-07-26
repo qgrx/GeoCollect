@@ -22,6 +22,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const [lostToWinners, setLostToWinners] = useState(null)  // round multi-prix : TOUS les gagnants [{pseudo, avatar}]
   const [lostToFire,    setLostToFire]    = useState(null)  // gagnant UNIQUE en place en feu : { fire_streak } (flammes graduées bannière)
   const [lostToGloryWinners, setLostToGloryWinners] = useState(null) // joueurs « pour la gloire » du round [{pseudo, avatar}] (affichés en petit)
+  const [lostToPatronage, setLostToPatronage] = useState(null)       // mécènes du round [{pseudo, avatar, recipient, recipient_avatar}]
   const [quizKey,       setQuizKey]      = useState(0)
   // Durée du cycle (s) pour la barre de progression — suit l'intervalle dynamique serveur
   const [cycleSec,      setCycleSec]     = useState(limits?.quizInterval ?? QUIZ_INTERVAL)
@@ -256,7 +257,10 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         // souvent le seul flash affiché.
         if (data.forge_points_earned > 0) cbRef.current.showForgeFlash?.(data.forge_points_earned, data.quest_forge)
         // Choix « dépôt » refusé par le serveur (plein / or insuffisant) → gloire quand même.
-        showToast(data.hold_declined === 'full'              ? (t('toast_deposit_declined_full') || '🗄️ Dépôt plein — victoire pour la gloire !')
+        // Mécénat : le geocoin est compté comme gagné et va être offert → toast dédié (la
+        // modale de choix du bénéficiaire s'ouvre juste après), pas « pour la gloire ».
+        showToast(data.patronage                             ? (t('toast_patronage_win') || '🎁 Plafond atteint — geocoin à offrir !')
+                : data.hold_declined === 'full'              ? (t('toast_deposit_declined_full') || '🗄️ Dépôt plein — victoire pour la gloire !')
                 : data.hold_declined === 'insufficient_gold' ? (t('toast_deposit_declined_gold') || '💰 Or insuffisant pour le dépôt — victoire pour la gloire !')
                 : data.hold ? (t('toast_deposit_win') || '📥 Geocoin mis au dépôt !') : t('toast_glory_win'))
         // Fenêtre de grâce « les autres ont N s pour répondre » : on pose la deadline sur le
@@ -411,17 +415,22 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     }
   }, [])
 
-  const handleQuizExpire = useCallback((npc, isBot = false, isGlory = false, winnerAvatar = null, winners = null, gloryWinners = null, winnerFire = null) => {
+  const handleQuizExpire = useCallback((npc, isBot = false, isGlory = false, winnerAvatar = null, winners = null, gloryWinners = null, winnerFire = null, patronageWinners = null) => {
     const solvedAt = Date.now()
 
     if (!activeQuizRef.current) {
       const pending = pendingQuizRef.current
+      const patronList = Array.isArray(patronageWinners) && patronageWinners.length ? patronageWinners : null
+      // Round entièrement offert en mécénat (aucun vrai gagnant ni gloire) → la bannière
+      // « Félicitations » se déclenche sur le 1er mécène (sinon lostTo null = pas de bannière).
+      const bannerWinner = npc || (!isGlory && !(Array.isArray(gloryWinners) && gloryWinners.length) && patronList ? patronList[0].pseudo : null)
       if (pending) {
-        setLostToWinner(npc)
+        setLostToWinner(bannerWinner)
         setLostToGlory(isGlory)
-        setLostToAvatar(winnerAvatar || null)
+        setLostToAvatar(winnerAvatar || (npc ? null : (patronList ? patronList[0].avatar || null : null)))
         setLostToWinners(Array.isArray(winners) && winners.length > 1 ? winners : null)
         setLostToGloryWinners(Array.isArray(gloryWinners) && gloryWinners.length ? gloryWinners : null)
+        setLostToPatronage(patronList)
         setLostToFire(winnerFire || null)
         setTimeout(() => {
           setLostToWinner(null)
@@ -429,6 +438,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
           setLostToAvatar(null)
           setLostToWinners(null)
           setLostToGloryWinners(null)
+          setLostToPatronage(null)
           setLostToFire(null)
           setPendingQuiz(currentPending => {
             if (currentPending && currentPending.id === pending.id) {
@@ -457,6 +467,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       setActiveQuiz(q => q ? { ...q, winner: npc, winner_avatar: winnerAvatar || null,
         winners: Array.isArray(winners) && winners.length > 1 ? winners : null,
         glory_winners: Array.isArray(gloryWinners) && gloryWinners.length ? gloryWinners : null,
+        patronage_winners: Array.isArray(patronageWinners) && patronageWinners.length ? patronageWinners : null,
         winner_fire_info: winnerFire || null } : null)
     }
     setTimeout(() => advanceQuiz(solvedAt), wasResolvedByMe ? 1500 : 5000)
@@ -478,6 +489,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     lostToAvatar, setLostToAvatar,
     lostToWinners, setLostToWinners,
     lostToGloryWinners, setLostToGloryWinners,
+    lostToPatronage, setLostToPatronage,
     lostToFire, setLostToFire,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz,

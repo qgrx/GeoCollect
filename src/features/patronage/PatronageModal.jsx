@@ -38,10 +38,13 @@ function ProfileChip({ p, active, won }) {
 }
 
 /**
- * Modale de MÉCÉNAT (plafond hebdo de la rareté atteint) : le mécène choisit un
- * critère de bénéficiaire, une « roulette » désigne le destinataire renvoyé par le
- * serveur, puis confirmation. « Jouer pour la gloire » ferme (la gloire — or + PF —
- * est déjà créditée côté serveur au moment de la réponse).
+ * Modale de MÉCÉNAT (plafond hebdo de la rareté atteint). Le geocoin est DÉJÀ compté
+ * comme gagné (le prix a été consommé à la réponse) : le mécène ne fait plus que choisir
+ * le CRITÈRE de bénéficiaire — une « roulette » désigne le destinataire renvoyé par le
+ * serveur, puis confirmation. Plus de « jouer pour la gloire » : « Laisser le sort
+ * choisir » offre à un bénéficiaire d'un critère au hasard. S'il ferme sans choisir, le
+ * serveur attribue un bénéficiaire d'office à la clôture du round (le geocoin est déjà
+ * consommé et n'est jamais perdu).
  */
 export function PatronageModal({ offer, onClose, showToast, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onDonated, rewardPf = { rare: 1, epique: 5, legendaire: 100 } }) {
   const { t } = useT();
@@ -59,6 +62,9 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
   const card = offer.card || {};
   const rc = RC[card.rarity];
   const { c1, c2 } = cardCC(card.rarity);
+  // Critères activés (filtrés par l'admin via offer.criteria) + tirage au hasard parmi eux.
+  const enabledCriteria = CRITERIA.filter(c => !Array.isArray(offer.criteria) || offer.criteria.includes(c.key));
+  const randomCriterion = () => (enabledCriteria[Math.floor(Math.random() * enabledCriteria.length)]?.key) || 'nouveau';
 
   async function donate(criterion) {
     if (busy) return;
@@ -75,8 +81,9 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
       : await apiPatronageDonate(offer.quiz_id, criterion);
     setBusy(false);
     if (error || !data?.recipient) {
-      // Aucun bénéficiaire / plafond : on retombe sur la gloire (déjà créditée).
-      showToast?.(t('patronage_no_recipient') || '🏆 Personne à qui offrir — victoire pour la gloire !', 'info');
+      // Le prix est déjà consommé : en cas d'erreur réseau, le serveur désignera un
+      // bénéficiaire d'office à la clôture du round (le geocoin n'est jamais perdu).
+      showToast?.(t('patronage_auto_recipient') || '🎁 Un bénéficiaire sera désigné automatiquement.', 'info');
       onClose?.();
       return;
     }
@@ -148,7 +155,7 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
                 .replace('{rare}', rewardPf.rare).replace('{epique}', rewardPf.epique).replace('{legendaire}', rewardPf.legendaire)}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 7, marginBottom: 12 }}>
-              {CRITERIA.filter(c => !Array.isArray(offer.criteria) || offer.criteria.includes(c.key)).map(c => (
+              {enabledCriteria.map(c => (
                 <button key={c.key} disabled={busy} onClick={() => donate(c.key)} style={{
                   display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', width: '100%',
                   background: '#ffffff0f', border: '1.5px solid #ffffff22', color: '#fff', borderRadius: 11,
@@ -160,12 +167,14 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
                 </button>
               ))}
             </div>
-            <button disabled={busy} onClick={onClose} style={{
+            {/* Plus de « jouer pour la gloire » : le geocoin est déjà compté comme gagné.
+                « Laisser le sort choisir » offre à un bénéficiaire d'un critère au hasard. */}
+            <button disabled={busy} onClick={() => donate(randomCriterion())} style={{
               width: '100%', background: '#ffffff12', border: '1.5px solid #ffffff22', color: '#cfd8e3',
               borderRadius: 11, padding: '10px 0', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12.5,
               cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
             }}>
-              {t('patronage_glory') || 'Ne rien offrir'}
+              🎲 {t('patronage_surprise') || 'Laisser le sort choisir'}
             </button>
           </>
         )}

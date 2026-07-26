@@ -452,6 +452,7 @@ export default function App() {
         setLostToAvatar(null)
         setLostToWinners(null)
         setLostToGloryWinners(null)
+        setLostToPatronage(null)
         setLostToFire(null)
         // Liste serveur = vérité (streak_leaders ; repli sur l'ancien streak_leader seul)
         setStreakLeaders(data.streak_leaders || (data.streak_leader ? [data.streak_leader] : []))
@@ -500,6 +501,10 @@ export default function App() {
         // `fire` = bonne réponse dans les places en feu (petite flamme à côté du pseudo).
         const gloryFull = (data.glory_winners || []).length
           ? data.glory_winners.map(g => ({ pseudo: g.pseudo, avatar: g.avatar || null, hold: !!g.hold, patronage_halo: g.patronage_halo || null, fire: !!g.fire, fire_streak: g.fire_streak ?? null }))
+          : null
+        // Mécènes du round (catégorie « Mécène : X → Y ») : mécène + bénéficiaire réel.
+        const patronageFull = (data.patronage_winners || []).length
+          ? data.patronage_winners.map(p => ({ pseudo: p.pseudo, avatar: p.avatar || null, patronage_halo: p.patronage_halo || null, recipient: p.recipient || null, recipient_avatar: p.recipient_avatar || null, fire: !!p.fire, fire_streak: p.fire_streak ?? null }))
           : null
 
         // Si le quiz résolu est celui actuellement EN ATTENTE (non rejoint), le marquer
@@ -597,7 +602,7 @@ export default function App() {
           : (data.winner_fire ? { fire_streak: data.winner_fire_streak ?? data.winner_streak ?? null } : null)
 
         if (!iSelf) {
-          handleQuizExpireRef.current(data.winner, data.is_bot, false, data.winner_avatar || null, winnersFull, gloryFull, wFire)
+          handleQuizExpireRef.current(data.winner, data.is_bot, false, data.winner_avatar || null, winnersFull, gloryFull, wFire, patronageFull)
         } else if (activeQuizRef.current && activeQuizRef.current.id === data.quiz_id) {
           // J'ai gagné ce quiz côté serveur. Si la modale est encore ouverte (réponse
           // HTTP perdue / erreur), la fermer proprement plutôt que de laisser re-répondre.
@@ -608,7 +613,7 @@ export default function App() {
         // (liste de tous les gagnants) au lieu de dupliquer le même geocoin par gagnant : affichage
         // « N🏆 » + popup des gagnants, comme pour la gloire. L'entrée « Moi » transitoire posée par
         // handleQuizAnswer est fusionnée ici (→ ✓ + compteur, sans attendre un rechargement).
-        if (data.multi && winnersList.length) {
+        if (data.multi && (winnersList.length || (patronageFull && patronageFull.length))) {
           const fullCard = cardPoolRef.current?.find(c => c.name === data.card_name)
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
           const winnerPseudos = winnersList.map(w => w.pseudo)
@@ -623,6 +628,7 @@ export default function App() {
             // …et la même liste avec avatars pour la fiche « Gagnants » (+ flammes graduées)
             winners_full: winnersList.map(w => ({ pseudo: w.pseudo, avatar: w.avatar || null, is_bot: !!w.is_bot, patronage_halo: w.patronage_halo || null, fire: !!w.fire, fire_streak: w.fire_streak ?? null })),
             glory_winners: gloryFull || [],
+            patronage_winners: patronageFull || [],
             // Pour la fiche « Gagnants » quand un seul prix a été pris (repli mono).
             winner_fire: !!winnersList[0]?.fire,
             winner_fire_streak: winnersList[0]?.fire_streak ?? null,
@@ -642,14 +648,14 @@ export default function App() {
             || { name: data.card_name, rarity: data.rarity, type: 'Normal', id: 0 }
           setHistory(h => {
             if (data.quiz_id && h.some(e => e.quiz_id === data.quiz_id)) return h
-            return [{ card: fullCard, winner: data.winner, winner_avatar: data.winner_avatar || null, winner_halo: data.winner_halo || null, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryFull || [], winner_fire: !!data.winner_fire, winner_fire_streak: data.winner_fire_streak ?? (data.winner_fire ? data.winner_streak ?? null : null), quiz_id: data.quiz_id }, ...h].slice(0, 10)
+            return [{ card: fullCard, winner: data.winner, winner_avatar: data.winner_avatar || null, winner_halo: data.winner_halo || null, won: false, isBot: data.is_bot || false, isShiny: data.is_shiny || false, glory_winners: gloryFull || [], patronage_winners: patronageFull || [], winner_fire: !!data.winner_fire, winner_fire_streak: data.winner_fire_streak ?? (data.winner_fire ? data.winner_streak ?? null : null), quiz_id: data.quiz_id }, ...h].slice(0, 10)
           })
-        } else if (iSelf && (data.glory_winners || []).length > 0) {
-          // Le gagnant lui-même : useQuiz ajoute l'entrée → on la patch avec les glory_winners
+        } else if (iSelf && ((data.glory_winners || []).length > 0 || (patronageFull && patronageFull.length))) {
+          // Le gagnant lui-même : useQuiz ajoute l'entrée → on la patch avec gloire + mécènes.
           setHistory(h => {
             const idx = h.findIndex(e => e.won && (data.quiz_id ? e.quiz_id === data.quiz_id : e.card?.name === data.card_name))
             if (idx < 0) return h
-            return [...h.slice(0, idx), { ...h[idx], glory_winners: gloryFull || [] }, ...h.slice(idx + 1)]
+            return [...h.slice(0, idx), { ...h[idx], glory_winners: gloryFull || [], patronage_winners: patronageFull || [] }, ...h.slice(idx + 1)]
           })
         }
       })
@@ -747,6 +753,51 @@ export default function App() {
             }, 10000)
           }
         }
+      })
+
+      // Quiz — un joueur au plafond a consommé un geocoin en MÉCÉNAT (bénéficiaire encore
+      // à choisir). Comme quiz:prize_won : ré-armer la grâce + décrémenter « N à gagner »
+      // chez tous, sans afficher de gagnant-gardien (l'entrée « Mécène » se bâtit à la clôture).
+      s.on('quiz:patronage_pending', (data) => {
+        if (!data.quiz_id) return
+        let graceDeadline = null
+        if (data.grace_until && data.server_time) {
+          const msLeft = Math.max(0, new Date(data.grace_until).getTime() - new Date(data.server_time).getTime())
+          graceDeadline = Date.now() + msLeft
+        }
+        const patch = q => (q && q.id === data.quiz_id)
+          ? { ...q, graceDeadline, ...(data.prizes_remaining != null ? { prizes_remaining: data.prizes_remaining } : {}) }
+          : q
+        setActiveQuiz(patch)
+        if (activeQuizRef.current?.id === data.quiz_id) {
+          activeQuizRef.current = { ...activeQuizRef.current, graceDeadline, ...(data.prizes_remaining != null ? { prizes_remaining: data.prizes_remaining } : {}) }
+        }
+        setPendingQuiz(patch)
+
+        const iSelf = (!!data.winner_id && data.winner_id === myIdRef.current)
+        // Série « en feu » du mécène (place en feu) : mêmes règles que prize_won / glory_win.
+        const hCfg = gs.limits?.quizStreakHandicap
+        const threshold = Math.max(1, Number(hCfg?.threshold) || 3)
+        if (!iSelf && data.winner_streak != null) {
+          const handicap = data.winner_handicap != null ? data.winner_handicap : computeStreakHandicap(data.winner_streak, hCfg)
+          const entry = { id: data.winner_id || null, pseudo: data.winner, streak: data.winner_streak, handicap_seconds: handicap }
+          noteRoundFire(data.quiz_id, entry)
+          if (data.winner_streak >= threshold && hCfg?.enabled !== false) mergeStreakLeaders(entry)
+        }
+      })
+
+      // Quiz — un mécène a désigné son bénéficiaire : si le round a déjà une entrée
+      // d'historique (clôture passée), y renseigner « → Y » sur l'entrée mécène concernée.
+      s.on('quiz:patronage_donated', (data) => {
+        if (!data.quiz_id) return
+        setHistory(h => {
+          const idx = h.findIndex(e => e.quiz_id === data.quiz_id && Array.isArray(e.patronage_winners) && e.patronage_winners.length)
+          if (idx < 0) return h
+          const pw = h[idx].patronage_winners.map(p =>
+            (p.recipient == null && (p.id === data.donor_id || p.pseudo === data.donor_pseudo))
+              ? { ...p, recipient: data.recipient_pseudo || p.recipient } : p)
+          return [...h.slice(0, idx), { ...h[idx], patronage_winners: pw }, ...h.slice(idx + 1)]
+        })
       })
 
       // Quiz — expiré sans réponse
@@ -1230,6 +1281,7 @@ export default function App() {
     lostToAvatar, setLostToAvatar,
     lostToWinners, setLostToWinners,
     lostToGloryWinners, setLostToGloryWinners,
+    lostToPatronage, setLostToPatronage,
     lostToFire, setLostToFire,
     activeQuizRef, pendingQuizRef, snoozedUntilRef, nextQuizTimeRef,
     advanceQuiz, handleJoin, handleSkip, handleQuizAnswer, handleQuizExpire, handleCloseActiveQuiz } = quiz
@@ -1337,7 +1389,7 @@ export default function App() {
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} revealAnswer={beginner.recap.answer} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} />)
-      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} lostToWinners={lostToWinners ?? null} lostToGloryWinners={lostToGloryWinners ?? null} lostToFire={lostToFire ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeaders={streakLeaders} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} lostToWinners={lostToWinners ?? null} lostToGloryWinners={lostToGloryWinners ?? null} lostToPatronage={lostToPatronage ?? null} lostToFire={lostToFire ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeaders={streakLeaders} graceDeadline={pendingQuiz?.graceDeadline ?? null} />
     // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
     // → barre floutée + message + timer. Dans les deux cas, interaction impossible.
     const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown
@@ -2428,15 +2480,16 @@ export default function App() {
                       // tantôt en ✓, tantôt sous son pseudo (selon la source de l'entrée).
                       // En débutant : plusieurs gagnants → on coche si je suis dans la liste.
                       const hasGlory = !beginnerActive && (h.glory_winners || []).length > 0;
+                      // Mécènes du round (« Mécène : X → Y ») — comptés comme geocoins gagnés.
+                      const patronageArr = !beginnerActive && Array.isArray(h.patronage_winners) ? h.patronage_winners : [];
                       // Round MULTI-prix (≥2 gagnants réels) → tuile unique « N🏆 » + popup des gagnants,
                       // comme la gloire (au lieu de dupliquer le même geocoin par gagnant).
                       const multiWinners = (!beginnerActive && Array.isArray(h.winners) && h.winners.length > 1) ? h.winners : null;
                       // Total affiché sur la tuile = gagnants réels (liste multi-prix, sinon winner —
-                      // null si personne n'a raflé le geocoin) + joueurs « pour la gloire ». Toujours
-                      // additionner les deux : multi-prix AVEC gloire et « moi gagnant + gloire »
-                      // n'affichaient qu'une des deux moitiés (Inde ✨ « 2 » au lieu de 4).
+                      // null si personne n'a raflé le geocoin) + joueurs « pour la gloire » + mécènes
+                      // (leur don COMPTE comme un geocoin gagné).
                       const realCount = multiWinners ? multiWinners.length : (h.winner ? 1 : 0);
-                      const totalWinners = realCount + (h.glory_winners || []).length;
+                      const totalWinners = realCount + (h.glory_winners || []).length + patronageArr.length;
                       const mine = beginnerActive
                         ? (Array.isArray(h.winners) && h.winners.includes(auth.profile?.pseudo))
                         : (h.won || (!!h.winner && h.winner === auth.profile?.pseudo) || (Array.isArray(h.winners) && h.winners.includes(auth.profile?.pseudo)));
@@ -2456,7 +2509,7 @@ export default function App() {
                           const realArr = multiWinners
                             ? (Array.isArray(h.winners_full) && h.winners_full.length ? h.winners_full : multiWinners)
                             : (h.winner ? [{ pseudo: h.winner, avatar: h.winner_avatar || null, patronage_halo: h.winner_halo || null, fire: !!h.winner_fire, fire_streak: h.winner_fire_streak ?? null }] : []);
-                          setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: [...gloryArr, ...realArr], gloryCount: gloryArr.length, isShiny: h.isShiny || false });
+                          setBeginnerWinnersPopup({ card: gs.cardPool.find(c => c.id === h.card.id) || h.card, winners: [...gloryArr, ...realArr], gloryCount: gloryArr.length, patronageWinners: patronageArr, isShiny: h.isShiny || false });
                         }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', flexShrink: 0, minWidth: 0, maxWidth: isWide ? undefined : 44 }}>
                           <div style={{ position: 'relative', width: isWide ? '100%' : 44, height: isWide ? undefined : 44, aspectRatio: '1', transition: 'transform .15s', zIndex: 1 }}
                             onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.zIndex = 10; }}
@@ -2968,7 +3021,7 @@ export default function App() {
       {showRules && <GameRulesModal onClose={() => setShowRules(false)} />}
 
       {/* Liste des gagnants d'une manche Entraînement (clic sur le feed) */}
-      {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} isShiny={beginnerWinnersPopup.isShiny || false} fireThreshold={Math.max(1, Number(gs.limits?.quizStreakHandicap?.threshold) || 3)} onClose={() => setBeginnerWinnersPopup(null)}
+      {beginnerWinnersPopup && <BeginnerWinnersModal card={beginnerWinnersPopup.card} winners={beginnerWinnersPopup.winners} gloryCount={beginnerWinnersPopup.gloryCount || 0} patronageWinners={beginnerWinnersPopup.patronageWinners || []} isShiny={beginnerWinnersPopup.isShiny || false} fireThreshold={Math.max(1, Number(gs.limits?.quizStreakHandicap?.threshold) || 3)} onClose={() => setBeginnerWinnersPopup(null)}
         // Clic sur le geocoin de la popup → vue en grand (CardDetailModal est sous la
         // popup en z-index, donc on ferme la popup avant d'ouvrir la carte).
         onCardClick={() => { setSelectedCard(beginnerWinnersPopup.card); setSelectedCardIsShiny(beginnerWinnersPopup.isShiny || false); setSelectedCardFromHistory(true); setBeginnerWinnersPopup(null); }} />}

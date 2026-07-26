@@ -745,6 +745,11 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
                 </>
               )}
               <GloryRow glory={gloryW} />
+              {Array.isArray(quiz.patronage_winners)&&quiz.patronage_winners.length>0 && (
+                <div style={{marginTop:8,fontSize:11,color:'#8d9db1',display:'flex',alignItems:'center',justifyContent:'center',gap:5,flexWrap:'wrap'}}>
+                  🎁 {(t('quiz_patronage_others')||'Mécène : {names}').replace('{names}', joinNames(quiz.patronage_winners.map(p=>p.recipient?`${p.pseudo} → ${p.recipient}`:p.pseudo)))}
+                </div>
+              )}
             </div>
           );
         })()}
@@ -791,7 +796,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,lostToFire=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeaders=null,prizesTotal=1,graceDeadline=null}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,lostToPatronage=null,lostToFire=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeaders=null,prizesTotal=1,graceDeadline=null}){
   const {t}=useT(); const {theme}=useTheme();
   // Décompte de grâce « encore Ns pour répondre » (gloire / multi-prix) — ticker local 1 s.
   const [,graceTick]=useState(0)
@@ -886,6 +891,19 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
                 </span>
                 <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🏆 {(t('quiz_glory_others')||'Pour la gloire : {names}').replace('{names}',joinNames(lostToGloryWinners.map(g=>g.pseudo)))}</span>
                 <GloryInfoButton size={11}/>
+              </div>
+            )}
+            {/* Mécènes du round : « 🎁 X → Y » (le don compte comme un geocoin gagné). */}
+            {Array.isArray(lostToPatronage) && lostToPatronage.length>0 && (
+              <div style={{fontSize:10,color:theme.textSecondary,display:'flex',alignItems:'center',gap:4,marginTop:3,minWidth:0,animation:'cgFade .35s .5s ease both',opacity:0}}>
+                <span style={{display:'flex',flexShrink:0}}>
+                  {lostToPatronage.map((p,i)=>(
+                    <span key={i} style={{display:'inline-flex',marginLeft:i?-5:0,zIndex:lostToPatronage.length-i}}>
+                      <Avatar pseudo={p.pseudo} avatarUrl={p.avatar||null} verified={!!p.avatar} size={15}/>
+                    </span>
+                  ))}
+                </span>
+                <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🎁 {(t('quiz_patronage_others')||'Mécène : {names}').replace('{names}',joinNames(lostToPatronage.map(p=>p.recipient?`${p.pseudo} → ${p.recipient}`:p.pseudo)))}</span>
               </div>
             )}
             <div style={{background:theme.overlayMd,borderRadius:50,height:3,overflow:'hidden',marginTop:6}}>
@@ -1417,7 +1435,7 @@ export function GameRulesModal({ onClose }) {
 // gloryCount > 0 : les N premiers sont des glory winners, les suivants les vrais gagnants.
 // Affichage HOMOGÈNE quel que soit le mode : avatar (photo de profil geocaching ou
 // initiale) + pseudo + badge de rang « 🏆 1er / 2e / 3e » (or / argent / bronze).
-export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClose, fireThreshold = 3, isShiny = false, onCardClick }) {
+export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, patronageWinners = [], onClose, fireThreshold = 3, isShiny = false, onCardClick }) {
   const { t } = useT();
   const RANK = ['#f59e0b', '#9aa6b2', '#b45309'];   // or / argent / bronze
   // winners.length === gloryCount : joué pour la gloire, personne n'a remporté le geocoin.
@@ -1452,7 +1470,7 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
             <Card card={card} isShiny={isShiny} onClick={onCardClick} />
           </div>
         )}
-        {winners.length === 0 ? (
+        {winners.length === 0 && patronageWinners.length === 0 ? (
           <div style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center', padding: '10px 0' }}>{t('beginner_recap_none') || "Personne n'a trouvé cette fois !"}</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1466,11 +1484,33 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, onClo
                   <span style={{ marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3, background: '#ffffff', border: `1.5px solid ${rankColor(i)}`, color: '#334155', fontWeight: 900, fontSize: 10.5, padding: '3px 8px', borderRadius: 20 }}>🏆 {ordinal(i + 1)}</span>
                 </div>
               ))
-            ) : (
+            ) : (patronageWinners.length === 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 11px' }}>
                 <span style={{ fontSize: 16, flexShrink: 0 }}>🚫</span>
                 <div style={{ fontSize: 12.5, fontWeight: 800, color: '#78716c' }}>{t('glory_nobody_won') || "Personne n'a remporté ce geocoin"}</div>
               </div>
+            ))}
+            {patronageWinners.length > 0 && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, color: '#a8a29e' }}>{t('patronage_section_title') || 'Mécène'}</span>
+                </div>
+                {patronageWinners.map((p, i) => (
+                  <div key={`pat${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#3aa0ff12', border: '1px solid #3aa0ff44', borderRadius: 9, padding: '6px 11px' }}>
+                    <FireWrap fire={isFireEntry(p)} streak={p.fire_streak ?? null} threshold={fireThreshold} hint={fireHint(p)} size={24}>
+                      <Avatar pseudo={nameOf(p)} avatarUrl={avatarOf(p)} verified={!!avatarOf(p)} halo={haloOf(p)} size={24} />
+                    </FireWrap>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#1a2538', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1, minWidth: 0 }}>{nameOf(p)}</span>
+                    <span style={{ fontSize: 12, color: '#3aa0ff', flexShrink: 0, fontWeight: 900 }}>🎁→</span>
+                    {p.recipient
+                      ? <>
+                          <Avatar pseudo={p.recipient} avatarUrl={p.recipient_avatar || null} verified={!!p.recipient_avatar} size={22} />
+                          <span style={{ fontSize: 12.5, fontWeight: 800, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1, minWidth: 0 }}>{p.recipient}</span>
+                        </>
+                      : <span style={{ fontSize: 11.5, fontWeight: 700, color: '#94a3b8', fontStyle: 'italic' }}>{t('patronage_recipient_pending') || '…'}</span>}
+                  </div>
+                ))}
+              </>
             )}
             {gloryList.length > 0 && (
               <>
