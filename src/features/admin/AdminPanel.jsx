@@ -162,6 +162,7 @@ const TRIGGER_META = {
   rank_reached:    { label:"Rang atteint",             unit:"points de score",     help:"Score de rang minimum à atteindre." },
   referral:        { label:"Parrainage « Le parrain »", unit:"filleuls qualifiés", help:"Nombre de filleuls devant chacun récolter assez de geocoins. Le seuil de geocoins par filleul et le max à l'inscription se règlent dans Limites & Prix → Parrainage." },
   glory_win:       { label:"Victoires de gloire",      unit:"victoires de gloire", help:"Nombre de victoires « pour la gloire » (bonne réponse alors que toutes les limites quotidiennes sont atteintes)." },
+  quest_completed: { label:"Quêtes validées",          unit:"quêtes validées",     help:"Nombre total de quêtes validées, quotidiennes ET hebdomadaires (ex. « Roi des quêtes » : +1 à chaque quête réussie)." },
 };
 const TRIGGER_KEYS = Object.keys(TRIGGER_META);
 const triggerLabel = t => TRIGGER_META[t]?.label || t;
