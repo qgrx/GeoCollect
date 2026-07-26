@@ -2858,9 +2858,15 @@ export default function App() {
         <AchievementUpgradePopup upgrade={gs.pendingUpgrade[0]} cardPool={gs.cardPool} onClose={() => gs.setPendingUpgrade(prev => prev.slice(1))} />
       )}
 
-      {/* ── Sale notifications ── */}
+      {/* ── Sale notifications ──
+           Mobile : en bas (au-dessus de la barre de nav) — surtout PAS en haut, où
+           la notif recouvrirait le bouton « Participer » et empêcherait de rejoindre
+           le quiz (retour Tristan). Desktop : coin haut-droit, à l'écart du bouton
+           Participer de la sidebar gauche. Empilement piloté ici (l'offset i*90 était
+           auparavant neutralisé par le position:fixed interne de SaleNotif). */}
       {gs.saleNotifs.slice(0, 3).map((n, i) => (
-        <div key={n.id} style={{ position: 'fixed', top: `${70 + i * 90}px`, right: 20, zIndex: 3500 }}>
+        <div key={n.id} style={{ position: 'fixed', right: 20, zIndex: 3500,
+          ...(isWide ? { top: `${70 + i * 90}px` } : { bottom: `calc(76px + env(safe-area-inset-bottom) + ${i * 90}px)` }) }}>
           <SaleNotif notif={n} ranks={gs.limits.playerRanks} onClose={() => gs.setSaleNotifs(prev => prev.filter(x => x.id !== n.id))} />
         </div>
       ))}

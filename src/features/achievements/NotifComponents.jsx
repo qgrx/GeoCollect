@@ -121,7 +121,7 @@ export function SaleNotif({ notif, onClose, ranks, buyerScore }) {
   }, [])
 
   return (
-    <div style={{ position: 'fixed', top: 70, right: 20, zIndex: 3500, width: 'min(96vw,330px)',
+    <div style={{ width: 'min(96vw,330px)',
       background: 'linear-gradient(145deg,#0d2b1a,#0f3d1f)',
       border: '1.5px solid #00b89466', borderRadius: 16,
       boxShadow: '0 12px 40px #000b, 0 0 0 1px #00b89422',
