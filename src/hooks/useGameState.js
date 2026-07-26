@@ -156,6 +156,18 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     return { data, error }
   }, [refreshWeeklyQuests])
 
+  // Check-in « connexion du jour » + rechargement des quêtes (jour + semaine).
+  // Utilisé au montage ET au retour d'onglet (App.jsx) : sur un onglet resté
+  // ouvert, franchir minuit/lundi ne comptait pas la connexion et n'actualisait
+  // pas les quêtes tant qu'aucune action de jeu ne bumpait le signal.
+  const checkinQuests = useCallback(() => {
+    apiQuestCheckin().then(({ data }) => {
+      if (data?.forge_points_earned > 0) setForgePointsSignal(s => s + data.forge_points_earned)
+      refreshQuests()
+      refreshWeeklyQuests()
+    }).catch(() => {})
+  }, [refreshQuests, refreshWeeklyQuests])
+
   // Recharger après chaque action de jeu pertinente (signal bumpé par
   // addForgePoints, triggerQuestRefresh, achats/ventes…)
   useEffect(() => {
@@ -551,11 +563,8 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     }
 
     loadAll()
-    // Checkin quête connexion puis rechargement des quêtes (séquentiel pour que daily_connection soit reflété)
-    apiQuestCheckin().then(({ data }) => {
-      if (data?.forge_points_earned > 0) setForgePointsSignal(s => s + data.forge_points_earned)
-      return refreshQuests()
-    }).catch(() => {})
+    // Checkin quête connexion puis rechargement des quêtes (jour + semaine)
+    checkinQuests()
   }, [profile?.id])
 
   // ── Recharger le marché périodiquement (toutes les 30s) ──────────────────
@@ -991,7 +1000,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     // Derived
     isGuest, uniqueCards, totalUnique, myScore,
     quests, setQuests, questRerollUsed, rerollQuest, forgePoints, forgePointsSignal, questActivitySignal,
-    weeklyQuests, setWeeklyQuests, weeklyQuestRerollUsed, rerollWeeklyQuest, refreshWeeklyQuests,
+    weeklyQuests, setWeeklyQuests, weeklyQuestRerollUsed, rerollWeeklyQuest, refreshWeeklyQuests, checkinQuests,
     addForgePoints: (pts) => {
       setQuestActivitySignal(s => s + 1)
       if (!pts) return

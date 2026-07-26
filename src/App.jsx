@@ -294,6 +294,12 @@ export default function App() {
   const refreshQuizHistoryRef = useRef(refreshQuizHistory)
   useEffect(() => { refreshQuizHistoryRef.current = refreshQuizHistory })
   useEffect(() => { refreshQuizHistoryRef.current() }, [auth.profile?.id])
+  // Check-in + rafraîchissement des quêtes (quotidiennes + hebdo) au retour d'onglet :
+  // sur un onglet resté ouvert, franchir minuit (reset quotidien) ou le lundi (reset
+  // hebdo) ne comptait pas la connexion et ne régénérait pas les quêtes tant qu'aucune
+  // action de jeu ne bumpait le signal. Parité avec un rechargement manuel (F5).
+  const questRefreshRef = useRef(gs.checkinQuests)
+  useEffect(() => { questRefreshRef.current = gs.checkinQuests })
 
   // Retour d'onglet après une longue absence : re-fetch immédiat, sans attendre
   // que socket.io détecte une connexion morte (jusqu'à ~45 s de ping timeout
@@ -302,7 +308,10 @@ export default function App() {
     let hiddenAt = null
     const onVis = () => {
       if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return }
-      if (hiddenAt && Date.now() - hiddenAt > 60_000) refreshQuizHistoryRef.current()
+      if (hiddenAt && Date.now() - hiddenAt > 60_000) {
+        refreshQuizHistoryRef.current()
+        questRefreshRef.current?.()   // check-in + re-fetch quêtes du jour + semaine
+      }
       hiddenAt = null
     }
     document.addEventListener('visibilitychange', onVis)
