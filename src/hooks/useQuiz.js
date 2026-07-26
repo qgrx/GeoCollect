@@ -211,7 +211,14 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
           if (body?.error === 'too_many_attempts') return { throttled: true, wait_ms: body.retry_after_ms || 0 }
           return 'fast'
         }
-        if (status === 409 || status === 404) { resolvedQuizIdsRef.current.add(activeQuiz.id); return 'late' }  // déjà résolu / expiré
+        if (status === 409 || status === 404) {
+          // Bonne réponse mais round déjà résolu par un autre : le serveur a quand
+          // même compté cette bonne réponse pour les quêtes HEBDO (toute bonne
+          // réponse PvP) → notifier l'activité quête pour rafraîchir la barre.
+          resolvedQuizIdsRef.current.add(activeQuiz.id)
+          cbRef.current.onForgePointsEarned?.(0)
+          return 'late'
+        }  // déjà résolu / expiré
         if (status === 422) return false     // vraie mauvaise réponse
         return 'error'                        // réseau / 5xx / inconnu : la réponse a pu aboutir serveur
       }
@@ -220,9 +227,14 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // différé pour ne pas écraser le toast de victoire affiché par les branches.
       if (Array.isArray(data.streak_broken_by) && data.streak_broken_by.length) {
         const names = data.streak_broken_by.join(', ')
+        // Accord du verbe : plusieurs joueurs plus rapides → variante plurielle
+        // (« ont répondu ») comme le message « en feu » (streak_bar_small_multi).
+        const key = data.streak_broken_by.length > 1
+          ? 'toast_streak_broken_faster_multi'
+          : 'toast_streak_broken_faster'
         setTimeout(() => {
           cbRef.current.showToast?.(
-            (cbRef.current.t('toast_streak_broken_faster') || '💔 Série cassée : {names} a répondu avant toi').replace('{names}', names),
+            (cbRef.current.t(key) || '💔 Série cassée : {names} a répondu avant toi').replace('{names}', names),
             'error'
           )
         }, 3000)

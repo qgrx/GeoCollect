@@ -12,9 +12,9 @@ import { getLang } from '../i18n/translations.js'
  * d'horloge client. Une resynchronisation périodique via /current répare les
  * éventuels events socket manqués (sinon le client pouvait rester sans geocoin).
  */
-export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements, checkAchievementUpgrades, refreshProfile }) {
+export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements, checkAchievementUpgrades, refreshProfile, onQuestActivity }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements, checkAchievementUpgrades, refreshProfile }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, t, cardPool, checkAchievements, checkAchievementUpgrades, refreshProfile, onQuestActivity }
   const activeRef = useRef(active)
   useEffect(() => { activeRef.current = active }, [active])
 
@@ -210,6 +210,10 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
       return 'error'
     }
     setAlreadyWon(true)
+    // Toute bonne réponse en Entraînement fait progresser des quêtes HEBDO
+    // (quiz_answer_beginner, jours joués) → rafraîchir l'affichage des quêtes ;
+    // sans ça, la barre n'évoluait qu'au rechargement manuel de la page.
+    cbRef.current.onQuestActivity?.()
     const autoClose = () => setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 2500)
     if (data.already_won) { autoClose(); return { ok: true, outcome: 'card', card } }
     if (data.card_earned) earnCard(card, false)

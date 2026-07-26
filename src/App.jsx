@@ -1251,6 +1251,7 @@ export default function App() {
     cardPool: gs.cardPool,
     checkAchievements: gs.checkAchievements,
     checkAchievementUpgrades: gs.checkAchievementUpgrades,
+    onQuestActivity: gs.triggerQuestRefresh,   // bonne réponse Entraînement → refresh quêtes (hebdo)
     refreshProfile: () => {
       import('./services/api.js').then(({ apiGetProfile }) => apiGetProfile?.().then(({ data }) => {
         if (data?.profile) auth.setProfile(data.profile)
