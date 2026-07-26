@@ -14,7 +14,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiAdminEditFullQuestion, apiAdminAddQuestion, apiAdminBatchAddQuestions,
   apiAdminDeleteDraftQuestions, apiAdminDeletePublishedQuestions,
   apiAdminToggleQuestion, apiReleaseHiddenQuestions,
-  apiGetAchievementDefs, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef, apiReleaseHiddenAchievements,
+  apiGetAchievementDefs, apiGetAchievementDefStats, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef, apiReleaseHiddenAchievements,
   apiAdminAddCard,
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
   apiGetDailySchedule, apiRegenerateDailySchedule,
@@ -611,6 +611,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const [achCards,setAchCards]=useState([]);
   const [editAch,setEditAch]=useState(null);
   const [achDefs,setAchDefs]=useState([]);
+  const [achStats,setAchStats]=useState(null);   // {total_players, stats:{[defId]:{started,completed,tiers}}}
   const [editDef,setEditDef]=useState(null);
   const [newDef,setNewDef]=useState(null);
   const [newAchCard,setNewAchCard]=useState(null);
@@ -686,6 +687,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
     apiGetAchievementDefs().then(({data})=>{
       if(data?.definitions) setAchDefs(data.definitions);
     });
+    apiGetAchievementDefStats().then(({data})=>{ if(data?.stats) setAchStats(data); });
   },[tab]);
 
   useEffect(()=>{
@@ -1894,6 +1896,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                 const evo=def.threshold_rare!=null;
                 const isEditing=editDef?.id===def.id;
                 const isDup=!def.hidden&&def.active&&(typeCount[def.type]||0)>1;
+                const st=achStats?.stats?.[def.id];
+                const totalP=achStats?.total_players||0;
                 return(
                   <div key={def.id} style={{background:isEditing?'#ffffff0a':'#ffffff05',border:`1px solid ${isDup?'#f9ca2466':def.hidden?'#e1705544':def.active?'#ffffff10':'#e74c3c33'}`,borderRadius:10,overflow:'hidden',transition:'background .15s'}}>
                     {/* Ligne résumé */}
@@ -1915,6 +1919,23 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                           <span style={{fontSize:10,color:'#f9ca24',fontWeight:700}}>{evo?`${def.threshold} · ${def.threshold_rare} · ${def.threshold_epic??'—'} · ${def.threshold_legendary??'—'}`:def.threshold}</span>
                           {def.description&&<span style={{fontSize:10,color:'#8daacc',fontStyle:'italic'}}>{def.description}</span>}
                         </div>
+                        {/* Stats d'avancement des joueurs (bots/comptes supprimés exclus) */}
+                        {st&&(
+                          <div style={{display:'flex',gap:5,alignItems:'center',marginTop:4,flexWrap:'wrap'}}>
+                            {evo?(
+                              [['commun','Commun'],['rare','Rare'],['épique','Épique'],['légendaire','Légendaire']].map(([rar,lbl],i)=>{
+                                const {c1}=cardCC(rar);
+                                return <span key={rar} title={`${st.tiers[i]} joueur(s) ont atteint le palier ${lbl}`}
+                                  style={{fontSize:9,fontWeight:800,background:`${c1}1a`,color:c1,border:`1px solid ${c1}44`,borderRadius:5,padding:'1px 6px'}}>
+                                  {lbl[0]} {st.tiers[i]}</span>;
+                              })
+                            ):(<>
+                              <span title="Joueurs ayant une progression en cours" style={{fontSize:9,fontWeight:800,background:'#3498db1a',color:'#5dade2',border:'1px solid #3498db44',borderRadius:5,padding:'1px 6px'}}>▶ {st.started}</span>
+                              <span title="Joueurs ayant complété l'achievement" style={{fontSize:9,fontWeight:800,background:'#00b8941a',color:'#00b894',border:'1px solid #00b89444',borderRadius:5,padding:'1px 6px'}}>✓ {st.completed}</span>
+                            </>)}
+                            {totalP>0&&(()=>{const reached=evo?st.tiers[0]:st.completed;return <span style={{fontSize:9,color:'#6b8299'}} title={`${totalP} joueurs actifs au total`}>· {Math.round(reached/totalP*100)}% débloqué</span>;})()}
+                          </div>
+                        )}
                       </div>
                       {/* Statut + toggles */}
                       <div style={{display:'flex',gap:5,alignItems:'center',flexShrink:0}} onClick={e=>e.stopPropagation()}>

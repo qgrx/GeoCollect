@@ -260,6 +260,7 @@ export const apiDeleteAdminWeeklyQuest = (id)     => apiFetch(`/api/admin/weekly
 export const apiRegenerateWeeklySchedule = (weekStart) => apiFetch('/api/admin/weekly-quests/schedule/regenerate', { method: 'POST', body: { week_start: weekStart } })
 export const apiGetWeeklySchedule      = (weekStart) => apiFetch(`/api/admin/weekly-quests/schedule${weekStart ? '?week_start=' + weekStart : ''}`)
 export const apiGetAchievementDefs     = ()       => apiFetch('/api/admin/achievement-definitions')
+export const apiGetAchievementDefStats = ()       => apiFetch('/api/admin/achievement-definitions/stats')
 export const apiCreateAchievementDef   = (body)   => apiFetch('/api/admin/achievement-definitions', { method: 'POST', body })
 export const apiUpdateAchievementDef   = (id, body) => apiFetch(`/api/admin/achievement-definitions/${id}`, { method: 'PATCH', body })
 export const apiDeleteAchievementDef   = (id)     => apiFetch(`/api/admin/achievement-definitions/${id}`, { method: 'DELETE' })
