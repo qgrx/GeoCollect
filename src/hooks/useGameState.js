@@ -96,6 +96,54 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const mounted = useRef(true)
   useEffect(() => () => { mounted.current = false }, [])
 
+  // ── Réconciliation des geocoins évolutifs ─────────────────────────────────
+  // /api/achievements (le `tier`) fait autorité sur QUELLE variante d'une série
+  // évolutive est possédée. Certaines montées de palier — celles déclenchées par
+  // une quête (`quest_completed`, ex. « Monarque des quêtes ») — sont évaluées
+  // en best-effort côté serveur : le swap de carte est fait en base mais les
+  // `achievement_upgrades` ne remontent PAS dans la réponse HTTP, donc le client
+  // n'applique jamais l'échange local. La collection reste alors sur l'ancienne
+  // variante (« validée ») pendant que la progression indique déjà le nouveau
+  // tier (variante « manquante ») → deux geocoins affichés pour la même série.
+  // On aligne ici la collection locale sur le tier autoritatif : la carte du
+  // palier atteint possédée, les sœurs vidées. Idempotent (ne re-render que si
+  // la collection change réellement) et générique (auto-répare toutes les séries
+  // et tous les chemins qui oublient de pousser l'upgrade).
+  useEffect(() => {
+    const infos = Object.values(achievementProgress || {})
+    if (!infos.length) return
+    setCollection(prev => {
+      let next = prev
+      const seen = new Set()
+      for (const info of infos) {
+        if (!info?.tiers) continue
+        const key = info.tiers.map(t => t.card_id || 0).join(',')
+        if (seen.has(key)) continue
+        seen.add(key)
+        const tier = info.tier || 0
+        if (tier < 1) continue   // pas encore débloqué : aucune variante à posséder
+        // Variante active = carte du plus haut palier atteint, avec repli vers le
+        // bas pour les séries incomplètes (mêmes règles qu'evolutiveHiddenIds).
+        let activeId = null
+        for (let i = Math.min(tier, info.tiers.length) - 1; i >= 0; i--) {
+          if (info.tiers[i]?.card_id) { activeId = info.tiers[i].card_id; break }
+        }
+        if (!activeId) continue
+        if (!(next[activeId] > 0)) {
+          if (next === prev) next = { ...prev }
+          next[activeId] = 1
+        }
+        for (const tt of info.tiers) {
+          if (tt.card_id && tt.card_id !== activeId && next[tt.card_id] > 0) {
+            if (next === prev) next = { ...prev }
+            delete next[tt.card_id]
+          }
+        }
+      }
+      return next   // === prev si rien n'a changé → pas de re-render
+    })
+  }, [achievementProgress])
+
   // ── Quêtes du jour — rechargement centralisé et séquencé ──────────────────
   // Seule la réponse de la requête la plus récente est appliquée. Sans ce
   // garde-fou, un fetch parti AVANT une action de jeu (ex. les deux chargements
