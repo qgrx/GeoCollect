@@ -47,6 +47,42 @@ export function weekStartParis(date = new Date()) {
   return anchor.toISOString().slice(0, 10);
 }
 
+// Décalage de Paris (minutes à AJOUTER à l'UTC) applicable à cet instant — +60 en
+// hiver, +120 en été. Sert à retrouver l'instant UTC exact d'un minuit de Paris.
+function parisOffsetMin(date) {
+  const p = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Paris', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(date).reduce((a, x) => (a[x.type] = x.value, a), {});
+  const wallAsUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  return Math.round((wallAsUTC - date.getTime()) / 60000);
+}
+
+// Instant UTC du minuit de Paris (00:00 heure locale) d'une date calendaire donnée.
+// On évalue le décalage à 00:00 UTC de ce jour : cet instant tombe à 01:00/02:00 Paris,
+// toujours AVANT la bascule DST (qui a lieu à 02:00/03:00) — donc même décalage qu'à
+// minuit Paris. Robuste aux changements d'heure.
+function parisMidnightUTC(y, mZero, d) {
+  const guessUTC = Date.UTC(y, mZero, d, 0, 0, 0);
+  const off = parisOffsetMin(new Date(guessUTC));
+  return new Date(guessUTC - off * 60000);
+}
+
+// Instant du PROCHAIN reset quotidien des quêtes : minuit de Paris, demain.
+export function nextDailyResetParis(date = new Date()) {
+  const d = new Date(todayParis(date) + 'T12:00:00Z');   // aujourd'hui (Paris), midi UTC
+  d.setUTCDate(d.getUTCDate() + 1);                       // → demain
+  return parisMidnightUTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+// Instant du PROCHAIN reset hebdomadaire des quêtes : minuit de Paris du lundi suivant.
+export function nextWeeklyResetParis(date = new Date()) {
+  const monday = new Date(weekStartParis(date) + 'T12:00:00Z'); // lundi de CETTE semaine
+  monday.setUTCDate(monday.getUTCDate() + 7);                   // → lundi prochain
+  return parisMidnightUTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate());
+}
+
 // Halo « mécénat » : couleur du halo affiché autour du pseudo d'un joueur ayant
 // ATTEINT son plafond hebdo de DONS pour une rareté (bleu rare, violet épique, orange
 // légendaire). La rareté la plus haute atteinte l'emporte. null si aucun plafond atteint.

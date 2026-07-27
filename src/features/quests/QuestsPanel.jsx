@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
+import { nextDailyResetParis, nextWeeklyResetParis, todayParis, weekStartParis } from '../../utils/gameUtils.js'
 
 // Panneau de quêtes unifié : onglets « Jour / Semaine » — on n'affiche que les 3
 // quêtes de la période active (moitié de la hauteur vs deux listes empilées),
@@ -15,6 +16,62 @@ const questText = (txt, threshold) => (txt || '').replace(/\{n\}/g, threshold)
 
 // Type de quête non remplaçable (récompense quasi-automatique) par période.
 const NON_REROLLABLE = { daily: 'daily_connection', weekly: 'weekly_connection' }
+
+// Étincelles de l'effet de remplacement (positions/timings fixes → burst « à la
+// Hearthstone » quand la nouvelle quête apparaît). Placées DANS la ligne, montent en
+// s'effaçant.
+const SPARKS = [
+  { left: '10%', top: '55%', size: 11, dur: 1.0,  delay: 0.05 },
+  { left: '34%', top: '18%', size: 9,  dur: 1.1,  delay: 0.20 },
+  { left: '58%', top: '62%', size: 12, dur: 1.0,  delay: 0.10 },
+  { left: '80%', top: '26%', size: 9,  dur: 1.15, delay: 0.26 },
+  { left: '48%', top: '40%', size: 13, dur: 1.05, delay: 0.0  },
+]
+
+// Délai (ms) → « Nj Hh » / « Hh Mm » / « Mm Ss » (2 unités max), unités localisées
+// via la clé i18n quest_time_units ("j h min s"). Les secondes ne s'affichent que
+// sous l'heure (sinon inutile de faire défiler chaque seconde toute la journée).
+function formatCountdown(ms, units) {
+  const [uD, uH, uM, uS] = units.split(' ')
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const d = Math.floor(total / 86400)
+  const h = Math.floor((total % 86400) / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  if (d > 0) return `${d}${uD} ${h}${uH}`
+  if (h > 0) return `${h}${uH} ${m}${uM}`
+  return `${m}${uM} ${String(s).padStart(2, '0')}${uS}`
+}
+
+// Décompte avant le prochain renouvellement des quêtes (minuit Paris au quotidien,
+// lundi minuit Paris à l'hebdo). Composant isolé : lui seul se re-rend chaque seconde,
+// pas tout le panneau. La cible est recalculée à chaque tic → elle bascule d'elle-même
+// sur la période suivante une fois le reset passé.
+function QuestCountdown({ period, theme }) {
+  const { t } = useT()
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick(n => n + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const target = period === 'weekly' ? nextWeeklyResetParis() : nextDailyResetParis()
+  const ms = target.getTime() - Date.now()
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+      marginTop: 3, fontSize: 9, fontWeight: 800, letterSpacing: .2,
+      color: theme.textMuted,
+    }}>
+      <span style={{ opacity: .85 }}>⏳</span>
+      <span>
+        {t('quest_renew_label')}{' '}
+        <b style={{ color: theme.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+          {formatCountdown(ms, t('quest_time_units') || 'd h m s')}
+        </b>
+      </span>
+    </div>
+  )
+}
 // Clés i18n du texte de reroll (bouton + corps de confirmation) par période.
 const REROLL_KEYS = {
   daily:  { btn: 'quest_reroll_btn',        body: 'quest_reroll_body' },
@@ -28,6 +85,27 @@ export default function QuestsPanel({ daily, weekly }) {
   const [confirmQuest, setConfirmQuest] = useState(null)
   const [rerollBusy,   setRerollBusy]   = useState(false)
   const [rerollErr,    setRerollErr]    = useState('')
+  // Quête fraîchement tirée au reroll → joue l'effet d'apparition ({ key, id }).
+  const [flash,        setFlash]        = useState(null)
+  // Période dont on découvre les quêtes pour la 1re fois après un reset → cascade.
+  const [reveal,       setReveal]       = useState(null)
+
+  // Révélation en cascade des quêtes d'une période la 1re fois qu'on les voit après un
+  // reset (nouveau jour / nouvelle semaine). Jouée UNE SEULE FOIS par reset (mémorisée
+  // en localStorage) : ni à chaque ouverture du panneau, ni à chaque changement d'onglet.
+  const activeHasQuests = (((active === 'weekly' ? weekly : daily)?.quests?.length) || 0) > 0
+  useEffect(() => {
+    if (!activeHasQuests) return
+    const rk = active === 'weekly' ? weekStartParis() : todayParis()
+    const storeKey = `gc_qseen_${active}`
+    let seen = null
+    try { seen = localStorage.getItem(storeKey) } catch { /* stockage indispo (mode privé) */ }
+    if (seen === rk) return
+    try { localStorage.setItem(storeKey, rk) } catch { /* ignore */ }
+    setReveal(active)
+    const timer = setTimeout(() => setReveal(r => (r === active ? null : r)), 1700)
+    return () => clearTimeout(timer)
+  }, [active, activeHasQuests])
 
   // Périodes réellement disponibles (weekly absent en démo → onglet unique).
   const periods = [
@@ -113,16 +191,26 @@ export default function QuestsPanel({ daily, weekly }) {
       </div>
 
       {/* Liste des quêtes de la période active */}
-      {quests.map(q => {
-        const done = !!q.completed_at
-        const pct  = Math.min(100, Math.round((q.progress / q.threshold) * 100))
+      {quests.map((q, i) => {
+        const done     = !!q.completed_at
+        const pct      = Math.min(100, Math.round((q.progress / q.threshold) * 100))
+        const isFlash  = flash && flash.key === cur.key && flash.id === q.id
+        const isReveal = reveal === cur.key
+        const fx       = isFlash || isReveal
+        // Découverte du jour/semaine : cascade (chaque ligne décalée) ; reroll : immédiat.
+        const fxDelay  = isReveal ? i * 0.14 : 0
 
         return (
           <div key={`${cur.key}-${q.id}`} style={{
+            position: 'relative',
             background: done ? '#00b89410' : theme.overlay,
-            border: `1px solid ${done ? '#00b89433' : theme.border}`,
+            border: `1px solid ${fx ? '#ffd17a' : (done ? '#00b89433' : theme.border)}`,
             borderRadius: 8, padding: '5px 8px',
             transition: 'all .2s',
+            transformOrigin: 'center top',
+            animation: fx
+              ? `questFlip .6s cubic-bezier(.2,.8,.25,1) ${fxDelay}s both, questGlow 1.2s ease-out ${fxDelay}s`
+              : undefined,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               {/* Statut — remplacé par le bouton reroll tant qu'il est disponible et
@@ -191,9 +279,59 @@ export default function QuestsPanel({ daily, weekly }) {
                 }} />
               </div>
             )}
+
+            {/* Effet « à la Hearthstone » : balayage doré + étincelles. Sert au reroll
+                (immédiat) ET à la découverte du jour/semaine (décalé par ligne). */}
+            {fx && (
+              <>
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 8,
+                  overflow: 'hidden', pointerEvents: 'none', zIndex: 2,
+                }}>
+                  <div style={{
+                    position: 'absolute', top: 0, bottom: 0, left: 0, width: '45%',
+                    background: 'linear-gradient(105deg, transparent, rgba(255,231,150,.5) 40%, rgba(255,255,255,.9) 50%, rgba(255,231,150,.5) 60%, transparent)',
+                    animation: 'questShine .85s ease-out both', animationDelay: `${fxDelay}s`,
+                  }} />
+                </div>
+                {SPARKS.map((sp, k) => (
+                  <span key={k} aria-hidden="true" style={{
+                    position: 'absolute', left: sp.left, top: sp.top,
+                    fontSize: sp.size, lineHeight: 1, pointerEvents: 'none', zIndex: 3,
+                    animation: `questSpark ${sp.dur}s ease-out ${(sp.delay + fxDelay).toFixed(2)}s both`,
+                  }}>✨</span>
+                ))}
+              </>
+            )}
           </div>
         )
       })}
+
+      {/* Décompte avant renouvellement de la période active (répond au « on ne sait
+          pas quand ça se termine »). */}
+      <QuestCountdown period={cur.key} theme={theme} />
+
+      {/* Keyframes de l'effet de remplacement (portées par le panneau). */}
+      <style>{`
+        @keyframes questFlip {
+          0%   { opacity: 0; transform: perspective(700px) rotateX(-82deg) scale(.96); }
+          55%  { opacity: 1; transform: perspective(700px) rotateX(10deg)  scale(1.02); }
+          100% { opacity: 1; transform: none; }
+        }
+        @keyframes questShine {
+          0%   { transform: translateX(-130%) skewX(-18deg); }
+          100% { transform: translateX(320%)  skewX(-18deg); }
+        }
+        @keyframes questSpark {
+          0%   { opacity: 0; transform: translateY(2px)   scale(.4); }
+          25%  { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-20px) scale(1.1); }
+        }
+        @keyframes questGlow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,209,122,0); }
+          45%      { box-shadow: 0 0 16px 3px rgba(255,209,122,.55); }
+        }
+      `}</style>
 
       {/* Écran de confirmation du remplacement — porté sur <body> (portal). */}
       {confirmQuest && createPortal(
@@ -241,10 +379,18 @@ export default function QuestsPanel({ daily, weekly }) {
                 disabled={rerollBusy}
                 onClick={async () => {
                   setRerollBusy(true); setRerollErr('')
-                  const { error } = await onReroll(confirmQuest.id)
+                  const periodKey = cur.key
+                  const { data, error } = await onReroll(confirmQuest.id)
                   setRerollBusy(false)
-                  if (error) setRerollErr(typeof error === 'string' ? error : (t('quest_reroll_error') || 'Remplacement impossible'))
-                  else setConfirmQuest(null)
+                  if (error) { setRerollErr(typeof error === 'string' ? error : (t('quest_reroll_error') || 'Remplacement impossible')); return }
+                  setConfirmQuest(null)
+                  // Déclenche l'effet d'apparition sur la nouvelle quête (elle arrive
+                  // dans la liste après le refresh async côté parent).
+                  const newId = data?.quest?.id
+                  if (newId != null) {
+                    setFlash({ key: periodKey, id: newId })
+                    setTimeout(() => setFlash(f => (f && f.key === periodKey && f.id === newId) ? null : f), 2200)
+                  }
                 }}
                 style={{
                   background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff',
