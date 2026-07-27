@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
@@ -16,6 +16,15 @@ const questText = (txt, threshold) => (txt || '').replace(/\{n\}/g, threshold)
 
 // Type de quête non remplaçable (récompense quasi-automatique) par période.
 const NON_REROLLABLE = { daily: 'daily_connection', weekly: 'weekly_connection' }
+
+// Ordre des onglets (gauche → droite) : sert à orienter la transition de bascule.
+const TAB_ORDER = { daily: 0, weekly: 1 }
+
+// Durées (ms) de la transition d'onglet — calées sur les animations CSS plus bas
+// (durée + décalage de la 3e quête) : sortie .18s + 2×.04s ≈ 260 ; entrée .26s + 2×.05s ≈ 360.
+const TX_OUT_MS = 260
+const TX_IN_MS  = 380
+const REVEAL_MS = 1700   // découverte en cascade (1re fois après un reset)
 
 // Étincelles de l'effet de remplacement (positions/timings fixes → burst « à la
 // Hearthstone » quand la nouvelle quête apparaît). Placées DANS la ligne, montent en
@@ -89,23 +98,42 @@ export default function QuestsPanel({ daily, weekly }) {
   const [flash,        setFlash]        = useState(null)
   // Période dont on découvre les quêtes pour la 1re fois après un reset → cascade.
   const [reveal,       setReveal]       = useState(null)
+  // Sens de la dernière bascule d'onglet (1 = vers la droite, -1 = vers la gauche).
+  const [dir,          setDir]          = useState(0)
+  // Phase de la transition d'onglet : 'idle' | 'out' (sortie à gauche) | 'in' (entrée).
+  const [phase,        setPhase]        = useState('idle')
 
-  // Révélation en cascade des quêtes d'une période la 1re fois qu'on les voit après un
-  // reset (nouveau jour / nouvelle semaine). Jouée UNE SEULE FOIS par reset (mémorisée
-  // en localStorage) : ni à chaque ouverture du panneau, ni à chaque changement d'onglet.
-  const activeHasQuests = (((active === 'weekly' ? weekly : daily)?.quests?.length) || 0) > 0
-  useEffect(() => {
-    if (!activeHasQuests) return
-    const rk = active === 'weekly' ? weekStartParis() : todayParis()
-    const storeKey = `gc_qseen_${active}`
+  // Timers de transition/découverte, purgés au démontage (évite un setState tardif).
+  const timers = useRef([])
+  const addTimer = (fn, ms) => { timers.current.push(setTimeout(fn, ms)) }
+  useEffect(() => () => { timers.current.forEach(clearTimeout); timers.current = [] }, [])
+
+  // Clé de reset de la période (jour ou lundi, heure de Paris).
+  const resetKeyOf = (key) => (key === 'weekly' ? weekStartParis() : todayParis())
+  // Marque une période « vue » pour son reset courant. Renvoie true s'il fallait la
+  // révéler (pas encore vue). Best-effort : stockage indispo → on révèle (1×/session).
+  const markSeen = (key) => {
+    const rk = resetKeyOf(key), sk = `gc_qseen_${key}`
     let seen = null
-    try { seen = localStorage.getItem(storeKey) } catch { /* stockage indispo (mode privé) */ }
-    if (seen === rk) return
-    try { localStorage.setItem(storeKey, rk) } catch { /* ignore */ }
-    setReveal(active)
-    const timer = setTimeout(() => setReveal(r => (r === active ? null : r)), 1700)
-    return () => clearTimeout(timer)
-  }, [active, activeHasQuests])
+    try { seen = localStorage.getItem(sk) } catch { return true }
+    if (seen === rk) return false
+    try { localStorage.setItem(sk, rk) } catch { /* ignore */ }
+    return true
+  }
+  const triggerReveal = (key) => {
+    setReveal(key)
+    addTimer(() => setReveal(r => (r === key ? null : r)), REVEAL_MS)
+  }
+
+  // Découverte au tout 1er affichage des quêtes (période par défaut), une seule fois.
+  // Les découvertes déclenchées par un changement d'onglet sont gérées dans switchTo.
+  const activeHasQuests = (((active === 'weekly' ? weekly : daily)?.quests?.length) || 0) > 0
+  const didInitReveal = useRef(false)
+  useEffect(() => {
+    if (didInitReveal.current || !activeHasQuests) return
+    didInitReveal.current = true
+    if (markSeen(active)) triggerReveal(active)
+  }, [activeHasQuests])
 
   // Périodes réellement disponibles (weekly absent en démo → onglet unique).
   const periods = [
@@ -127,7 +155,21 @@ export default function QuestsPanel({ daily, weekly }) {
   const doneCount = quests.filter(q => q.completed_at).length
   const allDone   = doneCount === quests.length
 
-  const switchTo = (key) => { if (key !== active) { setActive(key); setConfirmQuest(null); setRerollErr('') } }
+  // Bascule d'onglet en 2 temps : les quêtes courantes sortent (glissement, décalées),
+  // PUIS les nouvelles entrent depuis l'autre bord (ou cascade de découverte si 1re
+  // fois). Verrouillé pendant l'animation pour éviter tout chevauchement.
+  const switchTo = (key) => {
+    if (key === active || phase !== 'idle') return
+    setDir((TAB_ORDER[key] ?? 0) > (TAB_ORDER[active] ?? 0) ? 1 : -1)
+    setConfirmQuest(null); setRerollErr('')
+    setPhase('out')
+    addTimer(() => {
+      setActive(key)
+      if (markSeen(key)) triggerReveal(key)   // 1re découverte → cascade en guise d'entrée
+      setPhase('in')
+      addTimer(() => setPhase('idle'), TX_IN_MS)
+    }, TX_OUT_MS)
+  }
 
   return (
     <div style={{
@@ -190,15 +232,28 @@ export default function QuestsPanel({ daily, weekly }) {
         )}
       </div>
 
+      {/* Contenu de la période active (liste + décompte). Les lignes s'animent
+          individuellement (sortie/entrée décalées) ; le conteneur reste stable pour
+          éviter tout « clignotement » global. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {/* Liste des quêtes de la période active */}
       {quests.map((q, i) => {
         const done     = !!q.completed_at
         const pct      = Math.min(100, Math.round((q.progress / q.threshold) * 100))
         const isFlash  = flash && flash.key === cur.key && flash.id === q.id
         const isReveal = reveal === cur.key
-        const fx       = isFlash || isReveal
-        // Découverte du jour/semaine : cascade (chaque ligne décalée) ; reroll : immédiat.
-        const fxDelay  = isReveal ? i * 0.14 : 0
+        const isOut    = phase === 'out'
+        const isIn     = phase === 'in'
+        // Une seule animation par ligne, par priorité : sortie > découverte > entrée > reroll.
+        // Sortie « vers la gauche » / entrée « depuis la droite » (miroir en sens inverse).
+        const flipAnim = 'questFlip .6s cubic-bezier(.2,.8,.25,1) both, questGlow 1.2s ease-out'
+        let rowAnim, rowDelay = 0
+        if      (isOut)    { rowAnim = 'questRowOut .18s ease-in both';               rowDelay = i * 0.04 }
+        else if (isReveal) { rowAnim = flipAnim;                                      rowDelay = i * 0.14 }
+        else if (isIn)     { rowAnim = 'questRowIn .26s cubic-bezier(.2,.8,.25,1) both'; rowDelay = i * 0.05 }
+        else if (isFlash)  { rowAnim = flipAnim;                                      rowDelay = 0 }
+        const fx      = isFlash || isReveal          // habillage doré (balayage + étincelles)
+        const fxDelay = isReveal ? i * 0.14 : 0
 
         return (
           <div key={`${cur.key}-${q.id}`} style={{
@@ -208,9 +263,10 @@ export default function QuestsPanel({ daily, weekly }) {
             borderRadius: 8, padding: '5px 8px',
             transition: 'all .2s',
             transformOrigin: 'center top',
-            animation: fx
-              ? `questFlip .6s cubic-bezier(.2,.8,.25,1) ${fxDelay}s both, questGlow 1.2s ease-out ${fxDelay}s`
-              : undefined,
+            '--tx-out': dir > 0 ? '-14px' : '14px',
+            '--tx-in':  dir > 0 ? '16px'  : '-16px',
+            animation: rowAnim || undefined,
+            animationDelay: rowAnim ? `${rowDelay}s` : undefined,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               {/* Statut — remplacé par le bouton reroll tant qu'il est disponible et
@@ -310,9 +366,18 @@ export default function QuestsPanel({ daily, weekly }) {
       {/* Décompte avant renouvellement de la période active (répond au « on ne sait
           pas quand ça se termine »). */}
       <QuestCountdown period={cur.key} theme={theme} />
+      </div>
 
       {/* Keyframes de l'effet de remplacement (portées par le panneau). */}
       <style>{`
+        @keyframes questRowOut {
+          from { opacity: 1; transform: translateX(0); }
+          to   { opacity: 0; transform: translateX(var(--tx-out, -14px)); }
+        }
+        @keyframes questRowIn {
+          from { opacity: 0; transform: translateX(var(--tx-in, 16px)); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
         @keyframes questFlip {
           0%   { opacity: 0; transform: perspective(700px) rotateX(-82deg) scale(.96); }
           55%  { opacity: 1; transform: perspective(700px) rotateX(10deg)  scale(1.02); }
@@ -330,6 +395,10 @@ export default function QuestsPanel({ daily, weekly }) {
         @keyframes questGlow {
           0%, 100% { box-shadow: 0 0 0 0 rgba(255,209,122,0); }
           45%      { box-shadow: 0 0 16px 3px rgba(255,209,122,.55); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          @keyframes questRowOut { from { opacity: 1; } to { opacity: 0; } }
+          @keyframes questRowIn  { from { opacity: 0; } to { opacity: 1; } }
         }
       `}</style>
 
