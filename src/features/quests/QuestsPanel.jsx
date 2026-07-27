@@ -371,7 +371,9 @@ export default function QuestsPanel({ daily, weekly }) {
 
       {/* Keyframes de l'effet de remplacement (portées par le panneau). */}
       <style>{`
-        .quest-reroll { opacity: .7; transition: transform .18s ease, opacity .15s ease; }
+        /* !important : le style global « button { transition: filter .2s !important } »
+           (index.css) écrase sinon la transition et la rotation devient instantanée. */
+        .quest-reroll { opacity: .7; transition: transform .2s ease, opacity .15s ease, filter .2s ease !important; }
         .quest-reroll:hover, .quest-reroll:focus-visible { opacity: 1; transform: rotate(-45deg); }
         @keyframes questRowOut {
           from { opacity: 1; transform: translateX(0); }
