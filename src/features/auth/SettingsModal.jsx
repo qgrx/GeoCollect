@@ -388,22 +388,7 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
                 <CapMeter label="★ Légendaires" value={profile.weekly.legendaire || 0} cap={limits.quizWeeklyCapLegendaire || 0} c1={c1} c2={c2} theme={theme} />
               </div>
               <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 8, lineHeight: 1.4 }}>
-                Au-delà du plafond, un geocoin gagné peut être offert (mécénat). Offrir un geocoin rapporte des points de forge, de la gloire, et fait progresser l'achievement « Le mécène ».<br/><br/>Le shiny n'est pas soumis à cette restriction. Remise à zéro chaque lundi.
-              </div>
-            </div>
-          )}
-
-          {/* ── Mécénat — dons de la semaine + total offert ── */}
-          {profile.patronage && (
-            <div style={card}>
-              <div style={cardTitle}>🎁 Mécénat de la semaine</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <CapMeter label="Rares"         value={profile.patronage.given_rare       || 0} cap={limits.patronageWeeklyCapRare       || 0} c1={c1} c2={c2} theme={theme} />
-                <CapMeter label="Épiques"       value={profile.patronage.given_epique     || 0} cap={limits.patronageWeeklyCapEpique     || 0} c1={c1} c2={c2} theme={theme} />
-                <CapMeter label="★ Légendaires" value={profile.patronage.given_legendaire || 0} cap={limits.patronageWeeklyCapLegendaire || 0} c1={c1} c2={c2} theme={theme} />
-              </div>
-              <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 8, lineHeight: 1.4 }}>
-                Au-delà de la limite de mécénat, votre pseudonyme s'affiche avec un halo lumineux et vous ne jouez plus que pour la gloire, quelque-soit la rareté du geocoin à gagner.
+                Au-delà du plafond, un geocoin gagné peut être offert (mécénat). Offrir un geocoin rapporte des points de forge, de la gloire, et fait progresser l'achievement « Le mécène ». Votre pseudonyme s'affiche avec un halo lumineux.<br/><br/>Le shiny n'est pas soumis à cette restriction. Remise à zéro chaque lundi.
               </div>
             </div>
           )}
