@@ -274,11 +274,12 @@ export default function QuestsPanel({ daily, weekly }) {
                   semaine) n'est pas remplaçable (refusée côté API). */}
               {canReroll && !done && q.type !== nonReroll ? (
                 <button
+                  className="quest-reroll"
                   onClick={() => { setRerollErr(''); setConfirmQuest(q) }}
                   title={t(rerollKeys.btn)} aria-label={t(rerollKeys.btn)}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: 12, padding: 0, flexShrink: 0, opacity: .7, lineHeight: 1,
+                    fontSize: 12, padding: 0, flexShrink: 0, lineHeight: 1,
                   }}>
                   🔄
                 </button>
@@ -370,6 +371,8 @@ export default function QuestsPanel({ daily, weekly }) {
 
       {/* Keyframes de l'effet de remplacement (portées par le panneau). */}
       <style>{`
+        .quest-reroll { opacity: .7; transition: transform .18s ease, opacity .15s ease; }
+        .quest-reroll:hover, .quest-reroll:focus-visible { opacity: 1; transform: rotate(-45deg); }
         @keyframes questRowOut {
           from { opacity: 1; transform: translateX(0); }
           to   { opacity: 0; transform: translateX(var(--tx-out, -14px)); }
@@ -399,6 +402,7 @@ export default function QuestsPanel({ daily, weekly }) {
         @media (prefers-reduced-motion: reduce) {
           @keyframes questRowOut { from { opacity: 1; } to { opacity: 0; } }
           @keyframes questRowIn  { from { opacity: 0; } to { opacity: 1; } }
+          .quest-reroll:hover, .quest-reroll:focus-visible { transform: none; }
         }
       `}</style>
 
