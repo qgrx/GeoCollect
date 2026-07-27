@@ -42,7 +42,7 @@ import ReferralModal from './features/referral/ReferralModal.jsx';
 import LandingSection from './features/landing/LandingSection.jsx';
 import { DemoComplete } from './features/demo/DemoGame.jsx';
 import { QuizNotif, QuizModal, CountdownWidget, ThumbImage, HoldModal, ModeToggle, BeginnerCountdownWidget, BeginnerRecap, BeginnerWinnersModal, GameRulesModal, GloryInfoModalHost, LimitInfoModalHost, FireInfoModalHost } from './features/quiz/QuizComponents.jsx';
-import { PatronageModal, PatronageGiftPopup } from './features/patronage/PatronageModal.jsx';
+import { PatronageModal, PatronageGiftPopup, PatronageIntroModal } from './features/patronage/PatronageModal.jsx';
 import MarketModal from './features/market/MarketModal.jsx';
 import LeaderboardModal from './features/leaderboard/LeaderboardModal.jsx';
 import AdminPanel from './features/admin/AdminPanel.jsx';
@@ -1009,8 +1009,59 @@ export default function App() {
   const [holdSlots,  setHoldSlots]  = useState(0);           // emplacements permanents achetés (0→2)
   const [holdRentActive, setHoldRentActive] = useState(false); // emplacement 4 loué actif
   const [patronageGift, setPatronageGift] = useState(null);  // don reçu (popup bénéficiaire)
+  const [patronageDupOffer, setPatronageDupOffer] = useState(null);  // offrir un doublon (mécénat depuis la collection)
+  const [patronageIntro,   setPatronageIntro]   = useState(null);  // modale d'intro : { card, enabled, reason }
   const [seasonPopup, setSeasonPopup] = useState(null); // { season, cards }
   const COLL_PAGE_SIZE = 24;
+
+  // ── Mécénat d'un doublon : état du bouton 🎁 pour un geocoin possédé en double ──
+  // { show, enabled, reason }. Commun → limite quotidienne ; r/é/l → plafond hebdo
+  // d'acquisition atteint ET plafond hebdo de dons non atteint (le serveur revalide).
+  // state : 'ready' (offrable maintenant) · 'after_weekly' (offrable une fois le plafond
+  // hebdo d'acquisition atteint) · 'daily_reached' / 'given_reached' (limite atteinte) · 'none'.
+  const patronageDupInfo = useCallback((card, count) => {
+    const rarity = card?.rarity;
+    const isAchievement = String(card?.type || '').toLowerCase().startsWith('achievement');
+    const eligibleRarity = ['commun', 'rare', 'épique', 'légendaire'].includes(rarity);
+    if (gs.limits.patronageDuplicateEnabled === false || auth.isDemo || isAchievement || !eligibleRarity || (count || 0) < 2)
+      return { show: false, state: 'none' };
+    const pat = auth.profile?.patronage || {};
+    const wk  = auth.profile?.weekly || {};
+    if (rarity === 'commun') {
+      const cap = gs.limits.patronageDailyCapCommun ?? 2;
+      const enabled = (pat.daily_commun || 0) < cap;
+      return { show: true, enabled, reason: enabled ? null : (t('patronage_gray_daily') || 'Limite quotidienne de dons de communs atteinte.'), state: enabled ? 'ready' : 'daily_reached' };
+    }
+    const ACQ   = { rare: ['rare', gs.limits.quizWeeklyCapRare], 'épique': ['epique', gs.limits.quizWeeklyCapEpique], 'légendaire': ['legendaire', gs.limits.quizWeeklyCapLegendaire] };
+    const GIVEN = { rare: ['given_rare', gs.limits.patronageWeeklyCapRare], 'épique': ['given_epique', gs.limits.patronageWeeklyCapEpique], 'légendaire': ['given_legendaire', gs.limits.patronageWeeklyCapLegendaire] };
+    const [wkKey, acqCap]  = ACQ[rarity];
+    const [gKey, givenCap] = GIVEN[rarity];
+    const acqReached = !(acqCap > 0) || (wk[wkKey] || 0) >= acqCap;
+    if (!acqReached) return { show: true, enabled: false, reason: t('patronage_gray_acq') || "Disponible quand tu auras atteint ton plafond hebdomadaire de gains de cette rareté.", state: 'after_weekly' };
+    const givenLeft = !(givenCap > 0) || (pat[gKey] || 0) < givenCap;
+    if (!givenLeft) return { show: true, enabled: false, reason: t('patronage_gray_given') || "Limite hebdomadaire de dons de cette rareté atteinte.", state: 'given_reached' };
+    return { show: true, enabled: true, reason: null, state: 'ready' };
+  }, [auth.profile, auth.isDemo, gs.limits, t]);
+
+  // Rang pour le tri « Offrables » : 0 = offrable maintenant, 1 = après limite hebdo, 2 = autres.
+  const patronageOfferRank = useCallback((item) => {
+    const info = patronageDupInfo(item?.card, item?.count ?? item?.cnt ?? 0);
+    if (info.state === 'ready') return 0;
+    if (info.state === 'after_weekly') return 1;
+    return 2;
+  }, [patronageDupInfo]);
+
+  // Ouvre la modale de mécénat sur un doublon (critères activés en admin).
+  const handlePatronageDuplicate = useCallback((card) => {
+    const criteria = Object.entries(gs.limits.patronageCriteriaEnabled || {}).filter(([, v]) => v !== false).map(([k]) => k);
+    setPatronageDupOffer({ duplicate: true, card, rarity: card.rarity, criteria });
+  }, [gs.limits.patronageCriteriaEnabled]);
+
+  // Clic sur un bouton 🎁 → modale d'intro (confirmation si éligible, explication sinon).
+  const openPatronageIntro = useCallback((card) => {
+    const info = patronageDupInfo(card, gs.collection[card.id] || 0);
+    setPatronageIntro({ card, enabled: !!info.enabled, reason: info.reason });
+  }, [patronageDupInfo, gs.collection]);
   const [menuOpen,        setMenuOpen]        = useState(false);
   const [selectedCard,    setSelectedCard]    = useState(null);
   const [showScoreDetail, setShowScoreDetail] = useState(false);
@@ -2027,6 +2078,12 @@ export default function App() {
       ? (a, b) => (a.card?.name || '').localeCompare(b.card?.name || '')
       : sortBy === 'name-desc'
       ? (a, b) => (b.card?.name || '').localeCompare(a.card?.name || '')
+      : sortBy === 'offerable'
+      ? (a, b) => {
+          const ra = patronageOfferRank(a), rb = patronageOfferRank(b);
+          if (ra !== rb) return ra - rb;   // offrables maintenant, puis après limite hebdo, puis le reste
+          return (RARITY_CONFIG[a.card?.rarity]?.order ?? 99) - (RARITY_CONFIG[b.card?.rarity]?.order ?? 99);
+        }
       : (a, b) => (RARITY_CONFIG[a.card?.rarity]?.order ?? 99) - (RARITY_CONFIG[b.card?.rarity]?.order ?? 99)
 
     // ── Mode Shiny uniquement ─────────────────────────────────────────────────
@@ -2072,7 +2129,7 @@ export default function App() {
       }
     }
     return normalList.sort(sortFn)
-  }, [showMissing, collViewAll, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, publicCardPool, visibleCardPool, gs.shinyCollection]);
+  }, [showMissing, collViewAll, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, publicCardPool, visibleCardPool, gs.shinyCollection, patronageOfferRank]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0
   const pseudoChanged   = pseudoChangedAt > 0 && (Date.now() - pseudoChangedAt) < PSEUDO_NOTIF_DAYS * 864e5
@@ -2606,13 +2663,13 @@ export default function App() {
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <button onClick={() => setSortMenuOpen(v => !v)}
                         style={{ background: sortBy !== 'rarity' ? '#74b9ff22' : theme.bgInput, border: `1px solid ${sortBy !== 'rarity' ? '#74b9ff' : theme.border}`, color: sortBy !== 'rarity' ? '#74b9ff' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {sortBy === 'rarity' ? t('sort_rarity') : sortBy === 'name-asc' ? t('sort_name_asc') : t('sort_name_desc')} ⌄
+                        {sortBy === 'rarity' ? t('sort_rarity') : sortBy === 'name-asc' ? t('sort_name_asc') : sortBy === 'offerable' ? t('sort_offerable') : t('sort_name_desc')} ⌄
                       </button>
                       {sortMenuOpen && (
                         <>
                           <div onClick={() => setSortMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
                           <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 100, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: '0 8px 24px #0008', overflow: 'hidden', minWidth: 130 }}>
-                            {[['rarity', t('sort_rarity')], ['name-asc', t('sort_name_asc')], ['name-desc', t('sort_name_desc')]].map(([val, lbl]) => (
+                            {[['rarity', t('sort_rarity')], ['name-asc', t('sort_name_asc')], ['name-desc', t('sort_name_desc')], ['offerable', t('sort_offerable')]].map(([val, lbl]) => (
                               <button key={val} onClick={() => { setSortBy(val); setGridAnimKey(k => k+1); setSortMenuOpen(false); }}
                                 style={{ display: 'block', width: '100%', background: sortBy === val ? '#f9ca2418' : 'none', border: 'none', borderBottom: `1px solid ${theme.border}`, color: sortBy === val ? theme.gold : theme.textPrimary, padding: '9px 14px', fontFamily: "'Nunito',sans-serif", fontWeight: sortBy === val ? 900 : 600, fontSize: 12, cursor: 'pointer', textAlign: 'left' }}>
                                 {sortBy === val ? '✓ ' : ''}{lbl}
@@ -2697,6 +2754,21 @@ export default function App() {
                                 onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}
                               >🔨</button>
                             )}
+                            {/* Doublon non brillant : offrir en mécénat (bouton rond bien visible, plein au survol) */}
+                            {!isShiny && !missing && (() => {
+                              const dup = patronageDupInfo(card, c);
+                              if (!dup.show) return null;
+                              return (
+                                <button
+                                  title={dup.enabled ? (t('patronage_give_duplicate') || 'Offrir ce doublon (mécénat)') : dup.reason}
+                                  aria-label={t('patronage_give_duplicate') || 'Offrir ce doublon (mécénat)'}
+                                  onClick={e => { e.stopPropagation(); openPatronageIntro(card); }}
+                                  style={{ position: 'absolute', bottom: 7, right: 7, zIndex: 7, width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, lineHeight: 1, padding: 0, background: dup.enabled ? 'linear-gradient(135deg,#f9ca24,#e17055)' : 'rgba(20,30,50,0.82)', border: `1.5px solid ${dup.enabled ? '#ffffffaa' : '#f9ca2466'}`, boxShadow: dup.enabled ? '0 2px 10px #e1705566, 0 0 0 2px #1a253855' : '0 2px 8px #00000066', opacity: dup.enabled ? 1 : 0.75, filter: dup.enabled ? 'none' : 'grayscale(0.4)', transition: 'transform .15s, opacity .15s, box-shadow .15s' }}
+                                  onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.2)'; e.currentTarget.style.opacity = '1'; e.currentTarget.style.boxShadow = '0 4px 14px #e1705588, 0 0 0 2px #1a2538'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.opacity = dup.enabled ? '1' : '0.75'; e.currentTarget.style.boxShadow = dup.enabled ? '0 2px 10px #e1705566, 0 0 0 2px #1a253855' : '0 2px 8px #00000066'; }}
+                                >🎁</button>
+                              );
+                            })()}
                           </div>
                         );
                       }}
@@ -3000,6 +3072,34 @@ export default function App() {
           onClose={() => setPatronageOffer(null)}
         />
       )}
+      {/* ── Mécénat d'un doublon (déclenché depuis la collection) ── */}
+      {patronageDupOffer && (
+        <PatronageModal
+          offer={patronageDupOffer}
+          showToast={showToast}
+          checkAchievements={gs.checkAchievements}
+          checkAchievementUpgrades={gs.checkAchievementUpgrades}
+          onDonated={() => {
+            if (!auth.profile || !import.meta.env.VITE_API_URL) return
+            import('./services/api.js').then(({ apiGetCollection, apiGetProfile }) => {
+              apiGetCollection?.().then(({ data }) => {
+                if (data?.collection) gs.setCollection(data.collection)
+                if (data?.shiny_collection) gs.setShinyCollection(data.shiny_collection)
+              }).catch(() => {})
+              apiGetProfile?.().then(({ data }) => { if (data?.profile) auth.setProfile(data.profile) }).catch(() => {})
+            })
+          }}
+          onClose={() => setPatronageDupOffer(null)}
+        />
+      )}
+      {/* ── Intro mécénat doublon : confirmation (Oui/Non) ou explication (Fermer) ── */}
+      {patronageIntro && (
+        <PatronageIntroModal
+          intro={patronageIntro}
+          onConfirm={() => { const card = patronageIntro.card; setPatronageIntro(null); handlePatronageDuplicate(card); }}
+          onClose={() => setPatronageIntro(null)}
+        />
+      )}
       {/* ── Popup bénéficiaire d'un don (temps réel via socket / à la connexion) ── */}
       {patronageGift && (
         <PatronageGiftPopup gift={patronageGift} onClose={() => setPatronageGift(null)} />
@@ -3145,6 +3245,13 @@ export default function App() {
           isShiny={selectedCardIsShiny}
           onClose={() => { setSelectedCard(null); setSelectedCardIsShiny(false); setSelectedCardFromHistory(false); }}
           onSell={() => { setMarketSellCard(selectedCard); setSelectedCard(null); setSelectedCardIsShiny(false); setSelectedCardFromHistory(false); setMarketTab('vendre'); setActiveTab('market'); }}
+          patronagePoints={{ commun: gs.limits.patronagePointsCommun, rare: gs.limits.patronagePointsRare, epique: gs.limits.patronagePointsEpique, legendaire: gs.limits.patronagePointsLegendaire }}
+          patronageInfo={selectedCardIsShiny ? { show: false } : patronageDupInfo(selectedCard, gs.collection[selectedCard.id] || 0)}
+          onPatronage={() => {
+            const card = selectedCard;
+            setSelectedCard(null); setSelectedCardIsShiny(false); setSelectedCardFromHistory(false);
+            openPatronageIntro(card);
+          }}
         />
       )}
       {showAuth        && <AuthModal auth={auth} isDemo={auth.isDemo} onClose={() => setShowAuth(false)} onSuccess={handleLoginSuccess} />}
@@ -3411,6 +3518,12 @@ export default function App() {
                 apiSetConfig('patronage_choice_seconds',        limEdit.patronageChoiceSeconds       ?? 20),
                 apiSetConfig('patronage_criteria_enabled',      limEdit.patronageCriteriaEnabled ?? { nouveau:true, ancien:true, rapide:true, fidele:true, petite_collection:true, grande_collection:true }),
                 apiSetConfig('patronage_test_recipient',        (limEdit.patronageTestRecipient ?? '').trim()),
+                apiSetConfig('patronage_duplicate_enabled',     limEdit.patronageDuplicateEnabled !== false),
+                apiSetConfig('patronage_daily_cap_commun',      limEdit.patronageDailyCapCommun      ?? 2),
+                apiSetConfig('patronage_points_commun',         limEdit.patronagePointsCommun        ?? 1),
+                apiSetConfig('patronage_points_rare',           limEdit.patronagePointsRare          ?? 2),
+                apiSetConfig('patronage_points_epique',         limEdit.patronagePointsEpique        ?? 7),
+                apiSetConfig('patronage_points_legendaire',     limEdit.patronagePointsLegendaire    ?? 20),
                 apiSetConfig('beginner_quiz_enabled',  limEdit.beginnerEnabled  !== false),
                 apiSetConfig('beginner_quiz_duration', limEdit.beginnerDuration ?? 60),
                 apiSetConfig('hold_slot_prices',       limEdit.holdSlotPrices   ?? [150, 400]),

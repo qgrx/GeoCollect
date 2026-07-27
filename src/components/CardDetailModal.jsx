@@ -4,7 +4,7 @@ import { useT } from '../i18n/translations.js'
 import { ShinyEffect } from './Card.jsx'
 import { ReferralPanel } from '../features/referral/ReferralModal.jsx'
 
-export default function CardDetailModal({ card, count, owned, onClose, onSell, isShiny = false, typeTranslations }) {
+export default function CardDetailModal({ card, count, owned, onClose, onSell, isShiny = false, typeTranslations, patronagePoints = null, patronageInfo = null, onPatronage }) {
   const { t, lang } = useT()
 
   const imgRef = useRef()
@@ -182,6 +182,22 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
             )
           })()}
 
+          {/* Achievement « Le mécène » : rappel du barème de points par rareté offerte. */}
+          {card.progressInfo?.type === 'patronage' && patronagePoints && (
+            <div style={{ background: '#f9ca240f', border: '1px solid #f9ca2433', borderRadius: 10, padding: '8px 12px', marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: '#f9ca24', fontWeight: 800, marginBottom: 4 }}>
+                🎁 {t('patronage_points_title') || 'Points par geocoin offert'}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {[['commun', patronagePoints.commun], ['rare', patronagePoints.rare], ['épique', patronagePoints.epique], ['légendaire', patronagePoints.legendaire]].map(([r, pts]) => (
+                  <span key={r} style={{ fontSize: 11, fontWeight: 700, color: (RC[r] || RC.commun).color }}>
+                    {rarityLabel(r, t)} <span style={{ color: '#fff' }}>{pts ?? '—'}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {!card.progressInfo?.tiers && card.progressInfo && card.progressInfo.threshold > 0 && card.progressInfo.type !== 'referral' && (() => {
             const { progress, threshold } = card.progressInfo
             const pct = Math.min(100, Math.round((progress / threshold) * 100))
@@ -202,12 +218,26 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
           {card.progressInfo?.type === 'referral' && (
             <div style={{ marginBottom: 12 }}><ReferralPanel showTitle={false} /></div>
           )}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ background: '#ffffff0a', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#888', fontWeight: 700 }}>
               Type : <span style={{ color: '#ccc' }}>{typeLabel(card.type, typeTranslations, lang)}</span>
             </div>
             {card.sellable === false && <div style={{ background: '#e74c3c18', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#e74c3c', fontWeight: 700 }}>Non vendable</div>}
             {(card.minPrice || card.min_price) > 0 && <div style={{ background: '#f9ca2418', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#f9ca24', fontWeight: 700 }}>Min {card.minPrice || card.min_price}G</div>}
+            {/* Mécénat d'un doublon : offrir ce geocoin à un autre joueur (bouton à côté du Type) */}
+            {patronageInfo?.show && onPatronage && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onPatronage(); }}
+                title={patronageInfo.enabled ? (t('patronage_give_duplicate') || 'Offrir ce doublon (mécénat)') : patronageInfo.reason}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5, background: patronageInfo.enabled ? '#f9ca2418' : '#ffffff08',
+                  border: `1px solid ${patronageInfo.enabled ? '#f9ca2455' : '#ffffff18'}`, borderRadius: 8, padding: '4px 10px',
+                  fontSize: 11, color: patronageInfo.enabled ? '#f9ca24' : '#888', fontWeight: 800, cursor: 'pointer',
+                  fontFamily: "'Nunito',sans-serif", opacity: patronageInfo.enabled ? 1 : 0.6,
+                }}>
+                🎁 {t('patronage_give_duplicate_short') || 'Offrir (mécénat)'}
+              </button>
+            )}
           </div>
         </div>
 

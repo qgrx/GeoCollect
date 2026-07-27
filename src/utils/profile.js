@@ -1,4 +1,4 @@
-import { weekStartParis } from './gameUtils.js'
+import { weekStartParis, todayParis } from './gameUtils.js'
 
 /**
  * normalizeProfile — SOURCE DE VÉRITÉ de la forme du profil côté client.
@@ -18,8 +18,10 @@ import { weekStartParis } from './gameUtils.js'
 export function normalizeProfile(p) {
   if (!p) return p
   const weekStart = weekStartParis()
+  const today = todayParis()
   const wNew = !p.weekly_reset_at || p.weekly_reset_at < weekStart
   const pNew = !p.patronage_reset_at || p.patronage_reset_at < weekStart
+  const dNew = !p.patronage_daily_reset_at || p.patronage_daily_reset_at < today
   return {
     ...p,
     geocaching_verified: p.geocaching_verified ?? Boolean(p.geocaching_verified_at),
@@ -33,6 +35,7 @@ export function normalizeProfile(p) {
       given_rare:       pNew ? 0 : (p.patronage_given_rare || 0),
       given_epique:     pNew ? 0 : (p.patronage_given_epique || 0),
       given_legendaire: pNew ? 0 : (p.patronage_given_legendaire || 0),
+      daily_commun:     dNew ? 0 : (p.patronage_daily_commun || 0),
     },
   }
 }

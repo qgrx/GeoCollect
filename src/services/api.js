@@ -207,6 +207,7 @@ export const apiTakeForgeInsteadOfHold = (card_id, is_shiny) => apiFetch('/api/h
 
 // ─── Mécénat (offrir un geocoin qu'on ne peut plus acquérir) ──────────────────
 export const apiPatronageDonate  = (quiz_id, criterion) => apiFetch('/api/patronage/donate', { method: 'POST', body: { quiz_id, criterion } })
+export const apiPatronageDonateDuplicate = (card_id, criterion) => apiFetch('/api/patronage/donate-duplicate', { method: 'POST', body: { card_id, criterion } })
 export const apiGetPatronagePending = ()                => apiFetch('/api/patronage/pending')
 
 // ─── Limites — agrandir les poches (horaire) / le sac (quotidien) ─────────────

@@ -3,7 +3,7 @@ import { useT, getLang } from '../../i18n/translations.js';
 import { RC, cardCC, rarityLabel, cardName } from '../../data/cards.js';
 import Avatar from '../../components/Avatar.jsx';
 import { ThumbImage } from '../quiz/QuizComponents.jsx';
-import { apiPatronageDonate } from '../../services/api.js';
+import { apiPatronageDonate, apiPatronageDonateDuplicate } from '../../services/api.js';
 
 // Critères proposés au mécène (doivent correspondre à PATRONAGE_CRITERIA côté serveur).
 const CRITERIA = [
@@ -65,7 +65,8 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
   // l'auto-roulette (critère au hasard) part toute seule — miroir client du délai après
   // lequel le serveur attribue d'office un bénéficiaire (patronage_choice_seconds).
   useEffect(() => {
-    if (!offer || offer.preview) { setSecsLeft(null); return; }
+    // Aucun décompte en mode doublon (pas de fenêtre de grâce serveur ni d'auto-roulette).
+    if (!offer || offer.preview || offer.duplicate) { setSecsLeft(null); return; }
     deadlineRef.current = Date.now() + (Number(offer.choice_seconds) || 20) * 1000;
     const tick = () => {
       const left = Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000));
@@ -97,12 +98,20 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
             reward_pf: offer.rarity === 'légendaire' ? 100 : offer.rarity === 'épique' ? 5 : 1,
             achievements: [], achievement_upgrades: [],
           }, error: null }
-      : await apiPatronageDonate(offer.quiz_id, criterion);
+      : offer.duplicate
+        ? await apiPatronageDonateDuplicate(offer.card.id, criterion)
+        : await apiPatronageDonate(offer.quiz_id, criterion);
     setBusy(false);
     if (error || !data?.recipient) {
-      // Le prix est déjà consommé : en cas d'erreur réseau, le serveur désignera un
-      // bénéficiaire d'office à la clôture du round (le geocoin n'est jamais perdu).
-      showToast?.(t('patronage_auto_recipient') || '🎁 Un bénéficiaire sera désigné automatiquement.', 'info');
+      if (offer.duplicate) {
+        // Doublon : rien n'est « déjà consommé » (le serveur rend le doublon en cas
+        // d'échec) → afficher la vraie erreur, pas de bénéficiaire d'office.
+        showToast?.(error || t('patronage_error') || 'Le don a échoué.', 'error');
+      } else {
+        // En jeu : le prix est déjà consommé ; en cas d'erreur réseau, le serveur
+        // désignera un bénéficiaire d'office à la clôture du round (jamais perdu).
+        showToast?.(t('patronage_auto_recipient') || '🎁 Un bénéficiaire sera désigné automatiquement.', 'info');
+      }
       onClose?.();
       return;
     }
@@ -184,11 +193,13 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
         {phase === 'choose' && (
           <>
             <div style={{ fontSize: 13, fontWeight: 900, color: '#f9ca24', marginBottom: 4 }}>
-              🎁 {t('patronage_title') || 'Mécénat (plafond hebdomadaire atteint)'}
+              🎁 {offer.duplicate ? (t('patronage_title_duplicate') || 'Mécénat') : (t('patronage_title') || 'Mécénat (plafond hebdomadaire atteint)')}
             </div>
             <div style={{ fontSize: 12, color: '#cfd8e3', lineHeight: 1.5, marginBottom: 10 }}>
-              {(t('patronage_body') || "Tu ne peux plus gagner de geocoin de cette rareté cette semaine. Offre-le à un autre joueur — tu gagnes {rare} PF pour un rare, {epique} PF pour un épique et {legendaire} PF pour un légendaire.")
-                .replace('{rare}', rewardPf.rare).replace('{epique}', rewardPf.epique).replace('{legendaire}', rewardPf.legendaire)}
+              {offer.duplicate
+                ? (t('patronage_body_duplicate') || "Offre ce doublon à un autre joueur. Choisis un critère : un bénéficiaire sera tiré au sort parmi les joueurs correspondants.")
+                : (t('patronage_body') || "Tu ne peux plus gagner de geocoin de cette rareté cette semaine. Offre-le à un autre joueur — tu gagnes {rare} PF pour un rare, {epique} PF pour un épique et {legendaire} PF pour un légendaire.")
+                    .replace('{rare}', rewardPf.rare).replace('{epique}', rewardPf.epique).replace('{legendaire}', rewardPf.legendaire)}
             </div>
             {/* Décompte : passé le délai, l'auto-roulette part toute seule (critère au hasard). */}
             {secsLeft != null && !busy && (
@@ -255,6 +266,66 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
               {t('close') || 'Fermer'}
             </button>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Modale d'INTRODUCTION au mécénat d'un doublon (avant la roulette).
+ * `intro` = { card, enabled, reason }.
+ *  • enabled  → confirmation « Souhaites-tu offrir ce geocoin ? » Oui / Non.
+ *  • !enabled → explication (plafond pas encore atteint / limite atteinte) + Fermer.
+ */
+export function PatronageIntroModal({ intro, onConfirm, onClose }) {
+  const { t } = useT();
+  if (!intro) return null;
+  const card = intro.card || {};
+  const rc = RC[card.rarity];
+  const { c1, c2 } = cardCC(card.rarity);
+  return (
+    <div style={OVERLAY} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'linear-gradient(145deg,#1e3045,#1a2d42)', borderRadius: 22, width: 'min(92vw,400px)',
+        border: `2px solid ${rc?.color || '#f9ca24'}66`, boxShadow: '0 28px 70px #000c', padding: '24px 20px', textAlign: 'center',
+        fontFamily: "'Nunito',sans-serif",
+      }}>
+        <div style={{ fontSize: 46, marginBottom: 6 }}>🎁</div>
+        <div style={{ fontSize: 18, fontWeight: 900, color: '#f9ca24', marginBottom: 10, fontFamily: "'Fredoka One',sans-serif" }}>
+          {t('patronage_title_duplicate') || 'Mécénat'}
+        </div>
+        {/* Geocoin concerné */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
+          <div style={{ width: 46, height: 46, borderRadius: 8, overflow: 'hidden', border: `2px solid ${c1}`, background: '#1e3045', flexShrink: 0 }}>
+            {(card.image_url_thumb || card.image_url || card.image)
+              ? <ThumbImage src={card.image_url_thumb || card.image_url || card.image} alt={cardName(card, getLang())} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#fff', background: `linear-gradient(135deg,${c1},${c2})` }}>{(cardName(card, getLang()) || '?')[0]}</div>}
+          </div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{cardName(card, getLang())}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: rc?.color }}>{rarityLabel(card.rarity, t)}</div>
+          </div>
+        </div>
+        <div style={{ fontSize: 13.5, color: '#cfd8e3', lineHeight: 1.55, marginBottom: 20 }}>
+          {intro.enabled ? (t('patronage_confirm_body') || 'Souhaites-tu offrir ce geocoin à un autre joueur ?') : intro.reason}
+        </div>
+        {intro.enabled ? (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onClose} style={{
+              flex: 1, background: '#ffffff12', border: '1.5px solid #ffffff22', color: '#cfd8e3', borderRadius: 11,
+              padding: '12px 0', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer',
+            }}>{t('no') || 'Non'}</button>
+            <button onClick={onConfirm} style={{
+              flex: 1, background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', borderRadius: 11,
+              padding: '12px 0', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer',
+            }}>🎁 {t('yes') || 'Oui'}</button>
+          </div>
+        ) : (
+          <button onClick={onClose} style={{
+            width: '100%', background: 'linear-gradient(135deg,#f9ca24,#e17055)', border: 'none', color: '#1e3045', borderRadius: 11,
+            padding: '12px 0', fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 14, cursor: 'pointer',
+          }}>{t('close') || 'Fermer'}</button>
         )}
       </div>
     </div>
