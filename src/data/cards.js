@@ -21,6 +21,15 @@ export const cardName = (card, lang) => {
   if (!card) return ''
   if (lang && lang !== 'fr' && card.name_translations?.[lang]) return card.name_translations[lang]
   return card.name || ''
+}
+// Jumeau de cardName pour la description. Accepte les deux formes portées par un
+// objet carte : brute du pool/API (description / description_translations) et
+// celle du modal (desc / desc_translations, cf. App.jsx onSelect).
+export const cardDescription = (card, lang) => {
+  if (!card) return ''
+  const tr = card.description_translations || card.desc_translations
+  if (lang && lang !== 'fr' && tr?.[lang]) return tr[lang]
+  return card.desc ?? card.description ?? ''
 };
 export const cardCC = (r) => {
   const [c1, c2] = (RC[r]?.cc || '#888,#aaa').split(',');

@@ -69,6 +69,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   const [collection,   setCollection]  = useState({})
   const [shinyCollection, setShinyCollection] = useState({})
   const [collectionDescriptions, setCollectionDescriptions] = useState({})
+  const [collectionDescriptionTranslations, setCollectionDescriptionTranslations] = useState({})
   const [myListings,   setMyListings]  = useState([])
   const [totalBuys,    setTotalBuys]   = useState(0)
   const [totalSells,   setTotalSells]  = useState(0)
@@ -404,6 +405,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         setCollection(colData.collection)
         if (colData.shiny_collection) setShinyCollection(colData.shiny_collection)
         if (colData.descriptions) setCollectionDescriptions(colData.descriptions)
+        if (colData.description_translations) setCollectionDescriptionTranslations(colData.description_translations)
         const alreadyUnlocked = ACHIEVEMENT_DEF
           .filter(def => (colData.collection[def.cardId] || 0) > 0)
           .map(def => def.id)
@@ -1055,7 +1057,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
     cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs,
     limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded, collectionLoaded, marketLoaded,
     // Player
-    gold, setGold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, myListings, totalBuys, totalSells,
+    gold, setGold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, collectionDescriptionTranslations, myListings, totalBuys, totalSells,
     streak, setStreak, transactions, setTransactions, unlockedAch, achievementProgress, pendingAch, setPendingAch,
     pendingUpgrade, setPendingUpgrade, checkAchievementUpgrades,
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,

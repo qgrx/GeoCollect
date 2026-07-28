@@ -180,6 +180,7 @@ export const apiAdminEditFullQuestion   = (id, fields)               => apiFetch
 export const apiAdminToggleQuestion     = (id, active)               => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { active } })
 export const apiAdminSaveTranslations      = (id, translations)       => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { translations } })
 export const apiAdminSaveCardNameTrans     = (id, name_translations)  => apiFetch(`/api/admin/cards/${id}/name-translations`, { method: 'PATCH', body: { name_translations } })
+export const apiAdminSaveCardDescTrans     = (id, description_translations) => apiFetch(`/api/admin/cards/${id}/description-translations`, { method: 'PATCH', body: { description_translations } })
 export const apiGetPublicConfig       = () => apiFetch('/api/config')
 export const apiGetAdminConfig        = () => apiFetch('/api/admin/config')
 export const apiAdminGetMarketHistory = (params = {}) => { const qs = new URLSearchParams(params).toString(); return apiFetch(`/api/admin/market-history${qs ? '?' + qs : ''}`) }

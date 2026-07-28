@@ -3,7 +3,7 @@ import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
-import { apiAdminSaveCardNameTrans, apiGetAdminSeasons, apiReleaseHiddenCards } from '../../services/api.js';
+import { apiAdminSaveCardNameTrans, apiAdminSaveCardDescTrans, apiGetAdminSeasons, apiReleaseHiddenCards } from '../../services/api.js';
 import Card from '../../components/Card.jsx';
 
 // Petits utilitaires dupliqués pour rendre le composant autonome
@@ -77,6 +77,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const [seasons, setSeasons] = useState([]);
   const [transCard, setTransCard] = useState(null);
   const [transCardLang, setTransCardLang] = useState('en');
+  const [transDescLang, setTransDescLang] = useState('en');
   const TRANS_LANGS = [{code:'en',label:'English'},{code:'de',label:'Deutsch'},{code:'es',label:'Español'}];
 
   const csvCardRef = useRef();
@@ -451,6 +452,40 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
             if(error){setMsg("❌ Erreur sauvegarde");return;}
             onUpdateCardInPool?.({...editCard});
             setMsg("✅ Traductions du nom sauvegardées !");
+          }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"8px 18px",borderRadius:8,fontSize:12,marginTop:8}}>
+            💾 Sauvegarder les traductions
+          </button>
+        </div>
+      )}
+
+      {/* ── Panneau traduction description de carte ── */}
+      {editCard && (
+        <div style={{background:"#1a0a3a",border:"1.5px solid #6c5ce766",borderRadius:12,padding:16,marginTop:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{fontWeight:900,color:"#a29bfe",fontSize:13}}>🌐 Traduction de la description — <span style={{color:"#fff"}}>{editCard.name}</span></div>
+          </div>
+          <div style={{fontSize:11,color:"#8887a8",marginBottom:10,fontStyle:"italic"}}>FR : "{editCard.desc||editCard.description||"(vide)"}"</div>
+          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+            {TRANS_LANGS.map(l=>(
+              <button key={l.code} onClick={()=>setTransDescLang(l.code)}
+                style={{background:transDescLang===l.code?"#6c5ce7":"#ffffff10",border:"none",color:transDescLang===l.code?"#fff":"#aaa",padding:"5px 12px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
+                {l.label} {editCard.description_translations?.[l.code]?"✓":""}
+              </button>
+            ))}
+          </div>
+          {TRANS_LANGS.filter(l=>l.code===transDescLang).map(l=>(
+            <Fld key={l.code} lbl={`Description en ${l.label}`}>
+              <textarea
+                value={editCard.description_translations?.[l.code]||""}
+                onChange={e=>setEditCard(c=>({...c,description_translations:{...c.description_translations,[l.code]:e.target.value}}))}
+                style={{...INP,minHeight:70,resize:"vertical"}} placeholder={`Description en ${l.label}…`}/>
+            </Fld>
+          ))}
+          <button onClick={async()=>{
+            const {error}=await apiAdminSaveCardDescTrans(editCard.id, editCard.description_translations||{});
+            if(error){setMsg("❌ Erreur sauvegarde");return;}
+            onUpdateCardInPool?.({...editCard});
+            setMsg("✅ Traductions de la description sauvegardées !");
           }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"8px 18px",borderRadius:8,fontSize:12,marginTop:8}}>
             💾 Sauvegarder les traductions
           </button>

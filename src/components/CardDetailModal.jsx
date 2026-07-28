@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { RC, cardCC, rarityLabel, cardName, typeLabel } from '../data/cards.js'
+import { RC, cardCC, rarityLabel, cardName, cardDescription, typeLabel } from '../data/cards.js'
 import { useT } from '../i18n/translations.js'
 import { ShinyEffect } from './Card.jsx'
 import { ReferralPanel } from '../features/referral/ReferralModal.jsx'
@@ -121,12 +121,12 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
             <span style={{ fontSize: 11, color: rc.color, fontWeight: 800, background: rc.bg, borderRadius: 50, padding: '2px 10px' }}>{rarityLabel(card.rarity, t)}</span>
             {isShiny && <span style={{ fontSize: 11, color: '#f9ca24', fontWeight: 900, background: '#f9ca2422', borderRadius: 50, padding: '2px 10px', border: '1px solid #f9ca2444' }}>✨ {t('shiny_label')}</span>}
           </div>
-          {card.desc && (
+          {(() => { const desc = cardDescription(card, lang); return desc && (
             <div style={{ fontSize: 13, color: '#aaa', lineHeight: 1.6, fontStyle: 'italic',
               background: '#ffffff08', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-              "{card.desc}"
+              "{desc}"
             </div>
-          )}
+          ) })()}
           {/* Série (« Fidèle ») : série en cours + meilleure série, en deux
               pastilles compactes. La rareté atteinte est conservée même si la
               série retombe — seul le compteur repart, jamais le geocoin. */}
