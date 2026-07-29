@@ -268,6 +268,10 @@ export const apiUpdateAchievementDef   = (id, body) => apiFetch(`/api/admin/achi
 export const apiDeleteAchievementDef   = (id)     => apiFetch(`/api/admin/achievement-definitions/${id}`, { method: 'DELETE' })
 export const apiAdminGetCards         = () => apiFetch('/api/admin/cards')
 export const apiReleaseHiddenCards    = () => apiFetch('/api/admin/cards/release-hidden', { method: 'POST' })
+// Publication d'une sélection de cartes cachées : publish_at null → tout de suite,
+// publish_at ISO futur → programmation (le cardPublishScheduler s'en charge).
+export const apiAdminPublishCards     = (ids, publish_at = null) => apiFetch('/api/admin/cards/publish', { method: 'POST', body: { ids, publish_at } })
+export const apiAdminUnscheduleCards  = (ids) => apiFetch('/api/admin/cards/unschedule', { method: 'POST', body: { ids } })
 export const apiReleaseHiddenQuestions = () => apiFetch('/api/admin/questions/release-hidden', { method: 'POST' })
 export const apiReleaseHiddenAchievements = () => apiFetch('/api/admin/achievement-definitions/release-hidden', { method: 'POST' })
 export const apiAdminAddCard          = (card) => apiFetch('/api/admin/cards', { method: 'POST', body: card })

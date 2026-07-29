@@ -138,6 +138,7 @@ function parseCSV(text) {
 }
 import Card from '../../components/Card.jsx';
 import AdminCards from './AdminCards.jsx';
+import AdminHiddenCards from './AdminHiddenCards.jsx';
 import AdminPlayers from './AdminPlayers.jsx';
 import AdminReferrals from './AdminReferrals.jsx';
 import AdminPatronage from './AdminPatronage.jsx';
@@ -566,6 +567,8 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   const {t}=useT();
   // Geocoins de type achievement, proposés pour lier une condition à une carte.
   const achievementCards=(cardPool||[]).filter(c=>c.type?.toLowerCase().startsWith('achievement'));
+  // Compteur affiché dans la nav : cartes cachées en attente de publication (hors achievements).
+  const hiddenCardCount=(cardPool||[]).filter(c=>c.hidden&&!c.type?.toLowerCase().includes('achievement')).length;
   const [tab,setTab]=useState(()=>{const h=window.location.hash.slice(1);return LEGACY_TABS[h]||h||"cards";});
   const [showMeltPreview,setShowMeltPreview]=useState(false);
   // Sous-onglets des onglets fusionnés (préservent l'intention des anciennes ancres).
@@ -776,7 +779,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
   // Questions, graphique + historique marché fusionnés dans Activité, version
   // fusionnée dans Stats, cache fusionné dans Maintenance.
   const NAV=[
-    {label:'Contenu',items:[{id:'cards',icon:'🃏',label:'Cartes'},{id:'types',icon:'🏷️',label:'Types'},{id:'seasons',icon:'🌸',label:'Saisons'}]},
+    {label:'Contenu',items:[{id:'cards',icon:'🃏',label:'Cartes'},{id:'hidden_cards',icon:'🚫',label:`Cachées${hiddenCardCount?` (${hiddenCardCount})`:''}`},{id:'types',icon:'🏷️',label:'Types'},{id:'seasons',icon:'🌸',label:'Saisons'}]},
     {label:'Quiz',items:[{id:'questions',icon:'❓',label:'Questions'},{id:'quiz_config',icon:'🎲',label:'Stats & Taux'},{id:'demo',icon:'🎮',label:'Démo'}]},
     {label:'Récompenses',items:[{id:'quests',icon:'🔨',label:'Quêtes'},{id:'achievements',icon:'🏆',label:'Achievements'},{id:'ranks',icon:'🎖️',label:'Rangs'}]},
     {label:'Économie & Marché',items:[{id:'limits',icon:'💰',label:'Limites & Prix'},{id:'shop',icon:'🛍️',label:'Boutique'},{id:'market_admin',icon:'🏪',label:'Marché admin'},{id:'market_activity',icon:'📊',label:'Activité marché'}]},
@@ -862,6 +865,11 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {/* ── CARTES ── */}
         {tab==="cards" && (
           <AdminCards cardPool={cardPool} cardTypes={cardTypes} onAddCard={onAddCard} onEditCard={onEditCard} onDeleteCard={onDeleteCard} onUpdateCardInPool={onUpdateCardInPool} setMsg={setMsg} imgUpload={imgUpload} />
+        )}
+
+        {/* ── CARTES CACHÉES (préparation de releases) ── */}
+        {tab==="hidden_cards" && (
+          <AdminHiddenCards cardPool={cardPool} cardTypes={cardTypes} onUpdateCardInPool={onUpdateCardInPool} setMsg={setMsg} />
         )}
 
         {/* ── TYPES ── */}
