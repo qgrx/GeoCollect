@@ -19,14 +19,21 @@ html, body {
   overflow-x: clip;
 }
 
-/* Barre de défilement fine et dorée. On double les règles WebKit par les
-   propriétés STANDARD (scrollbar-width/color) : certains WebView (ex. MIUI)
-   ignorent ::-webkit-scrollbar et affichent sinon une grosse barre native grise
-   « moche » (retour Agarion — barre verticale du document). */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* Barre de défilement quasi invisible : la barre dorée épaisse sautait aux yeux
+   (colonne de gauche, modales). Au repos le curseur est transparent ; il
+   n'apparaît, très discret et neutre, qu'au survol du conteneur qui défile.
+   On double les règles WebKit par les propriétés STANDARD (scrollbar-width/
+   color, appliquées à TOUS les conteneurs et pas seulement au document) :
+   certains WebView (ex. MIUI) ignorent ::-webkit-scrollbar et affichent sinon
+   une grosse barre native grise « moche » (retour Agarion). */
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #f9ca2466; border-radius: 3px; }
-html, body { scrollbar-width: thin; scrollbar-color: #f9ca2466 transparent; }
+::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
+/* Gris neutre translucide : discret aussi bien sur les fonds sombres que sur
+   les modales claires (popup « Gagnants »). */
+*:hover::-webkit-scrollbar-thumb { background: #94a3b84d; }
+*:hover::-webkit-scrollbar-thumb:hover { background: #94a3b880; }
+html, body, * { scrollbar-width: thin; scrollbar-color: #94a3b84d transparent; }
 
 /* Sur mobile le défilement est tactile : on MASQUE toute barre (document +
    conteneurs internes) pour retrouver le rendu « app ». */
