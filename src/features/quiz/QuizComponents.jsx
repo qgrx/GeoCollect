@@ -1467,22 +1467,23 @@ export function BeginnerWinnersModal({ card, winners = [], gloryCount = 0, patro
   const rankColor = i => i < 3 ? RANK[i] : '#94a3b8';
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000b', backdropFilter: 'blur(8px)', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 18, padding: '18px 18px', maxWidth: 360, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 24px 60px #0009', fontFamily: "'Nunito',sans-serif" }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      {/* En-tête + geocoin FIGÉS : seule la liste des gagnants défile (colonne flex). */}
+      <div onClick={e => e.stopPropagation()} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 18, padding: '18px 18px', maxWidth: 360, width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 60px #0009', fontFamily: "'Nunito',sans-serif" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexShrink: 0 }}>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 15, color: '#1a2538' }}>
             {t('beginner_winners_title') || 'Gagnants'}
           </div>
           <button onClick={onClose} style={{ background: '#eef1f5', border: 'none', color: '#64748b', width: 26, height: 26, borderRadius: '50%', fontSize: 13, cursor: 'pointer', fontWeight: 900 }}>✕</button>
         </div>
         {card && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14, flexShrink: 0 }}>
             <Card card={card} isShiny={isShiny} onClick={onCardClick} />
           </div>
         )}
         {winners.length === 0 && patronageWinners.length === 0 ? (
           <div style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center', padding: '10px 0' }}>{t('beginner_recap_none') || "Personne n'a trouvé cette fois !"}</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', minHeight: 0, WebkitOverflowScrolling: 'touch', paddingRight: 2 }}>
             {realWinners.length > 0 ? (
               realWinners.map((w, i) => (
                 <div key={`rw${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, background: `${rankColor(i)}${i < 3 ? '22' : '15'}`, border: `1px solid ${rankColor(i)}88`, borderRadius: 9, padding: '8px 11px' }}>

@@ -31,7 +31,9 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
       zIndex: 1500, backdropFilter: 'blur(12px)', padding: 20 }}>
       <div onClick={e => e.stopPropagation()}
         style={{
-          width: 'min(92vw,360px)', borderRadius: 24, maxHeight: 'calc(100dvh - 100px)', overflowY: 'auto', overflowX: 'hidden',
+          // En-tête + image FIGÉS, seules les infos (description, paliers…) défilent.
+          width: 'min(92vw,360px)', borderRadius: 24, maxHeight: 'calc(100dvh - 100px)', overflow: 'hidden',
+          display: 'flex', flexDirection: 'column',
           background: `linear-gradient(145deg,${c1}22,${c2}33,#0f0f1e)`,
           border: isShiny ? '2px solid #f9ca24' : `2px solid ${c1}88`,
           boxShadow: isShiny
@@ -49,10 +51,10 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
           @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
         `}</style>
 
-        {/* Header — sticky pour que la croix reste visible au scroll (mobile) */}
+        {/* Header — figé en haut de la modale (la croix reste toujours visible) */}
         <div style={{ background: isShiny ? 'linear-gradient(90deg,#b8860b,#f9ca24,#e6a817)' : `linear-gradient(90deg,${c1},${c2})`, padding: '12px 16px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          position: 'sticky', top: 0, zIndex: 5, overflow: 'hidden' }}>
+          flexShrink: 0, zIndex: 5, overflow: 'hidden' }}>
           {(isLeg || isShiny) && <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none',
             background: 'linear-gradient(90deg,transparent 40%,#ffffff22 50%,transparent 60%)',
             backgroundSize: '400px 100%', animation: 'shimmer 2s linear infinite' }}/>}
@@ -71,7 +73,7 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
         {/* Image */}
         <div ref={imgRef}
           onMouseMove={onMove} onMouseLeave={onLeave}
-          style={{ height: hasImage ? 280 : 180, background: 'transparent',
+          style={{ height: hasImage ? 280 : 180, maxHeight: '38dvh', flexShrink: 0, background: 'transparent',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative', cursor: 'default', padding: '20px',
             perspective: '800px', overflow: 'hidden' }}>
@@ -111,8 +113,8 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
           )}
         </div>
 
-        {/* Infos */}
-        <div style={{ padding: '14px 20px' }}>
+        {/* Infos — seule zone qui défile (descriptions longues, paliers d'achievement…) */}
+        <div style={{ padding: '14px 20px', overflowY: 'auto', overflowX: 'hidden', minHeight: 0, flex: '1 1 auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 24, color: isShiny ? '#f9ca24' : '#fff', marginBottom: 4, textShadow: isShiny ? '-1px -1px 0 #0009, 1px -1px 0 #0009, -1px 1px 0 #0009, 1px 1px 0 #0009, 0 0 12px #f9ca2455' : 'none' }}>
             {cardName(card, lang)}
           </div>
@@ -241,9 +243,9 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
           </div>
         </div>
 
-        {/* Action */}
+        {/* Action — épinglée sous la zone défilante */}
         {onSell && count > 1 && card.sellable !== false && !isShiny && (
-          <div style={{ padding: '0 20px 20px' }}>
+          <div style={{ padding: '0 20px 20px', flexShrink: 0 }}>
             <button onClick={onSell}
               style={{ width: '100%', background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)',
                 border: 'none', color: '#fff', padding: '12px', borderRadius: 12,
