@@ -427,6 +427,14 @@ export default function App() {
 
       // Quiz — nouveau quiz disponible
       s.on('quiz:new', (data) => {
+        // Un socket zombie (ou une double connexion, cf. services/socket.js) peut livrer
+        // DEUX fois le même quiz:new. Le second passage refermait la modale en cours
+        // (setActiveQuiz(null) plus bas) et re-proposait le round : le joueur revoyait
+        // la même question juste après l'avoir ouverte. Le serveur n'émet jamais deux
+        // quiz:new pour un même round (un client reçoit soit la version complète, soit
+        // la version retenue) → tout doublon est ignoré.
+        if (data.quiz_id && handledQuizIdRef.current === data.quiz_id) return
+        handledQuizIdRef.current = data.quiz_id || null
         const poolCard = cardPoolRef.current?.find(c => c.id === data.card?.id) || {}
         // poolCard (pool complet) override data.card (minimal) — image_url présent dans les deux maintenant
         const card = { ...data.card, ...poolCard, sellable: true, minPrice: null, desc: poolCard.desc ?? poolCard.description ?? '' }
@@ -1477,6 +1485,8 @@ export default function App() {
   // round, ces survivants REMPLACENT la liste affichée : les séries de tous les autres
   // sont cassées côté serveur (settleRoundStreaks) sans qu'aucun event ne le dise — sans
   // ce remplacement, un ex-leader cassé resterait affiché indéfiniment.
+  // Dernier `quiz:new` traité — voir le dédoublonnage dans le handler socket.
+  const handledQuizIdRef = useRef(null)
   const roundFireRef = useRef({ quizId: null, list: [] })
   const noteRoundFire = (quizId, entry) => {
     if (!quizId) return
@@ -3134,8 +3144,17 @@ export default function App() {
       {!beginnerActive && activeQuiz  && <QuizModal quiz={activeQuiz} isShiny={activeQuiz?.is_shiny ?? quizIsShiny} graceDeadline={activeQuiz?.graceDeadline ?? null} limitStatus={auth.isDemo ? null : computeCardLimitStatus(auth.profile, gs.limits, { shinyCard: !!(activeQuiz?.is_shiny ?? quizIsShiny) })} upsell={limitUpsell} streakLeaders={auth.isDemo ? null : streakLeaders} myId={auth.profile?.id} alreadyOwned={!!activeQuiz?.card?.id && ((activeQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[activeQuiz.card.id] || 0) > 0 : (gs.collection?.[activeQuiz.card.id] || 0) > 0)} holdState={{ holds, holdSlots, holdRentActive, rentPrice: gs.limits?.holdRentPrice ?? 80, replacePrice: gs.limits?.holdReplacePrice ?? 50, gold: gs.gold }} onAnswer={wrappedHandleQuizAnswer} onExpire={auth.isDemo ? demoAdvance : handleQuizExpire} onClose={auth.isDemo ? demoAdvance : handleCloseActiveQuiz}
         onNeedQuestion={async () => {
           // Délai cadeau écoulé : le serveur autorise enfin la question au leader.
+          const wantedId = activeQuiz?.id
           const { data } = await apiGetCurrentQuiz().catch(() => ({ data: null }))
-          if (!data?.quiz || data.quiz.question == null) return null
+          // Le round affiché n'est plus le round courant (terminé, ou déjà remplacé
+          // par le suivant) : `stale` coupe la boucle de récupération de la modale.
+          // SANS cette garde on injectait la question du round SUIVANT dans la modale
+          // du round précédent — le joueur voyait cette question ici puis de nouveau
+          // au round d'après (« la même question 2 fois d'affilée »), et sur un round
+          // simplement clos la boucle réessayait toutes les 700 ms indéfiniment
+          // (« pas de question qui s'affiche »).
+          if (!data?.quiz || (wantedId && data.quiz.id !== wantedId)) return { stale: true }
+          if (data.quiz.question == null) return null   // encore retenue → la modale réessaiera
           const lang = getLang()
           const tr = data.quiz.translations?.[lang]
           const wc = data.quiz.answer_word_count || 1

@@ -336,6 +336,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // Question récupérée après le délai cadeau (protection anti-domination) : le
   // serveur ne l'envoie pas au leader tant que sa fenêtre n'est pas écoulée.
   const [revealed,setRevealed]=useState(null);
+  // Récupération de la question abandonnée (round terminé / trop d'essais) : on
+  // affiche une explication au lieu de laisser « … » indéfiniment.
+  const [questionLost,setQuestionLost]=useState(false);
   // iOS : le clavier ne réduit pas 100dvh, il recouvre le bas de l'écran. On suit
   // le visualViewport pour redimensionner la modale dans la zone réellement visible
   // (sinon iOS fait défiler la page et masque le haut de la question — cf. capture
@@ -480,17 +483,31 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // Sans ça, la modale reste vide et le joueur ne peut tout simplement pas répondre.
   // Exclu : mode Entraînement (autre source de question) et démo (pas de question_id).
   const needsQuestion = !displayedQ && !beginner && !!quiz.question_id;
+  // La boucle ci-dessous doit TOUJOURS pouvoir s'arrêter : sinon « … » reste
+  // affiché pour toujours et le joueur ne peut ni répondre ni comprendre pourquoi.
+  // Deux sorties : `stale` (le round affiché n'est plus le round courant, cf.
+  // onNeedQuestion) et un plafond d'essais (~30 s, bien au-delà du handicap max).
+  const MAX_QUESTION_RETRIES = 42;
+  // Round suivant dans une modale réutilisée : repartir d'une récupération neuve
+  // (sinon un « question indisponible » hérité s'afficherait le temps du fetch).
+  useEffect(()=>{ setQuestionLost(false); },[quiz.id]);
   useEffect(()=>{
     if(status!=="open") return;
     if(!isStreakLeader && !needsQuestion) return;
     if((isStreakLeader&&handicapLeft>0)||displayedQ) return;
-    let cancelled=false; let timer;
+    let cancelled=false; let timer; let tries=0;
+    const retry=()=>{
+      if(cancelled) return;
+      if(++tries>=MAX_QUESTION_RETRIES){ setQuestionLost(true); return; }
+      timer=setTimeout(tryFetch,700);
+    };
     const tryFetch=()=>{
       Promise.resolve(onNeedQuestion?.()).then(d=>{
         if(cancelled) return;
+        if(d?.stale){ setQuestionLost(true); return; }   // round terminé → inutile d'insister
         if(d) setRevealed(d);
-        else timer=setTimeout(tryFetch,700);   // serveur retient encore → on réessaie
-      }).catch(()=>{ if(!cancelled) timer=setTimeout(tryFetch,700); });
+        else retry();                          // serveur retient encore → on réessaie
+      }).catch(retry);
     };
     tryFetch();
     return ()=>{ cancelled=true; clearTimeout(timer); };
@@ -627,12 +644,15 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             {questionMasked ? (
               <div style={{fontSize:13,fontWeight:800,color:"#ffd28a",lineHeight:1.5,display:"flex",alignItems:"center",gap:8,minHeight:42}}>
                 <span style={{fontSize:22}}>🔥</span>
-                <span>{handicapLeft>0 ? `${t('quiz_on_fire')} ${handicapLeft}s` : '…'}</span>
+                <span>{handicapLeft>0 ? `${t('quiz_on_fire')} ${handicapLeft}s` : (questionLost ? t('quiz_question_unavailable') : '…')}</span>
               </div>
             ) : (
               // Question absente sans être en feu = récupération en cours (filet
-              // ci-dessus) : « … » plutôt qu'un vide inexplicable.
-              <div style={{fontSize:13,fontWeight:800,color:displayedQ?"#fff":"#8fb0c9",lineHeight:1.5,marginBottom:5,minHeight:20}}>{displayedQ||'…'}</div>
+              // ci-dessus) : « … » plutôt qu'un vide inexplicable, et une vraie
+              // explication si la récupération a été abandonnée (round terminé).
+              <div style={{fontSize:13,fontWeight:800,color:displayedQ?"#fff":"#8fb0c9",lineHeight:1.5,marginBottom:5,minHeight:20}}>
+                {displayedQ || (questionLost ? t('quiz_question_unavailable') : '…')}
+              </div>
             )}
           </div>
         </div>
