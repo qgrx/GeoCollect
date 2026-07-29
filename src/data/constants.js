@@ -100,6 +100,10 @@ export const INIT_LIMITS = {
   quizStreakHandicap:   { enabled: true, threshold: 3, step_seconds: 1.5, max_seconds: 8, min_players: 2 },
   quizPrizeTiers:       [{ players: 10, prizes: 2 }, { players: 20, prizes: 3 }, { players: 30, prizes: 4 }],
   quizExtraPrizeGrace:  10,
+  // Anti-répétition du tirage (alignés sur les défauts en dur de l'API,
+  // src/utils/quizCooldown.js) : derniers tirages écartés, 0 = désactivé.
+  quizQuestionCooldown: 50,
+  quizCardCooldown:     10,
   beginnerEnabled:      true,
   beginnerDuration:     60,
   forgeCostByRarity:    { commun: 60, rare: 180, épique: 600, légendaire: 1800 },

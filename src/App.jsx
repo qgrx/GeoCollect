@@ -3497,6 +3497,8 @@ export default function App() {
                 apiSetConfig('quiz_streak_handicap', limEdit.quizStreakHandicap ?? { enabled: true, threshold: 3, step_seconds: 1.5, max_seconds: 8, min_players: 2 }),
                 apiSetConfig('quiz_prize_tiers', limEdit.quizPrizeTiers ?? [{ players: 10, prizes: 2 }, { players: 20, prizes: 3 }, { players: 30, prizes: 4 }]),
                 apiSetConfig('quiz_extra_prize_grace', limEdit.quizExtraPrizeGrace ?? 10),
+                apiSetConfig('quiz_question_cooldown', limEdit.quizQuestionCooldown ?? 50),
+                apiSetConfig('quiz_card_cooldown',     limEdit.quizCardCooldown     ?? 10),
                 apiSetConfig('quiz_join_gold',       limEdit.quizJoinGold      ?? 1),
                 apiSetConfig('quiz_win_gold',        limEdit.quizWinGold       ?? 5),
                 apiSetConfig('quiz_daily_card_cap',    limEdit.quizDailyCardCap    ?? 20),

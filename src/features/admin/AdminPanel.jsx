@@ -1125,6 +1125,16 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                       <span style={{color:"#aaa",fontSize:10}}>s</span>
                     </div>
                   </div>, "≥ N joueurs en ligne → N geocoins identiques à gagner (plusieurs gagnants). « grâce » = secondes laissées pour décrocher le geocoin suivant après une 1ʳᵉ bonne réponse — ET délai après une victoire « pour la gloire » avant que le quiz se termine si personne ne rafle le geocoin. Le palier le plus élevé atteint s'applique (vide = 1 seul gagnant)."],
+                  ["🔁 Anti-répétition", <div key="cooldown" style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:6,fontSize:10,color:"#aaa"}}>
+                    <span>questions</span>
+                    <input type="number" min={0} max={500} value={limEdit.quizQuestionCooldown??50}
+                      onChange={e=>setLimEdit(p=>({...p,quizQuestionCooldown:Math.max(0,+e.target.value)}))}
+                      style={{...INP,width:52,padding:"4px 6px"}}/>
+                    <span>geocoins</span>
+                    <input type="number" min={0} max={100} value={limEdit.quizCardCooldown??10}
+                      onChange={e=>setLimEdit(p=>({...p,quizCardCooldown:Math.max(0,+e.target.value)}))}
+                      style={{...INP,width:52,padding:"4px 6px"}}/>
+                  </div>, "Nombre de derniers tirages écartés du prochain tirage (0 = désactivé). Le geocoin se compte PAR RARETÉ (les N derniers épiques, etc.). Jamais plus de la moitié du pool n'est écartée : sans effet sur le légendaire unique, limité à 8 sur les épiques. S'applique au PvP et à l'Entraînement, qui partagent le même historique."],
                   ["Anti-domination (série)", (()=>{const h=limEdit.quizStreakHandicap||{};const set=(k,v)=>setLimEdit(p=>({...p,quizStreakHandicap:{...(p.quizStreakHandicap||{}),[k]:v}}));return <div key="anti-dom" style={{display:"flex",flexDirection:"column",gap:4}}>
                     <label style={{display:"flex",alignItems:"center",gap:6,color:"#ddd",fontSize:11}}>
                       <input type="checkbox" checked={h.enabled!==false} onChange={e=>set('enabled',e.target.checked)} style={{width:14,height:14}}/> Activer
