@@ -36,6 +36,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const GRID_PAGE = 24;
   const [showAdv, setShowAdv]                     = useState(false);
   const [filterForgeable, setFilterForgeable]     = useState('');
+  const [filterHidden, setFilterHidden]           = useState('');
   const [filterSellable, setFilterSellable]       = useState('');
   const [filterMinPrice, setFilterMinPrice]       = useState('');
   const [filterMinPriceVal, setFilterMinPriceVal] = useState('');
@@ -57,6 +58,9 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
     if (search) cards = cards.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
     if (filterForgeable === 'true')  cards = cards.filter(c => !!c.forgeable);
     if (filterForgeable === 'false') cards = cards.filter(c => !c.forgeable);
+    if (filterHidden === 'true')     cards = cards.filter(c => !!c.hidden);
+    if (filterHidden === 'false')    cards = cards.filter(c => !c.hidden);
+    if (filterHidden === 'scheduled') cards = cards.filter(c => !!c.hidden && !!c.publish_at);
     if (filterSellable === 'true')   cards = cards.filter(c => c.sellable !== false);
     if (filterSellable === 'false')  cards = cards.filter(c => c.sellable === false);
     const mp = c => c.min_price ?? c.minPrice ?? null;
@@ -72,7 +76,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
     if (filterForgeCost === 'gt' && filterForgeCostVal !== '') cards = cards.filter(c => (fc(c) ?? 0) > +filterForgeCostVal);
     if (filterForgeCost === 'lt' && filterForgeCostVal !== '') cards = cards.filter(c => (fc(c) ?? 0) < +filterForgeCostVal);
     return [...cards].sort((a, b) => (RARITY_ORDER[a.rarity] ?? 4) - (RARITY_ORDER[b.rarity] ?? 4) || a.name.localeCompare(b.name));
-  }, [cardPool, filterType, filterRarity, filterSeason, search, filterForgeable, filterSellable, filterMinPrice, filterMinPriceVal, filterShiny, filterShinyVal, filterForgeCost, filterForgeCostVal]);
+  }, [cardPool, filterType, filterRarity, filterSeason, search, filterForgeable, filterHidden, filterSellable, filterMinPrice, filterMinPriceVal, filterShiny, filterShinyVal, filterForgeCost, filterForgeCostVal]);
 
   const [seasons, setSeasons] = useState([]);
   const [transCard, setTransCard] = useState(null);
@@ -261,6 +265,13 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
               <option value="">Forge : tous</option>
               <option value="true">🔨 Forgeables</option>
               <option value="false">Non forgeables</option>
+            </select>
+            <select value={filterHidden} onChange={e=>{setFilterHidden(e.target.value);setGridPage(0);}}
+              style={{...SEL,fontSize:12,padding:"6px 10px",...(filterHidden?{border:"1px solid #e1705588",color:"#e17055"}:null)}}>
+              <option value="">Visibilité : toutes</option>
+              <option value="false">👁️ Visibles</option>
+              <option value="true">🚫 Cachées</option>
+              <option value="scheduled">⏰ Cachées programmées</option>
             </select>
             <button onClick={()=>setShowAdv(v=>!v)}
               style={{background:showAdv||advActiveCount>0?'#6c5ce722':'#ffffff0a',border:`1px solid ${advActiveCount>0?'#6c5ce7':'#ffffff22'}`,color:advActiveCount>0?'#a29bfe':'#aaa',padding:"6px 10px",borderRadius:6,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
