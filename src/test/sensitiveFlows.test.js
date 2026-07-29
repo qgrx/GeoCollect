@@ -156,6 +156,21 @@ describe('computeCardLimitStatus', () => {
     expect(computeCardLimitStatus({ ...profile, daily_reset_at: '2000-01-01' }, withShinyCap, { shinyCard: true }).over).toBe(false)
   })
 
+  it('sac brillant : les emplacements achetés relèvent le cap shiny (+1 chacun)', () => {
+    // Sans ce miroir de effectiveShinyCap (API), un joueur ayant agrandi son sac
+    // brillant voyait « Limite atteinte » sur un round shiny alors que le serveur
+    // lui accordait le geocoin (« ça dit limite atteinte alors que non »).
+    const profile = { daily_reset_at: today, daily_cards: 29, hourly_cards: 0, cards_hour_reset_at: minsAgo(10), daily_shiny: 5 }
+    const withShinyCap = { ...limits, quizDailyShinyCap: 5 }
+    expect(computeCardLimitStatus(profile, withShinyCap, { shinyCard: true }).type).toBe('shiny')
+    expect(computeCardLimitStatus({ ...profile, shiny_bag_slots: 1 }, withShinyCap, { shinyCard: true }).over).toBe(false)
+    // 5 + 2 emplacements = cap 7 → 6 shiny passent, 7 bloquent
+    expect(computeCardLimitStatus({ ...profile, daily_shiny: 6, shiny_bag_slots: 2 }, withShinyCap, { shinyCard: true }).over).toBe(false)
+    expect(computeCardLimitStatus({ ...profile, daily_shiny: 7, shiny_bag_slots: 2 }, withShinyCap, { shinyCard: true }).type).toBe('shiny')
+    // Cap 0 (illimité) : le sac brillant ne le transforme jamais en limite
+    expect(computeCardLimitStatus({ ...profile, daily_shiny: 99, shiny_bag_slots: 3 }, { ...limits, quizDailyShinyCap: 0 }, { shinyCard: true }).over).toBe(false)
+  })
+
   it('cap à 0 = illimité : ni le sac ni le boost ne le transforment en limite', () => {
     const s = computeCardLimitStatus(
       { daily_reset_at: today, daily_cards: 999, hourly_cards: 999, cards_hour_reset_at: minsAgo(10), bag_slots: 5, pocket_boost: 10, pocket_boost_day: today },

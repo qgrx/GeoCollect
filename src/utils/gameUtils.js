@@ -98,7 +98,8 @@ export function patronageHaloColor({ rare = 0, epique = 0, legendaire = 0 } = {}
 // ─── Statut des limites de geocoins (horaire / quotidienne) ───────────────────
 // Détermine si le joueur a atteint une limite l'empêchant d'obtenir le prochain
 // geocoin, et laquelle. Le quotidien prime (reset le plus lointain).
-//   profile : { daily_cards, daily_reset_at, hourly_cards, cards_hour_reset_at, daily_shiny }
+//   profile : { daily_cards, daily_reset_at, hourly_cards, cards_hour_reset_at, daily_shiny,
+//               bag_slots, shiny_bag_slots, pocket_boost, pocket_boost_day }
 //   limits  : { quizDailyCardCap, quizHourlyCardCap, quizDailyShinyCap }
 //   opts    : { shinyCard } — true si le geocoin en jeu est brillant : le cap
 //     quotidien de shiny (quizDailyShinyCap) devient alors bloquant lui aussi.
@@ -139,7 +140,13 @@ export function computeCardLimitStatus(profile, limits, opts = {}) {
   // Limite quotidienne de shiny — ne bloque QUE les geocoins brillants (miroir du
   // backend quiz.js : shinyCapReached). Avant l'horaire : les deux resets « jour »
   // (minuit) priment sur la fenêtre glissante d'une heure.
-  const shinyCap   = Number(limits?.quizDailyShinyCap) || 0
+  // Cap shiny EFFECTIF : chaque emplacement de sac brillant acheté (shiny_bag_slots,
+  // payé en PF) ajoute +1 shiny/jour — miroir de effectiveShinyCap (API utils/limits.js).
+  // Oublié ici, un joueur ayant agrandi son sac brillant voyait « Limite atteinte »
+  // sur un round brillant alors que le serveur lui accordait le geocoin.
+  const baseShinyCap = Number(limits?.quizDailyShinyCap) || 0
+  const shinyBagSlots = Math.max(0, Number(profile.shiny_bag_slots) || 0)
+  const shinyCap   = baseShinyCap > 0 ? baseShinyCap + shinyBagSlots : baseShinyCap
   const dailyShiny = isNewDay ? 0 : (profile.daily_shiny || 0)
   if (opts.shinyCard && shinyCap > 0 && dailyShiny >= shinyCap) {
     return { over: true, type: 'shiny', resetAt: null, forgeCapped }

@@ -474,9 +474,16 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // compte en secondes entières : sur la frontière (ou un aléa réseau) /current peut
   // encore retenir la question → on réessaie en boucle jusqu'à l'obtenir, sinon
   // 🔥 + « … » resteraient affichés indéfiniment.
+  // FILET (2e cause de « carte muette ») : on récupère AUSSI quand la question manque
+  // sans qu'on se croie en feu — le serveur peut l'avoir retenue sur un critère que
+  // le client n'a pas (ex. handicap socket infligé sur un geocoin non possédé).
+  // Sans ça, la modale reste vide et le joueur ne peut tout simplement pas répondre.
+  // Exclu : mode Entraînement (autre source de question) et démo (pas de question_id).
+  const needsQuestion = !displayedQ && !beginner && !!quiz.question_id;
   useEffect(()=>{
-    if(status!=="open"||!isStreakLeader) return;
-    if(handicapLeft>0||displayedQ) return;
+    if(status!=="open") return;
+    if(!isStreakLeader && !needsQuestion) return;
+    if((isStreakLeader&&handicapLeft>0)||displayedQ) return;
     let cancelled=false; let timer;
     const tryFetch=()=>{
       Promise.resolve(onNeedQuestion?.()).then(d=>{
@@ -487,7 +494,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     };
     tryFetch();
     return ()=>{ cancelled=true; clearTimeout(timer); };
-  },[status,isStreakLeader,handicapLeft,displayedQ]);
+  },[status,isStreakLeader,handicapLeft,displayedQ,needsQuestion]);
 
   // Clavier ouvert (ou écran court) → hauteur visible réduite : on bascule en mode
   // compact (vignette au lieu de la grande carte) pour que la question reste
@@ -623,7 +630,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
                 <span>{handicapLeft>0 ? `${t('quiz_on_fire')} ${handicapLeft}s` : '…'}</span>
               </div>
             ) : (
-              <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1.5,marginBottom:5}}>{displayedQ}</div>
+              // Question absente sans être en feu = récupération en cours (filet
+              // ci-dessus) : « … » plutôt qu'un vide inexplicable.
+              <div style={{fontSize:13,fontWeight:800,color:displayedQ?"#fff":"#8fb0c9",lineHeight:1.5,marginBottom:5,minHeight:20}}>{displayedQ||'…'}</div>
             )}
           </div>
         </div>
