@@ -29,6 +29,7 @@ export function normalizeProfile(p) {
       rare:       wNew ? 0 : (p.weekly_rare || 0),
       epique:     wNew ? 0 : (p.weekly_epique || 0),
       legendaire: wNew ? 0 : (p.weekly_legendaire || 0),
+      market_new: wNew ? 0 : (p.weekly_market_new || 0),
     },
     patronage: {
       count:            Number(p.patronage_count || 0),

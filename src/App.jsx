@@ -1545,9 +1545,14 @@ export default function App() {
       beginner.activeQuiz, showRules, beginnerWinnersPopup])
 
   // ── Market actions with toasts ─────────────────────────────────────────────
-  function handleBuy(listing, index) {
-    const res = gs.handleBuy(listing, index);
+  // gs.handleBuy est ASYNCHRONE : sans `await`, `res` était une Promise — jamais
+  // égale à 'insufficient' — et le toast de succès s'affichait même quand le
+  // serveur avait refusé l'achat (annonce déjà vendue, or insuffisant, plafond
+  // hebdo de geocoins non possédés…) alors que l'achat optimiste était annulé.
+  async function handleBuy(listing, index) {
+    const res = await gs.handleBuy(listing, index);
     if (res === 'insufficient') { showToast(t('toast_not_enough_gold'), 'error'); return; }
+    if (res !== 'ok') { showToast('❌ ' + (res && res !== 'error_no_id' ? res : 'Achat impossible'), 'error'); return; }
     showToast(t('toast_bought').replace('{card}', listing.card.name).replace('{price}', listing.price));
   }
   async function handleListCard(card, price) {
@@ -3503,6 +3508,7 @@ export default function App() {
                 apiSetConfig('quiz_weekly_cap_rare',       limEdit.quizWeeklyCapRare       ?? 100),
                 apiSetConfig('quiz_weekly_cap_epique',     limEdit.quizWeeklyCapEpique     ?? 40),
                 apiSetConfig('quiz_weekly_cap_legendaire', limEdit.quizWeeklyCapLegendaire ?? 1),
+                apiSetConfig('market_weekly_new_cap',      limEdit.marketWeeklyNewCap      ?? 2),
                 apiSetConfig('patronage_weekly_cap_rare',       limEdit.patronageWeeklyCapRare       ?? 10),
                 apiSetConfig('patronage_weekly_cap_epique',     limEdit.patronageWeeklyCapEpique     ?? 4),
                 apiSetConfig('patronage_weekly_cap_legendaire', limEdit.patronageWeeklyCapLegendaire ?? 1),

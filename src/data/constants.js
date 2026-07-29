@@ -74,6 +74,7 @@ export const INIT_LIMITS = {
   quizWeeklyCapRare:       100,
   quizWeeklyCapEpique:     40,
   quizWeeklyCapLegendaire: 1,
+  marketWeeklyNewCap:      2,
   patronageWeeklyCapRare:       10,
   patronageWeeklyCapEpique:     4,
   patronageWeeklyCapLegendaire: 1,

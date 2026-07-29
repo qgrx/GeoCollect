@@ -13,28 +13,29 @@ describe('normalizeProfile — forme du profil', () => {
 
   it('construit weekly/patronage depuis les colonnes plates (semaine courante)', () => {
     const p = normalizeProfile({
-      weekly_rare: 3, weekly_epique: 2, weekly_legendaire: 1, weekly_reset_at: weekStartParis(),
+      weekly_rare: 3, weekly_epique: 2, weekly_legendaire: 1, weekly_market_new: 2,
+      weekly_reset_at: weekStartParis(),
       patronage_given_rare: 4, patronage_given_epique: 1, patronage_given_legendaire: 0,
       patronage_reset_at: weekStartParis(), patronage_count: 12,
       patronage_daily_commun: 1, patronage_daily_reset_at: todayParis(),
     })
-    expect(p.weekly).toEqual({ rare: 3, epique: 2, legendaire: 1 })
+    expect(p.weekly).toEqual({ rare: 3, epique: 2, legendaire: 1, market_new: 2 })
     expect(p.patronage).toEqual({ count: 12, given_rare: 4, given_epique: 1, given_legendaire: 0, daily_commun: 1 })
   })
 
   it('remet les compteurs hebdo à 0 quand la semaine est périmée (mais garde le total mécène)', () => {
     const p = normalizeProfile({
-      weekly_rare: 3, weekly_legendaire: 1, weekly_reset_at: '2000-01-03',
+      weekly_rare: 3, weekly_legendaire: 1, weekly_market_new: 2, weekly_reset_at: '2000-01-03',
       patronage_given_rare: 4, patronage_reset_at: '2000-01-03', patronage_count: 12,
     })
-    expect(p.weekly).toEqual({ rare: 0, epique: 0, legendaire: 0 })
+    expect(p.weekly).toEqual({ rare: 0, epique: 0, legendaire: 0, market_new: 0 })
     expect(p.patronage.given_rare).toBe(0)
     expect(p.patronage.count).toBe(12)   // le total offert ne se réinitialise jamais
   })
 
   it('expose toujours weekly/patronage même sans colonnes (defaults à 0)', () => {
     const p = normalizeProfile({ id: 'u1', pseudo: 'x' })
-    expect(p.weekly).toEqual({ rare: 0, epique: 0, legendaire: 0 })
+    expect(p.weekly).toEqual({ rare: 0, epique: 0, legendaire: 0, market_new: 0 })
     expect(p.patronage).toEqual({ count: 0, given_rare: 0, given_epique: 0, given_legendaire: 0, daily_commun: 0 })
   })
 
