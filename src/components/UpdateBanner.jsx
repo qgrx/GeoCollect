@@ -9,6 +9,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n/translations.js'
+import useVisualViewport from '../hooks/useVisualViewport.js'
 
 const CURRENT           = typeof __COMMIT_SHA__ !== 'undefined' ? __COMMIT_SHA__ : 'dev'
 const POLL_MS           = 60_000   // intervalle de vérification du frontend
@@ -21,6 +22,7 @@ const API_URL    = _rawApiUrl || 'http://localhost:3001'
 
 export default function UpdateBanner() {
   const { t } = useT()
+  const vv = useVisualViewport()
   const [ready, setReady] = useState(false)
   const updateDetected = useRef(false)
 
@@ -86,7 +88,10 @@ export default function UpdateBanner() {
     }
   }, [])
 
-  if (!ready) return null
+  // Clavier ouvert (le joueur répond à un quiz) : ce bandeau ancré en bas remonte
+  // au-dessus du clavier, pile sur le champ de réponse. On l'escamote le temps de
+  // la saisie — l'état `ready` ne bouge pas, il revient dès le clavier refermé.
+  if (!ready || vv?.keyboardOpen) return null
 
   return (
     <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 6000, display: 'flex', justifyContent: 'center', padding: '10px 12px', pointerEvents: 'none' }}>

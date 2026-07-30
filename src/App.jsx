@@ -17,6 +17,7 @@ import { isCorrectAnswer } from './utils/answer.js';
 import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
 import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
+import useVisualViewport from './hooks/useVisualViewport.js'
 import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiBuyShinyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard, apiGetPatronagePending } from './services/api.js'
 import { soundQuizNew, soundMarketSale, soundCorrect, useVolume } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
@@ -1196,6 +1197,11 @@ export default function App() {
     setPendingQuiz(applyTrans)
     setActiveQuiz(applyTrans)
   }, [lang])
+
+  // ── Zone réellement visible (barres du navigateur mobile, clavier virtuel) ──
+  // Sert au toast (repositionné clavier ouvert) et aux panneaux plein écran qui
+  // doivent garder leur entête atteignable sur iPhone.
+  const vv = useVisualViewport()
 
   // ── Détection mobile / desktop ────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
@@ -2991,19 +2997,34 @@ export default function App() {
       )}
 
       {/* ── Toast ── */}
-      {toast && (
-        <div style={{ position: 'fixed',bottom: 28,right: 28,zIndex: 3000,pointerEvents: 'none',maxWidth: 'min(80vw,340px)',background: toast.type === 'error' ? '#d63031' : '#00b894',color: '#fff',padding: '11px 18px',borderRadius: 12,fontWeight: 800,fontSize: 13,boxShadow: '0 8px 32px #0006',animation: 'toastIn .4s cubic-bezier(.34,1.56,.64,1) both' }}>
+      {/* Clavier ouvert (iPhone) : le toast collé en bas remonte juste au-dessus du
+          clavier et masque le champ de réponse du quiz — pile là où le joueur tape.
+          On le renvoie alors en HAUT de la zone visible (comme la modale de quiz, qui
+          se cale sur le visualViewport), en plus discret : il ne recouvre plus que
+          l'entête de la modale — jamais la question, le champ ni le bouton — et
+          `pointerEvents:none` laisse le ✕ cliquable au travers. */}
+      {toast && (() => {
+        const typing = !!vv?.keyboardOpen
+        return (
+        <div style={{ position: 'fixed',right: typing ? 14 : 28,...(typing ? { top: vv.offsetTop + 10 } : { bottom: 28 }),zIndex: 3000,pointerEvents: 'none',maxWidth: typing ? 'min(72vw,300px)' : 'min(80vw,340px)',background: toast.type === 'error' ? '#d63031' : '#00b894',color: '#fff',padding: typing ? '7px 12px' : '11px 18px',borderRadius: 12,fontWeight: 800,fontSize: typing ? 12 : 13,boxShadow: '0 8px 32px #0006',animation: 'toastIn .4s cubic-bezier(.34,1.56,.64,1) both' }}>
           {toast.msg}
         </div>
-      )}
+        )
+      })()}
 
       {/* ── Achievement toast queue ── */}
-      {gs.pendingAch.length > 0 && (
+      {/* Clavier ouvert = le joueur est en train de répondre : ces notifications
+          (bas de l'écran centré, popup plein écran) se placeraient pile sur le champ
+          de réponse et la question. Elles ne sont pas perdues, juste DIFFÉRÉES : la
+          file reste en état et leur minuterie d'auto-fermeture vit dans le composant
+          — il n'est pas monté, donc rien ne s'écoule. Elles s'affichent dès que le
+          clavier se referme. */}
+      {gs.pendingAch.length > 0 && !vv?.keyboardOpen && (
         <AchievementToast achievement={gs.pendingAch[0]} cardPool={gs.cardPool} onClose={() => gs.setPendingAch(prev => prev.slice(1))} />
       )}
 
       {/* ── Achievement upgrade popup queue (montées de palier) ── */}
-      {gs.pendingUpgrade.length > 0 && (
+      {gs.pendingUpgrade.length > 0 && !vv?.keyboardOpen && (
         <AchievementUpgradePopup upgrade={gs.pendingUpgrade[0]} cardPool={gs.cardPool} onClose={() => gs.setPendingUpgrade(prev => prev.slice(1))} />
       )}
 
@@ -3012,8 +3033,10 @@ export default function App() {
            la notif recouvrirait le bouton « Participer » et empêcherait de rejoindre
            le quiz (retour Tristan). Desktop : coin haut-droit, à l'écart du bouton
            Participer de la sidebar gauche. Empilement piloté ici (l'offset i*90 était
-           auparavant neutralisé par le position:fixed interne de SaleNotif). */}
-      {gs.saleNotifs.slice(0, 3).map((n, i) => (
+           auparavant neutralisé par le position:fixed interne de SaleNotif).
+           Différées clavier ouvert, comme les toasts d'achievement : sur mobile elles
+           sont ancrées en bas et recouvriraient le champ de réponse du quiz. */}
+      {(vv?.keyboardOpen ? [] : gs.saleNotifs.slice(0, 3)).map((n, i) => (
         <div key={n.id} style={{ position: 'fixed', right: 20, zIndex: 3500,
           ...(isWide ? { top: `${70 + i * 90}px` } : { bottom: `calc(76px + env(safe-area-inset-bottom) + ${i * 90}px)` }) }}>
           <SaleNotif notif={n} ranks={gs.limits.playerRanks} onClose={() => gs.setSaleNotifs(prev => prev.filter(x => x.id !== n.id))} />
@@ -3389,12 +3412,21 @@ export default function App() {
         const labels = { commun: t('rarity_commun'), rare: t('rarity_rare'), épique: t('rarity_epique'), légendaire: t('rarity_legendaire') }
         const { c1 } = rankCC(getRank(userScore, gs.limits.playerRanks))
         return (
-          <div onClick={() => setShowScoreDetail(false)} style={{ position:'fixed', inset:0, background:'#000c', display:'flex', alignItems:'center', justifyContent:'center', zIndex:3500, backdropFilter:'blur(8px)', padding:16 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: theme.bgSurface, border:`1px solid ${theme.border}`, borderRadius:16, padding:'20px 24px', width:'min(94vw,360px)', fontFamily:"'Nunito',sans-serif", boxShadow:'0 24px 60px #0008' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+          // Le panneau se cale sur la zone RÉELLEMENT visible (visualViewport) au
+          // lieu de `inset:0` : sur iPhone le viewport de mise en page est plus haut
+          // que l'écran utile (barre d'URL en haut, barre d'outils en bas), et une
+          // longue liste de paliers débordait des deux côtés — titre et ✕ hors
+          // d'atteinte, sans possibilité de défiler (fond fixe). Entête épinglée +
+          // corps défilable : le ✕ reste visible quelle que soit la hauteur.
+          <div onClick={() => setShowScoreDetail(false)} style={{ position:'fixed', left:0, right:0, top: vv ? vv.offsetTop : 0, height: vv ? vv.height : '100%', background:'#000c', display:'flex', alignItems:'center', justifyContent:'center', zIndex:3500, backdropFilter:'blur(8px)', padding:16 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: theme.bgSurface, border:`1px solid ${theme.border}`, borderRadius:16, padding:'20px 24px', width:'min(94vw,360px)', maxHeight:'100%', boxSizing:'border-box', display:'flex', flexDirection:'column', minHeight:0, fontFamily:"'Nunito',sans-serif", boxShadow:'0 24px 60px #0008' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexShrink:0 }}>
                 <div style={{ fontFamily:"'Fredoka One',sans-serif", fontSize:18, color:theme.textPrimary }}>{t('score_detail_title')}</div>
                 <button onClick={() => setShowScoreDetail(false)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:theme.textMuted }}>✕</button>
               </div>
+              {/* Corps défilable (marges négatives : la barre de défilement longe le
+                  bord du panneau au lieu de rogner le contenu). */}
+              <div style={{ overflowY:'auto', overflowX:'hidden', minHeight:0, margin:'0 -24px', padding:'0 24px' }}>
               <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                 {rows.map(({ r, normal, shiny, pts, shinyPts }) => (
                   <div key={r}>
@@ -3446,6 +3478,7 @@ export default function App() {
                   </div>
                 )
               })()}
+              </div>
             </div>
           </div>
         )

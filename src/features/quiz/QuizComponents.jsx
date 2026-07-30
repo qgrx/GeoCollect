@@ -11,6 +11,7 @@ import { QUIZ_INTERVAL } from '../../data/constants.js';
 import Card from '../../components/Card.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import { BTN } from '../../utils/styles.js';
+import useVisualViewport from '../../hooks/useVisualViewport.js';
 
 const SNOOZE_OPTIONS = [
   { label: '1 min',    ms: 60_000 },
@@ -343,7 +344,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // le visualViewport pour redimensionner la modale dans la zone réellement visible
   // (sinon iOS fait défiler la page et masque le haut de la question — cf. capture
   // où seule la dernière ligne de la question restait visible clavier ouvert).
-  const [vv,setVv]=useState(null);
+  const vv=useVisualViewport();
   const ref=useRef(); const doneRef=useRef(false); const submittingRef=useRef(false); const retryRef=useRef(0);
   // Figer l'état "brillant" au montage : un événement quiz:solved (annonçant le prochain
   // quiz) peut mettre à jour isShiny pendant que cette modale affiche encore le résultat.
@@ -370,17 +371,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   }, [quiz.winner, status]);
 
   useEffect(()=>{ref.current?.focus();},[]);
-
-  // Suivi du visualViewport : hauteur visible (hors clavier) + décalage vertical.
-  useEffect(()=>{
-    const visualViewport=window.visualViewport;
-    if(!visualViewport) return;
-    const update=()=>setVv({height:visualViewport.height,offsetTop:visualViewport.offsetTop});
-    update();
-    visualViewport.addEventListener('resize',update);
-    visualViewport.addEventListener('scroll',update);
-    return()=>{visualViewport.removeEventListener('resize',update);visualViewport.removeEventListener('scroll',update);};
-  },[]);
 
   useEffect(()=>{
     if(status!=="open"&&status!=="glory") return;  // glory : on continue de ticker pour rafraîchir le décompte de grâce
@@ -517,13 +507,19 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // compact (vignette au lieu de la grande carte) pour que la question reste
   // entièrement lisible au-dessus du champ de saisie.
   const compact = !!vv && vv.height < 540;
+  // Écran étroit (téléphone) : le libellé long du bouton d'agrandissement ne tient
+  // pas sur la ligne de la bannière de limite et passe seul à la ligne suivante
+  // (bannière plus haute, question repoussée). On y met un libellé court.
+  const narrow  = (vv?.width ?? (typeof window!=='undefined'?window.innerWidth:1024)) < 520;
   return (
     <div style={{position:"fixed",left:0,right:0,top:vv?vv.offsetTop:0,height:vv?vv.height:"100%",zIndex:800,background:"#000000bb",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:compact?10:20}}>
       <style>{`@keyframes shakeIt{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}} @keyframes winGlow{0%,100%{box-shadow:0 0 0 0 #00b89400}50%{box-shadow:0 0 32px 8px #00b89466}} @keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.5)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}`}</style>
-      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:"14px 16px",width:"min(calc(100vw - 40px),520px)",maxHeight:vv?`${Math.max(0,vv.height-(compact?20:40))}px`:"calc(100dvh - 100px)",display:"flex",flexDirection:"column",boxSizing:"border-box",border:isShinyFrozen?"2px solid #f9ca24aa":"2px solid #f9ca2444",boxShadow:isShinyFrozen?"0 24px 60px #000c,0 0 40px #f9ca2433":"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexShrink:0}}>
+      <div style={{background:"linear-gradient(145deg,#1e3045,#1a2d42)",borderRadius:20,padding:compact?"10px 12px":"14px 16px",width:"min(calc(100vw - 40px),520px)",maxHeight:vv?`${Math.max(0,vv.height-(compact?20:40))}px`:"calc(100dvh - 100px)",display:"flex",flexDirection:"column",boxSizing:"border-box",border:isShinyFrozen?"2px solid #f9ca24aa":"2px solid #f9ca2444",boxShadow:isShinyFrozen?"0 24px 60px #000c,0 0 40px #f9ca2433":"0 24px 60px #000c",fontFamily:"'Nunito',sans-serif"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:compact?6:10,flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-            <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:17,color:"#f9ca24"}}>{t("quiz_title")}</div>
+            {/* Clavier ouvert : le titre décoratif cède sa ligne à la question. Le
+                décompte et le ✕ restent, eux, dans l'entête. */}
+            {!compact && <div style={{fontFamily:"'Fredoka One',sans-serif",fontSize:17,color:"#f9ca24"}}>{t("quiz_title")}</div>}
             {quiz.prizes_total>1 && (
               <span style={{display:"inline-flex",alignItems:"center",gap:3,background:"linear-gradient(135deg,#6c5ce7,#a29bfe)",color:"#fff",fontSize:10,fontWeight:900,padding:"3px 8px",borderRadius:20,boxShadow:"0 2px 8px #6c5ce755"}}>
                 🎁 {(t('quiz_prizes_to_win')||'{n} à gagner').replace('{n}',quiz.prizes_total)}
@@ -549,8 +545,10 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           {(status==="open"||status==="glory")&&onClose&&<button onClick={onClose} style={{background:"#ffffff18",border:"none",color:"#888",width:26,height:26,borderRadius:"50%",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900}} title="Fermer">✕</button>}
         </div>
         {/* Signalement — en haut, loin du bouton Répondre pour éviter les clics par erreur.
-            Masqué en mode démo (pas de question_id) : rien à signaler côté visiteur. */}
-        {quiz.question_id && <div style={{flexShrink:0,textAlign:"left",marginBottom:8}}>
+            Masqué en mode démo (pas de question_id) : rien à signaler côté visiteur.
+            Masqué aussi clavier ouvert (compact) : priorité à la question, le lien
+            revient dès que le clavier se referme (ou sur l'écran de résultat). */}
+        {quiz.question_id && !compact && <div style={{flexShrink:0,textAlign:"left",marginBottom:8}}>
           {reportStatus==='done'
             ? <span style={{fontSize:10,color:"#00b894",fontWeight:700}}>✓ {t('quiz_report_thanks')}</span>
             : <button onClick={handleReport} disabled={reportStatus==='loading'}
@@ -588,17 +586,24 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           const showUpsell = upsell && price!=null && limitStatus.type!=='shiny';
           const poor     = (upsell?.gold??0)<price;
           const active   = upsellConfirm===(pocket?'pocket':'bag');
+          // Libellé du bouton : complet sur large, réduit sur téléphone (« 🎒 Sac ·
+          // 1000💰 ») pour rester sur la MÊME ligne que « ⚠️ Limite atteinte ⓘ ».
+          // Le sens complet reste accessible : title/aria-label + panneau de
+          // confirmation qui détaille l'achat avant de payer.
+          const upsellFull  = pocket ? t('limit_pocket_buy_short') : t('limit_bag_buy_short');
+          const upsellLabel = narrow ? (pocket ? t('limit_pocket_buy_micro') : t('limit_bag_buy_micro')) : upsellFull;
           const buy=async()=>{ if(upsellBusy||poor) return; setUpsellBusy(true); try{ await (pocket?upsell.onBuyPocket:upsell.onBuyBag)(); } finally{ setUpsellBusy(false); setUpsellConfirm(null); } };
           return (
-          <div style={{background:"linear-gradient(135deg,#3a2a0e,#2a1f0a)",border:"1.5px solid #f9ca2466",borderRadius:12,padding:"8px 11px",marginBottom:12}}>
-            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{background:"linear-gradient(135deg,#3a2a0e,#2a1f0a)",border:"1.5px solid #f9ca2466",borderRadius:12,padding:compact?"6px 9px":"8px 11px",marginBottom:compact?8:12}}>
+            <div style={{display:"flex",gap:narrow?6:8,alignItems:"center",flexWrap:"wrap"}}>
               <span style={{fontSize:15,lineHeight:1,flexShrink:0}}>⚠️</span>
               <span style={{fontSize:12.5,fontWeight:900,color:"#f9ca24",whiteSpace:"nowrap"}}>{t('quiz_limit_reached')}</span>
               <LimitInfoButton title={bannerTitle} body={infoBody} />
               {showUpsell && !active && (
-                <button onClick={()=>{ if(!poor) setUpsellConfirm(pocket?'pocket':'bag'); }} disabled={poor} title={poor?t('limit_upsell_no_gold'):undefined}
-                  style={{marginLeft:"auto",flexShrink:0,background:poor?"#ffffff10":"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:poor?"#8d8d8d":"#1e2b3a",fontWeight:900,fontSize:11,padding:"6px 10px",borderRadius:9,cursor:poor?"not-allowed":"pointer",fontFamily:"'Nunito',sans-serif",whiteSpace:"nowrap"}}>
-                  {pocket ? `🧤 ${t('limit_pocket_buy_short')} · ${price}💰` : `🎒 ${t('limit_bag_buy_short')} · ${price}💰`}
+                <button onClick={()=>{ if(!poor) setUpsellConfirm(pocket?'pocket':'bag'); }} disabled={poor}
+                  title={poor?t('limit_upsell_no_gold'):upsellFull} aria-label={`${upsellFull} · ${price}`}
+                  style={{marginLeft:"auto",flexShrink:0,background:poor?"#ffffff10":"linear-gradient(135deg,#f9ca24,#e17055)",border:"none",color:poor?"#8d8d8d":"#1e2b3a",fontWeight:900,fontSize:11,padding:"6px 9px",borderRadius:9,cursor:poor?"not-allowed":"pointer",fontFamily:"'Nunito',sans-serif",whiteSpace:"nowrap"}}>
+                  {pocket ? `🧤 ${upsellLabel} · ${price}💰` : `🎒 ${upsellLabel} · ${price}💰`}
                 </button>
               )}
             </div>
@@ -628,7 +633,7 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           </div>
           );
         })()}
-        <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:12}}>
+        <div style={{display:"flex",gap:compact?9:12,alignItems:"flex-start",marginBottom:compact?4:12}}>
           <div style={{flexShrink:0,pointerEvents:"none"}}>
             {compact ? (
               <div style={{width:48,height:48,borderRadius:8,overflow:"hidden",border:`2px solid ${c1}`,background:"#1e3045",boxShadow:isShinyFrozen?`0 0 10px ${c1}aa`:"none"}}>
