@@ -5,6 +5,7 @@ import { RC, cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
 import { apiAdminSaveCardNameTrans, apiAdminSaveCardDescTrans, apiGetAdminSeasons, apiReleaseHiddenCards } from '../../services/api.js';
 import Card from '../../components/Card.jsx';
+import AdminCardBatch from './AdminCardBatch.jsx';
 
 // Petits utilitaires dupliqués pour rendre le composant autonome
 function Fld({lbl,children}){
@@ -28,6 +29,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const { t } = useT();
   const [editCard, setEditCard]       = useState(null);
   const [newCardMode, setNewCardMode] = useState(false);
+  const [batchMode, setBatchMode]     = useState(false);
   const [search, setSearch]           = useState('');
   const [filterType, setFilterType]   = useState('Tous');
   const [filterRarity, setFilterRarity] = useState('');
@@ -203,7 +205,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   }
 
   function closeForm() {
-    setEditCard(null); setNewCardMode(false);
+    setEditCard(null); setNewCardMode(false); setBatchMode(false);
     setNc({ name:"", type: filterType !== 'Tous' ? filterType : cardTypes[0]||"", rarity:"commun", image:null, thumbnail:null, desc:"", sellable:true, minPrice:"", forgeable:false, forgeCost:"", shiny_forge_cost:null, season_id:null });
     if (fileRef.current) fileRef.current.value = '';
     if (editFileRef.current) editFileRef.current.value = '';
@@ -214,34 +216,51 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
       {/* ── Header ── */}
       <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
         <div style={{flex:1,fontWeight:800,color:"#e74c3c",fontSize:14}}>
-          {editCard ? `✏️ ${editCard.name}` : newCardMode ? "➕ Nouvelle carte" : "🃏 Geocoins"}
+          {editCard ? `✏️ ${editCard.name}` : newCardMode ? "➕ Nouvelle carte" : batchMode ? "📦 Création par lot" : "🃏 Geocoins"}
         </div>
-        {!editCard && !newCardMode && (
+        {!editCard && !newCardMode && !batchMode && (
           <button onClick={()=>{ setNewCardMode(true); setNc({name:"",type:filterType!=='Tous'?filterType:cardTypes[0]||"",rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:"",shiny_forge_cost:null,season_id:null,hidden:false}); }}
             style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"6px 14px",fontSize:12,borderRadius:8}}>➕ Nouvelle carte</button>
         )}
-        {!editCard && !newCardMode && (()=>{const hiddenCards=(cardPool||[]).filter(c=>c.hidden);return hiddenCards.length>0&&(
+        {!editCard && !newCardMode && !batchMode && (
+          <button onClick={()=>setBatchMode(true)} title="Uploader plusieurs images d'un coup : un geocoin caché par image, nommé d'après le fichier"
+            style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"6px 14px",fontSize:12,borderRadius:8}}>📦 Créer par lot</button>
+        )}
+        {!editCard && !newCardMode && !batchMode && (()=>{const hiddenCards=(cardPool||[]).filter(c=>c.hidden);return hiddenCards.length>0&&(
           <button onClick={async()=>{if(!window.confirm(`Publier les ${hiddenCards.length} carte(s) cachée(s) ? Elles deviendront visibles, comptées et utilisables par les joueurs (dates de publication programmées incluses).\n\nPour n'en publier qu'une partie ou programmer une release, utilisez l'onglet « 🚫 Cachées ».`))return;const {data,error}=await apiReleaseHiddenCards();if(error){setMsg("❌ "+error);return;}hiddenCards.forEach(c=>onUpdateCardInPool?.({...c,hidden:false,publish_at:null,sellable:c.forgeable?false:true}));setMsg(`✅ ${data?.released??hiddenCards.length} carte(s) publiée(s) !`);}}
             style={{...BTN("linear-gradient(135deg,#e17055,#d63031)"),padding:"6px 14px",fontSize:12,borderRadius:8}} title="Rendre visibles toutes les cartes cachées">🚀 Publier {hiddenCards.length} cachée{hiddenCards.length>1?"s":""}</button>
         );})()}
-        <button onClick={()=>csvCardRef.current.click()} style={{...BTN("#ffffff18"),padding:"6px 12px",fontSize:11,borderRadius:8}}>📥 Importer</button>
-        <button onClick={exportCSVCards} style={{...BTN("#ffffff18"),padding:"6px 12px",fontSize:11,borderRadius:8}}>📤 Exporter</button>
+        {!batchMode && <button onClick={()=>csvCardRef.current.click()} style={{...BTN("#ffffff18"),padding:"6px 12px",fontSize:11,borderRadius:8}}>📥 Importer</button>}
+        {!batchMode && <button onClick={exportCSVCards} style={{...BTN("#ffffff18"),padding:"6px 12px",fontSize:11,borderRadius:8}}>📤 Exporter</button>}
         <input ref={csvCardRef} type="file" accept=".csv,.zip" onChange={handleCSVCards} style={{display:"none"}}/>
       </div>
 
       {/* ── Fil d'Ariane ── */}
-      {(editCard || newCardMode) && (
+      {(editCard || newCardMode || batchMode) && (
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14,fontSize:12,color:"#8daacc"}}>
           <button onClick={closeForm} style={{background:"none",border:"none",color:"#e74c3c",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif",padding:0}}>← Tous les geocoins</button>
           <span>›</span>
           <span style={{color:"#f9ca24",fontWeight:700}}>
-            {editCard ? <>✏️ {editCard.name}{circulation!==null&&<span style={{color:"#aaa",fontSize:11,fontWeight:600,marginLeft:4}}>({circulation} en circulation)</span>}</> : "Nouvelle carte"}
+            {editCard ? <>✏️ {editCard.name}{circulation!==null&&<span style={{color:"#aaa",fontSize:11,fontWeight:600,marginLeft:4}}>({circulation} en circulation)</span>}</> : batchMode ? "Création par lot" : "Nouvelle carte"}
           </span>
         </div>
       )}
 
+      {/* ── Création par lot (N images → N geocoins cachés) ── */}
+      {batchMode && !editCard && !newCardMode && (
+        <AdminCardBatch
+          cardPool={cardPool}
+          cardTypes={cardTypes}
+          defaultType={filterType!=='Tous'?filterType:cardTypes[0]||''}
+          seasons={seasons}
+          onAddCard={onAddCard}
+          setMsg={setMsg}
+          onClose={closeForm}
+        />
+      )}
+
       {/* ── Grille de geocoins ── */}
-      {!editCard && !newCardMode && (
+      {!editCard && !newCardMode && !batchMode && (
         <>
           <div style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
             <input value={search} onChange={e=>{setSearch(e.target.value);setGridPage(0);}} placeholder="Rechercher…"
