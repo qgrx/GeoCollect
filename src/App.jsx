@@ -3008,8 +3008,13 @@ export default function App() {
           `pointerEvents:none` laisse le ✕ cliquable au travers. */}
       {toast && (() => {
         const typing = !!vv?.keyboardOpen
+        // Barre de nav mobile fixée en bas : un toast à `bottom:28` la recouvre
+        // (les icônes Accueil/Trésors deviennent illisibles et le toast semble
+        // « déborder » sur le menu). On se cale au-dessus, même offset que les
+        // notifs de vente juste en dessous.
+        const navBottom = (auth.profile && isMobile) ? 'calc(76px + env(safe-area-inset-bottom))' : '28px'
         return (
-        <div style={{ position: 'fixed',right: typing ? 14 : 28,...(typing ? { top: vv.offsetTop + 10 } : { bottom: 28 }),zIndex: 3000,pointerEvents: 'none',maxWidth: typing ? 'min(72vw,300px)' : 'min(80vw,340px)',background: toast.type === 'error' ? '#d63031' : '#00b894',color: '#fff',padding: typing ? '7px 12px' : '11px 18px',borderRadius: 12,fontWeight: 800,fontSize: typing ? 12 : 13,boxShadow: '0 8px 32px #0006',animation: 'toastIn .4s cubic-bezier(.34,1.56,.64,1) both' }}>
+        <div style={{ position: 'fixed',right: typing ? 14 : 28,...(typing ? { top: vv.offsetTop + 10 } : { bottom: navBottom }),zIndex: 3000,pointerEvents: 'none',maxWidth: typing ? 'min(72vw,300px)' : 'min(80vw,340px)',background: toast.type === 'error' ? '#d63031' : '#00b894',color: '#fff',padding: typing ? '7px 12px' : '11px 18px',borderRadius: 12,fontWeight: 800,fontSize: typing ? 12 : 13,boxShadow: '0 8px 32px #0006',animation: 'toastIn .4s cubic-bezier(.34,1.56,.64,1) both' }}>
           {toast.msg}
         </div>
         )
