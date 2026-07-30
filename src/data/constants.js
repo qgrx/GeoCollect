@@ -86,7 +86,7 @@ export const INIT_LIMITS = {
   patronageFastSeconds:         5,
   patronageCollectionThreshold: 80,
   patronageMinGeocoins:         10,
-  patronageSeenDays:            7,
+  patronageSeenDays:            14,
   patronageChoiceSeconds:       20,
   patronageCriteriaEnabled:     { nouveau: true, ancien: true, rapide: true, fidele: true, petite_collection: true, grande_collection: true },
   patronageTestRecipient:       '',

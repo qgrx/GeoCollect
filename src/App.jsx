@@ -3591,7 +3591,7 @@ export default function App() {
                 apiSetConfig('patronage_fast_seconds',          limEdit.patronageFastSeconds         ?? 5),
                 apiSetConfig('patronage_collection_threshold',  limEdit.patronageCollectionThreshold ?? 80),
                 apiSetConfig('patronage_min_geocoins',          limEdit.patronageMinGeocoins         ?? 10),
-                apiSetConfig('patronage_seen_days',             limEdit.patronageSeenDays            ?? 7),
+                apiSetConfig('patronage_seen_days',             limEdit.patronageSeenDays            ?? 14),
                 apiSetConfig('patronage_choice_seconds',        limEdit.patronageChoiceSeconds       ?? 20),
                 apiSetConfig('patronage_criteria_enabled',      limEdit.patronageCriteriaEnabled ?? { nouveau:true, ancien:true, rapide:true, fidele:true, petite_collection:true, grande_collection:true }),
                 apiSetConfig('patronage_test_recipient',        (limEdit.patronageTestRecipient ?? '').trim()),
