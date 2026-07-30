@@ -84,6 +84,10 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
           apiGetCurrentQuiz().then(({ data }) => {
             if (data) cbRef.current.onStreakLeader?.(data.streak_leaders ?? data.streak_leader ?? null)
             if (data?.quiz) {
+              // Round déjà gagné (serveur) : on le mémorise localement pour que tous
+              // les autres garde-fous (handleJoin, handleCloseActiveQuiz) s'appuient
+              // dessus, puis on ne le propose pas.
+              if (data.quiz.already_won) resolvedQuizIdsRef.current.add(data.quiz.id)
               if (resolvedQuizIdsRef.current.has(data.quiz.id)) { isFetchingRef.current = false; return }
               const wc = data.quiz.answer_word_count || 1
               const poolCard = cbRef.current.cardPool?.find(c => c.id === data.quiz.card?.id) || {}
@@ -129,10 +133,14 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const handleJoin = useCallback(async () => {
     let quiz = pendingQuiz
     if (quiz && quiz.winner) return // Ne pas rejoindre si déjà gagné
+    if (quiz?.id && resolvedQuizIdsRef.current.has(quiz.id)) return // round déjà remporté/résolu par moi
     if (!quiz && isDemo) return     // démo : aucun quiz global à récupérer
     if (!quiz) {
       const { data } = await apiGetCurrentQuiz()
       if (!data?.quiz) return
+      // Geocoin déjà remporté sur ce round (multi-prix encore ouvert pour les autres) :
+      // on n'y rentre pas — /answer refuserait de toute façon (already_winner).
+      if (data.quiz.already_won) { resolvedQuizIdsRef.current.add(data.quiz.id); return }
       // Propager les joueurs en série : sans ça, en rejoignant via /current (rechargement,
       // participation tardive, event quiz:new manqué) un joueur en feu n'aurait pas son
       // statut → masquage/blocage absents → la pénalité ne s'applique pas côté UI.

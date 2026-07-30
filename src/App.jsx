@@ -377,6 +377,15 @@ export default function App() {
         if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
       }
 
+      // Round déjà gagné par CE joueur (multi-prix : il reste `active` pendant la
+      // grâce, le temps que les autres prix partent). On ne le re-propose pas —
+      // c'est le seul garde-fou qui survit à un rechargement, où la mémoire locale
+      // des rounds résolus (resolvedQuizIds) repart vide.
+      if (data.quiz?.already_won) {
+        setPendingQuiz(p => (p && p.id === data.quiz.id) ? null : p)
+        return
+      }
+
       // Le quiz est actif indéfiniment jusqu'à ce que quelqu'un réponde
       if (data.quiz) {
         const poolCard = cardPoolRef.current?.find(c => c.id === data.quiz.card.id) || {}
