@@ -516,14 +516,21 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     return ()=>{ cancelled=true; clearTimeout(timer); };
   },[status,isStreakLeader,handicapLeft,displayedQ,needsQuestion]);
 
-  // Clavier ouvert (ou écran court) → hauteur visible réduite : on bascule en mode
-  // compact (vignette au lieu de la grande carte) pour que la question reste
-  // entièrement lisible au-dessus du champ de saisie.
-  const compact = !!vv && vv.height < 540;
   // Écran étroit (téléphone) : le libellé long du bouton d'agrandissement ne tient
   // pas sur la ligne de la bannière de limite et passe seul à la ligne suivante
   // (bannière plus haute, question repoussée). On y met un libellé court.
-  const narrow  = (vv?.width ?? (typeof window!=='undefined'?window.innerWidth:1024)) < 520;
+  const narrow    = (vv?.width ?? (typeof window!=='undefined'?window.innerWidth:1024)) < 520;
+  // Clavier ouvert (ou écran court) → hauteur visible réduite.
+  const shortView = !!vv && vv.height < 540;
+  // Densité compacte : vignette au lieu de la grande carte, titre décoratif masqué,
+  // paddings resserrés — pour que la question tienne ENTIÈREMENT au-dessus du champ.
+  // Elle est VERROUILLÉE pour toute la durée d'affichage de la modale, et d'office
+  // sur téléphone (où le clavier s'ouvre dès l'apparition, la modale y était donc
+  // compacte tout le round) : sinon la fermeture du clavier à la validation faisait
+  // « re-grossir » la fenêtre d'un coup, en pleine annonce du résultat.
+  const [stayCompact,setStayCompact] = useState(false);
+  useEffect(()=>{ if(shortView) setStayCompact(true); },[shortView]);
+  const compact   = narrow || shortView || stayCompact;
   return (
     <div style={{position:"fixed",left:0,right:0,top:vv?vv.offsetTop:0,height:vv?vv.height:"100%",zIndex:800,background:"#000000bb",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:compact?10:20}}>
       <style>{`@keyframes shakeIt{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}} @keyframes winGlow{0%,100%{box-shadow:0 0 0 0 #00b89400}50%{box-shadow:0 0 32px 8px #00b89466}} @keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.5)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}`}</style>
@@ -559,9 +566,10 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
         </div>
         {/* Signalement — en haut, loin du bouton Répondre pour éviter les clics par erreur.
             Masqué en mode démo (pas de question_id) : rien à signaler côté visiteur.
-            Masqué aussi clavier ouvert (compact) : priorité à la question, le lien
-            revient dès que le clavier se referme (ou sur l'écran de résultat). */}
-        {quiz.question_id && !compact && <div style={{flexShrink:0,textAlign:"left",marginBottom:8}}>
+            Toujours affiché sinon : le mode compact étant permanent sur téléphone, le
+            masquer là y supprimerait le signalement pour de bon — et son apparition
+            au repli du clavier serait un saut de mise en page de plus. */}
+        {quiz.question_id && <div style={{flexShrink:0,textAlign:"left",marginBottom:compact?6:8}}>
           {reportStatus==='done'
             ? <span style={{fontSize:10,color:"#00b894",fontWeight:700}}>✓ {t('quiz_report_thanks')}</span>
             : <button onClick={handleReport} disabled={reportStatus==='loading'}
