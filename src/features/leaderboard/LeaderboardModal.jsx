@@ -253,6 +253,19 @@ export default function LeaderboardModal({ myCollection, myShinyCollection, myPs
         if (myId && !list.find(p => p.isMe)) {
           list = [...list, { id: myId, pseudo: myPseudo || 'Moi', isMe: true, isMeSeparate: true, score: myScore ?? 0, card_count: myCardCount, shiny_count: myShinyCount, gold: myGold ?? 0, forge_points: myForgePoints ?? 0, col: myCollection, shinyCol: myShinyCollection }];
         }
+        // Ma ligne porte mon score LIVE (recalculé depuis ma collection) alors que
+        // l'ordre vient de la colonne `score` du serveur : si celle-ci a un temps de
+        // retard, j'apparais au mauvais rang avec un score supérieur à celui du joueur
+        // affiché au-dessus. On retrie donc localement avec les scores AFFICHÉS, sur les
+        // mêmes départages que le serveur (score, puis points de forge, puis or).
+        // « Moi hors page » (isMeSeparate) reste en fin de liste, séparé.
+        list = [
+          ...list.filter(p => !p.isMeSeparate).sort((a, b) =>
+            (b.score || 0) - (a.score || 0) ||
+            (b.forge_points || 0) - (a.forge_points || 0) ||
+            (b.gold || 0) - (a.gold || 0)),
+          ...list.filter(p => p.isMeSeparate),
+        ];
         setPlayers(list);
         const nonSep = list.filter(p => !p.isMeSeparate).length;
         // Garde anti-boucle : une page suivante qui n'apporte AUCUN joueur nouveau
