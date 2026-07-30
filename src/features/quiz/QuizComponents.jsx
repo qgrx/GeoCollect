@@ -461,6 +461,19 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // Masqué tant qu'on est dans la fenêtre (défense en profondeur si la question a
   // fuité dans le payload) ou que la question retenue n'a pas encore été récupérée.
   const questionMasked = isStreakLeader && (handicapLeft > 0 || !displayedQ);
+  // Verrou de saisie (délai cadeau « en feu », validation en cours, pénalité anti-spam).
+  // Appliqué en `readOnly` et NON en `disabled` : un input désactivé n'est pas focusable,
+  // perd le focus qu'il avait et ferme le clavier mobile → le joueur devait recliquer
+  // dans le champ après chaque mauvaise réponse / fin de délai.
+  const inputLocked    = isSubmitting || questionMasked || penaltyLeft > 0;
+
+  // Filet complémentaire : rendre le focus au champ dès que le verrou saute. Couvre le
+  // cas du joueur qui clique sur « Répondre » (le focus part sur le bouton) et celui de
+  // la fin du délai cadeau / de pénalité.
+  useEffect(()=>{
+    if(status!=="open"||inputLocked) return;
+    ref.current?.focus({preventScroll:true});
+  },[inputLocked,status]);
 
   // Fin du délai cadeau → récupérer la question retenue par le serveur (via /current).
   // Le serveur teste elapsedMs<handicapMs à la milliseconde près alors que le client
@@ -699,8 +712,8 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             </div>
           )}
           <div style={{display:"flex",gap:9}}>
-            <input ref={ref} value={inp} disabled={isSubmitting||questionMasked||penaltyLeft>0} onChange={e=>{setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0&&!questionMasked&&penaltyLeft===0)submit()}} placeholder={penaltyLeft>0 ? `⏱️ ${penaltyLeft}s` : questionMasked ? (handicapLeft>0?`🎁 ${handicapLeft}s`:"…") : (wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc))}
-              style={{flex:1,minWidth:0,background:(isSubmitting||questionMasked||penaltyLeft>0)?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":(isSubmitting||questionMasked||penaltyLeft>0)?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:(isSubmitting||questionMasked||penaltyLeft>0)?0.6:1}}/>
+            <input ref={ref} value={inp} readOnly={inputLocked} onChange={e=>{if(inputLocked)return;setInp(e.target.value);setSubmitError(null);}} onKeyDown={e=>{if(e.key==="Enter"&&handicapLeft===0&&!questionMasked&&penaltyLeft===0)submit()}} placeholder={penaltyLeft>0 ? `⏱️ ${penaltyLeft}s` : questionMasked ? (handicapLeft>0?`🎁 ${handicapLeft}s`:"…") : (wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc))}
+              style={{flex:1,minWidth:0,background:inputLocked?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":inputLocked?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:inputLocked?0.6:1}}/>
           <button onClick={()=>submit()} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||penaltyLeft>0} style={{...BTN(handicapLeft>0?"linear-gradient(135deg,#ff7043,#e17055)":"linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"10px 16px",borderRadius:11,flexShrink:0,opacity:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||penaltyLeft>0)?0.6:1,cursor:(isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||penaltyLeft>0)?"not-allowed":"pointer",minWidth:90,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               {penaltyLeft>0 ? `⏱️ ${penaltyLeft}s` : handicapLeft>0 ? `🎁 ${handicapLeft}s` : isSubmitting ? (<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #1e3045",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.6s linear infinite"}}/>{t("quiz_validating") || "Validation…"}</>) : t("quiz_submit")}
             </button>
