@@ -851,7 +851,7 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,lostToPatronage=null,lostToFire=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeaders=null,prizesTotal=1,graceDeadline=null}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,lostToPatronage=null,lostToFire=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeaders=null,prizesTotal=1,graceDeadline=null,onCardClick=null}){
   const {t}=useT(); const {theme}=useTheme();
   // Décompte de grâce « encore Ns pour répondre » (gloire / multi-prix) — ticker local 1 s.
   const [,graceTick]=useState(0)
@@ -861,7 +861,6 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
   const urgent     = !hasPendingQuiz && !lostTo && secondsLeft <= 10
   const veryUrgent = urgent && secondsLeft <= 5 && secondsLeft > 0
   const hasCard    = !!nextCard && hasPendingQuiz
-  const rc         = hasCard ? RC[nextCard.rarity] : null
   const showColors = urgent || hasPendingQuiz
   // Pendant le quiz actif : rareté de la carte. Pendant le teaser : rareté annoncée.
   const colorRarity = hasPendingQuiz ? nextCard?.rarity : (urgent ? nextQuizRarity : null)
@@ -871,6 +870,8 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
   // ils peuvent être PLUSIEURS (P places par round), chacun avec son délai.
   const fireList = (Array.isArray(streakLeaders) ? streakLeaders : []).filter(l => l && l.handicap_seconds > 0)
   const onFire   = fireList.length > 0 && !isHandicapExemptCard(nextCard?.rarity, isShiny)
+  // Vignette cliquable → fiche du geocoin en grand (uniquement quand la carte est révélée)
+  const canOpenCard = hasCard && !!onCardClick
 
   // ── Annonce « en feu » (série de victoires) — en grand, mais JAMAIS quand un
   // quiz est joignable (le bouton « Participer » reste prioritaire) ───────────
@@ -982,8 +983,10 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
           </div>
         )}
 
-        {/* Thumbnail */}
-        <div style={{position:'relative',width:40,height:40,flexShrink:0}}>
+        {/* Thumbnail — cliquable pour ouvrir la fiche du geocoin en grand */}
+        <div onClick={canOpenCard?(e=>{e.stopPropagation();onCardClick(nextCard)}):undefined}
+          title={canOpenCard?(t('quiz_view_card')||'Voir le geocoin en grand'):undefined}
+          style={{position:'relative',width:40,height:40,flexShrink:0,cursor:canOpenCard?'zoom-in':'default',touchAction:'manipulation'}}>
           <div style={{width:'100%',height:'100%',borderRadius:6,overflow:'hidden',border:`2px solid ${c1}`,background:'#1e3045',boxSizing:'border-box',transition:'border-color .5s,box-shadow .5s',boxShadow:(hasCard&&nextCard.rarity==='légendaire')?`0 0 12px ${c1}aa`:urgent?`0 0 10px ${c1}88`:'none'}}>
             {hasCard
               ? nextCard.image_url
@@ -1041,18 +1044,22 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
           </div>
 
           {/* Infos carte (masquées en mode urgent). Pour un geocoin mystère, le message
-              « joueur en feu » remplace le texte « Geocoin mystère ». */}
+              « joueur en feu » remplace le texte « Geocoin mystère ».
+              La rareté n'est PAS écrite : elle est déjà lisible dans la couleur du cadre
+              de la vignette / de la barre — ça laisse la place au nom sans déborder sur
+              le bouton « Participer ». Le nom se tronque, les badges (✨, 🎁 N à gagner)
+              ne se compriment jamais. */}
           {!urgent&&(
-            <div style={{fontSize:10,color:'#666',display:'flex',alignItems:'center',gap:4}}>
+            <div style={{fontSize:10,color:'#666',display:'flex',alignItems:'center',gap:4,minWidth:0,overflow:'hidden'}}>
               {graceLeft!=null&&graceLeft>0
-                ? <span style={{color:'#e17055',fontWeight:900,animation:'pulse 1s infinite'}}>⏳ {(t('quiz_grace_left')||'encore {n}s pour répondre').replace('{n}',graceLeft)}</span>
+                ? <span style={{color:'#e17055',fontWeight:900,animation:'pulse 1s infinite',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>⏳ {(t('quiz_grace_left')||'encore {n}s pour répondre').replace('{n}',graceLeft)}</span>
                 : hasCard
-                ? <><span style={{color:rc.color,fontWeight:800}}>{rarityLabel(nextCard.rarity,t)}</span> — <span style={{color:theme.textSecondary}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,marginLeft:6}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}{prizesTotal>1&&<span style={{color:'#a29bfe',fontWeight:900,marginLeft:6}}>🎁 {(t('quiz_prizes_to_win')||'{n} à gagner').replace('{n}',prizesTotal)}</span>}</>
+                ? <><span style={{color:theme.textSecondary,fontWeight:800,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,flexShrink:0,whiteSpace:'nowrap'}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}{prizesTotal>1&&<span style={{color:'#a29bfe',fontWeight:900,flexShrink:0,whiteSpace:'nowrap'}}>🎁 {(t('quiz_prizes_to_win')||'{n} à gagner').replace('{n}',prizesTotal)}</span>}</>
                 : onFire
-                  ? <><span style={{color:'#ff8a5c',fontWeight:800}}>🔥 {fireList.length>1
+                  ? <><span style={{color:'#ff8a5c',fontWeight:800,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🔥 {fireList.length>1
                       ? (t('streak_bar_small_multi')||'{names} sont en feu').replace('{names}',fireList.map(l=>`${l.pseudo} (${l.streak})`).join(', '))
-                      : t('streak_bar_small').replace('{pseudo}',fireList[0].pseudo).replace('{n}',fireList[0].streak).replace('{x}',fireList[0].handicap_seconds)}</span><FireInfoButton size={11}/></>
-                  : <span style={{color:theme.textMuted,fontStyle:'italic'}}>{t('next_card')}</span>}
+                      : t('streak_bar_small').replace('{pseudo}',fireList[0].pseudo).replace('{n}',fireList[0].streak).replace('{x}',fireList[0].handicap_seconds)}</span><span style={{display:'flex',flexShrink:0}}><FireInfoButton size={11}/></span></>
+                  : <span style={{color:theme.textMuted,fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t('next_card')}</span>}
             </div>
           )}
         </div>
@@ -1309,19 +1316,23 @@ export function ModeToggle({ mode, onChange, onOpenRules }) {
 }
 
 // ─── Barre de quiz — MODE DÉBUTANT (style distinct, communs, multi-gagnants) ──
-export function BeginnerCountdownWidget({ secondsLeft, cycleTime = 60, nextCard, hasPendingQuiz, alreadyWon = false, onJoin, owned = false, blocked = false, blockMessage = '' }) {
+export function BeginnerCountdownWidget({ secondsLeft, cycleTime = 60, nextCard, hasPendingQuiz, alreadyWon = false, onJoin, owned = false, blocked = false, blockMessage = '', onCardClick = null }) {
   const { t } = useT(); const { theme } = useTheme();
   const pct = Math.max(0, Math.min(100, ((cycleTime - secondsLeft) / cycleTime) * 100));
   const c1 = '#00b894', c2 = '#0984e3';
   // Vignette : couleur de RARETÉ du geocoin (comme en PVP), pas la couleur du mode.
   const rcc = nextCard ? cardCC(nextCard.rarity) : { c1, c2 };
+  const canOpenCard = !!nextCard && !!onCardClick;
   return (
     <>
       <style>{CW_STYLES}</style>
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 11, background: `${c1}12`, border: `1.5px solid ${c1}55`, borderRadius: 13, padding: '9px 14px' }}>
         {/* Vignette — la coche « déjà possédé » déborde du cadre (overflow uniquement
-            sur le calque image, pas sur le conteneur parent), comme en PVP. */}
-        <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
+            sur le calque image, pas sur le conteneur parent), comme en PVP.
+            Cliquable pour ouvrir la fiche du geocoin en grand, comme en PVP. */}
+        <div onClick={canOpenCard ? (e => { e.stopPropagation(); onCardClick(nextCard) }) : undefined}
+          title={canOpenCard ? (t('quiz_view_card') || 'Voir le geocoin en grand') : undefined}
+          style={{ position: 'relative', width: 40, height: 40, flexShrink: 0, cursor: canOpenCard ? 'zoom-in' : 'default', touchAction: 'manipulation' }}>
           <div style={{ width: '100%', height: '100%', borderRadius: 6, overflow: 'hidden', border: `2px solid ${rcc.c1}`, background: '#1e3045', boxSizing: 'border-box' }}>
             {nextCard
               ? nextCard.image_url
@@ -1344,10 +1355,11 @@ export function BeginnerCountdownWidget({ secondsLeft, cycleTime = 60, nextCard,
           <div style={{ background: theme.overlayMd, borderRadius: 50, height: 5, overflow: 'hidden', marginBottom: 3 }}>
             <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg,${c1},${c2})`, borderRadius: 50, transition: 'width 1s linear' }} />
           </div>
-          {/* Info homogène avec le PVP : « Rareté - Nom » (toujours commun en débutant) */}
+          {/* Info homogène avec le PVP : nom seul (la rareté est portée par la couleur
+              du cadre de la vignette, pas par du texte qui mange la place du bouton). */}
           <div style={{ fontSize: 10, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {nextCard
-              ? <><span style={{ color: (RC[nextCard.rarity] || {}).color || c1, fontWeight: 800 }}>{rarityLabel(nextCard.rarity, t)}</span> - {cardName(nextCard, getLang())}</>
+              ? <span style={{ color: theme.textSecondary, fontWeight: 800 }}>{cardName(nextCard, getLang())}</span>
               : t('next_card')}
           </div>
         </div>
