@@ -18,6 +18,7 @@ import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
 import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
 import useVisualViewport from './hooks/useVisualViewport.js'
+import useBlurOnResume from './hooks/useBlurOnResume.js'
 import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiBuyShinyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard, apiGetPatronagePending } from './services/api.js'
 import { soundQuizNew, soundMarketSale, soundCorrect, useVolume } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
@@ -1208,6 +1209,11 @@ export default function App() {
   // Sert au toast (repositionné clavier ouvert) et aux panneaux plein écran qui
   // doivent garder leur entête atteignable sur iPhone.
   const vv = useVisualViewport()
+
+  // ── Retour au premier plan : relâcher le focus fantôme du clavier (iOS) ────
+  // Sans ça, un joueur qui quitte l'app pendant qu'il répond au quiz revient sur
+  // un champ « déjà focalisé » que le clavier refuse de rouvrir.
+  useBlurOnResume()
 
   // ── Détection mobile / desktop ────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)

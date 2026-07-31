@@ -37,16 +37,34 @@ export default function useVisualViewport() {
     })
     const onFocusIn  = () => { typing = isEditableFocused(); update() }
     const onFocusOut = () => { typing = false; update() }
+    // Retour au premier plan : le système a pu refermer le clavier pendant que la
+    // page était GELÉE — le `resize` du visualViewport n'est alors jamais délivré et
+    // on resterait sur une géométrie « clavier ouvert » (modale de quiz écrasée sur
+    // le haut de l'écran, champ de réponse hors de la zone rendue). On relit donc
+    // la zone visible à la reprise, puis une seconde fois en différé : iOS ne
+    // stabilise ses valeurs qu'un instant APRÈS la reprise.
+    let settleTimer = null
+    const onResume = () => {
+      if (document.visibilityState !== 'visible') return
+      typing = isEditableFocused(); update()
+      clearTimeout(settleTimer)
+      settleTimer = setTimeout(() => { typing = isEditableFocused(); update() }, 300)
+    }
     update()
     visualViewport.addEventListener('resize', update)
     visualViewport.addEventListener('scroll', update)
     window.addEventListener('focusin', onFocusIn)
     window.addEventListener('focusout', onFocusOut)
+    document.addEventListener('visibilitychange', onResume)
+    window.addEventListener('pageshow', onResume)
     return () => {
+      clearTimeout(settleTimer)
       visualViewport.removeEventListener('resize', update)
       visualViewport.removeEventListener('scroll', update)
       window.removeEventListener('focusin', onFocusIn)
       window.removeEventListener('focusout', onFocusOut)
+      document.removeEventListener('visibilitychange', onResume)
+      window.removeEventListener('pageshow', onResume)
     }
   }, [])
   return vv

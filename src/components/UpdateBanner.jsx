@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n/translations.js'
 import useVisualViewport from '../hooks/useVisualViewport.js'
+import { useQuizOpen } from '../utils/quizOpenSignal.js'
 
 const CURRENT           = typeof __COMMIT_SHA__ !== 'undefined' ? __COMMIT_SHA__ : 'dev'
 const POLL_MS           = 60_000   // intervalle de vérification du frontend
@@ -23,6 +24,7 @@ const API_URL    = _rawApiUrl || 'http://localhost:3001'
 export default function UpdateBanner() {
   const { t } = useT()
   const vv = useVisualViewport()
+  const quizOpen = useQuizOpen()
   const [ready, setReady] = useState(false)
   const updateDetected = useRef(false)
 
@@ -88,10 +90,12 @@ export default function UpdateBanner() {
     }
   }, [])
 
-  // Clavier ouvert (le joueur répond à un quiz) : ce bandeau ancré en bas remonte
-  // au-dessus du clavier, pile sur le champ de réponse. On l'escamote le temps de
-  // la saisie — l'état `ready` ne bouge pas, il revient dès le clavier refermé.
-  if (!ready || vv?.keyboardOpen) return null
+  // Fenêtre de quiz ouverte, clavier ouvert ou non : ce bandeau ancré en bas se
+  // superpose à la ligne de saisie de la réponse (z-index 6000 > 800), et son
+  // bouton « Rafraîchir » y recharge l'app au moindre tap raté. On l'escamote tant
+  // que le joueur est sur une question — l'état `ready` ne bouge pas, le bandeau
+  // revient dès la fenêtre refermée.
+  if (!ready || quizOpen || vv?.keyboardOpen) return null
 
   return (
     <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 6000, display: 'flex', justifyContent: 'center', padding: '10px 12px', pointerEvents: 'none' }}>

@@ -12,6 +12,7 @@ import Card from '../../components/Card.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import { BTN } from '../../utils/styles.js';
 import useVisualViewport from '../../hooks/useVisualViewport.js';
+import { pushQuizOpen } from '../../utils/quizOpenSignal.js';
 
 const SNOOZE_OPTIONS = [
   { label: '1 min',    ms: 60_000 },
@@ -371,6 +372,11 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   }, [quiz.winner, status]);
 
   useEffect(()=>{ref.current?.focus();},[]);
+
+  // Tant que cette fenêtre est ouverte, on escamote le bandeau de mise à jour :
+  // il est ancré en bas, AU-DESSUS de la modale, pile sur la ligne de saisie
+  // (cf. utils/quizOpenSignal.js).
+  useEffect(()=>pushQuizOpen(),[]);
 
   useEffect(()=>{
     if(status!=="open"&&status!=="glory") return;  // glory : on continue de ticker pour rafraîchir le décompte de grâce
