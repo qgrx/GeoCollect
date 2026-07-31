@@ -488,7 +488,7 @@ export default function App() {
         // est planifié à la CLÔTURE du round) et l'API n'envoie pas next_quiz_in. On repart
         // donc du dernier cycle serveur connu — pas d'un 60 s en dur — le temps que
         // quiz:solved / quiz:expired (ou le poll /current) donnent l'horaire réel.
-        setNextQuizTime(Date.now() + (data.next_quiz_in ?? cycleSecRef.current ?? 60) * 1000 - clockSkew)
+        setNextQuizTime(Date.now() + (data.next_quiz_in ?? serverIntervalRef.current ?? 60) * 1000 - clockSkew)
         setActiveQuiz(null)
         activeQuizRef.current = null
         setQuizKey(k => k + 1)
@@ -922,7 +922,9 @@ export default function App() {
           setPendingQuiz(p => (!p || (activeId && p.id === activeId)) ? p : null)
           if (!data.quiz && data.next_quiz_at && data.server_time) {
             const msLeft = Math.max(0, new Date(data.next_quiz_at).getTime() - new Date(data.server_time).getTime())
-            applyServerSchedule(Date.now() + msLeft, Math.round(msLeft / 1000))
+            // Reconnexion = recalage EN COURS de cycle : msLeft n'est qu'un reliquat,
+            // il ne doit pas devenir la durée de cycle de repli (cf. applyServerSchedule).
+            applyServerSchedule(Date.now() + msLeft, Math.round(msLeft / 1000), { fullCycle: false })
           }
         }).catch(() => {})
       })
@@ -1354,7 +1356,7 @@ export default function App() {
     // la brillance annoncée doit suivre l'horaire/rareté rafraîchis (sinon ✨ fantôme).
     onNextShiny: setQuizIsShiny,
   })
-  const { countdown, setNextQuizTime, cycleSec, cycleSecRef, applyServerSchedule, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
+  const { countdown, setNextQuizTime, cycleSec, serverIntervalRef, applyServerSchedule, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
     nextCard, setNextCard, nextQuizRarity, setNextQuizRarity, holdOffer, setHoldOffer,
     patronageOffer, setPatronageOffer,
     history, setHistory, quizKey, setQuizKey,

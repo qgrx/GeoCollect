@@ -41,6 +41,31 @@ describe('useQuiz — compteur du prochain quiz', () => {
     expect(result.current.nextQuizRarity).toBe('épique')
   })
 
+  it('un recalage en cours de cycle ne raccourcit PAS le cycle suivant', async () => {
+    // Reliquat de 8 s au moment du recalage : il pilote la barre, mais ne doit jamais
+    // devenir la durée de cycle de repli — sinon le compteur repart pour ~8 s juste
+    // après une réponse (« il se lance une seconde fois de 10 sec »).
+    currentImpl = async () => ({
+      data: {
+        quiz: null,
+        next_quiz_at: new Date(Date.now() + 8_000).toISOString(),
+        server_time:  new Date().toISOString(),
+      },
+      error: null,
+    })
+
+    const { result } = renderHook(() => useQuiz(OPTS))
+    await act(async () => { await vi.advanceTimersByTimeAsync(61_000) })
+    expect(result.current.countdown).toBeGreaterThan(1)   // recalé sur les 8 s serveur
+
+    // Le round suivant se termine sans horaire serveur exploitable (horaire dépassé,
+    // quiz:solved manqué) : le repli doit valoir un CYCLE COMPLET, pas le reliquat de 8 s.
+    currentImpl = () => new Promise(() => {})
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+    act(() => { result.current.advanceQuiz(Date.now()) })
+    expect(result.current.countdown).toBeGreaterThan(30)
+  })
+
   it('relance le poll même si une requête reste en vol indéfiniment', async () => {
     currentImpl = () => new Promise(() => {})   // ne se règle jamais
 

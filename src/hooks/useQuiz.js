@@ -30,7 +30,6 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const [quizKey,       setQuizKey]      = useState(0)
   // Durée du cycle (s) pour la barre de progression — suit l'intervalle dynamique serveur
   const [cycleSec,      setCycleSec]     = useState(limits?.quizInterval ?? QUIZ_INTERVAL)
-  const cycleSecRef     = useRef(cycleSec)
   const activeQuizRef   = useRef(null)
   const snoozedUntilRef = useRef(0)
   const pendingQuizRef  = useRef(null)
@@ -50,10 +49,16 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
 
   // Appliqué par les events socket (quiz:solved / quiz:expired) : enregistre
   // l'horaire et l'intervalle réels du serveur, qui priment sur quizInterval.
-  const applyServerSchedule = useCallback((nextAtMs, intervalSec) => {
+  //
+  // fullCycle=false pour un recalage EN COURS de cycle (resync /current, reconnexion) :
+  // `intervalSec` n'y est qu'un RELIQUAT (le temps restant, souvent quelques secondes).
+  // Il peut piloter la barre de progression, mais JAMAIS dynIntervalRef, qui sert de
+  // repli « durée d'un cycle complet » à resolveNextQuizTime — sinon le compteur repart
+  // pour un cycle fantôme de quelques secondes juste après une réponse.
+  const applyServerSchedule = useCallback((nextAtMs, intervalSec, { fullCycle = true } = {}) => {
     serverNextQuizAtRef.current = nextAtMs
     if (intervalSec && intervalSec > 0) {
-      dynIntervalRef.current = intervalSec
+      if (fullCycle) dynIntervalRef.current = intervalSec
       setCycleSec(intervalSec)
     }
     setNextQuizTime(nextAtMs)
@@ -70,9 +75,6 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
 
   useEffect(() => { nextQuizTimeRef.current = nextQuizTime }, [nextQuizTime])
 
-  // Miroir ref du cycle courant : les handlers socket (montés une seule fois) doivent
-  // lire l'intervalle dynamique À JOUR, pas celui capturé au montage.
-  useEffect(() => { cycleSecRef.current = cycleSec }, [cycleSec])
 
   useEffect(() => { pendingQuizRef.current = pendingQuiz }, [pendingQuiz])
 
@@ -143,7 +145,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
                 const nextAt = data.next_quiz_at ? new Date(data.next_quiz_at).getTime() : 0
                 const srvNow = data.server_time  ? new Date(data.server_time).getTime()  : Date.now()
                 const msLeft = nextAt ? nextAt - srvNow : 0
-                if (msLeft > 1000) applyServerSchedule(Date.now() + msLeft, Math.round(msLeft / 1000))
+                // Recalage EN COURS de cycle : msLeft est un reliquat, pas une durée de
+                // cycle → fullCycle:false (cf. applyServerSchedule).
+                if (msLeft > 1000) applyServerSchedule(Date.now() + msLeft, Math.round(msLeft / 1000), { fullCycle: false })
               }
               release(2000)
             }
@@ -519,7 +523,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
 
   return {
     countdown, setNextQuizTime,
-    cycleSec, cycleSecRef, applyServerSchedule,
+    // dynIntervalRef = dernier cycle COMPLET serveur connu (jamais un reliquat) : c'est
+    // lui que doivent lire les handlers socket, montés une seule fois.
+    cycleSec, serverIntervalRef: dynIntervalRef, applyServerSchedule,
     pendingQuiz, setPendingQuiz,
     activeQuiz, setActiveQuiz,
     nextCard, setNextCard,
