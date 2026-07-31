@@ -1314,8 +1314,9 @@ export default function App() {
   }
   // Flash « +N PF 🔨 » (points de forge) : même effet que le flash d'or, affiché
   // juste sous le +G — ou seul quand la limite d'or est atteinte et que le joueur
-  // n'a plus qu'une compensation en PF. La valeur (config admin quiz_consolation_forge
-  // + PF de quête) arrive dans la réponse serveur.
+  // n'a plus qu'une compensation en PF. La valeur (config admin — barème par rareté
+  // quiz_consolation_forge_by_rarity pour la gloire, quiz_consolation_forge pour le
+  // dépôt — + PF de quête) arrive dans la réponse serveur.
   function showForgeFlash(n, questCompleted = false) {
     setForgeFlash(n);
     setForgeFlashQuest(!!questCompleted);
@@ -3587,6 +3588,7 @@ export default function App() {
                 apiSetConfig('quiz_daily_shiny_cap',   limEdit.quizDailyShinyCap   ?? 0),
                 apiSetConfig('quiz_consolation_gold',  limEdit.quizConsolationGold  ?? 5),
                 apiSetConfig('quiz_consolation_forge', limEdit.quizConsolationForge ?? 1),
+                apiSetConfig('quiz_consolation_forge_by_rarity', limEdit.quizConsolationForgeByRarity ?? { commun: 1, rare: 2, épique: 3, légendaire: 5 }),
                 apiSetConfig('quiz_daily_forge_cap',   limEdit.quizDailyForgeCap    ?? 0),
                 apiSetConfig('quiz_weekly_cap_rare',       limEdit.quizWeeklyCapRare       ?? 100),
                 apiSetConfig('quiz_weekly_cap_epique',     limEdit.quizWeeklyCapEpique     ?? 40),

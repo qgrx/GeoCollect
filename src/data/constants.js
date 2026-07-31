@@ -70,6 +70,9 @@ export const INIT_LIMITS = {
   quizDailyShinyCap:   0,
   quizConsolationGold:  5,
   quizConsolationForge: 1,
+  // PF d'une victoire « pour la gloire », par rareté du geocoin en jeu (la clé plate
+  // ci-dessus ne sert plus qu'au dépôt : renoncer / dépôt plein / remplacement).
+  quizConsolationForgeByRarity: { commun: 1, rare: 2, épique: 3, légendaire: 5 },
   quizDailyForgeCap:    0,
   quizWeeklyCapRare:       100,
   quizWeeklyCapEpique:     40,

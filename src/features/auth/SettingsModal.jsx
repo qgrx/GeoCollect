@@ -288,7 +288,9 @@ export default function SettingsModal({ auth, collection = {}, shinyCollection =
               ...(limits.quizJoinGold > 0 ? [{ label: 'Or de participation', value: limitsDebug.dailyGoldJoin, cap: limitsDebug.dailyGoldJoinCap }] : []),
               { label: 'Geocoins', value: limitsDebug.dailyCards, cap: limitsDebug.dailyCardsCap },
               ...(limitsDebug.dailyShinyCap > 0 ? [{ label: '✨ Shiny', value: limitsDebug.dailyShiny, cap: limitsDebug.dailyShinyCap }] : []),
-              ...(limits.quizConsolationForge > 0 ? [{ label: 'Points de forge (sauf quêtes et mécénat)', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
+              // Barème gloire par rareté OU valeur plate du dépôt : dès que l'un des deux
+              // peut rapporter des PF, la jauge du plafond quotidien a du sens.
+              ...((limits.quizConsolationForge > 0 || Object.values(limits.quizConsolationForgeByRarity || {}).some(v => +v > 0)) ? [{ label: 'Points de forge (sauf quêtes et mécénat)', value: limitsDebug.dailyForgeConsolation, cap: limitsDebug.dailyForgeConsolationCap }] : []),
             ]
             return (
               <div style={card}>
