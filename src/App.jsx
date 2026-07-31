@@ -484,7 +484,11 @@ export default function App() {
         // server_time corrige le décalage d'horloge client/serveur.
         const serverNow = data.server_time ? new Date(data.server_time).getTime() : Date.now()
         const clockSkew  = Date.now() - serverNow
-        setNextQuizTime(Date.now() + (data.next_quiz_in ?? 60) * 1000 - clockSkew)
+        // Estimation seulement : le prochain horaire n'existe pas encore côté serveur (il
+        // est planifié à la CLÔTURE du round) et l'API n'envoie pas next_quiz_in. On repart
+        // donc du dernier cycle serveur connu — pas d'un 60 s en dur — le temps que
+        // quiz:solved / quiz:expired (ou le poll /current) donnent l'horaire réel.
+        setNextQuizTime(Date.now() + (data.next_quiz_in ?? cycleSecRef.current ?? 60) * 1000 - clockSkew)
         setActiveQuiz(null)
         activeQuizRef.current = null
         setQuizKey(k => k + 1)
@@ -1349,7 +1353,7 @@ export default function App() {
     // la brillance annoncée doit suivre l'horaire/rareté rafraîchis (sinon ✨ fantôme).
     onNextShiny: setQuizIsShiny,
   })
-  const { countdown, setNextQuizTime, cycleSec, applyServerSchedule, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
+  const { countdown, setNextQuizTime, cycleSec, cycleSecRef, applyServerSchedule, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
     nextCard, setNextCard, nextQuizRarity, setNextQuizRarity, holdOffer, setHoldOffer,
     patronageOffer, setPatronageOffer,
     history, setHistory, quizKey, setQuizKey,

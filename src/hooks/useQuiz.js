@@ -30,6 +30,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const [quizKey,       setQuizKey]      = useState(0)
   // Durée du cycle (s) pour la barre de progression — suit l'intervalle dynamique serveur
   const [cycleSec,      setCycleSec]     = useState(limits?.quizInterval ?? QUIZ_INTERVAL)
+  const cycleSecRef     = useRef(cycleSec)
   const activeQuizRef   = useRef(null)
   const snoozedUntilRef = useRef(0)
   const pendingQuizRef  = useRef(null)
@@ -68,6 +69,10 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   }
 
   useEffect(() => { nextQuizTimeRef.current = nextQuizTime }, [nextQuizTime])
+
+  // Miroir ref du cycle courant : les handlers socket (montés une seule fois) doivent
+  // lire l'intervalle dynamique À JOUR, pas celui capturé au montage.
+  useEffect(() => { cycleSecRef.current = cycleSec }, [cycleSec])
 
   useEffect(() => { pendingQuizRef.current = pendingQuiz }, [pendingQuiz])
 
@@ -514,7 +519,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
 
   return {
     countdown, setNextQuizTime,
-    cycleSec, applyServerSchedule,
+    cycleSec, cycleSecRef, applyServerSchedule,
     pendingQuiz, setPendingQuiz,
     activeQuiz, setActiveQuiz,
     nextCard, setNextCard,
