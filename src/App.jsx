@@ -3185,7 +3185,12 @@ export default function App() {
         onNeedQuestion={async () => {
           // Délai cadeau écoulé : le serveur autorise enfin la question au leader.
           const wantedId = activeQuiz?.id
-          const { data } = await apiGetCurrentQuiz().catch(() => ({ data: null }))
+          const { data, error } = await apiGetCurrentQuiz().catch(() => ({ data: null, error: 'network' }))
+          // Appel qui ÉCHOUE (coupure réseau, 5xx) ≠ manche terminée : on renvoie null
+          // pour que la boucle réessaie. Sans cette distinction, un simple raté réseau
+          // sur mobile condamnait définitivement la récupération et affichait
+          // « manche terminée » sur un round encore jouable.
+          if (error) return null
           // Le round affiché n'est plus le round courant (terminé, ou déjà remplacé
           // par le suivant) : `stale` coupe la boucle de récupération de la modale.
           // SANS cette garde on injectait la question du round SUIVANT dans la modale
