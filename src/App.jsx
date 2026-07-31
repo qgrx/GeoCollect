@@ -1345,6 +1345,9 @@ export default function App() {
     checkAchievementUpgrades: gs.checkAchievementUpgrades,
     onForgePointsEarned: gs.addForgePoints,
     onGoldSync: gs.setGold,   // dépôt payant (location à la volée) : le serveur renvoie le nouveau solde
+    // Teaser resynchronisé par le poll /current quand le compteur est arrivé à zéro :
+    // la brillance annoncée doit suivre l'horaire/rareté rafraîchis (sinon ✨ fantôme).
+    onNextShiny: setQuizIsShiny,
   })
   const { countdown, setNextQuizTime, cycleSec, applyServerSchedule, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
     nextCard, setNextCard, nextQuizRarity, setNextQuizRarity, holdOffer, setHoldOffer,

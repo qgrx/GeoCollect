@@ -38,6 +38,15 @@ function withConcurrencyLimit(task) {
 }
 
 // ─── Helper fetch ─────────────────────────────────────────────────────────────
+// `fetch` n'a AUCUN timeout natif : sur mobile (bascule 4G/Wi-Fi, veille radio,
+// onglet gelé puis réveillé) une requête peut rester en vol indéfiniment. Elle
+// bloque alors une des places du limiteur ci-dessus ET fige définitivement tout
+// appelant qui attend sa promesse — c'est ce qui laissait le compteur du prochain
+// quiz bloqué sur « ··· » (son poll ne se déverrouillait jamais) jusqu'au
+// rechargement de l'app. On borne donc toute requête ; `timeoutMs` permet de
+// rallonger ponctuellement (traitements admin par lots).
+const REQUEST_TIMEOUT_MS = 30_000
+
 async function apiFetch(path, options = {}) {
   if (!API_ENABLED) return { data: null, error: 'api_not_configured' }
   let token = null
@@ -48,24 +57,33 @@ async function apiFetch(path, options = {}) {
     token = session?.access_token || null
   }
 
+  const { timeoutMs = REQUEST_TIMEOUT_MS, ...fetchOptions } = options
+
   return withConcurrencyLimit(async () => {
+    const ctl   = typeof AbortController !== 'undefined' ? new AbortController() : null
+    const timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null
     try {
       const res = await fetch(`${API_URL}${path}`, {
-        ...options,
+        ...fetchOptions,
+        ...(ctl ? { signal: ctl.signal } : {}),
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...(options.headers || {}),
+          ...(fetchOptions.headers || {}),
         },
-        body: options.body ? JSON.stringify(options.body) : undefined,
+        body: fetchOptions.body ? JSON.stringify(fetchOptions.body) : undefined,
       })
 
       const json = await res.json()
       if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}`, status: res.status, body: json }
       return { data: json, error: null, status: res.status }
     } catch (err) {
-      if (import.meta.env.DEV) console.warn(`[API] ${path} failed:`, err.message)
-      return { data: null, error: err.message }
+      // Abort = timeout : erreur explicite plutôt que « The user aborted a request »
+      const message = err.name === 'AbortError' ? 'timeout' : err.message
+      if (import.meta.env.DEV) console.warn(`[API] ${path} failed:`, message)
+      return { data: null, error: message }
+    } finally {
+      if (timer) clearTimeout(timer)
     }
   })
 }
@@ -171,10 +189,11 @@ export const apiTriggerShinyQuiz      = () => apiFetch('/api/admin/quiz/trigger-
 export const apiAdminGetVersion       = () => apiFetch('/api/admin/version')
 export const apiAdminGetQuestions       = ()                         => apiFetch('/api/admin/questions')
 export const apiAdminAddQuestion        = (q, a, translations, alt_answers, hidden = false, hint = '', publish_at = null) => apiFetch('/api/admin/questions', { method: 'POST', body: { question: q, answer: a, hint: hint || '', translations: translations || {}, alt_answers: alt_answers || [], hidden, publish_at } })
-export const apiAdminBatchAddQuestions  = (questions, hidden)        => apiFetch('/api/admin/questions/batch', { method: 'POST', body: { questions, ...(hidden !== undefined ? { hidden } : {}) } })
-export const apiAdminDeleteAllQuestions = ()                         => apiFetch('/api/admin/questions', { method: 'DELETE' })
-export const apiAdminDeleteDraftQuestions     = ()                   => apiFetch('/api/admin/questions/drafts', { method: 'DELETE' })
-export const apiAdminDeletePublishedQuestions = ()                   => apiFetch('/api/admin/questions/published', { method: 'DELETE' })
+// Imports par lots / purges massives : plus lents que le timeout standard.
+export const apiAdminBatchAddQuestions  = (questions, hidden)        => apiFetch('/api/admin/questions/batch', { method: 'POST', timeoutMs: 180_000, body: { questions, ...(hidden !== undefined ? { hidden } : {}) } })
+export const apiAdminDeleteAllQuestions = ()                         => apiFetch('/api/admin/questions', { method: 'DELETE', timeoutMs: 180_000 })
+export const apiAdminDeleteDraftQuestions     = ()                   => apiFetch('/api/admin/questions/drafts', { method: 'DELETE', timeoutMs: 180_000 })
+export const apiAdminDeletePublishedQuestions = ()                   => apiFetch('/api/admin/questions/published', { method: 'DELETE', timeoutMs: 180_000 })
 export const apiAdminEditQuestion       = (id, q, a)                 => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { question: q, answer: a } })
 export const apiAdminEditFullQuestion   = (id, fields)               => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { question: fields.q, answer: fields.a, hint: fields.hint || '', alt_answers: fields.alt_answers || [], ...(fields.hidden !== undefined ? { hidden: fields.hidden } : {}), ...(fields.publish_at !== undefined ? { publish_at: fields.publish_at } : {}) } })
 export const apiAdminToggleQuestion     = (id, active)               => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { active } })
@@ -192,7 +211,7 @@ export const apiAdminAssignReferral   = (filleulId, parrainId) => apiFetch(`/api
 export const apiAdminUnassignReferral = (filleulId)            => apiFetch(`/api/admin/referrals/${filleulId}`, { method: 'DELETE' })
 export const apiAdminSearchPlayers    = (q)                    => apiFetch(`/api/admin/players?page=0&q=${encodeURIComponent(q)}`)
 export const apiAdminFlushCache         = () => apiFetch('/api/admin/cache/flush', { method: 'DELETE' })
-export const apiAdminRecalculateScores  = () => apiFetch('/api/admin/recalculate-scores', { method: 'POST' })
+export const apiAdminRecalculateScores  = () => apiFetch('/api/admin/recalculate-scores', { method: 'POST', timeoutMs: 180_000 })
 
 // ─── Trésors ──────────────────────────────────────────────────────────────────
 export const apiGetDailyTreasure   = () => apiFetch('/api/treasures/daily')
@@ -235,7 +254,8 @@ export const apiAdminDeleteCard       = (id)   => apiFetch(`/api/cards/${id}`, {
 export const apiGetReferral            = ()       => apiFetch('/api/referral/me')
 export const apiClaimReferral          = (code)   => apiFetch('/api/referral/claim', { method: 'POST', body: { code } })
 export const apiGetGeocaching          = ()        => apiFetch('/api/geocaching/me')
-export const apiVerifyGeocaching       = ()        => apiFetch('/api/geocaching/verify', { method: 'POST' })
+// Vérification = connexion + scraping de geocaching.com (site externe, parfois lent).
+export const apiVerifyGeocaching       = ()        => apiFetch('/api/geocaching/verify', { method: 'POST', timeoutMs: 120_000 })
 export const apiGetAchievements        = ()       => apiFetch('/api/achievements')
 export const apiGetDailyAchievements   = ()       => apiFetch('/api/achievements/daily')
 export const apiGetDailyQuests         = ()       => apiFetch('/api/quests/daily')

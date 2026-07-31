@@ -3,9 +3,13 @@ import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetCurrentQuiz, apiJoinQuiz, apiAnswerQuiz } from '../services/api.js'
 import { getLang } from '../i18n/translations.js'
 
-export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, showForgeFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onGoldSync }) {
+// Verrou du poll « quiz prêt ? » relâché d'office passé ce délai : aucune requête
+// saine ne dépasse le timeout du client API (cf. services/api.js).
+const POLL_LOCK_MAX_MS = 15000
+
+export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, showToast, showGoldFlash, showForgeFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onGoldSync, onNextShiny }) {
   const cbRef = useRef({})
-  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, showForgeFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onGoldSync, limits }
+  cbRef.current = { earnGoldWithFx, earnCard, showToast, showGoldFlash, showForgeFlash, t, onStreakUpdate, onStreakLeader, onQuizEnd, cardPool, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onGoldSync, onNextShiny, limits }
 
   const [nextQuizTime,  setNextQuizTime] = useState(Date.now() + QUIZ_INTERVAL * 1000)
   const [countdown,     setCountdown]    = useState(QUIZ_INTERVAL)
@@ -31,6 +35,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const pendingQuizRef  = useRef(null)
   const nextQuizTimeRef = useRef(nextQuizTime)
   const isFetchingRef   = useRef(false)
+  // Génération du poll « quiz prêt ? » : seul le poll courant peut relâcher le verrou
+  // (une réponse tardive ne doit pas déverrouiller un poll plus récent).
+  const pollSeqRef      = useRef(0)
   const joinedQuizzesRef = useRef(new Set())
   // Quiz déjà résolus (gagné / perdu / 409) : fermer la modale ne doit PAS les
   // remettre en attente (sinon on re-propose un quiz déjà gagné → re-réponse → 409).
@@ -81,6 +88,15 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         } else if (!isFetchingRef.current) {
           // Utilisateur connecté : on interroge l'API pour récupérer le quiz prêt
           isFetchingRef.current = true
+          const tick = ++pollSeqRef.current
+          const release = (delay) => setTimeout(() => {
+            if (pollSeqRef.current === tick) isFetchingRef.current = false
+          }, delay)
+          // Filet de sécurité : si la promesse ne se règle JAMAIS (requête perdue en vol,
+          // rafraîchissement de session bloqué), le verrou serait définitif → plus aucun
+          // poll → compteur figé sur « ··· » avec une rareté annoncée périmée jusqu'au
+          // rechargement. On le relâche d'office passé POLL_LOCK_MAX_MS.
+          release(POLL_LOCK_MAX_MS)
           apiGetCurrentQuiz().then(({ data }) => {
             if (data) cbRef.current.onStreakLeader?.(data.streak_leaders ?? data.streak_leader ?? null)
             if (data?.quiz) {
@@ -88,7 +104,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
               // les autres garde-fous (handleJoin, handleCloseActiveQuiz) s'appuient
               // dessus, puis on ne le propose pas.
               if (data.quiz.already_won) resolvedQuizIdsRef.current.add(data.quiz.id)
-              if (resolvedQuizIdsRef.current.has(data.quiz.id)) { isFetchingRef.current = false; return }
+              // Round déjà résolu par moi : rien à proposer, mais on ne re-poll pas en
+              // boucle serrée (le round reste `active` toute la fenêtre de grâce).
+              if (resolvedQuizIdsRef.current.has(data.quiz.id)) { release(2000); return }
               const wc = data.quiz.answer_word_count || 1
               const poolCard = cbRef.current.cardPool?.find(c => c.id === data.quiz.card?.id) || {}
               const curLang = getLang()
@@ -106,13 +124,26 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
                 card,
               })
               setNextCard(card)
-              isFetchingRef.current = false
+              release(0)
             } else {
-              if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
-              setTimeout(() => { isFetchingRef.current = false }, 2000)
+              // Teaser du prochain round : le SERVEUR fait autorité, y compris sur l'horaire.
+              // Sans ce recalage, un compteur arrivé à zéro trop tôt (quiz:solved manqué,
+              // cadence dynamique plus lente que quizInterval, horloge locale) restait bloqué
+              // sur « ··· » — et sur une rareté/brillance annoncées périmées, d'où « ce n'est
+              // pas la rareté annoncée qui sort » — jusqu'au rechargement de l'app.
+              // (data absent = échec réseau : on ne touche à rien, on retentera.)
+              if (data) {
+                if (data.next_card_rarity) setNextQuizRarity(data.next_card_rarity)
+                cbRef.current.onNextShiny?.(data.next_is_shiny || false)
+                const nextAt = data.next_quiz_at ? new Date(data.next_quiz_at).getTime() : 0
+                const srvNow = data.server_time  ? new Date(data.server_time).getTime()  : Date.now()
+                const msLeft = nextAt ? nextAt - srvNow : 0
+                if (msLeft > 1000) applyServerSchedule(Date.now() + msLeft, Math.round(msLeft / 1000))
+              }
+              release(2000)
             }
           }).catch(() => {
-            setTimeout(() => { isFetchingRef.current = false }, 2000)
+            release(2000)
           })
         }
       }
@@ -121,7 +152,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     update()
     const timer = setInterval(update, 500)
     return () => clearInterval(timer)
-  }, [nextQuizTime, activeQuiz, pendingQuiz, profile, isDemo, limits])
+  }, [nextQuizTime, activeQuiz, pendingQuiz, profile, isDemo, limits, applyServerSchedule])
 
   function advanceQuiz(solvedAt) {
     cbRef.current.onQuizEnd?.();
