@@ -670,14 +670,20 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
             {questionMasked ? (
               <div style={{fontSize:13,fontWeight:800,color:"#ffd28a",lineHeight:1.5,display:"flex",alignItems:"center",gap:8,minHeight:42}}>
                 <span style={{fontSize:22}}>🔥</span>
-                <span>{handicapLeft>0 ? `${t('quiz_on_fire')} ${handicapLeft}s` : (questionLost ? t('quiz_question_unavailable') : '…')}</span>
+                {/* Le délai « en feu » écoulé, la question est encore en vol : on le DIT.
+                    Un « … » muet devant un champ bloqué est indiscernable d'un bug — et
+                    c'est ce que les joueurs signalaient (« impossible de répondre, pas de
+                    question »). Si la manche se termine avant que la question arrive
+                    (1 round sur 3 est résolu en moins de 8 s), on l'explique aussi. */}
+                <span>{handicapLeft>0 ? `${t('quiz_on_fire')} ${handicapLeft}s`
+                  : (questionLost ? t('quiz_question_lost_fire') : t('quiz_question_fetching'))}</span>
               </div>
             ) : (
               // Question absente sans être en feu = récupération en cours (filet
-              // ci-dessus) : « … » plutôt qu'un vide inexplicable, et une vraie
-              // explication si la récupération a été abandonnée (round terminé).
+              // ci-dessus) : on annonce la récupération plutôt qu'un « … » muet, et on
+              // explique si elle a été abandonnée (manche terminée).
               <div style={{fontSize:13,fontWeight:800,color:displayedQ?"#fff":"#8fb0c9",lineHeight:1.5,marginBottom:5,minHeight:20}}>
-                {displayedQ || (questionLost ? t('quiz_question_unavailable') : '…')}
+                {displayedQ || (questionLost ? t('quiz_question_unavailable') : t('quiz_question_fetching'))}
               </div>
             )}
           </div>
