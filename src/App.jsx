@@ -386,6 +386,16 @@ export default function App() {
       // des rounds résolus (resolvedQuizIds) repart vide.
       if (data.quiz?.already_won) {
         setPendingQuiz(p => (p && p.id === data.quiz.id) ? null : p)
+        // …et la barre le dit (« ✓ Gagné — fin de la manche dans Ns ») au lieu de
+        // laisser croire à un round joignable. Survit au rechargement.
+        setWonRound({
+          id: data.quiz.id,
+          // /current ne dit pas SI c'était un geocoin ou une gloire → libellé neutre.
+          outcome: 'answered',
+          graceDeadline: (data.quiz.grace_until && data.server_time)
+            ? Date.now() + Math.max(0, new Date(data.quiz.grace_until).getTime() - new Date(data.server_time).getTime())
+            : null,
+        })
         return
       }
 
@@ -474,6 +484,7 @@ export default function App() {
         setLostToGloryWinners(null)
         setLostToPatronage(null)
         setLostToFire(null)
+        setWonRound(null)   // nouveau round : le « ✓ Gagné » du précédent ne survit pas
         // Liste serveur = vérité (streak_leaders ; repli sur l'ancien streak_leader seul)
         setStreakLeaders(data.streak_leaders || (data.streak_leader ? [data.streak_leader] : []))
         // Nouveau round → remise à zéro du suivi des places en feu.
@@ -536,6 +547,9 @@ export default function App() {
         // ne propose plus « Participer » sur un quiz déjà gagné (robuste aux courses
         // avec quiz:new / au snooze).
         if (data.quiz_id) setPendingQuiz(p => (p && p.id === data.quiz_id) ? { ...p, winner: data.winner || '?', winner_avatar: data.winner_avatar || null, winners: winnersFull, glory_winners: gloryFull } : p)
+        // Manche close : le « ✓ Gagné » de la barre laisse la place au décompte suivant
+        // (ou au « Félicitations à… » quand j'avais encore le round en attente).
+        if (data.quiz_id) setWonRound(w => (w && w.id === data.quiz_id) ? null : w)
 
         // Mettre à jour le prochain quiz dès quiz:solved (sans attendre quiz:new).
         // applyServerSchedule fait primer l'horaire dynamique serveur sur le calcul local.
@@ -706,6 +720,9 @@ export default function App() {
           activeQuizRef.current = { ...activeQuizRef.current, graceDeadline, prizes_remaining: data.prizes_remaining }
         }
         setPendingQuiz(patch)
+        // Chaque prix pris ré-arme la grâce : le « ✓ Gagné » de la barre doit suivre,
+        // sinon son décompte de fin de manche expire avant la manche.
+        if (graceDeadline) setWonRound(w => (w && w.id === data.quiz_id) ? { ...w, graceDeadline } : w)
 
         if (iSelf) {
           // J'ai pris mon geocoin et refermé ma modale : sans pending ni activeQuiz, le
@@ -760,6 +777,7 @@ export default function App() {
             activeQuizRef.current = { ...activeQuizRef.current, graceDeadline }
           }
           setPendingQuiz(patch)
+          setWonRound(w => (w && w.id === data.quiz_id) ? { ...w, graceDeadline } : w)
         }
         if (!iSelf && data.winner && !beginnerActiveRef.current) {
           showToast(tRef.current('toast_glory_other').replace('{pseudo}', data.winner))
@@ -805,6 +823,7 @@ export default function App() {
           activeQuizRef.current = { ...activeQuizRef.current, graceDeadline, ...(data.prizes_remaining != null ? { prizes_remaining: data.prizes_remaining } : {}) }
         }
         setPendingQuiz(patch)
+        if (graceDeadline) setWonRound(w => (w && w.id === data.quiz_id) ? { ...w, graceDeadline } : w)
 
         const iSelf = (!!data.winner_id && data.winner_id === myIdRef.current)
         // Série « en feu » du mécène (place en feu) : mêmes règles que prize_won / glory_win.
@@ -1375,6 +1394,7 @@ export default function App() {
   const { countdown, setNextQuizTime, cycleSec, serverIntervalRef, applyServerSchedule, parkCountdownPastGrace, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
     nextCard, setNextCard, nextQuizRarity, setNextQuizRarity, holdOffer, setHoldOffer,
     patronageOffer, setPatronageOffer,
+    wonRound, setWonRound,
     history, setHistory, quizKey, setQuizKey,
     lostToWinner, setLostToWinner,
     lostToGlory, setLostToGlory,
@@ -1488,11 +1508,21 @@ export default function App() {
     // Clic sur la vignette de la barre → fiche du geocoin en grand (pas encore gagné :
     // fromHistory → aucun compteur d'exemplaires ni bouton « Vendre »).
     const openBarCard = (card, shiny) => { if (!card) return; setSelectedCard(card); setSelectedCardIsShiny(!!shiny); setSelectedCardFromHistory(true) }
+    // Round DÉJÀ remporté par moi mais encore ouvert (multi-prix / fenêtre de grâce) :
+    // la barre affiche « ✓ Gagné » + « fin de la manche dans Ns » au lieu d'un bouton
+    // « Participer » qui rouvrirait une question déjà jouée. Le « Félicitations à… » de
+    // la clôture (lostToWinner) reprend la main dès que la manche se termine.
+    // Filet : si TOUS les events de clôture se perdent (socket coupé), on ne fige pas la
+    // barre sur « ✓ Gagné » — la grâce connue + 30 s suffit largement (elle est ré-armée
+    // à chaque prix pris, cf. quiz:prize_won).
+    const wonRoundOpen = !!wonRound && !lostToWinner
+      && (!pendingQuiz || pendingQuiz.id === wonRound.id)
+      && (wonRound.graceDeadline == null || Date.now() < wonRound.graceDeadline + 30_000)
     const bar = beginnerActive
       ? (beginner.recap
           ? <BeginnerRecap winners={beginner.recap.winners} secondsLeft={beginner.recapLeft} revealAnswer={beginner.recap.answer} />
           : <BeginnerCountdownWidget secondsLeft={beginner.countdown} cycleTime={beginner.cycleSec} nextCard={beginner.nextCard} hasPendingQuiz={!!beginner.pendingQuiz} alreadyWon={beginner.alreadyWon} onJoin={beginner.handleJoin} owned={!!beginner.nextCard && (gs.collection?.[beginner.nextCard.id] || 0) > 0} onCardClick={c => openBarCard(c, false)} />)
-      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!!pendingQuiz && !pendingQuiz.winner && !lostToWinner} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} lostToWinners={lostToWinners ?? null} lostToGloryWinners={lostToGloryWinners ?? null} lostToPatronage={lostToPatronage ?? null} lostToFire={lostToFire ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeaders={streakLeaders} graceDeadline={pendingQuiz?.graceDeadline ?? null} onCardClick={c => openBarCard(c, pendingQuiz?.is_shiny ?? quizIsShiny)} />
+      : <CountdownWidget secondsLeft={countdown} cycleTime={cycleSec} nextCard={nextCard} nextQuizRarity={nextQuizRarity} hasPendingQuiz={!wonRoundOpen && !!pendingQuiz && !pendingQuiz.winner && !lostToWinner} alreadyWon={wonRoundOpen} wonOutcome={wonRound?.outcome || 'prize'} lostTo={lostToWinner ?? null} lostToGlory={lostToGlory} lostToAvatar={lostToAvatar ?? null} lostToWinners={lostToWinners ?? null} lostToGloryWinners={lostToGloryWinners ?? null} lostToPatronage={lostToPatronage ?? null} lostToFire={lostToFire ?? null} onJoin={handleJoin} isShiny={pendingQuiz?.is_shiny ?? quizIsShiny} prizesTotal={pendingQuiz?.prizes_total ?? 1} owned={!!nextCard && ((pendingQuiz?.is_shiny ?? quizIsShiny) ? (gs.shinyCollection?.[nextCard.id] || 0) > 0 : (gs.collection?.[nextCard.id] || 0) > 0)} streakHype={streakHype} streakLeaders={streakLeaders} graceDeadline={pendingQuiz?.graceDeadline ?? wonRound?.graceDeadline ?? null} onCardClick={c => openBarCard(c, pendingQuiz?.is_shiny ?? quizIsShiny)} />
     // Protection inter-modes : pendant la vérification serveur → chargement ; si bloqué
     // → barre floutée + message + timer. Dans les deux cas, interaction impossible.
     const blockTimer = beginnerActive ? (beginner.recap ? beginner.recapLeft : beginner.countdown) : countdown

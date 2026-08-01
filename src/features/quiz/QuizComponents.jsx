@@ -892,21 +892,25 @@ const BAR_SPARKLES = [
   { top:'42%', left:'97%', size:7,  delay:0.55, color:'#69f0ae' },
 ];
 
-export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,lostToPatronage=null,lostToFire=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeaders=null,prizesTotal=1,graceDeadline=null,onCardClick=null}){
+export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin,hasPendingQuiz,alreadyWon=false,wonOutcome='prize',lostTo=null,lostToGlory=false,lostToAvatar=null,lostToWinners=null,lostToGloryWinners=null,lostToPatronage=null,lostToFire=null,cycleTime=60,isShiny=false,owned=false,streakHype=null,streakLeaders=null,prizesTotal=1,graceDeadline=null,onCardClick=null}){
   const {t}=useT(); const {theme}=useTheme();
   // Décompte de grâce « encore Ns pour répondre » (gloire / multi-prix) — ticker local 1 s.
   const [,graceTick]=useState(0)
   useEffect(()=>{ if(!graceDeadline) return; const i=setInterval(()=>graceTick(v=>v+1),1000); return()=>clearInterval(i) },[graceDeadline])
   const graceLeft  = graceDeadline ? Math.max(0, Math.ceil((graceDeadline-Date.now())/1000)) : null
   const pct        = Math.max(0, Math.min(100, ((cycleTime-secondsLeft)/cycleTime)*100))
-  const urgent     = !hasPendingQuiz && !lostTo && secondsLeft <= 10
+  // Round « en cours pour moi » : soit joignable, soit DÉJÀ remporté par moi mais
+  // encore ouvert pour les autres (multi-prix / grâce). Dans les deux cas la barre
+  // montre le geocoin disputé — mais seul le premier cas propose « Participer ».
+  const roundOpen  = hasPendingQuiz || alreadyWon
+  const urgent     = !roundOpen && !lostTo && secondsLeft <= 10
   const veryUrgent = urgent && secondsLeft <= 5 && secondsLeft > 0
-  const hasCard    = !!nextCard && hasPendingQuiz
-  const showColors = urgent || hasPendingQuiz
+  const hasCard    = !!nextCard && roundOpen
+  const showColors = urgent || roundOpen
   // Pendant le quiz actif : rareté de la carte. Pendant le teaser : rareté annoncée.
-  const colorRarity = hasPendingQuiz ? nextCard?.rarity : (urgent ? nextQuizRarity : null)
+  const colorRarity = roundOpen ? nextCard?.rarity : (urgent ? nextQuizRarity : null)
   const {c1,c2}    = (colorRarity && showColors) ? cardCC(colorRarity) : {c1:'#6c7c93',c2:'#48576b'}
-  const shinyActive = isShiny && (hasPendingQuiz || urgent)
+  const shinyActive = isShiny && (roundOpen || urgent)
   // Joueurs « en feu » (série de victoires) à signaler pour la prochaine carte —
   // ils peuvent être PLUSIEURS (P places par round), chacun avec son délai.
   const fireList = (Array.isArray(streakLeaders) ? streakLeaders : []).filter(l => l && l.handicap_seconds > 0)
@@ -916,7 +920,7 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
 
   // ── Annonce « en feu » (série de victoires) — en grand, mais JAMAIS quand un
   // quiz est joignable (le bouton « Participer » reste prioritaire) ───────────
-  if (streakHype && !hasPendingQuiz && !lostTo) {
+  if (streakHype && !roundOpen && !lostTo) {
     return (
       <>
         <style>{CW_STYLES}</style>
@@ -1075,13 +1079,13 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
 
           {/* Titre + secondes (masqué en mode urgent) */}
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:3,opacity:urgent?0:1,transition:'opacity .3s'}}>
-            <span style={{fontSize:11,color:hasPendingQuiz?theme.gold:'#aaa',fontWeight:900}}>⚔️ {t('pvp_badge')||'Mode PVP'}</span>
-            {!hasPendingQuiz&&<span style={{fontSize:13,fontWeight:900,color:theme.gold}}>{secondsLeft>0?`${secondsLeft}s`:'...'}</span>}
+            <span style={{fontSize:11,color:roundOpen?theme.gold:'#aaa',fontWeight:900}}>⚔️ {t('pvp_badge')||'Mode PVP'}</span>
+            {!roundOpen&&<span style={{fontSize:13,fontWeight:900,color:theme.gold}}>{secondsLeft>0?`${secondsLeft}s`:'...'}</span>}
           </div>
 
           {/* Barre de progression */}
           <div style={{background:theme.overlayMd,borderRadius:50,height:urgent?8:5,overflow:'hidden',marginBottom:urgent?0:3,marginTop:urgent?30:0,transition:'height .4s,margin .4s'}}>
-            <div style={{width:hasPendingQuiz?'100%':`${pct}%`,height:'100%',background:shinyActive?'linear-gradient(90deg,#f9ca24,#e17055)':`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:'width 1s linear,background .5s',boxShadow:urgent?`0 0 8px ${c1}`:''}}/>
+            <div style={{width:roundOpen?'100%':`${pct}%`,height:'100%',background:shinyActive?'linear-gradient(90deg,#f9ca24,#e17055)':`linear-gradient(90deg,${c1},${c2})`,borderRadius:50,transition:'width 1s linear,background .5s',boxShadow:urgent?`0 0 8px ${c1}`:''}}/>
           </div>
 
           {/* Infos carte (masquées en mode urgent). Pour un geocoin mystère, le message
@@ -1093,7 +1097,11 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
           {!urgent&&(
             <div style={{fontSize:10,color:'#666',display:'flex',alignItems:'center',gap:4,minWidth:0,overflow:'hidden'}}>
               {graceLeft!=null&&graceLeft>0
-                ? <span style={{color:'#e17055',fontWeight:900,animation:'pulse 1s infinite',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>⏳ {(t('quiz_grace_left')||'encore {n}s pour répondre').replace('{n}',graceLeft)}</span>
+                ? <span style={{color:alreadyWon?theme.textSecondary:'#e17055',fontWeight:900,...(alreadyWon?{}:{animation:'pulse 1s infinite'}),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>⏳ {alreadyWon
+                    /* J'ai déjà mon geocoin : ce décompte n'est plus une invitation à
+                       répondre, c'est juste la fin de la manche pour les autres. */
+                    ? (t('quiz_round_ends_in')||'fin de la manche dans {n}s').replace('{n}',graceLeft)
+                    : (t('quiz_grace_left')||'encore {n}s pour répondre').replace('{n}',graceLeft)}</span>
                 : hasCard
                 ? <><span style={{color:theme.textSecondary,fontWeight:800,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cardName(nextCard,getLang())}</span>{isShiny&&<span style={{color:'#f9ca24',fontWeight:800,flexShrink:0,whiteSpace:'nowrap'}}>{t('quiz_shiny_card')||'✨ Geocoin Brillant !'}</span>}{prizesTotal>1&&<span style={{color:'#a29bfe',fontWeight:900,flexShrink:0,whiteSpace:'nowrap'}}>🎁 {(t('quiz_prizes_to_win')||'{n} à gagner').replace('{n}',prizesTotal)}</span>}</>
                 : onFire
@@ -1105,8 +1113,15 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
           )}
         </div>
 
-        {/* Bouton participation */}
-        {onJoin&&(
+        {/* Bouton participation — remplacé par « ✓ Gagné » quand j'ai DÉJÀ remporté ce
+            round (multi-prix : il reste des geocoins pour les autres, la manche n'est
+            pas close). Proposer « Participer » ici rouvrait la question d'un round déjà
+            gagné, que /answer refuse (already_winner). */}
+        {alreadyWon?(
+          <div style={{flexShrink:0,color:'#00b894',fontWeight:900,fontSize:12,whiteSpace:'nowrap'}}>
+            ✓ {wonOutcome==='prize' ? (t('quiz_round_won')||'Gagné') : (t('quiz_round_answered')||'Répondu')}
+          </div>
+        ):onJoin&&(
           <button onClick={hasPendingQuiz?onJoin:undefined}
             style={{
               background: hasPendingQuiz?'linear-gradient(135deg,#f9ca24,#e17055)':'#ffffff18',

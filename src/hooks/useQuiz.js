@@ -19,6 +19,10 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
   const [nextQuizRarity,setNextQuizRarity]=useState(null)
   const [holdOffer,     setHoldOffer]    = useState(null)
   const [patronageOffer,setPatronageOffer]=useState(null)   // { quiz_id, rarity, card, remaining } — plafond hebdo atteint → don ou gloire
+  // Round que J'AI déjà résolu (geocoin pris / gloire / mécénat) mais qui reste OUVERT
+  // pour les autres — multi-prix ou fenêtre de grâce : { id, graceDeadline }. La barre
+  // PVP doit alors afficher « ✓ Gagné », jamais « Participer » (cf. CountdownWidget).
+  const [wonRound,      setWonRound]     = useState(null)
   const [history,       setHistory]      = useState([])
   const [lostToWinner,  setLostToWinner] = useState(null)
   const [lostToGlory,   setLostToGlory]  = useState(false)
@@ -82,6 +86,28 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     setNextQuizTime(Math.max(nextQuizTimeRef.current, graceDeadline + sec * 1000))
   }
 
+  /**
+   * Round résolu par MOI alors qu'il reste OUVERT pour les autres (multi-prix : il
+   * reste des geocoins ; gloire : la fenêtre de grâce court encore). Garde-fou unique :
+   *
+   *  - mémorise l'id → handleJoin et le poll /current refusent de le re-proposer ;
+   *  - RETIRE le « quiz en attente » s'il pointe encore dessus. Sans ça, la moindre
+   *    course qui le ressuscitait (fermeture de la modale pendant l'envoi de la réponse
+   *    — la croix reste cliquable tant que le serveur n'a pas répondu —, resync) rallumait
+   *    le bouton « Participer » sur un round déjà gagné, avec le décompte de grâce
+   *    « encore Ns pour répondre » alors que le joueur a déjà son geocoin ;
+   *  - retient la fin de la grâce pour l'affichage « ✓ Gagné » de la barre PVP.
+   *
+   * `outcome` distingue le geocoin remporté ('prize') de la victoire « pour la gloire »
+   * ('glory', aucun geocoin) et du simple « déjà répondu » relu sur /current ('answered').
+   */
+  function markRoundWonByMe(quizId, graceDeadline = null, outcome = 'prize') {
+    if (!quizId) return
+    resolvedQuizIdsRef.current.add(quizId)
+    setPendingQuiz(p => (p && p.id === quizId) ? null : p)
+    setWonRound({ id: quizId, graceDeadline, outcome })
+  }
+
   // Prochain horaire : privilégie l'horaire serveur (si encore à venir), sinon
   // repli sur le dernier intervalle dynamique connu, puis quizInterval.
   function resolveNextQuizTime(solvedAt) {
@@ -127,8 +153,14 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
             if (data?.quiz) {
               // Round déjà gagné (serveur) : on le mémorise localement pour que tous
               // les autres garde-fous (handleJoin, handleCloseActiveQuiz) s'appuient
-              // dessus, puis on ne le propose pas.
-              if (data.quiz.already_won) resolvedQuizIdsRef.current.add(data.quiz.id)
+              // dessus, puis on ne le propose pas. `wonRound` survit ainsi à un
+              // rechargement pendant la fenêtre de grâce (barre « ✓ Gagné »).
+              if (data.quiz.already_won && !resolvedQuizIdsRef.current.has(data.quiz.id)) {
+                const g = (data.quiz.grace_until && data.server_time)
+                  ? Date.now() + Math.max(0, new Date(data.quiz.grace_until).getTime() - new Date(data.server_time).getTime())
+                  : null
+                markRoundWonByMe(data.quiz.id, g, 'answered')
+              }
               // Round déjà résolu par moi : rien à proposer, mais on ne re-poll pas en
               // boucle serrée (le round reste `active` toute la fenêtre de grâce).
               if (resolvedQuizIdsRef.current.has(data.quiz.id)) { release(2000); return }
@@ -186,6 +218,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     setNextQuizTime(resolveNextQuizTime(solvedAt))
     setActiveQuiz(null)
     activeQuizRef.current = null
+    setWonRound(null)   // le round est clos : la barre repasse au décompte du suivant
   }
 
   const handleJoin = useCallback(async () => {
@@ -335,6 +368,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         const graceDeadline = (data.grace_until && data.server_time)
           ? Date.now() + Math.max(0, new Date(data.grace_until).getTime() - new Date(data.server_time).getTime())
           : null
+        // Round toujours ouvert pour les autres : la barre affichera « ✓ Gagné » et
+        // plus jamais « Participer » (cf. markRoundWonByMe).
+        markRoundWonByMe(activeQuiz.id, graceDeadline, 'glory')
         if (graceDeadline) {
           setActiveQuiz(q => q ? { ...q, graceDeadline } : q)
           if (activeQuizRef.current) activeQuizRef.current = { ...activeQuizRef.current, graceDeadline }
@@ -368,6 +404,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
           : data.hold ? (t('toast_deposit_win') || '📥 Geocoin mis au dépôt !') : t('toast_quiz_won').replace('{card}', card.name))
         const solvedAt = Date.now()
         if (data.final === false) {
+          markRoundWonByMe(activeQuiz.id, null)
           setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, 900)
         } else {
           setTimeout(() => advanceQuiz(solvedAt), 900)
@@ -472,10 +509,13 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         // (quand le dernier prix est pris ou la fenêtre de grâce écoulée). Le compteur est
         // repoussé au-delà de la grâce pour ne pas afficher un décompte fantôme pendant
         // que le round tourne encore (repli si le quiz:prize_won se perd).
-        if (data.grace_until && data.server_time) {
-          const graceMs = Math.max(0, new Date(data.grace_until).getTime() - new Date(data.server_time).getTime())
-          parkCountdownPastGrace(Date.now() + graceMs)
-        }
+        const graceDeadline = (data.grace_until && data.server_time)
+          ? Date.now() + Math.max(0, new Date(data.grace_until).getTime() - new Date(data.server_time).getTime())
+          : null
+        if (graceDeadline) parkCountdownPastGrace(graceDeadline)
+        // J'ai mon geocoin, le round tourne encore : « ✓ Gagné » dans la barre, jamais
+        // le bouton « Participer » (qui rouvrirait la question d'un round déjà gagné).
+        markRoundWonByMe(activeQuiz.id, graceDeadline)
         setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, outcome === 'hold' ? 600 : 2200)
       } else {
         setTimeout(() => advanceQuiz(solvedAt), outcome === 'hold' ? 600 : 2200)
@@ -499,6 +539,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
 
   const handleQuizExpire = useCallback((npc, isBot = false, isGlory = false, winnerAvatar = null, winners = null, gloryWinners = null, winnerFire = null, patronageWinners = null) => {
     const solvedAt = Date.now()
+    setWonRound(null)   // clôture : plus de « ✓ Gagné » dans la barre
 
     if (!activeQuizRef.current) {
       const pending = pendingQuizRef.current
@@ -566,6 +607,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     nextQuizRarity, setNextQuizRarity,
     holdOffer, setHoldOffer,
     patronageOffer, setPatronageOffer,
+    wonRound, setWonRound,
     history, setHistory,
     quizKey, setQuizKey,
     lostToWinner, setLostToWinner,
