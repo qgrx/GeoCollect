@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { ACHIEVEMENT_DEF } from '../data/cards.js'
 import { INIT_LIMITS, normalizeIntervalTiers, normalizePrizeTiers } from '../data/constants.js'
-import { collScore } from '../utils/gameUtils.js'
+import { collScore, todayParis } from '../utils/gameUtils.js'
 import {
   apiGetCards, apiGetCollection, apiGetMarket, apiGetMyListings,
   apiBuyCard, apiListCard, apiCancelListing, apiGetTransactions,
@@ -222,6 +222,30 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   useEffect(() => {
     if (questActivitySignal > 0) { refreshQuests(); refreshWeeklyQuests() }
   }, [questActivitySignal, refreshQuests, refreshWeeklyQuests])
+
+  // Bascule de minuit APP AU PREMIER PLAN : aucun des trois déclencheurs
+  // existants (montage, action de jeu, retour d'onglet) ne se produit si le
+  // joueur regarde simplement l'écran à minuit. Le décompte repassait bien à
+  // « 23h59 » — il se recalcule chaque seconde — mais la liste restait celle de
+  // la veille, ses trois quêtes « ✓ », jusqu'à un F5 (ressenti comme un cache).
+  // On surveille la DATE de Paris plutôt que de poser un setTimeout jusqu'à
+  // minuit : un timer de plusieurs heures dérive (veille de l'appareil, throttling
+  // mobile) alors qu'une comparaison de date rattrape le réveil au tic suivant.
+  // Couvre aussi le reset hebdo : le lundi est un changement de jour.
+  useEffect(() => {
+    if (!profile?.id) return
+    let day = todayParis()
+    let jitter
+    const id = setInterval(() => {
+      const now = todayParis()
+      if (now === day) return
+      day = now
+      // Décalage aléatoire : sinon tous les clients ouverts tapent l'API à la
+      // même seconde, juste au moment où elle génère le planning du jour.
+      jitter = setTimeout(() => { if (mounted.current) checkinQuests() }, Math.random() * 5000)
+    }, 20_000)
+    return () => { clearInterval(id); clearTimeout(jitter) }
+  }, [profile?.id, checkinQuests])
 
   // Recharge la progression des achievements (compteurs comme « Roi du savoir »)
   // — à appeler après un événement qui la fait évoluer (victoire de quiz, achat…).

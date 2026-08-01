@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 
 // ─── Mock API : apiGetDailyQuests rend des promesses résolues manuellement, ce
@@ -83,6 +83,39 @@ describe('refreshQuests — garde de séquence', () => {
     await waitFor(() => expect(questCalls.length).toBe(1))
     await act(async () => { questCalls.splice(0)[0]({ data: { quests: FRESH }, error: null }) })
     expect(result.current.quests).toEqual(FRESH)
+
+    unmount()
+  })
+})
+
+// ─── Bascule de minuit avec l'app au premier plan ────────────────────────────
+// Ni montage, ni action de jeu, ni retour d'onglet : le joueur regarde l'écran
+// à minuit. Sans le veilleur de date, la liste restait celle de la veille
+// (trois quêtes « ✓ ») jusqu'au rechargement manuel.
+describe('quêtes — changement de jour au premier plan', () => {
+  beforeEach(() => { questCalls.length = 0 })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('recharge les quêtes quand la date de Paris change, sans autre déclencheur', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-01T21:59:50Z'))   // 23:59:50 à Paris
+    const auth = { profile: { id: 'u3', gold: 0, forge_points: 0 } }
+    const { result, unmount } = renderHook(() => useGameState(auth))
+
+    // Démarrage : on fait aboutir les fetchs sur la liste (complétée) de la veille
+    for (let i = 0; i < 10 && questCalls.length < 2; i++) await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+    expect(questCalls.length).toBe(2)
+    await act(async () => { for (const r of questCalls.splice(0)) r({ data: { quests: FRESH }, error: null }) })
+    expect(result.current.quests).toEqual(FRESH)
+
+    // Minuit franchi : le seul écoulement du temps doit relancer un fetch
+    vi.setSystemTime(new Date('2026-08-01T22:00:10Z'))   // 00:00:10, jour suivant
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_000 + 5_000) })
+    expect(questCalls.length).toBeGreaterThan(0)
+
+    // …et la liste du nouveau jour remplace bien celle de la veille
+    await act(async () => { for (const r of questCalls.splice(0)) r({ data: { quests: STALE }, error: null }) })
+    expect(result.current.quests).toEqual(STALE)
 
     unmount()
   })
