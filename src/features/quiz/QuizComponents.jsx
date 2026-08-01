@@ -1195,7 +1195,11 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 0, holdRentActive 
           {onClose && <button onClick={onClose} style={{ background: '#ffffff18', border: 'none', color: '#888', width: 28, height: 28, borderRadius: '50%', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }} title={t('close') || 'Fermer'}>✕</button>}
         </div>
         <div style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 16, lineHeight: 1.5 }}>
-          {t('hold_popup_body').replace('{rarity}', rarityLabel(holdCard.rarity, t))}
+          {/* Première acquisition : le geocoin manque encore à la collection — le dépôt est
+              proposé quelle que soit la rareté et quelle que soit la limite atteinte (dont le
+              plafond hebdo). On le dit explicitement, c'est l'intérêt majeur du dépôt. */}
+          {(owned ? t('hold_popup_body') : (t('hold_popup_body_new') || t('hold_popup_body')))
+            .replace('{rarity}', rarityLabel(holdCard.rarity, t))}
         </div>
 
         {/* Carte gagnée */}
