@@ -416,7 +416,9 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       // Inclure d'emblée les joueurs « pour la gloire » (renvoyés par /answer) : sinon
       // l'entrée n'aurait que la coche ✓ et le compteur « (N🏆) » n'apparaîtrait qu'après un
       // rechargement (le patch via quiz:solved peut manquer l'entrée pas encore créée).
-      const meGloryWinners = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold, avatar: g.avatar || null }))
+      // Les gloires portent aussi leur place « en feu » (fire/fire_streak) : sans elles,
+      // la fiche « Gagnants » affichait une gloire en feu SANS sa flamme.
+      const meGloryWinners = (data.glory_winners || []).map(g => ({ pseudo: g.pseudo, hold: !!g.hold, avatar: g.avatar || null, fire: !!g.fire, fire_streak: g.fire_streak ?? null }))
       setHistory(h => {
         // quiz:solved peut arriver avant la réponse HTTP (race réseau) et avoir déjà inséré
         // une entrée pour ce round : on la patche plutôt que de prepend un doublon.
@@ -424,8 +426,15 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         if (qid) {
           const idx = h.findIndex(e => e.quiz_id === qid)
           if (idx >= 0) {
-            const updated = { ...h[idx], won: true, glory_winners: meGloryWinners.length ? meGloryWinners : h[idx].glory_winners,
-              winner_fire: !!data.fire, winner_fire_streak: data.fire_streak ?? null }
+            // Ne JAMAIS dégrader ce que quiz:solved a déjà posé : sa liste de gloires est
+            // au moins aussi complète (avatars + flammes) que celle de la réponse HTTP.
+            const prevGlory = Array.isArray(h[idx].glory_winners) ? h[idx].glory_winners : []
+            const glory = prevGlory.length >= meGloryWinners.length ? prevGlory : meGloryWinners
+            // Round MULTI : winner_fire/_streak décrivent le 1ᵉʳ gagnant du round (posés
+            // par quiz:solved), pas moi — ne les écraser que sur une entrée mono-gagnant.
+            const isMultiEntry = Array.isArray(h[idx].winners) && h[idx].winners.length > 1
+            const updated = { ...h[idx], won: true, glory_winners: glory,
+              ...(isMultiEntry ? {} : { winner_fire: !!data.fire, winner_fire_streak: data.fire_streak ?? null }) }
             return [...h.slice(0, idx), updated, ...h.slice(idx + 1)]
           }
         }
