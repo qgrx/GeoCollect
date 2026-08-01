@@ -927,7 +927,14 @@ export function useGameState(auth, { onAchievementCard } = {}) {
   }, [myListings, profile])
 
   // ── Sale notification depuis WebSocket ────────────────────────────────────
-  const handleSaleNotifFromSocket = useCallback(({ cardName, buyer, price, received, rarity, achievement_upgrades }) => {
+  const handleSaleNotifFromSocket = useCallback(({ cardName, buyer, price, received, rarity, achievement_upgrades, listing_id }) => {
+    // L'annonce vendue quitte « Mes annonces » et le carnet d'ordres tout de suite :
+    // sans ça elle y restait jusqu'au prochain rechargement, et le joueur croyait
+    // occuper un emplacement de vente qui était en réalité déjà libéré.
+    if (listing_id != null) {
+      setMyListings(prev => prev.filter(l => l.id !== listing_id))
+      setMarket(prev => prev.filter(l => l.id !== listing_id))
+    }
     // `received` = net après taxe de vente (ventes joueur→joueur) ; les achats de
     // bots paient le prix plein et n'envoient pas ce champ → repli sur `price`.
     setGold(g => g + (received ?? price))

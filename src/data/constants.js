@@ -52,6 +52,9 @@ export const INIT_LIMITS = {
   playerRanks:   DEFAULT_RANKS,
   marketSalesOpen: true,
   maxActiveListings: 10,
+  // Plafond d'annonces actives par rareté (0 = pas de limite propre à la rareté,
+  // seul le total s'applique). Défaut aligné sur la migration market_listings_rarity_cap.
+  maxActiveListingsByRarity: { commun: 0, rare: 0, épique: 0, légendaire: 0 },
   botsVisible: false,
   supportVisible: true,
   leaderboardVisible: true,

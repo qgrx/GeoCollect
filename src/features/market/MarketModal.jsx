@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
-import { RC, cardCC } from '../../data/cards.js'
+import { RC, cardCC, rarityLabel } from '../../data/cards.js'
 import Card from '../../components/Card.jsx'
 import CollectionScroll from '../../components/CollectionScroll.jsx'
 import { TxHistoryModal } from '../achievements/NotifComponents.jsx'
@@ -57,6 +57,8 @@ export default function MarketModal({
   inline = false,
   listingFee = 4,
   saleTax = 0.12,
+  maxActiveListings = 10,
+  maxActiveListingsByRarity = {},
   forgePoints = 0,
   onBuyOffseason = null,
 }) {
@@ -155,6 +157,23 @@ export default function MarketModal({
   }, [ob, buySort])
 
   const myListingCardIds = useMemo(() => new Set(myListings.map(l => l.card?.id)), [myListings])
+
+  // Combien d'annonces à MOI par carte et par rareté. La vue « Mes annonces »
+  // n'affichait que les quantités globales du marché : impossible d'y voir qu'on
+  // occupait déjà tous ses emplacements d'une rareté (refus incompréhensible à la
+  // mise en vente suivante).
+  const myCounts = useMemo(() => {
+    const byCard = {}, byRarity = {}, byCardPrice = {}
+    myListings.forEach(l => {
+      const c = l.card
+      if (!c) return
+      byCard[c.id] = (byCard[c.id] || 0) + 1
+      byRarity[c.rarity] = (byRarity[c.rarity] || 0) + 1
+      const k = `${c.id}_${l.price}`
+      byCardPrice[k] = (byCardPrice[k] || 0) + 1
+    })
+    return { byCard, byRarity, byCardPrice }
+  }, [myListings])
 
   const tabs = [
     { id: 'acheter',    label: t('market_buy') },
@@ -389,7 +408,14 @@ export default function MarketModal({
                         <div style={{ fontSize: 10.5, color: '#ffffffd0', fontStyle: 'italic', textShadow: '0 1px 2px #0005', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>« {t(m.taglineKey)} »</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <span style={{ background: '#00000038', color: '#fff', fontWeight: 800, fontSize: 11, padding: '3px 10px', borderRadius: 50, whiteSpace: 'nowrap', border: '1px solid #ffffff33' }}>{stock.toLocaleString()} {t('market_for_sale')}</span>
+                        {/* En vue « Mes annonces », le stock du coin est celui du marché
+                            entier : on annonce d'abord MES annonces de cette rareté
+                            (et leur plafond), c'est ce qui limite la mise en vente. */}
+                        <span style={{ background: '#00000038', color: '#fff', fontWeight: 800, fontSize: 11, padding: '3px 10px', borderRadius: 50, whiteSpace: 'nowrap', border: '1px solid #ffffff33' }}>
+                          {onlyMine
+                            ? `${(myCounts.byRarity[rarity] || 0).toLocaleString()}${Number(maxActiveListingsByRarity?.[rarity]) > 0 ? `/${Number(maxActiveListingsByRarity[rarity])}` : ''} ${t('market_mine_short')}`
+                            : `${stock.toLocaleString()} ${t('market_for_sale')}`}
+                        </span>
                         {/* Tout retirer — par coin, uniquement en vue « Mes annonces » */}
                         {onlyMine && (cancelConfirm === `coin_${rarity}` ? (
                           <div style={{ display: 'flex', gap: 5 }}>
@@ -431,6 +457,11 @@ export default function MarketModal({
                           </div>
                           <div style={{ fontSize: 10,color: theme.textMuted,marginTop: 2,display: 'flex',gap: 10,flexWrap: 'wrap' }}>
                             <span style={{ color: theme.gold,fontWeight: 800 }}>{totalQty.toLocaleString()} {t('market_for_sale')}</span>
+                            {/* Quantité globale ci-dessus vs la mienne : sans distinction,
+                                « 7 en vente » se lisait comme « 7 annonces à moi ». */}
+                            {(myCounts.byCard[card.id] || 0) > 0 && (
+                              <span style={{ color: '#f9ca24', fontWeight: 800 }}>{t('market_mine_count').replace('{n}', myCounts.byCard[card.id])}</span>
+                            )}
                             <span>{t('market_from')} <span style={{ color: '#00b894',fontWeight: 800 }}>{tiersArr[0].price}G</span></span>
                           </div>
                         </div>
@@ -451,10 +482,14 @@ export default function MarketModal({
                             // plancher) n'y figure pas. On retombe sur le pseudo en secours.
                             const myIdx = myListings.findIndex(m => m.card?.id === card.id && m.price === tier.price)
                             const isOwn = myIdx >= 0 || (myPseudo && tier.sellers.includes(myPseudo))
+                            // Plusieurs de mes annonces se confondent dans un même palier
+                            // (même carte, même prix) : sans le compte, deux annonces
+                            // ressemblent à une seule.
+                            const myAtTier = myCounts.byCardPrice[`${card.id}_${tier.price}`] || 0
                             return (
                               <div key={tier.price} style={{ display: 'grid',gridTemplateColumns: '65px 1fr 50px auto',gap: 5,alignItems: 'center',padding: '4px 3px',borderRadius: 6,background: isOwn ? '#f9ca2408' : ib ? '#00b89412' : 'transparent',border: isOwn ? '1px solid #f9ca2428' : ib ? '1px solid #00b89428' : '1px solid transparent', opacity: ca ? 1 : 0.4 }}>
                                 <div style={{ fontWeight: 900,fontSize: 13,color: isOwn ? theme.gold : ib ? '#00b894' : theme.textPrimary,display: 'flex',alignItems: 'center',gap: 3,flexWrap: 'wrap' }}>
-                                  {isOwn && <span style={{ fontSize: 7,background: '#f9ca24',color: '#1e3045',borderRadius: 3,padding: '1px 4px',fontWeight: 800 }}>Moi</span>}
+                                  {isOwn && <span style={{ fontSize: 7,background: '#f9ca24',color: '#1e3045',borderRadius: 3,padding: '1px 4px',fontWeight: 800 }}>{t('market_mine')}{myAtTier > 1 ? ` ×${myAtTier}` : ''}</span>}
                                   {!isOwn && ib && <span style={{ fontSize: 7,background: '#00b894',color: '#fff',borderRadius: 3,padding: '1px 4px',fontWeight: 800 }}>{t('market_best')}</span>}
                                   {tier.price}G
                                 </div>
@@ -566,6 +601,76 @@ export default function MarketModal({
                   {/* Carte sélectionnée */}
                   <div style={{ display: 'flex', justifyContent: 'center' }}><Card card={sellCard} /></div>
 
+                  {/* Emplacements d'annonces occupés (total + rareté de la carte
+                      choisie) : le serveur refuse la publication au-delà, et sans
+                      ce rappel le joueur ne pouvait pas savoir combien il en avait
+                      déjà — les quantités affichées ailleurs sont celles du marché
+                      entier, pas les siennes. */}
+                  {(() => {
+                    const rarity     = sellCard.rarity
+                    const rarityCap  = Number(maxActiveListingsByRarity?.[rarity]) || 0
+                    const rarityUsed = myCounts.byRarity[rarity] || 0
+                    const totalUsed  = myListings.length
+                    const rarityFull = rarityCap > 0 && rarityUsed >= rarityCap
+                    const totalFull  = maxActiveListings > 0 && totalUsed >= maxActiveListings
+                    // Uniquement quand la rareté a son propre plafond : sans plafond,
+                    // la liste peut compter des dizaines d'annonces sans rien expliquer.
+                    const mineAll = rarityCap > 0
+                      ? myListings.map((l, i) => ({ l, i })).filter(({ l }) => l.card?.rarity === rarity)
+                      : []
+                    const mine = mineAll.slice(0, 8)
+                    return (
+                      <div style={{ background: theme.overlayMd, border: `1px solid ${rarityFull || totalFull ? '#e74c3c55' : theme.border}`, borderRadius: 10, padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ fontSize: 11, fontWeight: 900, color: theme.textSecondary }}>{t('market_slots_title')}</div>
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 10.5, fontWeight: 800 }}>
+                          <span style={{ color: totalFull ? '#e74c3c' : theme.textMuted }}>
+                            {t('market_slots_total').replace('{n}', totalUsed).replace('{max}', maxActiveListings)}
+                          </span>
+                          {rarityCap > 0 && (
+                            <span style={{ color: rarityFull ? '#e74c3c' : RC[rarity]?.color || theme.textMuted }}>
+                              {t('market_slots_rarity')
+                                .replace('{rarity}', rarityLabel(rarity, t))
+                                .replace('{n}', rarityUsed)
+                                .replace('{max}', rarityCap)}
+                            </span>
+                          )}
+                        </div>
+                        {/* Les annonces qui occupent les emplacements de cette rareté,
+                            retirables sur place : c'est ce que le joueur cherche quand
+                            il se voit refuser une mise en vente. */}
+                        {mine.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {mine.map(({ l, i }) => (
+                              <div key={l.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5 }}>
+                                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: theme.textSecondary, fontWeight: 700 }}>{l.card?.name}</span>
+                                <span style={{ color: theme.gold, fontWeight: 800 }}>{l.price}G</span>
+                                {cancelConfirm === `slot_${i}` ? (
+                                  <>
+                                    <button onClick={() => { onCancelListing(i); setCancelConfirm(null); setMsg('') }}
+                                      style={{ background: 'linear-gradient(135deg,#d63031,#e17055)', border: 'none', color: '#fff', padding: '3px 7px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 10, cursor: 'pointer' }}>✓</button>
+                                    <button onClick={() => setCancelConfirm(null)}
+                                      style={{ background: theme.bgElevated, border: `1px solid ${theme.border}`, color: theme.textMuted, padding: '3px 6px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 10, cursor: 'pointer' }}>✕</button>
+                                  </>
+                                ) : (
+                                  <button onClick={() => setCancelConfirm(`slot_${i}`)}
+                                    style={{ background: '#e74c3c22', border: '1px solid #e74c3c44', color: '#e74c3c', padding: '3px 7px', borderRadius: 50, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 9.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('market_remove')}</button>
+                                )}
+                              </div>
+                            ))}
+                            {mineAll.length > mine.length && (
+                              <div style={{ fontSize: 9.5, color: theme.textMuted, fontStyle: 'italic' }}>+ {mineAll.length - mine.length}</div>
+                            )}
+                          </div>
+                        )}
+                        {(rarityFull || totalFull) && (
+                          <div style={{ fontSize: 10, fontWeight: 800, color: '#e74c3c' }}>
+                            {totalFull ? t('market_slots_total_full') : t('market_slots_rarity_full')}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+
                   {/* Prix */}
                   {(() => {
                     const cap = priceCaps[sellCard.rarity]
@@ -574,7 +679,12 @@ export default function MarketModal({
                     const overCap = maxPrice !== null && +sellPrice > maxPrice
                     const underMin = sellCard.minPrice && +sellPrice < sellCard.minPrice
                     const noFeeGold = gold < listingFee
-                    const invalid = !(+sellPrice > 0) || underMin || overCap || noFeeGold
+                    // Plafonds d'annonces : bloquer le bouton plutôt que laisser partir
+                    // un appel voué au refus (le joueur croyait à un bug du serveur).
+                    const rarityCapSell = Number(maxActiveListingsByRarity?.[sellCard.rarity]) || 0
+                    const slotsFull = (maxActiveListings > 0 && myListings.length >= maxActiveListings)
+                      || (rarityCapSell > 0 && (myCounts.byRarity[sellCard.rarity] || 0) >= rarityCapSell)
+                    const invalid = !(+sellPrice > 0) || underMin || overCap || noFeeGold || slotsFull
                     return (
                       <div>
                         <label style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, display: 'block', marginBottom: 6 }}>{t('market_price_label')}</label>

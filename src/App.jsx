@@ -2849,6 +2849,8 @@ export default function App() {
                   marketSalesOpen={gs.limits.marketSalesOpen !== false}
                   listingFee={gs.limits.marketListingFee ?? 4}
                   saleTax={gs.limits.marketSaleTax ?? 0.12}
+                  maxActiveListings={gs.limits.maxActiveListings ?? 10}
+                  maxActiveListingsByRarity={gs.limits.maxActiveListingsByRarity ?? {}}
                   myPseudo={auth.profile?.pseudo}
                   unreadSales={gs.unreadSales}
                   onClearUnreadSales={() => gs.setUnreadSales(0)}
