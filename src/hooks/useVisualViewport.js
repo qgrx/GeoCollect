@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { isIOS } from '../utils/platform.js'
 
 // ── Zone RÉELLEMENT visible (visualViewport) ─────────────────────────────────
 // `position:fixed` se cale sur le viewport de MISE EN PAGE, plus grand que la
@@ -74,12 +75,20 @@ function read(typing) {
   if (typeof window === 'undefined' || !window.visualViewport) return null
   const { height, width, offsetTop } = window.visualViewport
   const shrunk = (window.innerHeight - height) > 150
-  return { height, width, offsetTop, keyboardOpen: shrunk || (typing && isTouch()) }
+  // iOS ampute TOUJOURS la zone visible quand le clavier s'ouvre : `shrunk` y fait
+  // seule autorité. Le repli « champ focalisé » y serait même NUISIBLE — un champ
+  // peut garder le focus DOM clavier fermé (cf. useBlurOnResume) et on annoncerait
+  // alors un clavier ouvert qui n'existe pas (toast repositionné, notifications du
+  // bas escamotées pour de bon). Le repli reste indispensable aux moteurs qui
+  // redimensionnent la MISE EN PAGE (Android) : l'amputation y est invisible.
+  const keyboardOpen = shrunk || (typing && isTouch() && !isIOS())
+  return { height, width, offsetTop, keyboardOpen, keyboardShrunk: shrunk }
 }
 
 function same(a, b) {
   if (!a || !b) return a === b
-  return a.height === b.height && a.width === b.width && a.offsetTop === b.offsetTop && a.keyboardOpen === b.keyboardOpen
+  return a.height === b.height && a.width === b.width && a.offsetTop === b.offsetTop
+    && a.keyboardOpen === b.keyboardOpen && a.keyboardShrunk === b.keyboardShrunk
 }
 
 function isEditableFocused() {

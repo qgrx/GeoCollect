@@ -19,6 +19,7 @@ import { useQuiz } from './hooks/useQuiz.js'
 import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
 import useVisualViewport from './hooks/useVisualViewport.js'
 import useBlurOnResume from './hooks/useBlurOnResume.js'
+import { useQuizOpen } from './utils/quizOpenSignal.js'
 import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiBuyShinyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard, apiGetPatronagePending } from './services/api.js'
 import { soundQuizNew, soundMarketSale, soundCorrect, useVolume } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
@@ -1214,6 +1215,15 @@ export default function App() {
   // Sans ça, un joueur qui quitte l'app pendant qu'il répond au quiz revient sur
   // un champ « déjà focalisé » que le clavier refuse de rouvrir.
   useBlurOnResume()
+
+  // ── « Le joueur est en train de répondre » ────────────────────────────────
+  // Gouverne tout ce qui est ancré en BAS et se poserait sur la question, le champ
+  // de réponse ou le bouton Répondre. Le clavier ouvert ne suffit pas comme critère :
+  // le joueur passe du temps sur la question clavier fermé (lecture, retour
+  // d'arrière-plan, recherche d'un code GC) — et sur iOS la détection « clavier
+  // ouvert » ne peut plus s'appuyer sur le focus d'un champ (focus fantôme, cf.
+  // useBlurOnResume). La fenêtre de quiz ouverte est le vrai critère.
+  const quizWindowOpen = useQuizOpen()
 
   // ── Détection mobile / desktop ────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
@@ -3023,7 +3033,7 @@ export default function App() {
           l'entête de la modale — jamais la question, le champ ni le bouton — et
           `pointerEvents:none` laisse le ✕ cliquable au travers. */}
       {toast && (() => {
-        const typing = !!vv?.keyboardOpen
+        const typing = !!vv?.keyboardOpen || quizWindowOpen
         // Barre de nav mobile fixée en bas : un toast à `bottom:28` la recouvre
         // (les icônes Accueil/Trésors deviennent illisibles et le toast semble
         // « déborder » sur le menu). On se cale au-dessus, même offset que les
@@ -3043,12 +3053,12 @@ export default function App() {
           file reste en état et leur minuterie d'auto-fermeture vit dans le composant
           — il n'est pas monté, donc rien ne s'écoule. Elles s'affichent dès que le
           clavier se referme. */}
-      {gs.pendingAch.length > 0 && !vv?.keyboardOpen && (
+      {gs.pendingAch.length > 0 && !vv?.keyboardOpen && !quizWindowOpen && (
         <AchievementToast achievement={gs.pendingAch[0]} cardPool={gs.cardPool} onClose={() => gs.setPendingAch(prev => prev.slice(1))} />
       )}
 
       {/* ── Achievement upgrade popup queue (montées de palier) ── */}
-      {gs.pendingUpgrade.length > 0 && !vv?.keyboardOpen && (
+      {gs.pendingUpgrade.length > 0 && !vv?.keyboardOpen && !quizWindowOpen && (
         <AchievementUpgradePopup upgrade={gs.pendingUpgrade[0]} cardPool={gs.cardPool} onClose={() => gs.setPendingUpgrade(prev => prev.slice(1))} />
       )}
 
@@ -3060,7 +3070,7 @@ export default function App() {
            auparavant neutralisé par le position:fixed interne de SaleNotif).
            Différées clavier ouvert, comme les toasts d'achievement : sur mobile elles
            sont ancrées en bas et recouvriraient le champ de réponse du quiz. */}
-      {(vv?.keyboardOpen ? [] : gs.saleNotifs.slice(0, 3)).map((n, i) => (
+      {(vv?.keyboardOpen || quizWindowOpen ? [] : gs.saleNotifs.slice(0, 3)).map((n, i) => (
         <div key={n.id} style={{ position: 'fixed', right: 20, zIndex: 3500,
           ...(isWide ? { top: `${70 + i * 90}px` } : { bottom: `calc(76px + env(safe-area-inset-bottom) + ${i * 90}px)` }) }}>
           <SaleNotif notif={n} ranks={gs.limits.playerRanks} onClose={() => gs.setSaleNotifs(prev => prev.filter(x => x.id !== n.id))} />
