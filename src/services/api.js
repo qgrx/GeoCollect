@@ -46,6 +46,12 @@ function withConcurrencyLimit(task) {
 // rechargement de l'app. On borne donc toute requête ; `timeoutMs` permet de
 // rallonger ponctuellement (traitements admin par lots).
 const REQUEST_TIMEOUT_MS = 30_000
+// getSession() n'est pas qu'une lecture de storage : token expiré ⇒ rafraîchissement
+// RÉSEAU (et verrou inter-onglets). Sur une connexion instable il peut ne jamais
+// rendre la main — et comme il s'exécute AVANT fetch, la requête reste bloquée sans
+// même bénéficier du timeout ci-dessus (« ⏳ Validation côté serveur en cours… » qui
+// ne revient jamais). On le borne donc aussi.
+const AUTH_TIMEOUT_MS = 8_000
 
 async function apiFetch(path, options = {}) {
   if (!API_ENABLED) return { data: null, error: 'api_not_configured' }
@@ -53,7 +59,13 @@ async function apiFetch(path, options = {}) {
 
   // Récupérer le token Supabase si disponible
   if (supabase) {
-    const { data: { session } } = await supabase.auth.getSession()
+    const session = await Promise.race([
+      supabase.auth.getSession().then(r => r?.data?.session || null).catch(() => null),
+      new Promise(resolve => setTimeout(() => resolve('timeout'), AUTH_TIMEOUT_MS)),
+    ])
+    // Session injoignable : mieux vaut une erreur explicite (l'appelant peut réessayer)
+    // qu'un appel sans jeton, qui reviendrait en 401 et ferait perdre le round.
+    if (session === 'timeout') return { data: null, error: 'timeout' }
     token = session?.access_token || null
   }
 
@@ -117,14 +129,19 @@ export const apiBuyOffseasonCard = (card_id) =>
   apiFetch('/api/market/offseason/buy', { method: 'POST', body: { card_id } })
 
 // ─── Quiz ─────────────────────────────────────────────────────────────────────
-export const apiGetCurrentQuiz  = () => apiFetch('/api/quiz/current')
+// Chemin CHRONOMÉTRÉ : un round se joue à la seconde. Attendre 30 s une réponse qui
+// ne viendra pas, c'est le round perdu — on échoue vite pour laisser la revalidation
+// automatique de la modale rejouer la réponse (le serveur est idempotent).
+const QUIZ_TIMEOUT_MS = 10_000
+
+export const apiGetCurrentQuiz  = () => apiFetch('/api/quiz/current', { timeoutMs: QUIZ_TIMEOUT_MS })
 export const apiGetQuizHistory  = (limit = 10) => apiFetch(`/api/quiz/history?limit=${limit}`)
 
 export const apiJoinQuiz = (quizId) =>
-  apiFetch('/api/quiz/join', { method: 'POST', body: { quiz_id: quizId } })
+  apiFetch('/api/quiz/join', { method: 'POST', timeoutMs: QUIZ_TIMEOUT_MS, body: { quiz_id: quizId } })
 
 export const apiAnswerQuiz = (quizId, answer, nonce, choice, holdAction) =>
-  apiFetch('/api/quiz/answer', { method: 'POST', body: { quiz_id: quizId, answer, ...(nonce ? { nonce } : {}), ...(choice ? { choice } : {}),
+  apiFetch('/api/quiz/answer', { method: 'POST', timeoutMs: QUIZ_TIMEOUT_MS, body: { quiz_id: quizId, answer, ...(nonce ? { nonce } : {}), ...(choice ? { choice } : {}),
     // Dépôt payant (précieux déjà possédé, hors-limite) : méthode choisie explicitement
     // dans le sélecteur — remplacer un geocoin désigné OU louer un emplacement.
     ...(holdAction?.rent ? { hold_rent: true } : {}),

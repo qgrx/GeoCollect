@@ -64,6 +64,24 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     setNextQuizTime(nextAtMs)
   }, [])
 
+  /**
+   * Round encore OUVERT alors que j'en suis déjà sorti (multi-prix : j'ai pris un
+   * geocoin, il en reste ; gloire : la fenêtre de grâce court encore). Sans pending
+   * ni activeQuiz, le compteur du prochain quiz repart sur l'estimation posée au
+   * quiz:new et peut atteindre ses 10 dernières secondes — gros décompte affiché —
+   * ALORS QUE le round n'est pas fini : le joueur voit un décompte fantôme, coupé
+   * net par le « Félicitations à… » quand le round se clôt enfin.
+   *
+   * On le repousse donc au-delà de la fenêtre de grâce : le prochain quiz n'est
+   * planifié qu'à la CLÔTURE du round (grâce écoulée) + un intervalle. L'horaire
+   * réel arrive ensuite avec quiz:solved / quiz:expired.
+   */
+  function parkCountdownPastGrace(graceDeadline) {
+    if (!graceDeadline) return
+    const sec = dynIntervalRef.current ?? limits?.quizInterval ?? QUIZ_INTERVAL
+    setNextQuizTime(Math.max(nextQuizTimeRef.current, graceDeadline + sec * 1000))
+  }
+
   // Prochain horaire : privilégie l'horaire serveur (si encore à venir), sinon
   // repli sur le dernier intervalle dynamique connu, puis quizInterval.
   function resolveNextQuizTime(solvedAt) {
@@ -320,6 +338,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         if (graceDeadline) {
           setActiveQuiz(q => q ? { ...q, graceDeadline } : q)
           if (activeQuizRef.current) activeQuizRef.current = { ...activeQuizRef.current, graceDeadline }
+          parkCountdownPastGrace(graceDeadline)
         }
         // Mécénat : plafond hebdo de la rareté atteint → proposer le don (la gloire
         // ci-dessus est le repli). La modale s'ouvre après la fermeture du quiz.
@@ -441,7 +460,13 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
       if (data.final === false) {
         // Round multi-prix non terminé : je referme MA modale (j'ai déjà mon geocoin) mais
         // je n'avance PAS le cycle global — le prochain quiz est piloté par quiz:solved
-        // (quand le dernier prix est pris ou la fenêtre de grâce écoulée).
+        // (quand le dernier prix est pris ou la fenêtre de grâce écoulée). Le compteur est
+        // repoussé au-delà de la grâce pour ne pas afficher un décompte fantôme pendant
+        // que le round tourne encore (repli si le quiz:prize_won se perd).
+        if (data.grace_until && data.server_time) {
+          const graceMs = Math.max(0, new Date(data.grace_until).getTime() - new Date(data.server_time).getTime())
+          parkCountdownPastGrace(Date.now() + graceMs)
+        }
         setTimeout(() => { setActiveQuiz(null); activeQuizRef.current = null }, outcome === 'hold' ? 600 : 2200)
       } else {
         setTimeout(() => advanceQuiz(solvedAt), outcome === 'hold' ? 600 : 2200)
@@ -525,7 +550,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
     countdown, setNextQuizTime,
     // dynIntervalRef = dernier cycle COMPLET serveur connu (jamais un reliquat) : c'est
     // lui que doivent lire les handlers socket, montés une seule fois.
-    cycleSec, serverIntervalRef: dynIntervalRef, applyServerSchedule,
+    cycleSec, serverIntervalRef: dynIntervalRef, applyServerSchedule, parkCountdownPastGrace,
     pendingQuiz, setPendingQuiz,
     activeQuiz, setActiveQuiz,
     nextCard, setNextCard,

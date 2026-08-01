@@ -706,7 +706,15 @@ export default function App() {
         }
         setPendingQuiz(patch)
 
-        if (iSelf) return  // le gagnant a déjà refermé sa modale (handleQuizAnswer, final=false)
+        if (iSelf) {
+          // J'ai pris mon geocoin et refermé ma modale : sans pending ni activeQuiz, le
+          // compteur du prochain quiz repartirait sur l'estimation posée au quiz:new et
+          // pouvait entrer dans ses 10 dernières secondes (gros décompte) ALORS QUE le
+          // round est toujours ouvert pour les autres prix — décompte fantôme, coupé net
+          // par le « Félicitations à… » de la clôture.
+          parkCountdownPastGrace(graceDeadline)
+          return  // le gagnant a déjà refermé sa modale (handleQuizAnswer, final=false)
+        }
 
         // Toast « X a décroché un geocoin — encore Ns ! » — tu en mode Entraînement (notif PvP).
         if (!beginnerActiveRef.current) {
@@ -915,19 +923,11 @@ export default function App() {
         // Re-synchroniser après une (re)connexion : les quiz résolus pendant la
         // coupure n'ont jamais été reçus → recharger les derniers geocoins disputés…
         refreshQuizHistoryRef.current()
-        // …et réaligner le pending sur l'état serveur pour ne pas laisser
-        // « Participer » sur un quiz déjà gagné.
-        apiGetCurrentQuiz().then(({ data }) => {
-          if (!data) return
-          const activeId = data.quiz?.id ?? null
-          setPendingQuiz(p => (!p || (activeId && p.id === activeId)) ? p : null)
-          if (!data.quiz && data.next_quiz_at && data.server_time) {
-            const msLeft = Math.max(0, new Date(data.next_quiz_at).getTime() - new Date(data.server_time).getTime())
-            // Reconnexion = recalage EN COURS de cycle : msLeft n'est qu'un reliquat,
-            // il ne doit pas devenir la durée de cycle de repli (cf. applyServerSchedule).
-            applyServerSchedule(Date.now() + msLeft, Math.round(msLeft / 1000), { fullCycle: false })
-          }
-        }).catch(() => {})
+        // …et réaligner l'état complet sur le serveur. On réutilise le resync du
+        // montage plutôt qu'une version partielle : celle-ci ne remettait à jour que
+        // l'horaire, PAS la rareté ni la brillance annoncées — après une coupure, le
+        // teaser gardait la couleur du round précédent et « une autre rareté sortait ».
+        syncCurrentQuiz()
       })
       s.on('disconnect', () => setSocketOnline(false))
       s.on('connect_error', () => setSocketOnline(false))
@@ -1362,7 +1362,7 @@ export default function App() {
     // la brillance annoncée doit suivre l'horaire/rareté rafraîchis (sinon ✨ fantôme).
     onNextShiny: setQuizIsShiny,
   })
-  const { countdown, setNextQuizTime, cycleSec, serverIntervalRef, applyServerSchedule, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
+  const { countdown, setNextQuizTime, cycleSec, serverIntervalRef, applyServerSchedule, parkCountdownPastGrace, pendingQuiz, setPendingQuiz, activeQuiz, setActiveQuiz,
     nextCard, setNextCard, nextQuizRarity, setNextQuizRarity, holdOffer, setHoldOffer,
     patronageOffer, setPatronageOffer,
     history, setHistory, quizKey, setQuizKey,
