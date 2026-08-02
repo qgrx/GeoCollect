@@ -351,8 +351,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   // Horodatage de l'appui sur le champ : distingue un tap d'un appui long (geste
   // « Coller » d'iOS), cf. le filet anti-blocage sur onPointerUp.
   const inputDownAtRef=useRef(0);
-  // Presse-papier refusé/vide : message affiché sous le champ.
-  const [pasteError,setPasteError]=useState(null);
   // Figer l'état "brillant" au montage : un événement quiz:solved (annonçant le prochain
   // quiz) peut mettre à jour isShiny pendant que cette modale affiche encore le résultat.
   const isShinyFrozen=useRef(isShiny).current;
@@ -398,25 +396,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     setReportStatus('done');
   }
   function finish(n){if(doneRef.current)return;doneRef.current=true;setNpc(n || 'Un autre joueur');setStatus("lost");onExpire(n || 'Un autre joueur');}
-  // Coller en un tap. Les réponses se copient souvent depuis une autre app
-  // (code GC, nom de TB) et le menu « Coller » d'iOS demande un appui long au
-  // millimètre, dans une fenêtre qui se rafraîchit à la seconde — d'où des
-  // « impossible de coller ». Ce bouton passe par l'API presse-papier, qui n'a
-  // besoin que d'un clic. Volontairement PAS de focus après le collage : on est
-  // alors hors geste utilisateur, et focaliser là rendrait le champ muet sur iOS.
-  async function pasteAnswer(){
-    setPasteError(null);
-    try{
-      const txt=await navigator.clipboard?.readText?.();
-      const clean=(txt||"").trim().replace(/\s+/g," ");
-      if(!clean){ setPasteError(t('quiz_paste_empty')||"Presse-papier vide."); return; }
-      setInp(clean); setSubmitError(null);
-    }catch{
-      // Refus explicite (permission), presse-papier inaccessible ou API absente :
-      // la saisie manuelle reste possible, on le dit sans dramatiser.
-      setPasteError(t('quiz_paste_denied')||"Collage refusé par le navigateur — tape la réponse.");
-    }
-  }
     async function submit(){
     if(status!=="open") return;
     if(tooLate) return;  // mode débutant : décompte terminé, réponse bloquée
@@ -757,7 +736,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
               input+bouton → un texte long poussait le bouton Répondre hors de l'écran
               (cf. capture Caro93220). */}
           {submitError&&<div style={{fontSize:12,color:"#f39c12",fontWeight:700,padding:"7px 10px",background:"#f39c1218",borderRadius:9,marginBottom:8,border:"1px solid #f39c1233"}}>{submitError}</div>}
-          {pasteError&&<div style={{fontSize:12,color:"#a8bfcf",fontWeight:700,padding:"7px 10px",background:"#ffffff0f",borderRadius:9,marginBottom:8,border:"1px solid #ffffff1f"}}>{pasteError}</div>}
           {/* Pénalité anti-spam graduée : décompte explicite pour que le joueur comprenne
               pourquoi il patiente (5 s puis 10 s, 1 essai sur 2, selon le nombre d'essais). */}
           {penaltyLeft>0&&(
@@ -789,14 +767,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
                 el.blur(); el.focus();                              // dans le geste → le clavier remonte
               }} placeholder={penaltyLeft>0 ? `⏱️ ${penaltyLeft}s` : questionMasked ? (handicapLeft>0?`🎁 ${handicapLeft}s`:"…") : (wc===1 ? t("quiz_placeholder_word") : t("quiz_placeholder_words").replace("{n}", wc))}
               style={{flex:1,minWidth:0,background:inputLocked?"#ffffff08":"#ffffff12",border:shake?"2px solid #e74c3c":inputLocked?"2px solid #f9ca2422":"2px solid #f9ca2444",color:"#fff",padding:"10px 12px",borderRadius:11,fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:700,outline:"none",animation:shake?"shakeIt .45s":"none",transition:"border .2s",opacity:inputLocked?0.6:1}}/>
-          {/* Coller (mobile) : n'apparaît que sur le champ VIDE et déverrouillé —
-              là où il sert — pour ne pas encombrer la ligne pendant la saisie.
-              Comme « Répondre », il ne prend pas le focus : le clavier reste ouvert. */}
-          {isTouchDevice()&&!inp&&!inputLocked&&(
-            <button onClick={pasteAnswer} onMouseDown={e=>e.preventDefault()}
-              title={t('quiz_paste')||'Coller'} aria-label={t('quiz_paste')||'Coller'}
-              style={{background:"#ffffff14",border:"1px solid #ffffff22",color:"#cfd8e3",padding:"10px 11px",borderRadius:11,flexShrink:0,fontSize:15,lineHeight:1,cursor:"pointer",fontFamily:"'Nunito',sans-serif"}}>📋</button>
-          )}
           <button onClick={()=>submit()} disabled={isSubmitting||!inp.trim()||handicapLeft>0||questionMasked||penaltyLeft>0}
               /* Le bouton ne prend PAS le focus : sur mobile il fermait le clavier à
                  chaque validation (focus déplacé du champ vers le bouton), et le
