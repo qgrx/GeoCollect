@@ -484,7 +484,7 @@ function PanelWrapper({ inline, theme, forgingId, onClose, children }) {
 }
 
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
-export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, onMelted, onMeltedShiny, onMeltedAll, onMeltedAllShiny, inline = false, shinyForgeCostByRarity = {}, forgeCostByRarity = {}, meltPointsByRarity = {}, meltPointsByRarityShiny = {}, achievementProgress = {}, loading = false, initialTab = 'normal', focusCardId = null }) {
+export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, onMelted, onMeltedShiny, onMeltedAll, onMeltedAllShiny, onQuestReward, inline = false, shinyForgeCostByRarity = {}, forgeCostByRarity = {}, meltPointsByRarity = {}, meltPointsByRarityShiny = {}, achievementProgress = {}, loading = false, initialTab = 'normal', focusCardId = null }) {
   useEffect(() => { injectStyle() }, [])
   const { theme } = useTheme()
   const { t } = useT()
@@ -554,6 +554,15 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
     return sum + ((shinyCollection[card.id] || 0) - 1) * points
   }, 0) * 10) / 10
 
+  // Récompense d'une quête validée par cette action (« Fondeur de la semaine »,
+  // « Forgeron »…) : le flash « Quête réussie ! » est joué APRÈS l'animation de fonte
+  // / de forge. Déclenché pendant, il se serait affiché derrière l'overlay plein écran
+  // — le joueur ne voyait jamais que sa quête venait d'être validée.
+  function fireQuestReward(data) {
+    const r = data?.quest_reward
+    if (r && ((r.forge_points || 0) > 0 || (r.gold || 0) > 0)) onQuestReward?.(r)
+  }
+
   async function handleMelt(card) {
     if (meltingId || meltingAll) return
     setError(null)
@@ -575,6 +584,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
       timerRef.current.push(setTimeout(() => {
         setMeltingId(null)
         setMeltPhase(null)
+        fireQuestReward(data)
       }, 700))
     }, 1100))
   }
@@ -600,6 +610,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
       timerRef.current.push(setTimeout(() => {
         setMeltingId(null)
         setMeltPhase(null)
+        fireQuestReward(data)
       }, 700))
     }, 1100))
   }
@@ -613,6 +624,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
     if (data.melted?.length > 0) await animateMeltSequence(data.melted.slice(0, 5).map(m => m.card_id), false)
     onMeltedAll?.(data)
     setMeltingAll(false)
+    fireQuestReward(data)
   }
 
   async function handleMeltAllShiny() {
@@ -624,6 +636,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
     if (data.melted?.length > 0) await animateMeltSequence(data.melted.slice(0, 5).map(m => m.card_id), true)
     onMeltedAllShiny?.(data)
     setMeltingAll(false)
+    fireQuestReward(data)
   }
 
   function clearTimers() { timerRef.current.forEach(clearTimeout); timerRef.current = [] }
@@ -656,6 +669,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
         timerRef.current.push(setTimeout(() => {
           setForgingId(null)
           setPhase(null)
+          fireQuestReward(data)
         }, 1400))
       }, 1000))
     }, 800))
@@ -687,6 +701,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
           setForgingId(null)
           setPhase(null)
           setShinyMode(false)
+          fireQuestReward(data)
         }, 1400))
       }, 1000))
     }, 800))

@@ -46,7 +46,7 @@ function ProfileChip({ p, active, won }) {
  * serveur attribue un bénéficiaire d'office à la clôture du round (le geocoin est déjà
  * consommé et n'est jamais perdu).
  */
-export function PatronageModal({ offer, onClose, showToast, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onDonated, rewardPf = { rare: 1, epique: 5, legendaire: 100 } }) {
+export function PatronageModal({ offer, onClose, showToast, checkAchievements, checkAchievementUpgrades, onForgePointsEarned, onQuestReward, onDonated, rewardPf = { rare: 1, epique: 5, legendaire: 100 } }) {
   const { t } = useT();
   const [phase, setPhase] = useState('choose');   // 'choose' | 'roulette' | 'done'
   const [busy, setBusy] = useState(false);
@@ -156,6 +156,9 @@ export function PatronageModal({ offer, onClose, showToast, checkAchievements, c
             if (data.reward_pf > 0) onForgePointsEarned?.(data.reward_pf);
             if (data.achievements?.length) checkAchievements?.(data.achievements);
             if (data.achievement_upgrades?.length) checkAchievementUpgrades?.(data.achievement_upgrades);
+            // Quête hebdo « Mécène » validée par ce don → flash « Quête réussie ! »,
+            // ici aussi après l'animation (même raison que les achievements).
+            onQuestReward?.(data.quest_reward);
             // Resynchro collection depuis la DB : garantit l'apparition du geocoin
             // d'achievement (« Mecenat ») dans l'inventaire sans rechargement manuel.
             onDonated?.();

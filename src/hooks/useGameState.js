@@ -49,8 +49,13 @@ function buildAchievementProgressMap(list) {
   return map
 }
 
-export function useGameState(auth, { onAchievementCard } = {}) {
+export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
   const profile = auth?.profile
+
+  // Flash « Quête réussie ! » (fourni par App) — gardé dans une ref pour rester
+  // appelable depuis les callbacks mémoïsés (achat/vente) sans les invalider.
+  const questRewardRef = useRef(onQuestReward)
+  questRewardRef.current = onQuestReward
 
   // ── World state ────────────────────────────────────────────────────────────
   const [cardPool,    setCardPool]    = useState([])
@@ -801,6 +806,10 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         setForgePoints(fp => fp + data.forge_points_earned)
         setForgePointsSignal(s => s + data.forge_points_earned)
       }
+      // Quête « acheteur » / « nouvelle carte » validée par cet achat : les PF sont
+      // crédités juste au-dessus, le flash ne fait que l'annoncer (l'or de quête, lui,
+      // est crédité par le flash — le serveur l'a déjà écrit en base).
+      questRewardRef.current?.(data?.quest_reward)
     }
 
     // Rafraîchir le marché depuis l'API pour éviter les annonces fantômes
@@ -874,6 +883,7 @@ export function useGameState(auth, { onAchievementCard } = {}) {
         setForgePoints(fp => fp + data.forge_points_earned)
         setForgePointsSignal(s => s + data.forge_points_earned)
       }
+      questRewardRef.current?.(data?.quest_reward)   // quête « vendeur » (cf. handleBuy)
 
       // Rafraîchir depuis l'API pour avoir l'état cohérent
       apiGetMarket().then(({ data: mkt }) => {

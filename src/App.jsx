@@ -226,7 +226,10 @@ export default function App() {
   // ── Game state (all logic lives in the hook) ───────────────────────────────
   const auth = useAuth()
   const gs   = useGameState(auth, {
-    onAchievementCard: (card) => setWelcomeCards(prev => [...prev, card])
+    onAchievementCard: (card) => setWelcomeCards(prev => [...prev, card]),
+    // Achat / vente au marché : une quête validée doit produire le même flash
+    // « 🎯 Quête réussie ! » que le quiz (showQuestReward est hoistée).
+    onQuestReward: (reward) => showQuestReward(reward),
   });
 
   const cardPoolRef = useRef(gs.cardPool);
@@ -1359,6 +1362,22 @@ export default function App() {
     setForgeFlashQuest(!!questCompleted);
     setTimeout(() => { setForgeFlash(null); setForgeFlashQuest(false); }, 1800);
   }
+  // Flash « 🎯 Quête réussie ! » d'une quête validée HORS quiz (fonte, forge, achat,
+  // vente, trésor, dépôt, mécénat) : le serveur renvoie `quest_reward` { forge_points,
+  // gold }. Il n'existait que sur la réponse de quiz — ailleurs la récompense était
+  // créditée en silence (« Fondeur de la semaine » ne montrait jamais rien).
+  //  • PF : on ne fait qu'AFFICHER — ils sont déjà crédités par le solde absolu
+  //    (forge_points_remaining) ou par forge_points_earned selon le chemin.
+  //  • Or : crédité ici, le serveur l'ayant déjà écrit en base (le client s'aligne).
+  // Les chemins avec animation (fonte, forge, roulette de mécénat) doivent appeler
+  // ceci APRÈS leur animation, sinon le flash passe derrière l'overlay.
+  function showQuestReward(reward) {
+    if (!reward) return;
+    const gold  = Number(reward.gold || 0);
+    const forge = Number(reward.forge_points || 0);
+    if (gold  > 0) earnGoldWithFx(gold, true);
+    if (forge > 0) showForgeFlash(forge, true);
+  }
 
   // ── Gold / card earn wrappers ─────────────────────────────────────────────
   function earnGoldWithFx(n, questCompleted = false) {
@@ -1680,6 +1699,7 @@ export default function App() {
     if (data.gold_earned > 0) earnGoldWithFx(data.gold_earned)
     if (data.forge_points_earned > 0) gs.addForgePoints(data.forge_points_earned)
     gs.triggerQuestRefresh()
+    showQuestReward(data.quest_reward)   // « Chasseur de trésor » validée → 🎯 Quête réussie !
     showToast(t('toast_daily_claimed').replace('{card}', data.card.name))
   }
 
@@ -1701,6 +1721,7 @@ export default function App() {
     gs.earnCard(data.card, data.is_shiny || false)
     if (data.forge_points_earned > 0) gs.addForgePoints(data.forge_points_earned)
     gs.triggerQuestRefresh?.()
+    showQuestReward(data.quest_reward)   // quête « nouvelle carte » validée par le retrait
     showToast(t('toast_hold_claimed').replace('{card}', data.card.name))
   }
 
@@ -2903,6 +2924,7 @@ export default function App() {
                   meltPointsByRarityShiny={gs.limits.meltPointsByRarityShiny ?? {}}
                   achievementProgress={gs.achievementProgress}
                   onClose={() => setActiveTab('collection')}
+                  onQuestReward={showQuestReward}
                   onForged={(data) => {
                     if (data?.forge_points_remaining !== undefined) {
                       gs.addForgePoints(data.forge_points_remaining - gs.forgePoints)
@@ -3173,6 +3195,7 @@ export default function App() {
           checkAchievements={gs.checkAchievements}
           checkAchievementUpgrades={gs.checkAchievementUpgrades}
           onForgePointsEarned={gs.addForgePoints}
+          onQuestReward={showQuestReward}
           onDonated={() => {
             if (!auth.profile || !import.meta.env.VITE_API_URL) return
             import('./services/api.js').then(({ apiGetCollection }) => {
@@ -3192,6 +3215,7 @@ export default function App() {
           showToast={showToast}
           checkAchievements={gs.checkAchievements}
           checkAchievementUpgrades={gs.checkAchievementUpgrades}
+          onQuestReward={showQuestReward}
           onDonated={() => {
             if (!auth.profile || !import.meta.env.VITE_API_URL) return
             import('./services/api.js').then(({ apiGetCollection, apiGetProfile }) => {
