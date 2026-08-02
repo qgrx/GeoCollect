@@ -1,8 +1,11 @@
-# Geocoins.fr
+# Geocoins
 
-Ce projet est hébergé sur geocoins.fr.
 Jeu de cartes à collectionner basé sur le géocaching.  
 Réponds aux questions, gagne des cartes, vends tes doublons sur le marché.
+
+Hébergé sur **geocoins.io** (et toujours accessible via geocoins.fr).
+Conventions de code et pièges connus : [`CLAUDE.md`](CLAUDE.md).
+Infrastructure et déploiement : `../geocards-api/docs/`.
 
 ---
 
