@@ -217,6 +217,9 @@ export const apiAdminToggleQuestion     = (id, active)               => apiFetch
 export const apiAdminSaveTranslations      = (id, translations)       => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { translations } })
 export const apiAdminSaveCardNameTrans     = (id, name_translations)  => apiFetch(`/api/admin/cards/${id}/name-translations`, { method: 'PATCH', body: { name_translations } })
 export const apiAdminSaveCardDescTrans     = (id, description_translations) => apiFetch(`/api/admin/cards/${id}/description-translations`, { method: 'PATCH', body: { description_translations } })
+// Description longue = fiche publique du geocoin (SEO), distincte de la courte
+// affichée sur la carte. Texte source et traductions passent par la même route.
+export const apiAdminSaveCardLongDesc      = (id, description_long, description_long_translations) => apiFetch(`/api/admin/cards/${id}/long-description`, { method: 'PATCH', body: { description_long, description_long_translations } })
 export const apiGetPublicConfig       = () => apiFetch('/api/config')
 export const apiGetAdminConfig        = () => apiFetch('/api/admin/config')
 export const apiAdminGetMarketHistory = (params = {}) => { const qs = new URLSearchParams(params).toString(); return apiFetch(`/api/admin/market-history${qs ? '?' + qs : ''}`) }

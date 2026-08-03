@@ -6,9 +6,12 @@ import { THEMES } from './theme.js';
 import { useT, setLang, LANGS, getLang, TRANSLATIONS } from './i18n/translations.js'
 import LangSelector from './i18n/LangSelector.jsx';
 import Logo from './components/Logo.jsx';
+import PublicFooter from './components/PublicFooter.jsx';
+import GeocoinPage from './features/geocoins/GeocoinPage.jsx';
 
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
+import { DOCS_ROUTES } from './routes.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, PSEUDO_CHANGE_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
 import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard, patronageHaloColor, answerWordCount } from './utils/gameUtils.js';
 import { isCorrectAnswer } from './utils/answer.js';
@@ -18,6 +21,7 @@ import { useGameState } from './hooks/useGameState.js'
 import { useQuiz } from './hooks/useQuiz.js'
 import { useBeginnerQuiz } from './hooks/useBeginnerQuiz.js'
 import useVisualViewport from './hooks/useVisualViewport.js'
+import { useRoute } from './hooks/useRoute.js'
 import useBlurOnResume from './hooks/useBlurOnResume.js'
 import { useQuizOpen } from './utils/quizOpenSignal.js'
 import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiBuyShinyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard, apiGetPatronagePending } from './services/api.js'
@@ -1016,16 +1020,13 @@ export default function App() {
   const [marketSellCard,  setMarketSellCard]  = useState(null);
   const [forgeShinyFocus, setForgeShinyFocus] = useState(null);  // geocoin ciblé depuis « shiny manquants » → forge Brillance
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showAdmin,       setShowAdmin]       = useState(() => window.location.pathname === '/admin');
   const [showCgv,         setShowCgv]         = useState(false);
-  const docsPath = ['/support', '/faq', '/release-notes']
-  const [showDocs, setShowDocs] = useState(() => docsPath.includes(window.location.pathname))
-  const [docsPage, setDocsPage] = useState(() => {
-    const p = window.location.pathname
-    if (p === '/faq') return 'faq'
-    if (p === '/release-notes') return 'release-notes'
-    return 'support'
-  })
+  // Écrans adressables : dérivés de l'URL plutôt que d'un état parallèle, sans quoi
+  // le bouton Retour désaccorde l'affichage de la barre d'adresse.
+  const { route, param: routeParam, navigate: navigateTo, replace: replaceRoute } = useRoute();
+  const showAdmin = route === 'admin';
+  const showDocs  = DOCS_ROUTES.includes(route);
+  const docsPage  = showDocs ? route : 'release-notes';
   const [showAuth,        setShowAuth]        = useState(false);
   const [showChoosePseudo, setShowChoosePseudo] = useState(false);
   const [showSettings,    setShowSettings]    = useState(false);
@@ -1204,8 +1205,7 @@ export default function App() {
     if (!showAdmin) return
     // Rediriger les non-admins qui arrivent sur /admin (accès direct par URL)
     if (auth.profile && auth.profile.role !== 'admin') {
-      setShowAdmin(false)
-      window.history.replaceState({}, '', '/')
+      replaceRoute('home')
       return
     }
     if (!auth.profile) return
@@ -1214,7 +1214,7 @@ export default function App() {
         id: q.id, q: q.question, a: q.answer, hint: q.hint || '', active: q.active, hidden: !!q.hidden, translations: q.translations || {}, alt_answers: q.alt_answers || []
       })))
     })
-  }, [showAdmin, auth.profile])
+  }, [showAdmin, auth.profile, replaceRoute])
 
   // ── Re-traduire le quiz courant quand la langue change ─────────────────────
   useEffect(() => {
@@ -2047,7 +2047,7 @@ export default function App() {
         if (showReferral)       { setShowReferral(false); return }
         if (showAuth)           { setShowAuth(false); return }
         if (showTxHistory)      { setShowTxHistory(false); return }
-        if (showAdmin)          { setShowAdmin(false); window.history.pushState({}, '', '/'); return }
+        if (showAdmin)          { navigateTo('home'); return }
         if (showShop)           { setShowShop(false); return }
         if (menuOpen)           { setMenuOpen(false); return }
       }
@@ -2057,7 +2057,7 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [selectedCard, activeTab, showSettings, showReferral, showAuth,
-      showTxHistory, showAdmin, showShop, menuOpen, pendingQuiz, activeQuiz])
+      showTxHistory, showAdmin, showShop, menuOpen, pendingQuiz, activeQuiz, navigateTo])
 
 
   // Bannière déblocage marché — seulement pour les non-connectés au premier doublon
@@ -2266,19 +2266,25 @@ export default function App() {
     />
   );
 
-  // SPA : chemins valides
-  const validPaths = ['/', '/support', '/faq', '/release-notes', '/admin']
-  if (!validPaths.includes(window.location.pathname) && !window.location.hash.includes('access_token')) {
+  // Chemin inconnu (cf. src/routes.js). Le retour OAuth est exempté : il arrive sur
+  // « / » avec son jeton dans le hash, avant que la session ne soit établie.
+  if (!route && !window.location.hash.includes('access_token')) {
     return (
       <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Nunito',sans-serif", color: '#fff', flexDirection: 'column', gap: 16 }}>
         <div style={{ fontSize: 72 }}>🗺️</div>
         <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 48, color: theme.gold }}>404</div>
-        <div style={{ color: '#888', fontSize: 16 }}>Cette page n'existe pas.</div>
+        <div style={{ color: '#888', fontSize: 16 }}>{t('not_found_text')}</div>
         <button onClick={() => window.location.href = '/'} style={{ background: 'linear-gradient(135deg,#6c5ce7,#a29bfe)', border: 'none', color: '#fff', padding: '12px 28px', borderRadius: 12, fontFamily: "'Nunito',sans-serif", fontWeight: 900, fontSize: 15, cursor: 'pointer', marginTop: 8 }}>
-          Retour à l'accueil
+          {t('not_found_home')}
         </button>
       </div>
     )
+  }
+
+  // Fiche publique d'un geocoin : page d'atterrissage autonome, servie telle quelle
+  // au visiteur venu d'un moteur — sans charger le jeu ni exiger de compte.
+  if (route === 'geocoin') {
+    return <GeocoinPage slug={routeParam} onNavigate={(r, param) => navigateTo(r, { param })} />
   }
 
   // ── Écrans d'onboarding (bloquent l'accès au site) ──────────────────────────
@@ -2492,9 +2498,9 @@ export default function App() {
                     { icon: '👤', label: t('menu_account') || 'Mon compte', fn: () => { setShowSettings(true); setAvatarMenu(false) } },
                     { icon: '🤝', label: t('referral_title'), fn: () => { setShowReferral(true); setAvatarMenu(false) } },
                   ]),
-                  { icon: '📣', label: t('menu_news') || 'Nouveautés', notif: hasReleaseNotif, fn: () => { clearReleaseNotif(); setDocsPage('release-notes'); setShowDocs(true); setAvatarMenu(false); window.history.pushState({}, '', '/release-notes') } },
+                  { icon: '📣', label: t('menu_news') || 'Nouveautés', notif: hasReleaseNotif, fn: () => { clearReleaseNotif(); setAvatarMenu(false); navigateTo('release-notes') } },
                   { icon: '🎮', label: t('discord_menu') || 'Discord', color: '#5865F2', fn: () => { openDiscord(); setAvatarMenu(false) } },
-                  ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setShowAdmin(true); setAvatarMenu(false); window.history.pushState({}, '', '/admin') } }] : []),
+                  ...(auth.profile?.role === 'admin' ? [{ icon: '🔧', label: t('menu_admin') || 'Administration', fn: () => { setAvatarMenu(false); navigateTo('admin') } }] : []),
                   null,
                   // Invité (démo) : pas de déconnexion → inscription (conversion, garde les geocoins).
                   auth.isDemo
@@ -3038,6 +3044,9 @@ export default function App() {
         </div>
       )}
 
+      {/* ── Pied de page public : seuls liens HTML vers les pages indexables ── */}
+      <PublicFooter onNavigate={(r, param) => navigateTo(r, { param })} hiddenPages={gs.limits?.docsHiddenPages} />
+
       {/* ── BOTTOM NAV (mobile) ── */}
       {auth.profile && isMobile && (
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: theme.navBg, backdropFilter: 'blur(20px)', borderTop: `1px solid ${theme.border}`, display: 'flex' }}>
@@ -3312,7 +3321,14 @@ export default function App() {
           }
         }} />}
 
-      {showDocs && <DocsLayout initialPage={docsPage} isAdmin={auth.profile?.role === 'admin'} onClose={() => { setShowDocs(false); window.history.pushState({}, '', '/') }} />}
+      {showDocs && (
+        <DocsLayout
+          page={docsPage}
+          isAdmin={auth.profile?.role === 'admin'}
+          onNavigate={id => navigateTo(id)}
+          onClose={() => navigateTo('home')}
+        />
+      )}
 
       {seasonPopup && !['pseudo', 'gift', 'card'].includes(onboardingStep) && (
         <SeasonPopup
@@ -3626,9 +3642,9 @@ export default function App() {
           cardPool={gs.cardPool} cardTypes={gs.cardTypes} questions={questions} limits={gs.limits}
           maintenanceMode={gs.maintenance.on} maintenanceText={gs.maintenance.text}
           bannedIPs={gs.bannedIPs}
-          onTestPatronage={() => { setShowAdmin(false); setPatronageOffer({ preview: true, rarity: 'rare', card: { id: 0, name: 'Geocoin de test', rarity: 'rare' }, remaining: 5 }); }}
-          onTestPatronageGift={() => { setShowAdmin(false); setPatronageGift({ donor_pseudo: 'Alizée', rarity: 'rare', card: { id: 0, name: 'Geocoin de test', rarity: 'rare' } }); }}
-          onClose={() => { setShowAdmin(false); window.history.pushState({}, '', '/') }}
+          onTestPatronage={() => { navigateTo('home'); setPatronageOffer({ preview: true, rarity: 'rare', card: { id: 0, name: 'Geocoin de test', rarity: 'rare' }, remaining: 5 }); }}
+          onTestPatronageGift={() => { navigateTo('home'); setPatronageGift({ donor_pseudo: 'Alizée', rarity: 'rare', card: { id: 0, name: 'Geocoin de test', rarity: 'rare' } }); }}
+          onClose={() => navigateTo('home')}
           onAddCard={gs.adminAddCard} onEditCard={gs.adminEditCard} onDeleteCard={gs.adminDeleteCard}
           onAddType={gs.adminAddType} onDeleteType={gs.adminDeleteType} onRenameType={gs.adminRenameType}
           onAddQuestion={async q => {
@@ -3770,7 +3786,7 @@ export default function App() {
       }}
           onBanIP={gs.adminBanIP} onUnbanIP={gs.adminUnbanIP}
           onUpdateCardInPool={card => gs.setCardPool(prev => prev.map(c => c.id === card.id ? {...c, ...card, desc: card.desc??card.description??''} : c))}
-          onStartTour={() => { setShowAdmin(false); setShowTour(true) }}
+          onStartTour={() => { navigateTo('home'); setShowTour(true) }}
           onTestAchievement={card => setWelcomeCards(prev => [...prev, card])}
           onShopPacksSaved={packs => gs.setLimits(prev => ({ ...prev, shopPacks: packs }))}
           onShopTestModeChange={val => gs.setLimits(prev => ({ ...prev, shopTestMode: val }))}

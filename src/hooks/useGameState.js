@@ -287,6 +287,7 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
         })
         setLimits(prev => ({
           ...prev,
+          docsHiddenPages:   Array.isArray(cfg.docs_hidden_pages) ? cfg.docs_hidden_pages : prev.docsHiddenPages,
           connected:         cfg.limits_connected    ?? prev.connected,
           quizInterval:      cfg.quiz_interval       ?? prev.quizInterval,
           quizIntervalTiers: normalizeIntervalTiers(cfg.quiz_interval_tiers ?? prev.quizIntervalTiers),
@@ -505,6 +506,7 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
           const cfg = pubCfg.config
           setLimits(prev => ({
             ...prev,
+            docsHiddenPages:   Array.isArray(cfg.docs_hidden_pages) ? cfg.docs_hidden_pages : prev.docsHiddenPages,
             connected:         cfg.limits_connected    ?? prev.connected,
             quizInterval:      cfg.quiz_interval       ?? prev.quizInterval,
             quizIntervalTiers: normalizeIntervalTiers(cfg.quiz_interval_tiers ?? prev.quizIntervalTiers),
@@ -600,6 +602,7 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
             const cfg = admCfg.config
             setLimits(prev => ({
               ...prev,
+              docsHiddenPages:       Array.isArray(cfg.docs_hidden_pages) ? cfg.docs_hidden_pages : prev.docsHiddenPages,
               connected:             cfg.limits_connected          ?? prev.connected,
               marketExpireDays:      cfg.market_expire_days        ?? prev.marketExpireDays ?? 30,
               registrationWhitelist: cfg.registration_whitelist    ?? prev.registrationWhitelist ?? null,

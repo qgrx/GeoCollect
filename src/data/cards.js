@@ -31,6 +31,27 @@ export const cardDescription = (card, lang) => {
   if (lang && lang !== 'fr' && tr?.[lang]) return tr[lang]
   return card.desc ?? card.description ?? ''
 };
+
+/**
+ * Description LONGUE, réservée à la fiche publique du geocoin (/geocoins/…).
+ *
+ * Distincte de `cardDescription`, qui doit tenir sur la carte dans le jeu : une
+ * page publique sans texte propre n'est qu'un nom et une rareté, et ne s'indexe
+ * pas. Le texte source est en français, comme pour `description`.
+ *
+ * `fallback` (défaut) retombe sur la description courte quand la longue n'a pas
+ * encore été rédigée : à l'affichage, mieux vaut montrer quelque chose. Le passer
+ * à `false` répond à « cette fiche a-t-elle une VRAIE description longue ? », ce
+ * qui décide de son indexation — sans quoi une description courte un peu bavarde
+ * suffirait à faire indexer une page vide de contenu propre.
+ */
+export const cardLongDescription = (card, lang, { fallback = true } = {}) => {
+  if (!card) return ''
+  const tr = card.description_long_translations
+  if (lang && lang !== 'fr' && tr?.[lang]) return tr[lang]
+  if (card.description_long) return card.description_long
+  return fallback ? cardDescription(card, lang) : ''
+};
 export const cardCC = (r) => {
   const [c1, c2] = (RC[r]?.cc || '#888,#aaa').split(',');
   return { c1, c2 };

@@ -14,10 +14,11 @@ const NAV = [
 
 const PAGES = { faq: FaqPage, 'release-notes': ReleaseNotesPage, support: SupportContent }
 
-export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = false }) {
+// `page` est piloté par l'URL (cf. src/routes.js) : c'est elle qui fait foi, pour
+// que chaque onglet soit partageable, indexable et compatible avec le bouton Retour.
+export default function DocsLayout({ page = 'faq', onNavigate, onClose, isAdmin = false }) {
   const { theme, toggle, mode } = useTheme()
   const { t, lang } = useT()
-  const [page,     setPage]     = useState(initialPage)
   const [editMode, setEditMode] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
   const [hiddenPages, setHiddenPages] = useState([])
@@ -49,9 +50,9 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
   useEffect(() => {
     if (!editMode && isHidden(page)) {
       const first = NAV.find(n => !isHidden(n.id))
-      if (first) setPage(first.id)
+      if (first) onNavigate?.(first.id)
     }
-  }, [editMode, hiddenPages])
+  }, [editMode, hiddenPages, page])
 
   const PageComponent = PAGES[page] || FaqPage
 
@@ -61,9 +62,10 @@ export default function DocsLayout({ initialPage = 'faq', onClose, isAdmin = fal
   const textColor  = mode === 'light' ? '#1e2d3d' : '#d4e8f8'
   const mutedColor = mode === 'light' ? '#6b7c8d' : '#4a6070'
 
+  // L'URL est réécrite par l'appelant (App.jsx → useRoute), seul endroit qui
+  // connaisse le préfixe de langue courant.
   function navigate(id) {
-    setPage(id)
-    window.history.replaceState({}, '', `/${id === 'faq' ? 'faq' : id === 'release-notes' ? 'release-notes' : 'support'}`)
+    onNavigate?.(id)
   }
 
   return (

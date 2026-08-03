@@ -1,28 +1,32 @@
 <!DOCTYPE html>
-<html lang="fr">
+<!-- Langue par défaut : anglais, servi sans préfixe d'URL. Les pages /fr/, /de/ et
+     /es/ sont pré-rendues avec leur propre attribut, et le client resynchronise
+     `document.documentElement.lang` au chargement (cf. i18n/translations.js). -->
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Geocoins — Collectionne des geocoins uniques en répondant à des quiz sur le geocaching ! Affronte d'autres joueurs en temps réel." />
-    <meta name="keywords" content="geocaching, geocoins, quiz, collection, jeu" />
+
+    <!-- Icônes. Le PNG carré est indispensable : Google n'affiche un favicon dans
+         ses résultats que s'il est carré, et iOS ignore un apple-touch-icon SVG. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+
     <meta name="theme-color" content="#f9ca24" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Geocoins" />
-    <!-- Open Graph -->
-    <meta property="og:type"        content="website" />
-    <meta property="og:title"       content="Geocoins — Jeu de collection sur le thème du geocaching" />
-    <meta property="og:description" content="Collectionne des geocoins uniques en répondant à des quiz sur le geocaching en temps réel !" />
-    <meta property="og:image"       content="/icon-192.svg" />
-    <!-- Twitter Card -->
-    <meta name="twitter:card"        content="summary" />
-    <meta name="twitter:title"       content="Geocoins" />
-    <meta name="twitter:description" content="Collectionne des geocoins uniques en répondant à des quiz sur le geocaching !" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/icon-192.svg" />
-    <title>Geocoins</title>
+
+    <!-- Titre, description, canonical, Open Graph, Twitter Card et JSON-LD sont
+         injectés ici au build par le plugin `injectSeo` (vite.config.js), à partir
+         de src/seo/. Source unique, partagée avec les pages pré-rendues. -->
+    <!--seo-->
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet" />

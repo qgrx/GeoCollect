@@ -3,7 +3,8 @@ import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
-import { apiAdminSaveCardNameTrans, apiAdminSaveCardDescTrans, apiGetAdminSeasons, apiReleaseHiddenCards } from '../../services/api.js';
+import { apiAdminSaveCardNameTrans, apiAdminSaveCardDescTrans, apiAdminSaveCardLongDesc, apiGetAdminSeasons, apiReleaseHiddenCards } from '../../services/api.js';
+import { PUBLISHED_TYPES, MIN_INDEXABLE_DESCRIPTION } from '../geocoins/publicGeocoins.js';
 import Card from '../../components/Card.jsx';
 import AdminCardBatch from './AdminCardBatch.jsx';
 
@@ -84,6 +85,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const [transCard, setTransCard] = useState(null);
   const [transCardLang, setTransCardLang] = useState('en');
   const [transDescLang, setTransDescLang] = useState('en');
+  const [transLongLang, setTransLongLang] = useState('en');
   const TRANS_LANGS = [{code:'en',label:'English'},{code:'de',label:'Deutsch'},{code:'es',label:'Español'}];
 
   const csvCardRef = useRef();
@@ -521,6 +523,68 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
           </button>
         </div>
       )}
+
+      {/* ── Description longue : contenu de la fiche publique (SEO) ── */}
+      {editCard && (() => {
+        const published  = PUBLISHED_TYPES.includes(editCard.type);
+        const longFr     = editCard.description_long || "";
+        const indexable  = longFr.trim().length >= MIN_INDEXABLE_DESCRIPTION;
+        return (
+          <div style={{background:"#0a2a1a",border:"1.5px solid #00b89466",borderRadius:12,padding:16,marginTop:12}}>
+            <div style={{fontWeight:900,color:"#00b894",fontSize:13,marginBottom:6}}>
+              🌍 Description longue (page publique) — <span style={{color:"#fff"}}>{editCard.name}</span>
+            </div>
+            <div style={{fontSize:11,color:"#8887a8",marginBottom:10,lineHeight:1.5}}>
+              Texte de la page <code>/geocoins/…</code> visible par les moteurs de recherche.
+              Distinct de la description courte, qui reste affichée sur la carte dans le jeu.
+              {published
+                ? <> Cette page n'est <b>référencée</b> qu'à partir de <b>{MIN_INDEXABLE_DESCRIPTION} caractères</b> — en dessous elle reste consultable mais en <code>noindex</code>.</>
+                : <> ⚠️ Seuls les geocoins de type <b>{PUBLISHED_TYPES.join(", ")}</b> ont une page publique : ce texte ne sera pas publié pour le type « {editCard.type} ».</>}
+            </div>
+
+            <Fld lbl="Description longue (français, texte source)">
+              <textarea
+                value={longFr}
+                onChange={e=>setEditCard(c=>({...c,description_long:e.target.value}))}
+                style={{...INP,minHeight:150,resize:"vertical"}}
+                placeholder="Raconte l'histoire de ce geocoin : la cache ou la personne à qui il rend hommage, le lieu, l'anecdote…"/>
+            </Fld>
+            <div style={{fontSize:11,color:indexable?"#00b894":"#e17055",fontWeight:800,marginTop:-4,marginBottom:10}}>
+              {longFr.trim().length} caractères — {indexable ? "✅ référençable" : `encore ${MIN_INDEXABLE_DESCRIPTION - longFr.trim().length} pour être référencée`}
+            </div>
+
+            <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+              {TRANS_LANGS.map(l=>(
+                <button key={l.code} onClick={()=>setTransLongLang(l.code)}
+                  style={{background:transLongLang===l.code?"#00b894":"#ffffff10",border:"none",color:transLongLang===l.code?"#fff":"#aaa",padding:"5px 12px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
+                  {l.label} {editCard.description_long_translations?.[l.code]?"✓":""}
+                </button>
+              ))}
+            </div>
+            {TRANS_LANGS.filter(l=>l.code===transLongLang).map(l=>(
+              <Fld key={l.code} lbl={`Description longue en ${l.label}`}>
+                <textarea
+                  value={editCard.description_long_translations?.[l.code]||""}
+                  onChange={e=>setEditCard(c=>({...c,description_long_translations:{...c.description_long_translations,[l.code]:e.target.value}}))}
+                  style={{...INP,minHeight:150,resize:"vertical"}} placeholder={`Description longue en ${l.label}…`}/>
+              </Fld>
+            ))}
+
+            <button onClick={async()=>{
+              const {error}=await apiAdminSaveCardLongDesc(
+                editCard.id,
+                editCard.description_long||"",
+                editCard.description_long_translations||{},
+              );
+              if(error){setMsg("❌ Erreur sauvegarde");return;}
+              onUpdateCardInPool?.({...editCard});
+              setMsg("✅ Description longue sauvegardée ! (visible en ligne au prochain déploiement)");
+            }} style={{...BTN("linear-gradient(135deg,#00b894,#55efc4)"),padding:"8px 18px",borderRadius:8,fontSize:12,marginTop:8}}>
+              💾 Sauvegarder la description longue
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

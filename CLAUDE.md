@@ -9,7 +9,8 @@ qui porte aussi la documentation d'infrastructure.
 npm run dev      # vite, http://localhost:5173
 npm run lint     # eslint    ← doit passer avant tout push
 npm run test     # vitest    ← doit passer avant tout push
-npm run build    # vite build → dist/
+npm run build    # vite build + pré-rendu SEO → dist/
+node scripts/gen-icons.mjs   # régénère les icônes depuis assets/logo-pin.svg
 ```
 
 Reproduire la CI avant de pousser : `npm run lint && npm run test && npm run build`.
@@ -27,11 +28,57 @@ src/
     useAuth.js       — session Supabase, OAuth
     useQuiz.js       — quiz + planning serveur
     useVisualViewport.js — à réutiliser pour TOUT overlay (cf. pièges iOS)
+  routes.js        — table des routes + chemin ⇄ route (PUR, lu aussi par les scripts)
+  hooks/useRoute.js  — route courante, navigation, popstate
+  seo/             — site.js (domaine canonique), copy.js, jsonld.js, head.js
   features/        — un dossier par domaine (quiz, market, shop, admin…)
   components/      — composants réutilisables
   i18n/translations.js — 4 langues : fr / en / de / es
   services/, utils/, data/, lib/
+scripts/
+  gen-icons.mjs    — favicons, icônes PWA et og-image depuis assets/logo-pin.svg
+  prerender.mjs    — pages publiques statiques + sitemap, après `vite build`
 ```
+
+## SEO — pages publiques
+
+Les URLs indexables sont de **vrais fichiers** dans `dist/`, générés au build :
+
+```
+/  /faq  /release-notes  /support  /geocoins/<id>-<slug>      (anglais, canonique)
+/fr/…  /de/…  /es/…                                           (autres langues)
+```
+
+- **`src/routes.js` fait autorité** sur ce qui est une route valide. Y ajouter une
+  page suffit à la faire connaître du client, du pré-rendu et du sitemap.
+- **L'anglais est la langue par défaut** et n'a pas de préfixe ; le français en a
+  un comme les autres. `SEO_LANGS[0]` dans `src/seo/site.js` est le seul endroit
+  à changer — routes, hreflang, `x-default` et replis en découlent.
+  Attention : le **français reste la langue de rédaction** (`SOURCE_LANG`), donc
+  le dernier repli des traductions et des textes de cartes.
+- La langue affichée suit : préfixe d'URL > `localStorage` > navigateur.
+- **`vercel.json` n'a plus de réécriture attrape-tout.** C'est elle qui faisait
+  répondre 200 à n'importe quelle URL (soft 404). Les adresses inconnues tombent
+  désormais sur `public/404.html` avec un vrai statut 404. Une nouvelle route non
+  pré-rendue doit donc être ajoutée aux `rewrites`.
+- **Le domaine canonique est `geocoins.io`** (`src/seo/site.js`), jamais
+  `window.location.origin` : `.fr` sert le même site et se ferait déclarer canonique.
+- **`npm run build` interroge l'API** (`VITE_API_URL`). API injoignable = pages
+  publiées sans contenu éditorial, avec avertissement — le build ne casse pas.
+  `scripts/prerender.mjs` **n'est pas rejouable seul** : il consomme la coquille
+  `dist/index.html`, que seul `vite build` régénère.
+- **Seuls les geocoins de type `Hommages` ont une page publique**
+  (`PUBLISHED_TYPES` dans `features/geocoins/publicGeocoins.js`). C'est une liste
+  BLANCHE : un nouveau type ne doit pas se retrouver publié par inadvertance. Les
+  pays et les chasseurs de trésor n'ont rien à raconter qu'un nom et une rareté.
+- **Deux descriptions distinctes.** `cards.description` = courte, affichée sur la
+  carte dans le jeu. `cards.description_long` = texte de la page publique, saisi
+  dans l'onglet admin Cartes. `cardLongDescription()` retombe sur la courte à
+  l'affichage, **mais pas** pour décider de l'indexation (`{ fallback: false }`) —
+  sans quoi une description de vignette suffirait à faire indexer une page vide.
+- **Une fiche sans description longue part en `noindex`** et reste hors du sitemap
+  (`MIN_INDEXABLE_DESCRIPTION`) : publier des pages réduites à un nom et une
+  rareté nuirait au domaine. La rédiger l'indexe au build suivant.
 
 ## Documentation
 

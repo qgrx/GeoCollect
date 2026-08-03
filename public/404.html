@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!--
+  Page 404 servie par Vercel avec un VRAI statut HTTP 404.
+
+  Avant, `vercel.json` réécrivait toute URL vers index.html : n'importe quelle
+  adresse répondait 200 avec la coquille de l'application, et Google indexait des
+  pages fantômes (« soft 404 »). Depuis que chaque route publique est un fichier
+  statique, la réécriture générale a disparu et les URLs inconnues atterrissent ici.
+
+  Volontairement autonome : ni bundle, ni police distante — elle doit s'afficher
+  même quand le reste est cassé.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, follow" />
+    <title>Page not found — Geocoins</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <meta name="theme-color" content="#f9ca24" />
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0; min-height: 100vh;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+        background: #0f0f1e; color: #fff;
+        font-family: 'Nunito', system-ui, -apple-system, sans-serif; text-align: center; padding: 24px;
+      }
+      .pin { width: 76px; height: 95px; }
+      h1 { font-size: 48px; color: #f9ca24; margin: 0; letter-spacing: 1px; }
+      p { color: #888; font-size: 16px; margin: 0; }
+      .home {
+        margin-top: 8px; display: inline-block;
+        background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: #fff;
+        padding: 12px 28px; border-radius: 12px; font-weight: 900; font-size: 15px; text-decoration: none;
+      }
+      nav { margin-top: 20px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+      nav a { color: #7d8fa3; font-size: 13px; font-weight: 700; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <img class="pin" src="/favicon.svg" alt="" />
+    <h1>404</h1>
+    <!-- En anglais : c'est la langue par défaut du site, et cette page est servie
+         pour n'importe quelle URL inconnue, sans contexte de langue. -->
+    <p>This page does not exist.</p>
+    <!-- Seul lien : l'accueil. Les pages docs peuvent être dépubliées par un admin,
+         un lien en dur y mènerait alors vers un autre 404. -->
+    <a class="home" href="/">Back to home</a>
+  </body>
+</html>

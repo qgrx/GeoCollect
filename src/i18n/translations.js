@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import { LANG_CODES, DEFAULT_LANG, switchLangPath } from '../routes.js';
+import { SOURCE_LANG } from '../seo/site.js';
 
-const LANGS = { fr:"Français", en:"English", de:"Deutsch", es:"Español" };
+const LANGS = { en:"English", fr:"Français", de:"Deutsch", es:"Español" };
 
 const TRANSLATIONS = {
   fr: {
@@ -710,6 +712,10 @@ const TRANSLATIONS = {
     landing_hero_title: "Collectionnez des Geocoins rares",
     landing_hero_sub: "Répondez à des questions sur le geocaching et remportez des geocoins uniques en temps réel.",
     landing_hero_cta: "Rejoindre la chasse →",
+    geocoin_not_found:"Ce geocoin n'existe pas ou n'est plus disponible.",
+    geocoin_related:"Autres geocoins à découvrir",
+    not_found_text:"Cette page n'existe pas.",
+    not_found_home:"Retour à l'accueil",
     landing_scroll: "↓ Défiler",
     landing_signup_title: "Pourquoi créer un compte ?",
     landing_signup_sub: "Gratuit · Sans engagement · En 30 secondes",
@@ -1492,6 +1498,10 @@ const TRANSLATIONS = {
     landing_hero_title: "Collect rare Geocoins",
     landing_hero_sub: "Answer geocaching trivia and win unique geocoins in real time.",
     landing_hero_cta: "Join the hunt →",
+    geocoin_not_found:"This geocoin does not exist or is no longer available.",
+    geocoin_related:"More geocoins to discover",
+    not_found_text:"This page does not exist.",
+    not_found_home:"Back to home",
     landing_scroll: "↓ Scroll",
     landing_signup_title: "Why create an account?",
     landing_signup_sub: "Free · No commitment · 30 seconds",
@@ -2274,6 +2284,10 @@ const TRANSLATIONS = {
     landing_hero_title: "Sammle seltene Geocoins",
     landing_hero_sub: "Beantworte Geocaching-Fragen und gewinne einzigartige Geocoins in Echtzeit.",
     landing_hero_cta: "Zur Jagd aufbrechen →",
+    geocoin_not_found:"Diesen Geocoin gibt es nicht oder er ist nicht mehr verfügbar.",
+    geocoin_related:"Weitere Geocoins entdecken",
+    not_found_text:"Diese Seite existiert nicht.",
+    not_found_home:"Zurück zur Startseite",
     landing_scroll: "↓ Scrollen",
     landing_signup_title: "Warum ein Konto erstellen?",
     landing_signup_sub: "Kostenlos · Kein Abo · 30 Sekunden",
@@ -3053,6 +3067,10 @@ const TRANSLATIONS = {
     landing_hero_title: "Colecciona Geocoins raros",
     landing_hero_sub: "Responde preguntas de geocaching y gana geocoins únicos en tiempo real.",
     landing_hero_cta: "Unirse a la caza →",
+    geocoin_not_found:"Este geocoin no existe o ya no está disponible.",
+    geocoin_related:"Más geocoins por descubrir",
+    not_found_text:"Esta página no existe.",
+    not_found_home:"Volver al inicio",
     landing_scroll: "↓ Desplazar",
     landing_signup_title: "¿Por qué crear una cuenta?",
     landing_signup_sub: "Gratis · Sin compromiso · 30 segundos",
@@ -3132,9 +3150,38 @@ const TRANSLATIONS = {
 };
 
 // i18n Hook
-let _lang = (typeof navigator !== "undefined" && navigator.language?.slice(0,2)) || "fr";
-if(!TRANSLATIONS[_lang]) _lang = "fr";
+//
+// Précédence de la langue : PRÉFIXE D'URL > choix mémorisé > langue du navigateur.
+// Le préfixe prime car c'est lui qui est indexé : /de/faq doit servir l'allemand
+// même à un visiteur dont le localStorage dit « fr », sinon le moteur référence
+// une page dont le contenu dépend de qui la consulte.
+//
+// En revanche, une URL SANS préfixe (donc française et canonique) n'est jamais
+// réécrite au chargement : ce serait une redirection surprise, et le contenu
+// pré-rendu que voit le crawler reste français quoi qu'il arrive. L'URL n'est
+// modifiée que sur changement de langue explicite, cf. setLang().
+function _detectLang() {
+  if (typeof window !== "undefined") {
+    const fromUrl = window.location.pathname.split("/")[1];
+    if (LANG_CODES.includes(fromUrl) && fromUrl !== DEFAULT_LANG && TRANSLATIONS[fromUrl]) return fromUrl;
+  }
+  try {
+    const saved = localStorage.getItem("geocards_lang");
+    if (saved && TRANSLATIONS[saved]) return saved;
+  } catch(_e){ /* mode privé */ }
+  const nav = (typeof navigator !== "undefined" && navigator.language?.slice(0,2)) || DEFAULT_LANG;
+  return TRANSLATIONS[nav] ? nav : DEFAULT_LANG;
+}
+
+let _lang = _detectLang();
 let _langListeners = [];
+
+// `<html lang>` est figé à « fr » dans index.html : sans cette synchronisation, la
+// balise mentirait sur toute page servie dans une autre langue.
+function _syncDocumentLang(l) {
+  if (typeof document !== "undefined") document.documentElement.lang = l;
+}
+_syncDocumentLang(_lang);
 
 function useT() {
   const [lang, setLang] = useState(_lang);
@@ -3143,8 +3190,11 @@ function useT() {
     _langListeners.push(cb);
     return () => { _langListeners = _langListeners.filter(x => x !== cb); };
   }, []);
+  // Repli : langue demandée → langue par défaut (anglais) → langue de rédaction
+  // (français, la plus complète) → la clé elle-même. Sans l'étape anglaise, une
+  // clé manquante affichait du français à un visiteur anglophone.
   const t = useCallback((key, vars={}) => {
-    let str = (TRANSLATIONS[lang]||TRANSLATIONS.fr)[key] || (TRANSLATIONS.fr)[key] || key;
+    let str = TRANSLATIONS[lang]?.[key] || TRANSLATIONS[DEFAULT_LANG]?.[key] || TRANSLATIONS[SOURCE_LANG]?.[key] || key;
     Object.entries(vars).forEach(([k,v]) => { str = str.replace(`{${k}}`, v); });
     return str;
   }, [lang]);
@@ -3155,13 +3205,19 @@ function setLang(l) {
   if(!TRANSLATIONS[l]) return;
   _lang = l;
   _langListeners.forEach(cb => cb(l));
-  try { localStorage.setItem("geocards_lang", l); } catch(_e){ /* ignore */ }
-}
+  _syncDocumentLang(l);
+  try { localStorage.setItem("geocards_lang", l); } catch(_e){ /* mode privé */ }
 
-try {
-  const saved = localStorage.getItem("geocards_lang");
-  if(saved && TRANSLATIONS[saved]) _lang = saved;
-} catch(_e){ /* ignore */ }
+  // Aligner l'URL sur la langue affichée : c'est ce qui rend chaque traduction
+  // partageable et indexable. `search` et `hash` sont préservés — le retour OAuth
+  // transporte son jeton dans le hash.
+  if (typeof window !== "undefined") {
+    const next = switchLangPath(window.location.pathname, l);
+    if (next !== window.location.pathname) {
+      window.history.replaceState({}, "", next + window.location.search + window.location.hash);
+    }
+  }
+}
 
 export function getLang() { return _lang }
 export { LANGS, TRANSLATIONS, useT, setLang };

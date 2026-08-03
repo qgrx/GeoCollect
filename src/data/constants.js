@@ -46,6 +46,9 @@ export const DEFAULT_RARITY_RATES = { commun: 50, rare: 30, épique: 15, légend
 export const DEFAULT_SCORE_RULES = { commun: 1, rare: 3, épique: 7, légendaire: 20 };
 
 export const INIT_LIMITS = {
+  // Onglets docs masqués par un admin. Le pied de page public s'en sert pour ne pas
+  // afficher un lien vers une page qui n'est plus publiée (donc en 404 au rechargement).
+  docsHiddenPages: [],
   connected:     { dailyGold: 200, dailyCards: 20 },
   quizInterval:  60,
   quizRarityRates: DEFAULT_RARITY_RATES,
