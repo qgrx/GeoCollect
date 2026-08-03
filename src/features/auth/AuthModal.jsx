@@ -68,6 +68,29 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
   const regTurnstileRef = useRef()
   const regWidgetId = useRef(null)
 
+  // `auth` est un objet recréé à CHAQUE rendu : les fonctions async ci-dessous
+  // ferment sur la version du rendu où elles ont été créées et ne verraient
+  // jamais le profil chargé après la connexion. Ce ref donne toujours la
+  // dernière version.
+  const authRef = useRef(auth)
+  authRef.current = auth
+
+  // Attend le VRAI profil après une connexion. `auth.profile` est toujours
+  // truthy hors session (profil synthétique « Invité » du mode démo) : tester
+  // sa seule présence renverrait l'invité immédiatement — d'où le toast
+  // « Bienvenue Invité 🎉 » après un login réussi. Résout `null` si le profil
+  // n'arrive pas (l'appelant n'affiche alors pas de message de bienvenue).
+  const waitProfile = () => new Promise(res => {
+    const start = Date.now()
+    const poll = () => {
+      const a = authRef.current
+      const p = a.user && !a.profile?.is_demo ? a.profile : null
+      if (p || Date.now() - start > 3000) return res(p)
+      setTimeout(poll, 100)
+    }
+    poll()
+  })
+
   // Charger Turnstile pour l'inscription
   useEffect(() => {
     const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
@@ -152,27 +175,20 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
     const { error } = await auth.updatePseudo(pseudo.trim())
     setBusy(false)
     if (error) { err(errMsg(error.message)); return }
-    onSuccess?.(auth.profile)
+    // Le pseudo saisi est autoritaire ici : le profil du ref peut ne pas encore
+    // avoir été rafraîchi par le rendu qui suit `updatePseudo`.
+    onSuccess?.({ ...authRef.current.profile, pseudo: pseudo.trim() })
     onClose()
   }
 
   async function doLogin() {
     if (!email.trim() || !pw) { err(t('auth_fill_fields')); return }
     setBusy(true); clear()
-    const { data, error } = await auth.signInWithEmail(email.trim(), pw)
+    const { error } = await auth.signInWithEmail(email.trim(), pw)
     setBusy(false)
     if (error) { err(errMsg(error.message)); return }
     // Attendre que le profil soit chargé (onAuthStateChange l'a déclenché)
-    const waitProfile = () => new Promise(res => {
-      const start = Date.now()
-      const poll = () => {
-        if (auth.profile || Date.now() - start > 3000) return res()
-        setTimeout(poll, 100)
-      }
-      poll()
-    })
-    await waitProfile()
-    onSuccess?.(auth.profile)
+    onSuccess?.(await waitProfile())
     onClose()
   }
 
@@ -188,7 +204,7 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
     }
     setBusy(true); clear()
     // Vraie inscription ; les geocoins démo (localStorage) sont crédités après connexion (effet « claim »).
-    const { error } = await auth.signUpWithEmail(email.trim(), pw)
+    const { data, error } = await auth.signUpWithEmail(email.trim(), pw)
     setBusy(false)
     if (error) {
       err(errMsg(error.message));
@@ -196,9 +212,9 @@ export default function AuthModal({ onClose, auth, onSuccess, initialMode = 'cho
       setRegTurnstileToken(null);
       return;
     }
-    // auth.profile est « truthy » en démo (profil synthétique) : on teste la vraie
-    // session (auth.user) pour distinguer une connexion immédiate d'un email à confirmer.
-    if (auth.user) { onSuccess?.(auth.profile); onClose(); return }
+    // La session renvoyée par signUp distingue une connexion immédiate d'un email
+    // à confirmer (le `user` du hook n'est pas encore à jour dans cette closure).
+    if (data?.session) { onSuccess?.(await waitProfile()); onClose(); return }
     setMode('confirm_email')
   }
 
