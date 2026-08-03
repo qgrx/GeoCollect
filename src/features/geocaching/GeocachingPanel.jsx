@@ -59,7 +59,7 @@ export function GeocachingPanel({ theme, gamePseudo = '', canChangePseudo = fals
   // La vérification ne teste que la présence du lien, jamais le texte → on peut
   // le traduire librement. Repli sur l'extrait serveur si l'URL manque.
   const refUrl = data.referral_url
-  const host = (() => { try { return new URL(refUrl).host } catch { return 'geocoins.fr' } })()
+  const host = (() => { try { return new URL(refUrl).host } catch { return 'geocoins.io' } })()
   const snippetText = refUrl ? t('gc_snippet').replace('{link}', refUrl) : (data.snippet_text || '')
   const snippetHtml = refUrl ? t('gc_snippet').replace('{link}', `<a href="${refUrl}">${host}</a>`) : (data.snippet_html || '')
 

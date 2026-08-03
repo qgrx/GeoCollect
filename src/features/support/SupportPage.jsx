@@ -37,7 +37,7 @@ export default function SupportPage({ onClose }) {
             <div style={{ fontFamily: "'Fredoka One', sans-serif", fontSize: 26, color: theme.gold }}>
               🗺️ Support Geocoins
             </div>
-            <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>geocoins.fr</div>
+            <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>geocoins.io</div>
           </div>
           {onClose && (
             // Croix fixe : la page scrolle entièrement, on garde la fermeture toujours visible
@@ -61,7 +61,7 @@ export default function SupportPage({ onClose }) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 16 }}>📧</span>
-              <EmailImage email="contact@geocoins.fr" color={theme.gold || '#f9ca24'} />
+              <EmailImage email="contact@geocoins.io" color={theme.gold || '#f9ca24'} />
             </div>
             <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 8, lineHeight: 1.5 }}>
               Pensez à inclure : votre pseudo, une description du problème et si possible une capture d'écran.

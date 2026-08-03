@@ -42,16 +42,16 @@ function CgvFR() {
   return <>
     <h2 style={S.h2}>Article 1 – Objet et Champ d'Application</h2>
     <h3 style={S.h3}>Article 1.1 – Identification des Parties</h3>
-    <p style={S.p}>Les présentes Conditions Générales de Vente (ci-après "CGV") s'appliquent, sans restriction ni réserve, à l'ensemble des ventes d'objets virtuels, monnaies numériques, licences d'utilisation et contenus numériques (ci-après "les Produits Virtuels") conclus via le site internet geocoins.fr (ci-après "le Site") entre :</p>
+    <p style={S.p}>Les présentes Conditions Générales de Vente (ci-après "CGV") s'appliquent, sans restriction ni réserve, à l'ensemble des ventes d'objets virtuels, monnaies numériques, licences d'utilisation et contenus numériques (ci-après "les Produits Virtuels") conclus via le site internet geocoins.io (ci-après "le Site") entre :</p>
     <div style={S.box}><strong>Le Vendeur :</strong><br /><SellerIdentity /></div>
     <p style={S.p}><strong>L'Acheteur :</strong> Toute personne physique ou morale procédant à un achat sur le Site.</p>
     <p style={S.p}>L'achat d'un Produit Virtuel sur le Site implique l'acceptation pleine et entière des présentes CGV par l'Acheteur, qui reconnaît en avoir pris connaissance avant de valider sa commande.</p>
     <h3 style={S.h3}>Article 1.2 – Capacité juridique et Minorité</h3>
-    <p style={S.p}>Le Site geocoins.fr est accessible aux personnes physiques majeures ou mineures. L'Acheteur déclare être âgé d'au moins 18 ans et disposer de la pleine capacité juridique pour s'engager au titre des présentes CGV.</p>
+    <p style={S.p}>Le Site geocoins.io est accessible aux personnes physiques majeures ou mineures. L'Acheteur déclare être âgé d'au moins 18 ans et disposer de la pleine capacité juridique pour s'engager au titre des présentes CGV.</p>
     <p style={S.p}>Si l'Acheteur est un mineur, il déclare et garantit avoir obtenu l'autorisation expresse de ses parents (ou titulaires de l'autorité parentale) avant de passer commande et d'effectuer un paiement sur le Site. Le Vendeur décline toute responsabilité en cas de déclaration frauduleuse de l'Acheteur ou d'achat effectué par un mineur sans l'accord de ses représentants légaux.</p>
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 2 – Caractéristiques des Produits Virtuels</h2>
-    <p style={S.p}>Le Site geocoins.fr propose à la vente des biens exclusivement immatériels et numériques (monnaies virtuelles, jetons, droits d'accès ou objets applicatifs).</p>
+    <p style={S.p}>Le Site geocoins.io propose à la vente des biens exclusivement immatériels et numériques (monnaies virtuelles, jetons, droits d'accès ou objets applicatifs).</p>
     <p style={S.p}>L'achat de ces Produits Virtuels ne confère à l'Acheteur aucun droit de propriété physique ou intellectuelle sur les éléments du Site. L'Acheteur acquiert uniquement une licence d'utilisation limitée, personnelle, non transférable et révocable. La revente, l'échange ou le transfert de Produits Virtuels en dehors des systèmes officiels du Site est strictement interdit.</p>
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 3 – Processus de Commande</h2>
@@ -81,7 +81,7 @@ function CgvFR() {
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 8 – Données Personnelles (RGPD)</h2>
     <p style={S.p}>Le Vendeur collecte les données strictement nécessaires au traitement des commandes (Nom, prénom, adresse e-mail, adresse IP). Ces données ne sont jamais cédées à des tiers à des fins publicitaires.</p>
-    <p style={S.p}>Conformément au RGPD, l'Acheteur dispose d'un droit d'accès, de rectification et de suppression de ses données personnelles à l'adresse : <a href="mailto:contact@geocoins.fr" style={{ color: '#1e7fca' }}>contact@geocoins.fr</a>.</p>
+    <p style={S.p}>Conformément au RGPD, l'Acheteur dispose d'un droit d'accès, de rectification et de suppression de ses données personnelles à l'adresse : <a href="mailto:contact@geocoins.io" style={{ color: '#1e7fca' }}>contact@geocoins.io</a>.</p>
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 9 – Erreurs Manifestes, Bugs et Exploits de Failles</h2>
     <p style={S.p}>En cas de bug ou d'exploitation frauduleuse d'une faille du système permettant d'obtenir des Produits Virtuels sans contrepartie financière réelle, la transaction sera considérée comme nulle. Le Vendeur se réserve le droit d'annuler la commande et de retirer les Produits Virtuels indûment acquis.</p>
@@ -91,7 +91,7 @@ function CgvFR() {
     <p style={S.p}><strong>10.2 – Nullité partielle :</strong> Si une ou plusieurs stipulations sont tenues pour non valides, les autres stipulations garderont toute leur force et leur portée.</p>
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 11 – Litiges et Médiation</h2>
-    <p style={S.p}>Les présentes CGV sont soumises au droit français. En cas de litige, l'Acheteur s'engage à contacter en priorité le Vendeur à l'adresse <a href="mailto:contact@geocoins.fr" style={{ color: '#1e7fca' }}>contact@geocoins.fr</a>.</p>
+    <p style={S.p}>Les présentes CGV sont soumises au droit français. En cas de litige, l'Acheteur s'engage à contacter en priorité le Vendeur à l'adresse <a href="mailto:contact@geocoins.io" style={{ color: '#1e7fca' }}>contact@geocoins.io</a>.</p>
     <p style={S.p}>Si aucune solution amiable n'est trouvée, l'Acheteur consommateur a le droit de recourir gratuitement à la <a href="https://www.mediateur-consommation-smp.fr/" target="_blank" rel="noreferrer" style={{ color: '#1e7fca' }}>Société de la Médiation Professionnelle</a> — 5 rue Salvaing, 12000 Rodez.</p>
     <p style={S.p}>À défaut d'accord, le litige sera porté devant les tribunaux français compétents.</p>
   </>
@@ -103,16 +103,16 @@ function CgvEN() {
     <div style={S.warn}><strong>⚠ Automatic translation notice:</strong> This is an automatically translated version provided for informational purposes only. In the event of any dispute, only the original French text ("Conditions Générales de Vente") shall be legally binding.</div>
     <h2 style={S.h2}>Article 1 – Subject and Scope</h2>
     <h3 style={S.h3}>Article 1.1 – Identification of Parties</h3>
-    <p style={S.p}>These Terms of Sale (hereinafter "Terms") apply, without restriction or reservation, to all sales of virtual items, digital currencies, licences and digital content (hereinafter "Virtual Products") made via the website geocoins.fr (hereinafter "the Site") between:</p>
+    <p style={S.p}>These Terms of Sale (hereinafter "Terms") apply, without restriction or reservation, to all sales of virtual items, digital currencies, licences and digital content (hereinafter "Virtual Products") made via the website geocoins.io (hereinafter "the Site") between:</p>
     <div style={S.box}><strong>The Seller:</strong><br /><SellerIdentity /></div>
     <p style={S.p}><strong>The Buyer:</strong> Any individual or legal entity making a purchase on the Site.</p>
     <p style={S.p}>The purchase of any Virtual Product implies full acceptance of these Terms by the Buyer, who acknowledges having read them prior to validating their order.</p>
     <h3 style={S.h3}>Article 1.2 – Legal Capacity and Minors</h3>
-    <p style={S.p}>The Site geocoins.fr is accessible to both adults and minors. The Buyer declares to be at least 18 years of age and to have full legal capacity to enter into these Terms.</p>
+    <p style={S.p}>The Site geocoins.io is accessible to both adults and minors. The Buyer declares to be at least 18 years of age and to have full legal capacity to enter into these Terms.</p>
     <p style={S.p}>If the Buyer is a minor, they declare and warrant having obtained the express authorisation of their parents (or legal guardians) before placing an order and making a payment. The Seller accepts no liability in the event of a fraudulent declaration or a purchase made by a minor without parental consent.</p>
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 2 – Characteristics of Virtual Products</h2>
-    <p style={S.p}>The Site geocoins.fr offers exclusively intangible and digital goods for sale (virtual currencies, tokens, access rights or in-app items).</p>
+    <p style={S.p}>The Site geocoins.io offers exclusively intangible and digital goods for sale (virtual currencies, tokens, access rights or in-app items).</p>
     <p style={S.p}>The purchase of Virtual Products does not grant the Buyer any physical or intellectual property rights. The Buyer acquires only a limited, personal, non-transferable and revocable licence. Reselling, exchanging or transferring Virtual Products outside the official Site systems is strictly prohibited.</p>
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 3 – Order Process</h2>
@@ -142,7 +142,7 @@ function CgvEN() {
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 8 – Personal Data (GDPR)</h2>
     <p style={S.p}>The Seller collects only the data strictly necessary for order processing (name, email address, IP address). This data is never sold to third parties for advertising purposes.</p>
-    <p style={S.p}>In accordance with the GDPR, the Buyer has the right to access, rectify and delete their personal data by contacting: <a href="mailto:contact@geocoins.fr" style={{ color: '#1e7fca' }}>contact@geocoins.fr</a>.</p>
+    <p style={S.p}>In accordance with the GDPR, the Buyer has the right to access, rectify and delete their personal data by contacting: <a href="mailto:contact@geocoins.io" style={{ color: '#1e7fca' }}>contact@geocoins.io</a>.</p>
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 9 – Obvious Errors, Bugs and Exploits</h2>
     <p style={S.p}>In the event of a bug or fraudulent exploitation of a system vulnerability allowing Virtual Products to be obtained without real financial consideration, the transaction shall be deemed void. The Seller reserves the right to cancel the order and remove the improperly acquired Virtual Products.</p>
@@ -152,7 +152,7 @@ function CgvEN() {
     <p style={S.p}><strong>10.2 – Partial invalidity:</strong> If any provision of these Terms is found to be invalid, the remaining provisions shall retain their full force and effect.</p>
     <hr style={S.divider} />
     <h2 style={S.h2}>Article 11 – Disputes and Mediation</h2>
-    <p style={S.p}>These Terms are governed by French law. In the event of a dispute, the Buyer agrees to contact the Seller first at <a href="mailto:contact@geocoins.fr" style={{ color: '#1e7fca' }}>contact@geocoins.fr</a>.</p>
+    <p style={S.p}>These Terms are governed by French law. In the event of a dispute, the Buyer agrees to contact the Seller first at <a href="mailto:contact@geocoins.io" style={{ color: '#1e7fca' }}>contact@geocoins.io</a>.</p>
     <p style={S.p}>If no amicable solution is reached, the consumer Buyer has the right to refer the matter free of charge to the <a href="https://www.mediateur-consommation-smp.fr/" target="_blank" rel="noreferrer" style={{ color: '#1e7fca' }}>Société de la Médiation Professionnelle</a> — 5 rue Salvaing, 12000 Rodez, France.</p>
     <p style={S.p}>Failing agreement, the dispute will be referred to the competent French courts.</p>
   </>
@@ -234,10 +234,10 @@ export default function CgvPage({ onClose }) {
       </div>
       <div style={S.wrap}>
         <div style={S.title}>{isEN ? 'Terms of Sale (CGV)' : 'Conditions Générales de Vente'}</div>
-        <div style={S.date}>{isEN ? 'In force as of 23/05/2026 — geocoins.fr' : 'En vigueur au 23/05/2026 — geocoins.fr'}</div>
+        <div style={S.date}>{isEN ? 'In force as of 23/05/2026 — geocoins.io' : 'En vigueur au 23/05/2026 — geocoins.io'}</div>
         {isEN ? <CgvEN /> : <CgvFR />}
         <div style={S.footer}>
-          Contact : <a href="mailto:contact@geocoins.fr" style={{ color: '#1e7fca' }}>contact@geocoins.fr</a> — geocoins.fr
+          Contact : <a href="mailto:contact@geocoins.io" style={{ color: '#1e7fca' }}>contact@geocoins.io</a> — geocoins.io
         </div>
       </div>
     </div>

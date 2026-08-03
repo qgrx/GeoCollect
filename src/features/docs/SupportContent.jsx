@@ -56,7 +56,7 @@ export default function SupportContent({ theme, mode, textColor, mutedColor, edi
           <div style={{ fontSize: 11, color: mutedColor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .8, marginBottom: 8 }}>{t('docs_support_email_label')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <span style={{ fontSize: 16 }}>📧</span>
-            <EmailImage email="contact@geocoins.fr" color={theme.gold || '#f9ca24'} />
+            <EmailImage email="contact@geocoins.io" color={theme.gold || '#f9ca24'} />
           </div>
           <div style={{ fontSize: 12, color: mutedColor }}>{t('docs_support_email_note')}</div>
         </div>
