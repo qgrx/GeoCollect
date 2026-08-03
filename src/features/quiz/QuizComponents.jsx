@@ -375,8 +375,6 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     }
   }, [quiz.winner, status]);
 
-  useEffect(()=>{ref.current?.focus();},[]);
-
   // Tant que cette fenêtre est ouverte, on escamote le bandeau de mise à jour :
   // il est ancré en bas, AU-DESSUS de la modale, pile sur la ligne de saisie
   // (cf. utils/quizOpenSignal.js).
@@ -493,6 +491,37 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     if(isTouchDevice()) return;
     ref.current?.focus({preventScroll:true});
   },[inputLocked,status]);
+
+  // Focus d'ouverture : donne le clavier d'emblée… SAUF si le champ est déjà
+  // verrouillé, cas systématique du joueur « en feu » (la modale s'ouvre pendant
+  // son délai cadeau, champ en `readOnly`).
+  //
+  // iOS n'ouvre PAS le clavier sur un champ `readOnly` — mais il le marque quand
+  // même `document.activeElement`. Le verrou levé, le champ redevient éditable en
+  // restant « déjà focalisé » : le tap suivant n'émet aucun événement focus, donc
+  // le clavier ne remonte JAMAIS. C'est le « après mes 2s en feu je ne peux pas
+  // écrire » de Caro93220 et le « à chaque série de 3 En Feu » de Tristan (01-02/08).
+  // Sur mobile, un champ verrouillé À L'OUVERTURE ne sera JAMAIS focalisé par
+  // programme : ni maintenant (le clavier ne s'ouvrirait pas), ni à la levée du
+  // verrou (on serait hors geste utilisateur — même impasse). Le joueur tape une
+  // fois dans le champ et le clavier monte pour de bon.
+  const lockedAtOpenRef=useRef(inputLocked);
+  useEffect(()=>{
+    if(lockedAtOpenRef.current&&isTouchDevice()) return;
+    ref.current?.focus();
+  },[]);
+
+  // Ceinture et bretelles : si un focus a malgré tout été posé sur un champ
+  // verrouillé (focus d'ouverture desktop, tap avant le verrou), on le relâche —
+  // un champ focalisé sans clavier est muet pour toujours sur iOS.
+  // Uniquement clavier FERMÉ : si le joueur est en train de taper (validation en
+  // cours), lui couper le clavier serait une régression.
+  useEffect(()=>{
+    if(!inputLocked||!isTouchDevice()) return;
+    if(vv?.keyboardShrunk) return;
+    const el=ref.current;
+    if(el&&document.activeElement===el) el.blur();
+  },[inputLocked,vv?.keyboardShrunk]);
 
   // Fin du délai cadeau → récupérer la question retenue par le serveur (via /current).
   // Le serveur teste elapsedMs<handicapMs à la milliseconde près alors que le client
