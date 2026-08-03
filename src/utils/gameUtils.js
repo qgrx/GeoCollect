@@ -5,6 +5,13 @@ export const normA = (s) =>
 
 export const wordCount = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 
+// Nombre de mots annoncé au joueur — MIROIR de answerWordCount côté API
+// (geocards-api/src/utils/answer.js). Un jeton sans lettre ni chiffre (tiret
+// isolé, « — », « … ») n'est pas un mot : la normalisation le supprime, le
+// joueur ne le tape jamais. Sert quand le front recompte depuis une traduction.
+export const answerWordCount = (s) =>
+  String(s ?? '').trim().split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length || 1;
+
 // Nombre de geocoins uniques possédés = entrées de collection avec quantité > 0.
 // Règle unique (cohérente profil / classement) : achievements inclus, brillants
 // comptés séparément (via une autre collection). NE compte PAS les quantités.

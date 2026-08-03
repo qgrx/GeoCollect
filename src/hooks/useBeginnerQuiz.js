@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetBeginnerQuiz, apiAnswerBeginnerQuiz, apiGetBeginnerHistory } from '../services/api.js'
 import { getLang } from '../i18n/translations.js'
+import { answerWordCount } from '../utils/gameUtils.js'
 
 /**
  * Hook du MODE DÉBUTANT.
@@ -49,7 +50,7 @@ export function useBeginnerQuiz({ profile, active, earnGoldWithFx, earnCard, sho
       id:   fromSocket ? data.quiz_id : data.id,
       card,
       q:    trans?.question || data.question,
-      a:    trans?.answer ? Array((trans.answer.trim().split(/\s+/).length) || 1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
+      a:    trans?.answer ? Array(answerWordCount(trans.answer)).fill('x').join(' ') : Array(wc).fill('x').join(' '),
       is_shiny: false,
       started_at: startedAtIso || data.started_at,
       question_id: data.question_id,

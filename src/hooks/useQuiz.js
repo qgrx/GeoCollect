@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { QUIZ_INTERVAL } from '../data/constants.js'
 import { apiGetCurrentQuiz, apiJoinQuiz, apiAnswerQuiz } from '../services/api.js'
 import { getLang } from '../i18n/translations.js'
+import { answerWordCount } from '../utils/gameUtils.js'
 
 // Verrou du poll « quiz prêt ? » relâché d'office passé ce délai : aucune requête
 // saine ne dépasse le timeout du client API (cf. services/api.js).
@@ -177,7 +178,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
                 client_skew_ms: data.server_time ? Date.now() - new Date(data.server_time).getTime() : 0,
                 id:   data.quiz.id,
                 q:    trans?.question || data.quiz.question,
-                a:    trans?.answer ? Array((trans.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
+                a:    trans?.answer ? Array(answerWordCount(trans.answer)).fill('x').join(' ') : Array(wc).fill('x').join(' '),
                 card,
               })
               setNextCard(card)
@@ -246,7 +247,7 @@ export function useQuiz({ profile, isDemo, limits, earnGoldWithFx, earnCard, sho
         client_skew_ms: data.server_time ? Date.now() - new Date(data.server_time).getTime() : 0,
         id:   data.quiz.id,
         q:    trans2?.question || data.quiz.question,
-        a:    trans2?.answer ? Array((trans2.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
+        a:    trans2?.answer ? Array(answerWordCount(trans2.answer)).fill('x').join(' ') : Array(wc).fill('x').join(' '),
         card: { ...data.quiz.card, ...poolCard, sellable: true, minPrice: null, desc: '' },
       }
     }

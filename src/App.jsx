@@ -10,7 +10,7 @@ import Logo from './components/Logo.jsx';
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, PSEUDO_CHANGE_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
-import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard, patronageHaloColor } from './utils/gameUtils.js';
+import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard, patronageHaloColor, answerWordCount } from './utils/gameUtils.js';
 import { isCorrectAnswer } from './utils/answer.js';
 
 // ─── State hooks ──────────────────────────────────────────────────────────────
@@ -419,7 +419,7 @@ export default function App() {
           card,
           id: data.quiz.id,
           q:  initTrans?.question || data.quiz.question,
-          a:  initTrans?.answer ? Array((initTrans.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
+          a:  initTrans?.answer ? Array(answerWordCount(initTrans.answer)).fill('x').join(' ') : Array(wc).fill('x').join(' '),
           answer_length: data.quiz.answer_length,
         })
         setQuizKey(k => k + 1)
@@ -475,7 +475,7 @@ export default function App() {
           card,
           id:   data.quiz_id,
           q:    trans?.question || data.question,
-          a:    trans?.answer ? Array((trans.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : fakeAnswer,
+          a:    trans?.answer ? Array(answerWordCount(trans.answer)).fill('x').join(' ') : fakeAnswer,
           answer_length: data.answer_length,
         }
         setNextCard(card)
@@ -3306,7 +3306,7 @@ export default function App() {
           return {
             q: tr?.question || data.quiz.question,
             answer_length: data.quiz.answer_length,
-            a: tr?.answer ? Array((tr.answer.trim().split(/\s+/).length)||1).fill('x').join(' ') : Array(wc).fill('x').join(' '),
+            a: tr?.answer ? Array(answerWordCount(tr.answer)).fill('x').join(' ') : Array(wc).fill('x').join(' '),
           }
         }} />}
 

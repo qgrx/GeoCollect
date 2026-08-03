@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normA, wordCount, collScore, drawPackFromConfig, slotsToContents } from '../utils/gameUtils.js'
+import { normA, wordCount, answerWordCount, collScore, drawPackFromConfig, slotsToContents } from '../utils/gameUtils.js'
 
 // ─── normA ────────────────────────────────────────────────────────────────────
 describe('normA', () => {
@@ -19,6 +19,16 @@ describe('wordCount', () => {
     expect(wordCount('mot')).toBe(1)
   })
   it('retourne 0 pour chaîne vide', () => expect(wordCount('')).toBe(0))
+})
+
+// ─── answerWordCount (miroir de l'API) ────────────────────────────────────────
+describe('answerWordCount', () => {
+  it('ignore un tiret isolé', () => {
+    expect(answerWordCount('Lego - einer ist zuviel')).toBe(4)
+    expect(answerWordCount('Das Unten - Cache Room')).toBe(4)
+  })
+  it('garde un composé collé sur 1 mot', () => expect(answerWordCount('Île-de-France')).toBe(1))
+  it('ne descend jamais sous 1', () => expect(answerWordCount('')).toBe(1))
 })
 
 // ─── collScore ────────────────────────────────────────────────────────────────
