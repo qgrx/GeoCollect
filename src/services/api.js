@@ -291,6 +291,9 @@ export const apiCreateAdminDailyQuest  = (body)   => apiFetch('/api/admin/daily-
 export const apiUpdateAdminDailyQuest  = (id, body) => apiFetch(`/api/admin/daily-quests/${id}`, { method: 'PATCH', body })
 export const apiDeleteAdminDailyQuest  = (id)     => apiFetch(`/api/admin/daily-quests/${id}`, { method: 'DELETE' })
 export const apiRegenerateDailySchedule = (date)  => apiFetch('/api/admin/daily-quests/schedule/regenerate', { method: 'POST', body: { date } })
+// Remplace UNE quête du planning du jour (les deux autres et leurs progressions
+// sont conservées), contrairement à la régénération qui re-tire les trois.
+export const apiReplaceDailyScheduled  = (questId, date) => apiFetch('/api/admin/daily-quests/schedule/replace', { method: 'POST', body: { quest_id: questId, date } })
 export const apiGetDailySchedule       = (date)   => apiFetch(`/api/admin/daily-quests/schedule${date ? '?date=' + date : ''}`)
 export const apiGetAdminWeeklyQuests   = ()       => apiFetch('/api/admin/weekly-quests')
 export const apiCreateAdminWeeklyQuest = (body)   => apiFetch('/api/admin/weekly-quests', { method: 'POST', body })

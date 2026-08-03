@@ -17,6 +17,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiGetAchievementDefs, apiGetAchievementDefStats, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef, apiReleaseHiddenAchievements,
   apiAdminAddCard,
   apiGetAdminDailyQuests, apiCreateAdminDailyQuest, apiUpdateAdminDailyQuest, apiDeleteAdminDailyQuest,
+  apiReplaceDailyScheduled,
   apiGetDailySchedule, apiRegenerateDailySchedule,
   apiGetAdminWeeklyQuests, apiCreateAdminWeeklyQuest, apiUpdateAdminWeeklyQuest, apiDeleteAdminWeeklyQuest,
   apiGetWeeklySchedule, apiRegenerateWeeklySchedule,
@@ -2238,15 +2239,31 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                           const {data,error}=await apiUpdate(editQuest.id,editQuest);
                           if(error){setMsg("❌ "+error);return;}
                           setQuestList(prev=>prev.map(d=>d.id===editQuest.id?data.quest:d));
-                          setEditQuest(null);setMsg("✅ Mis à jour !");
+                          setEditQuest(null);
+                          // Désactiver une quête PLANIFIÉE la renouvelle pour tous les
+                          // joueurs (l'API s'en charge) : recharger le planning affiché.
+                          const rep=data.schedule_replacement;
+                          if(rep?.quest){
+                            const {data:sd}=await apiGetSched();
+                            if(sd?.schedule) setScheduleList(sd.schedule);
+                            setMsg(`✅ Mis à jour ! Quête du jour renouvelée pour tous : « ${rep.replaced?.name} » → « ${rep.quest.name} ».`);
+                          } else if(rep?.error){
+                            setMsg("⚠️ Mis à jour, mais la quête du jour n'a pas pu être remplacée (aucune quête active disponible) : elle reste affichée sans pouvoir progresser.");
+                          } else setMsg("✅ Mis à jour !");
                         }} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"5px 12px",borderRadius:7,fontSize:11}}>Enregistrer</button>
                         <button onClick={()=>setEditQuest(null)} style={{...BTN("#ffffff18"),padding:"5px 10px",borderRadius:7,fontSize:11}}>Annuler</button>
                         <button onClick={async()=>{
                           if(!window.confirm(`Supprimer "${q.name}" ?`)) return;
-                          const {error}=await apiDelete(q.id);
+                          const {data,error}=await apiDelete(q.id);
                           if(error){setMsg("❌ "+error);return;}
                           setQuestList(prev=>prev.filter(d=>d.id!==q.id));
-                          setEditQuest(null);setMsg("✅ Supprimée.");
+                          setEditQuest(null);
+                          const rep=data?.schedule_replacement;
+                          if(rep?.quest){
+                            const {data:sd}=await apiGetSched();
+                            if(sd?.schedule) setScheduleList(sd.schedule);
+                            setMsg(`✅ Supprimée. Quête du jour renouvelée pour tous : « ${rep.replaced?.name} » → « ${rep.quest.name} ».`);
+                          } else setMsg("✅ Supprimée.");
                         }} style={{...BTN("#e74c3c22"),border:"1px solid #e74c3c44",color:"#e74c3c",padding:"5px 10px",borderRadius:7,fontSize:11,marginLeft:"auto"}}>🗑 Supprimer</button>
                       </div>
                     </td>
@@ -2292,10 +2309,25 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                   return(
                     <div key={i} style={{display:"flex",alignItems:"center",gap:10,background:"#ffffff08",borderRadius:8,padding:"6px 12px"}}>
                       <span style={{color:"#a29bfe",fontWeight:900,fontSize:11}}>#{i+1}</span>
-                      <span style={{flex:1,fontWeight:700,fontSize:12}}>{q?.name}</span>
+                      <span style={{flex:1,fontWeight:700,fontSize:12}}>{q?.name}
+                        {/* Une quête inactive au planning ne progresse plus : elle est
+                            morte pour les joueurs jusqu'à ce qu'on la remplace. */}
+                        {q&&q.active===false&&<span style={{color:"#e74c3c",fontWeight:800,fontSize:10,marginLeft:6}}>⏸ inactive — ne progresse plus</span>}
+                      </span>
                       <span style={{fontSize:10,color:"#a8bfcf"}}>{q?.type} × {q?.threshold}</span>
                       {(q?.forge_points||0)>0&&<span style={{color:"#a29bfe",fontWeight:900,fontSize:11}}>🔨 {q.forge_points}</span>}
                       {(q?.gold_reward||0)>0&&<span style={{color:"#f9ca24",fontWeight:900,fontSize:11}}>💰 {q.gold_reward}</span>}
+                      {!isW&&q&&(
+                        <button title="Remplacer cette seule quête pour tous les joueurs (les deux autres et leurs progressions sont conservées)"
+                          onClick={async()=>{
+                            if(!window.confirm(`Remplacer « ${q.name} » pour tous les joueurs ?\n\nLes deux autres quêtes du jour et leurs progressions sont conservées.`)) return;
+                            const {data,error}=await apiReplaceDailyScheduled(q.id);
+                            if(error){setMsg("❌ "+error);return;}
+                            const {data:sd}=await apiGetSched();
+                            if(sd?.schedule) setScheduleList(sd.schedule);
+                            setMsg(`✅ Renouvelée pour tous : « ${data.replaced?.name} » → « ${data.quest?.name} ».`);
+                          }} style={{...BTN("#ffffff12"),padding:"3px 8px",borderRadius:6,fontSize:10}}>♻️</button>
+                      )}
                     </div>
                   );
                 })}
