@@ -137,11 +137,10 @@ La prochaine étape est le backend (voir `geocards_cdc.docx`) :
 
 ---
 
-## 💝 Coûts d'infrastructure (phase 1, ~40 utilisateurs simultanés)
+## 💝 Coûts d'infrastructure (phase 1, ~20 utilisateurs simultanés)
 
 | Poste | Coût |
 |---|---|
-| OVH VPS | ~10 €/mois |
-| Domaine (.fr) | ~1 €/mois |
-| Supabase, Vercel, Redis, Sentry, Resend | **Gratuit** |
-| **Total** | **~11 €/mois** |
+| OVH VPS | ~15 €/mois |
+| Domaine (.fr + .io) | ~6 €/mois |
+| **Total** | **~21 €/mois** |
