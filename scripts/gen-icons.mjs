@@ -35,25 +35,30 @@ const pinFile = await fs.readFile(path.join(ROOT, 'assets', 'logo-pin.svg'), 'ut
 const pinInner = pinFile.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '').trim()
 
 /**
- * Carré de marque : fond dégradé + pin centré.
+ * Carré de marque : pin centré, sur fond dégradé ou détouré.
  * @param size    côté en px
  * @param radius  arrondi, en fraction du côté (0 = angles vifs)
  * @param cover   part de la hauteur occupée par le pin (zone de sécurité maskable)
+ * @param bg      false = fond transparent (favicons : le pin doit se poser sur la
+ *                barre d'onglets, pas y coller une pastille bleue)
  */
-function squareSvg(size, { radius = 0.2, cover = 0.74 } = {}) {
+function squareSvg(size, { radius = 0.2, cover = 0.74, bg = true } = {}) {
   const pinH  = size * cover
   const scale = pinH / PIN_H
   const pinW  = PIN_W * scale
   const dx    = (size - pinW) / 2
   const dy    = (size - pinH) / 2
   const r     = size * radius
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-  <defs>
+  const plate = bg
+    ? `<defs>
     <linearGradient id="bg" x1="0" y1="0" x2="${size}" y2="${size}" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="${BG_FROM}"/><stop offset="100%" stop-color="${BG_TO}"/>
     </linearGradient>
   </defs>
-  <rect width="${size}" height="${size}" rx="${r}" ry="${r}" fill="url(#bg)"/>
+  <rect width="${size}" height="${size}" rx="${r}" ry="${r}" fill="url(#bg)"/>`
+    : ''
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none">
+  ${plate}
   <g transform="translate(${dx.toFixed(3)} ${dy.toFixed(3)}) scale(${scale.toFixed(5)})">
 ${pinInner}
   </g>
@@ -68,11 +73,14 @@ async function write(name, buf) {
   console.log(`✅ public/${name} — ${(buf.length / 1024).toFixed(1)} kB`)
 }
 
-// ─── Favicons (carrés — exigence de Google pour l'afficher dans les résultats) ─
-const faviconSvg = squareSvg(48)
-await write('favicon.svg', Buffer.from(faviconSvg))
+// ─── Favicons ─────────────────────────────────────────────────────────────────
+// Carrés (exigence de Google pour l'afficher dans ses résultats) mais DÉTOURÉS :
+// la pastille bleue se voyait comme un carré posé dans l'onglet. Le pin occupe
+// donc presque toute la hauteur, sans marge à réserver.
+const FAVICON = { bg: false, cover: 0.94 }
+await write('favicon.svg', Buffer.from(squareSvg(48, FAVICON)))
 for (const size of [48, 96, 192]) {
-  await write(`favicon-${size}.png`, await png(squareSvg(size), size))
+  await write(`favicon-${size}.png`, await png(squareSvg(size, FAVICON), size))
 }
 
 // ─── PWA + iOS ────────────────────────────────────────────────────────────────
