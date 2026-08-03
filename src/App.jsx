@@ -3215,6 +3215,7 @@ export default function App() {
           onForgePointsEarned={gs.addForgePoints}
           onQuestReward={showQuestReward}
           onDonated={() => {
+            gs.triggerQuestRefresh?.()   // « Mécène de la semaine » : progression N/5 à jour
             if (!auth.profile || !import.meta.env.VITE_API_URL) return
             import('./services/api.js').then(({ apiGetCollection }) => {
               apiGetCollection?.().then(({ data }) => {
@@ -3235,6 +3236,7 @@ export default function App() {
           checkAchievementUpgrades={gs.checkAchievementUpgrades}
           onQuestReward={showQuestReward}
           onDonated={() => {
+            gs.triggerQuestRefresh?.()   // don de doublon : aucun PF → seul rafraîchisseur des quêtes
             if (!auth.profile || !import.meta.env.VITE_API_URL) return
             import('./services/api.js').then(({ apiGetCollection, apiGetProfile }) => {
               apiGetCollection?.().then(({ data }) => {
