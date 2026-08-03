@@ -5,6 +5,7 @@ import { useT } from '../../i18n/translations.js';
 import { RC, cardCC, RARITY_CONFIG, ACHIEVEMENT_DEF } from '../../data/cards.js';
 import { MeltAllPreview } from '../forge/ForgeModal.jsx';
 import { PAGE_SIZE } from '../../data/constants.js';
+import { applyForgeSale, isSaleRunning, MAX_SALE_PERCENT } from '../../utils/forgeSale.js';
 import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTriggerShinyQuiz, apiAdminGetMarketHistory, apiAdminGetCardQuizStats, apiAdminAnnounce, apiAdminFlushCache, apiAdminRecalculateScores, apiAdminResetOnboarding,
   apiAdminCancelListing, apiAdminGetListings, apiAdminSetCanSell, apiAdminGetStats, apiAdminGetOnlineHistory, apiAdminGetSignupsHistory, apiAdminGetGeocoinsPerPlayer, apiAdminReactivate,
   apiAdminGetBots, apiAdminCreateBot, apiAdminUpdateBot, apiAdminDeleteBot,
@@ -1226,6 +1227,93 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )
+          })()}
+
+          {/* ── TABLE 2ter : Soldes de la forge ── */}
+          {(()=>{
+            const RARITIES=[['commun','#78909c'],['rare','#1565c0'],['épique','#6a1b9a'],['légendaire','#e65100']]
+            const EMPTY={commun:0,rare:0,épique:0,légendaire:0}
+            const fc=limEdit.forgeCostByRarity??{commun:60,rare:180,épique:600,légendaire:1800}
+            const sc=limEdit.shinyForgeCostByRarity??{}
+            const sale=limEdit.forgeSale??{active:false,starts_at:"",ends_at:"",shiny:{...EMPTY},forge:{...EMPTY}}
+            const setSale=v=>setLimEdit({...limEdit,forgeSale:v})
+            const setPct=(kind,r,v)=>setSale({...sale,[kind]:{...EMPTY,...(sale[kind]||{}),[r]:Math.min(MAX_SALE_PERCENT,Math.max(0,+v||0))}})
+            const fillAll=(kind,v)=>setSale({...sale,[kind]:{commun:v,rare:v,épique:v,légendaire:v}})
+            // Les champs datetime-local parlent en heure locale de l'admin ; on
+            // stocke en ISO UTC, seul format que serveur et joueurs lisent pareil.
+            const pad=n=>String(n).padStart(2,'0')
+            const toInput=iso=>{if(!iso)return"";const d=new Date(iso);return isNaN(d.getTime())?"":`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`}
+            const fromInput=v=>{if(!v)return"";const d=new Date(v);return isNaN(d.getTime())?"":d.toISOString()}
+            const now=Date.now()
+            const start=Date.parse(sale.starts_at), end=Date.parse(sale.ends_at)
+            const running=isSaleRunning(sale,now)
+            const status=!sale.active?["INACTIF","#8daacc"]
+              :running?["EN COURS","#e74c3c"]
+              :(!isNaN(start)&&now<start)?["PLANIFIÉ","#4fc3f7"]
+              :["TERMINÉ","#8daacc"]
+            const badDates=sale.active&&(isNaN(start)||isNaN(end)||end<=start)
+            return(
+              <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:`1px solid ${running?"#e74c3c44":"#ffffff12"}`,marginBottom:12}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                  <div style={{fontWeight:800,color:"#f9ca24",fontSize:13}}>🏷️ Soldes de la forge</div>
+                  <span style={{fontSize:10,fontWeight:800,background:status[1]+"22",color:status[1],border:`1px solid ${status[1]}44`,padding:"2px 8px",borderRadius:50}}>{status[0]}</span>
+                </div>
+                <div style={{fontSize:10,color:"#a8bfcf",marginBottom:12}}>Remise temporaire en % sur les coûts en points de forge, par rareté et par opération (0 = pas de remise, plafond {MAX_SALE_PERCENT} %). Le joueur voit un bandeau « Soldes » avec le compte à rebours, et le prix barré sur chaque geocoin. Les dates sont saisies en heure locale et stockées en UTC ; le prix débité est recalculé par le serveur à chaque forge.</div>
+
+                <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
+                  <label style={{display:"flex",alignItems:"center",gap:7,color:"#ddd",fontSize:12,fontWeight:700}}>
+                    <input type="checkbox" checked={sale.active===true} onChange={e=>setSale({...sale,active:e.target.checked})} style={{width:15,height:15}}/>
+                    Activer les soldes
+                  </label>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:11,color:"#a8bfcf",fontWeight:700}}>Du</span>
+                    <input type="datetime-local" value={toInput(sale.starts_at)} onChange={e=>setSale({...sale,starts_at:fromInput(e.target.value)})} style={{...INP,width:200}}/>
+                    <span style={{fontSize:11,color:"#a8bfcf",fontWeight:700}}>au</span>
+                    <input type="datetime-local" value={toInput(sale.ends_at)} onChange={e=>setSale({...sale,ends_at:fromInput(e.target.value)})} style={{...INP,width:200}}/>
+                  </div>
+                </div>
+                {badDates&&<div style={{fontSize:11,color:"#e74c3c",fontWeight:700,marginBottom:10}}>⚠️ Dates incomplètes ou fin antérieure au début : aucune remise ne sera appliquée.</div>}
+
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{color:"#8daacc",textAlign:"left"}}>
+                    {["Rareté","✨ Brillance (%)","Prix soldé","🔨 Forge (%)","Prix soldé"].map(h=><th key={h} style={{padding:"5px 8px",borderBottom:"1px solid #ffffff14",fontWeight:700}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {RARITIES.map(([r,color],i)=>{
+                      // Aperçu du prix effectivement débité — la remise s'applique aux
+                      // prix par rareté ci-dessus ; un geocoin au prix propre suit la
+                      // même règle depuis sa propre base.
+                      const prevShiny=applyForgeSale(sc[r],{...sale,active:true,starts_at:"2000-01-01T00:00:00Z",ends_at:"2100-01-01T00:00:00Z"},'shiny',r)
+                      const prevForge=applyForgeSale(fc[r],{...sale,active:true,starts_at:"2000-01-01T00:00:00Z",ends_at:"2100-01-01T00:00:00Z"},'forge',r)
+                      const cell=p=>p.discount>0&&p.cost!=null&&isFinite(p.cost)
+                        ? <span style={{color:"#ff7675",fontWeight:800}}>{p.cost} PF <span style={{color:"#8daacc",fontWeight:600,textDecoration:"line-through"}}>{p.original}</span></span>
+                        : <span style={{color:"#8daacc"}}>{isFinite(Number(p.original))&&p.original!=null?`${p.original} PF`:"—"}</span>
+                      return(
+                        <tr key={r} style={{background:i%2===0?"transparent":"#ffffff04"}}>
+                          <td style={{padding:"7px 8px",color,fontWeight:800,textTransform:"capitalize"}}>{r}</td>
+                          <td style={{padding:"7px 8px"}}>
+                            <input type="number" min={0} max={MAX_SALE_PERCENT} value={sale.shiny?.[r]??0} onChange={e=>setPct('shiny',r,e.target.value)} style={{...INP,width:65}}/>
+                          </td>
+                          <td style={{padding:"7px 8px"}}>{cell(prevShiny)}</td>
+                          <td style={{padding:"7px 8px"}}>
+                            <input type="number" min={0} max={MAX_SALE_PERCENT} value={sale.forge?.[r]??0} onChange={e=>setPct('forge',r,e.target.value)} style={{...INP,width:65}}/>
+                          </td>
+                          <td style={{padding:"7px 8px"}}>{cell(prevForge)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
+                  <button onClick={()=>fillAll('shiny',50)} style={{...BTN("linear-gradient(135deg,#f9ca24,#e17055)","#1e3045"),padding:"6px 12px",borderRadius:8,fontSize:11}}>✨ −50 % sur toute la brillance</button>
+                  <button onClick={()=>fillAll('forge',50)} style={{...BTN("linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"6px 12px",borderRadius:8,fontSize:11}}>🔨 −50 % sur toute la forge</button>
+                  <button onClick={()=>{fillAll('shiny',0);fillAll('forge',0)}} style={{...BTN("linear-gradient(135deg,#636e72,#2d3436)"),padding:"6px 12px",borderRadius:8,fontSize:11}}>Remettre à 0</button>
+                  <button onClick={()=>{const s=new Date();const e=new Date(s.getTime()+7*86400000);setSale({...sale,starts_at:s.toISOString(),ends_at:e.toISOString()})}} style={{...BTN("linear-gradient(135deg,#00b894,#00cec9)"),padding:"6px 12px",borderRadius:8,fontSize:11}}>📅 Maintenant → +7 jours</button>
+                </div>
+                <div style={{fontSize:10,color:"#a8bfcf",marginTop:8}}>N'oublie pas de sauvegarder les limites en bas de page.</div>
               </div>
             )
           })()}

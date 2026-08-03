@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { cardCC, RC } from '../../data/cards.js'
+import { applyForgeSale, isSaleRunning, maxSaleDiscount, saleTimeLeft, formatSaleCountdown } from '../../utils/forgeSale.js'
 import { apiForgeCard, apiForgeShiny, apiMeltCard, apiMeltShinyCard, apiMeltAllCards, apiMeltAllShinyCards } from '../../services/api.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { useT } from '../../i18n/translations.js'
@@ -81,6 +82,16 @@ const STYLE = `
 @keyframes emberFlicker {
   0%, 100% { opacity: .9; filter: brightness(1); }
   50%      { opacity: .4; filter: brightness(1.8); }
+}
+@keyframes saleSweep {
+  0%   { transform: translateX(-120%) skewX(-18deg); }
+  55%  { transform: translateX(320%)  skewX(-18deg); }
+  100% { transform: translateX(320%)  skewX(-18deg); }
+}
+@keyframes saleTagPop {
+  0%   { transform: scale(.7) rotate(-8deg); opacity: 0; }
+  70%  { transform: scale(1.12) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-3deg);  opacity: 1; }
 }
 @keyframes smokeRise {
   0%   { transform: translate(0, 0) scale(.5); opacity: 0; }
@@ -483,8 +494,107 @@ function PanelWrapper({ inline, theme, forgingId, onClose, children }) {
   )
 }
 
+// ─── Soldes ───────────────────────────────────────────────────────────────────
+// Comme PanelWrapper, ces composants sont déclarés HORS de ForgeModal : définis à
+// l'intérieur, leur identité changerait à chaque tick de l'horloge des soldes et
+// React remonterait le sous-arbre (grilles remises au premier lot).
+
+// Pastille « −50 % » collée au prix soldé.
+function SaleTag({ discount }) {
+  return (
+    <span style={{
+      background: 'linear-gradient(135deg,#e74c3c,#ff7675)', color: '#fff',
+      fontWeight: 900, fontSize: 9, letterSpacing: .3,
+      borderRadius: 5, padding: '1px 5px', whiteSpace: 'nowrap',
+      boxShadow: '0 2px 6px #e74c3c55',
+    }}>−{discount}%</span>
+  )
+}
+
+// Prix en PF : barré + soldé pendant les soldes, simple sinon.
+function ForgePrice({ price, canAfford, theme, suffix }) {
+  const on = price.discount > 0
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, flexWrap: 'wrap' }}>
+      {on && (
+        <span style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textDecoration: 'line-through', opacity: .8 }}>
+          {price.original}
+        </span>
+      )}
+      <span style={{ fontWeight: 900, fontSize: on ? 15 : 14,
+        color: price.cost == null ? '#e74c3c' : on ? '#ff7675' : canAfford ? '#a29bfe' : theme.textMuted }}>
+        🔨 {price.cost ?? '—'}
+      </span>
+      {suffix && <span style={{ fontSize: 10, color: theme.textMuted }}>{suffix}</span>}
+      {on && <SaleTag discount={price.discount} />}
+    </div>
+  )
+}
+
+// Bandeau « Soldes » + compte à rebours. `kinds` limite l'annonce aux opérations
+// réellement proposées par l'onglet courant : annoncer −50 % sur du brillant
+// depuis l'onglet Fondre serait une promesse que l'écran ne tient pas.
+function SaleBanner({ sale, kinds, now, t }) {
+  const pct = maxSaleDiscount(sale, kinds, now)
+  if (pct <= 0) return null
+
+  // Remises inégales selon la rareté → « jusqu'à −X % », sinon le joueur qui
+  // ouvre une légendaire soldée à 20 % se sent floué par un titre à −50 %.
+  const values = kinds.flatMap(k => Object.values(sale?.[k] || {}).map(Number))
+    .filter(v => isFinite(v) && v > 0)
+  const uniform = new Set(values).size === 1
+
+  const left    = saleTimeLeft(sale, now)
+  const endsAt  = new Date(Date.parse(sale.ends_at))
+  const urgent  = left < 3600 * 1000   // dernière heure
+
+  return (
+    <div style={{
+      position: 'relative', overflow: 'hidden',
+      background: 'linear-gradient(135deg,#e74c3c22,#f9ca2418)',
+      border: '1px solid #e74c3c55', borderRadius: 12,
+      padding: '11px 14px', marginBottom: 16,
+      display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+    }}>
+      {/* Reflet qui balaie le bandeau */}
+      <div style={{
+        position: 'absolute', top: 0, bottom: 0, width: 60, pointerEvents: 'none',
+        background: 'linear-gradient(90deg,transparent,#ffffff26,transparent)',
+        animation: 'saleSweep 3.4s ease-in-out infinite',
+      }}/>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        animation: 'saleTagPop .5s cubic-bezier(.2,1.4,.4,1) both',
+      }}>
+        <span style={{ fontSize: 22, lineHeight: 1 }}>🏷️</span>
+        <div>
+          <div style={{ fontWeight: 900, fontSize: 17, color: '#ff7675', letterSpacing: .5, lineHeight: 1.15 }}>
+            {(uniform ? t('forge_sale_title') : t('forge_sale_title_upto')).replace('{n}', pct)}
+          </div>
+          <div style={{ fontSize: 11, color: '#f9ca24', fontWeight: 700 }}>
+            {t('forge_sale_sub')}
+          </div>
+        </div>
+      </div>
+      <div style={{ marginLeft: 'auto', textAlign: 'right', minWidth: 108 }}>
+        <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: '#e17055' }}>
+          {t('forge_sale_ends_in')}
+        </div>
+        <div style={{ fontWeight: 900, fontSize: 18, color: urgent ? '#e74c3c' : '#f9ca24',
+          fontVariantNumeric: 'tabular-nums',
+          animation: urgent ? 'pulseBadge 1s ease-in-out infinite' : 'none' }}>
+          {formatSaleCountdown(left)}
+        </div>
+        <div style={{ fontSize: 10, color: '#a8bfcf' }}>
+          {endsAt.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── ForgeModal ───────────────────────────────────────────────────────────────
-export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, onMelted, onMeltedShiny, onMeltedAll, onMeltedAllShiny, onQuestReward, inline = false, shinyForgeCostByRarity = {}, forgeCostByRarity = {}, meltPointsByRarity = {}, meltPointsByRarityShiny = {}, achievementProgress = {}, loading = false, initialTab = 'normal', focusCardId = null }) {
+export default function ForgeModal({ cardPool, collection, shinyCollection = {}, forgePoints, onClose, onForged, onMelted, onMeltedShiny, onMeltedAll, onMeltedAllShiny, onQuestReward, inline = false, shinyForgeCostByRarity = {}, forgeCostByRarity = {}, forgeSale = null, meltPointsByRarity = {}, meltPointsByRarityShiny = {}, achievementProgress = {}, loading = false, initialTab = 'normal', focusCardId = null }) {
   useEffect(() => { injectStyle() }, [])
   const { theme } = useTheme()
   const { t } = useT()
@@ -501,6 +611,23 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
     meltingId, setMeltingId, meltPhase, setMeltPhase, meltingShiny, setMeltingShiny,
     animateMeltSequence, timerRef,
   } = useMeltAnimation()
+
+  // ── Horloge des soldes ──────────────────────────────────────────────────────
+  // Une seule horloge pour le compte à rebours ET les prix affichés : à la
+  // seconde où les soldes expirent, les prix doivent repasser au plein tarif.
+  // Sans elle, un joueur cliquerait sur un prix soldé périmé et se ferait
+  // débiter le prix fort par le serveur, seul juge du montant.
+  const [saleNow, setSaleNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!isSaleRunning(forgeSale, Date.now())) return
+    const id = setInterval(() => {
+      const now = Date.now()
+      setSaleNow(now)
+      if (!isSaleRunning(forgeSale, now)) clearInterval(id)   // soldes finies : plus rien à rafraîchir
+    }, 1000)
+    return () => clearInterval(id)
+  }, [forgeSale])
+  const saleOn = isSaleRunning(forgeSale, saleNow)
 
   // Taille des lots du défilement continu (remplace l'ancienne pagination)
   const FORGE_BATCH = 12
@@ -816,18 +943,36 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
           ? { display: 'flex', gap: 6, position: 'sticky', top: 'var(--header-h, 48px)', zIndex: 50, background: theme.bgMain, padding: '4px 0 10px', marginBottom: 16, boxShadow: '0 10px 14px -12px #000a' }
           : { display: 'flex', gap: 6, marginBottom: 16 }}>
           {[
-            { id: 'normal',    label: t('forge_tab_normal') || 'Forger' },
-            { id: 'brillance', label: t('forge_tab_shiny')  || '✨ Brillance' },
-            { id: 'fondre',    label: t('forge_tab_melt')   || '🔥 Fondre' },
+            // Pastille de solde sur l'onglet concerné : depuis « Fondre », rien
+            // n'indiquerait sinon qu'une remise court sur les deux autres.
+            { id: 'normal',    label: t('forge_tab_normal') || 'Forger',      sale: maxSaleDiscount(forgeSale, ['forge'], saleNow) },
+            { id: 'brillance', label: t('forge_tab_shiny')  || '✨ Brillance', sale: maxSaleDiscount(forgeSale, ['shiny'], saleNow) },
+            { id: 'fondre',    label: t('forge_tab_melt')   || '🔥 Fondre',   sale: 0 },
           ].map(tb => (
             <button key={tb.id} onClick={() => setActiveTab(tb.id)} style={{
+              position: 'relative',
               background: activeTab === tb.id ? 'linear-gradient(135deg,#6c5ce7,#a29bfe)' : theme.bgElevated,
               border: `1px solid ${activeTab === tb.id ? '#6c5ce7' : theme.border}`,
               color: activeTab === tb.id ? '#fff' : theme.textPrimary,
               padding: '7px 16px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 13, cursor: 'pointer',
-            }}>{tb.label}</button>
+            }}>
+              {tb.label}
+              {tb.sale > 0 && (
+                <span style={{
+                  position: 'absolute', top: -7, right: -6,
+                  background: 'linear-gradient(135deg,#e74c3c,#ff7675)', color: '#fff',
+                  fontSize: 9, fontWeight: 900, borderRadius: 6, padding: '1px 5px',
+                  boxShadow: '0 2px 6px #e74c3c66', animation: 'saleTagPop .5s cubic-bezier(.2,1.4,.4,1) both',
+                }}>−{tb.sale}%</span>
+              )}
+            </button>
           ))}
         </div>
+
+        {/* Soldes — annoncées sur les onglets où l'on paie des PF, avec le seul
+            barème de l'onglet courant */}
+        {saleOn && activeTab === 'normal' && <SaleBanner sale={forgeSale} kinds={['forge']} now={saleNow} t={t} />}
+        {saleOn && activeTab === 'brillance' && <SaleBanner sale={forgeSale} kinds={['shiny']} now={saleNow} t={t} />}
 
         {/* Tab Normal */}
         {activeTab === 'normal' && forgeableCards.length > 0 && (
@@ -853,7 +998,9 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
               const owned     = (collection[card.id] || 0) > 0
               const justDone  = recentlyForged.has(card.id)
               const canForge     = !owned && !justDone
-              const effectiveCost = card.forge_cost ?? forgeCostByRarity[card.rarity] ?? null
+              const baseCost      = card.forge_cost ?? forgeCostByRarity[card.rarity] ?? null
+              const price         = applyForgeSale(baseCost, forgeSale, 'forge', card.rarity, saleNow)
+              const effectiveCost = price.cost
               const canAfford    = canForge && effectiveCost != null && forgePoints >= effectiveCost
               const src = card.image || card.image_url
 
@@ -903,13 +1050,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                   </div>
 
                   {/* Coût + bouton */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontWeight: 900, fontSize: 14,
-                      color: canAfford ? '#a29bfe' : theme.textMuted }}>
-                      🔨 {effectiveCost ?? '?'}
-                    </span>
-                    <span style={{ fontSize: 10, color: theme.textMuted }}>pts</span>
-                  </div>
+                  <ForgePrice price={price} canAfford={canAfford} theme={theme} suffix="pts" />
 
                   {owned ? (
                     <div style={{ fontSize: 11, fontWeight: 800, color: '#00b894', textAlign: 'center' }}>
@@ -969,7 +1110,9 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                   renderItem={(card) => {
                   const alreadyShiny = (shinyCollection[card.id] || 0) > 0
                   const needsLegendary = achNeedsLegendary(card)
-                  const cost = card.shiny_forge_cost ?? shinyForgeCostByRarity[card.rarity] ?? null
+                  const baseCost = card.shiny_forge_cost ?? shinyForgeCostByRarity[card.rarity] ?? null
+                  const price = applyForgeSale(baseCost, forgeSale, 'shiny', card.rarity, saleNow)
+                  const cost = price.cost
                   const canAfford = cost != null && forgePoints >= cost
                   const focused = card.id === focusCardId
                   return (
@@ -979,7 +1122,7 @@ export default function ForgeModal({ cardPool, collection, shinyCollection = {},
                       // de page » translucide juste au-dessus du halo).
                       ...(focused ? { borderRadius: 18, boxShadow: '0 0 0 3px #f9ca24, 0 0 22px #f9ca2466' } : {}) }}>
                       <Card card={card} isShiny={alreadyShiny} />
-                      {!needsLegendary && <div style={{ fontSize: 11, color: cost == null ? '#e74c3c' : canAfford ? '#a29bfe' : theme.textMuted, fontWeight: 800 }}>🔨 {cost ?? '—'} pts</div>}
+                      {!needsLegendary && <ForgePrice price={price} canAfford={canAfford} theme={theme} suffix="pts" />}
                       {needsLegendary ? (
                         <div style={{ fontSize: 11, color: '#f9ca24', fontWeight: 800, textAlign: 'center' }}>🏆 {t('forge_shiny_need_legendary')}</div>
                       ) : alreadyShiny ? (

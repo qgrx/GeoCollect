@@ -2944,6 +2944,7 @@ export default function App() {
                   forgePoints={gs.forgePoints}
                   shinyForgeCostByRarity={gs.limits.shinyForgeCostByRarity ?? {}}
                   forgeCostByRarity={gs.limits.forgeCostByRarity ?? {}}
+                  forgeSale={gs.limits.forgeSale ?? null}
                   meltPointsByRarity={gs.limits.meltPointsByRarity ?? {}}
                   meltPointsByRarityShiny={gs.limits.meltPointsByRarityShiny ?? {}}
                   achievementProgress={gs.achievementProgress}
@@ -3735,6 +3736,10 @@ export default function App() {
                 apiSetConfig('bag_slot_prices',        limEdit.bagSlotPrices    ?? [500, 1000, 2000, 4000, 6000]),
                 apiSetConfig('shiny_bag_slot_prices',  limEdit.shinyBagSlotPrices ?? [200, 400, 600]),
                 apiSetConfig('forge_cost_by_rarity',   limEdit.forgeCostByRarity   ?? { commun:60,rare:180,épique:600,légendaire:1800 }),
+                // Soldes : toujours écrire l'objet (jamais null) — une clé absente
+                // retomberait sur la valeur déjà en mémoire côté client, qui
+                // continuerait d'afficher des prix soldés que l'API ne pratique plus.
+                ...(limEdit.forgeSale != null ? [apiSetConfig('forge_sale', limEdit.forgeSale)] : []),
                 apiSetConfig('melt_points_by_rarity',  limEdit.meltPointsByRarity  ?? {}),
                 apiSetConfig('melt_points_by_rarity_shiny', limEdit.meltPointsByRarityShiny ?? {}),
                 apiSetConfig('market_price_caps',      limEdit.marketPriceCaps      ?? { commun:{floor:5,k:2},rare:{floor:25,k:2.5},épique:{floor:150,k:3},légendaire:{floor:1000,k:4} }),

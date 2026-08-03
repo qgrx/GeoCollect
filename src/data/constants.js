@@ -116,6 +116,8 @@ export const INIT_LIMITS = {
   beginnerEnabled:      true,
   beginnerDuration:     60,
   forgeCostByRarity:    { commun: 60, rare: 180, épique: 600, légendaire: 1800 },
+  // Soldes de la forge (null = aucune) — cf. src/utils/forgeSale.js pour la forme.
+  forgeSale:            null,
   meltPointsByRarity:   {},
   meltPointsByRarityShiny: {},
   marketPriceCaps:      { commun: {floor:5,k:2}, rare: {floor:25,k:2.5}, épique: {floor:150,k:3}, légendaire: {floor:1000,k:4} },
