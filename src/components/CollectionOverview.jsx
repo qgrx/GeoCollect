@@ -18,37 +18,40 @@ function injectOverviewStyle() {
 }
 injectOverviewStyle()
 
-export default function CollectionOverview({ items, theme, isMobile, lang, onSelect }) {
+export default function CollectionOverview({ items, theme, isMobile, lang, onSelect, shinyOwnedLabel }) {
   const w = isMobile ? 52 : 64
   const h = Math.round(w * 1.3)
 
   return (
     <div style={{ animation: 'fadeIn .3s ease', padding: '18px 0 8px' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 5 : 7, justifyContent: 'center' }}>
-        {items.map(({ card, count, cnt, missing, isShiny }, idx) => {
+        {items.map(({ card, count, cnt, missing, isShiny, shinyOwned }, idx) => {
           const c = count || cnt || 0
           const { c1 } = cardCC(card.rarity)
           const thumb = card.image_url_thumb || card.thumbnail || card.image_url || card.image
           const isAchievement = card.type?.toLowerCase().startsWith('achievement')
           const clickable = !missing || isAchievement
+          // Possédé uniquement en brillant : toujours « manquant » ici, mais moins
+          // estompé et marqué ✨ — sinon il passe pour un geocoin jamais obtenu.
+          const dim = missing ? (shinyOwned ? '0.6' : '0.3') : '1'
           return (
             <div key={`${card.id}${isShiny ? '_shiny' : ''}`}
               onClick={clickable ? () => onSelect(card, !!isShiny, isAchievement) : undefined}
-              title={cardName(card, lang)}
+              title={shinyOwned && shinyOwnedLabel ? `${cardName(card, lang)} — ${shinyOwnedLabel}` : cardName(card, lang)}
               style={{
                 position: 'relative', width: w,
                 cursor: clickable ? 'pointer' : 'default',
-                opacity: missing ? 0.3 : 1,
-                filter: missing ? 'grayscale(1)' : 'none',
+                opacity: Number(dim),
+                filter: missing && !shinyOwned ? 'grayscale(1)' : 'none',
                 transition: 'opacity .15s, transform .12s, filter .15s',
                 animation: `overviewPop .3s ${Math.min(idx * 0.008, 0.4)}s ease both`,
               }}
               onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'scale(1.14)'; e.currentTarget.style.zIndex = '10' }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = missing ? '0.3' : '1'; e.currentTarget.style.filter = missing ? 'grayscale(1)' : 'none'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1' }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = dim; e.currentTarget.style.filter = missing && !shinyOwned ? 'grayscale(1)' : 'none'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1' }}
             >
               <div style={{
                 width: w, height: h, borderRadius: 8, overflow: 'hidden', boxSizing: 'border-box',
-                border: `2px solid ${missing ? theme.border : isShiny ? '#f9ca24' : c1}`,
+                border: `2px solid ${missing ? (shinyOwned ? '#f9ca2499' : theme.border) : isShiny ? '#f9ca24' : c1}`,
                 boxShadow: isShiny && !missing ? '0 0 8px #f9ca2466' : 'none',
                 background: thumb ? 'transparent' : `linear-gradient(135deg,${c1}44,${c1}22)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -57,7 +60,7 @@ export default function CollectionOverview({ items, theme, isMobile, lang, onSel
                   ? <img src={thumb} alt={card.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   : <span style={{ fontSize: 16, fontWeight: 900, color: c1, fontFamily: "'Nunito',sans-serif" }}>{card.name[0]}</span>}
               </div>
-              {isShiny && !missing && <div style={{ position: 'absolute', top: 2, left: 2, fontSize: 9, lineHeight: 1, pointerEvents: 'none' }}>✨</div>}
+              {((isShiny && !missing) || shinyOwned) && <div style={{ position: 'absolute', top: 2, left: 2, fontSize: 9, lineHeight: 1, pointerEvents: 'none' }}>✨</div>}
               {c > 1 && (
                 <div style={{ position: 'absolute', top: 2, right: 2, background: '#000000bb', color: '#fff', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '1px 3px', lineHeight: 1.2, fontFamily: "'Nunito',sans-serif" }}>×{c}</div>
               )}

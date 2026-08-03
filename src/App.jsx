@@ -1966,7 +1966,10 @@ export default function App() {
   }
   // Called by AuthModal after successful login
   function handleLoginSuccess(profile) {
-    showToast(t('toast_welcome').replace('{pseudo}', profile?.pseudo || ''))
+    // Pas de « Bienvenue Invité ! » : le profil démo (ou l'absence de profil
+    // quand le chargement traîne) ne doit jamais servir de nom d'accueil.
+    if (!profile?.pseudo || profile.is_demo) return
+    showToast(t('toast_welcome').replace('{pseudo}', profile.pseudo))
   }
 
   // ── Onboarding (nouvel utilisateur) ─────────────────────────────────────────
@@ -2221,7 +2224,15 @@ export default function App() {
     if (showMissing || collViewAll || auth.isDemo) {
       normalList = visibleCardPool
         .filter(c => (af || c.type === filter) && matchSearch(c))
-        .map(c => ({ card: c, count: gs.collection[c.id] || 0, missing: !(gs.collection[c.id] > 0) }))
+        // shinyOwned : possédé UNIQUEMENT en brillant (rangé dans l'onglet ✨). Il
+        // reste « manquant » ici, mais on l'annonce — sinon le joueur croit avoir
+        // perdu le geocoin (signalement d'un légendaire réclamé au dépôt).
+        .map(c => ({
+          card: c,
+          count: gs.collection[c.id] || 0,
+          missing: !(gs.collection[c.id] > 0),
+          shinyOwned: !(gs.collection[c.id] > 0) && (gs.shinyCollection?.[c.id] || 0) > 0,
+        }))
     } else {
       normalList = Object.entries(gs.collection)
         .filter(([, v]) => v > 0)
@@ -2832,7 +2843,7 @@ export default function App() {
                     )
                   ) : collViewAll ? (
                     <CollectionOverview
-                      items={displayCards} theme={theme} isMobile={isMobile} lang={lang}
+                      items={displayCards} theme={theme} isMobile={isMobile} lang={lang} shinyOwnedLabel={t('coll_owned_shiny')}
                       onSelect={(card, isShiny, isAchievement) => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', desc_translations: (!isShiny && gs.collectionDescriptionTranslations?.[card.id]) || card.description_translations || null, progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(isShiny); setSelectedCardFromHistory(false); }}
                     />
                   ) : (
@@ -2840,7 +2851,7 @@ export default function App() {
                       items={displayCards} batch={COLL_PAGE_SIZE} theme={theme} isMobile={isMobile}
                       gridKey={gridAnimKey} topLabel={t('coll_back_top')}
                       resetKey={`${filter}|${sortBy}|${cardSearch}|${showShiny}|${showMissing}|${gridAnimKey}`}
-                      renderItem={({ card, count, cnt, missing, isShiny }, idx) => {
+                      renderItem={({ card, count, cnt, missing, isShiny, shinyOwned }, idx) => {
                         const c = count || cnt || 0;
                         const isAchievement = card.type?.toLowerCase().startsWith('achievement')
                         const isEvolutive = isAchievement && !!gs.achievementProgress?.[card.id]?.tiers
@@ -2854,6 +2865,13 @@ export default function App() {
                           <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ position: 'relative', animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
                             {isEvolutive && <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 7, background: '#f9ca24cc', color: '#1e3045', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, pointerEvents: 'none' }}>ÉVOLUTIF</div>}
                             <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', desc_translations: (!isShiny && gs.collectionDescriptionTranslations?.[card.id]) || card.description_translations || null, progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
+                            {/* Possédé uniquement en brillant : le geocoin est bien acquis, mais rangé
+                                dans l'onglet ✨ — sans ce rappel il paraît simplement manquant. */}
+                            {shinyOwned && (
+                              <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', zIndex: 7, maxWidth: '92%', background: '#1a2538e6', border: '1px solid #f9ca2466', color: '#f9ca24', fontSize: 8, fontWeight: 800, borderRadius: 6, padding: '2px 6px', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none', fontFamily: "'Nunito',sans-serif" }}>
+                                ✨ {t('coll_owned_shiny')}
+                              </div>
+                            )}
                             {/* Shiny manquant : raccourci vers la forge Brillance, ciblé sur ce geocoin */}
                             {showShiny && missing && (!isAchievement || isEvolutive) && !auth.isDemo && gs.limits.featureForge !== false && gs.limits.shinyForgeOpen !== false && (
                               <button
