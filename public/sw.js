@@ -1,4 +1,6 @@
-const CACHE = 'geocoins-v2'
+// v3 : purge l'index.html mis en cache avant la refonte des métadonnées SEO et des
+// icônes (l'ancienne coquille référençait icon-192.svg, désormais supprimé).
+const CACHE = 'geocoins-v3'
 const STATIC = ['/', '/index.html']
 
 self.addEventListener('install', e => {

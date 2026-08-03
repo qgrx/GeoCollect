@@ -1,12 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+<!--
+  Source unique du logo Geocoins pour la génération des icônes (scripts/gen-icons.mjs).
+  Ce fichier n'est PAS servi : il vit hors de public/.
+
+  Jumeau vectoriel de src/components/Logo.jsx, à deux détails près, volontaires :
+  l'ombre portée (feDropShadow) et l'ellipse de sol sont retirées — invisibles à
+  16 px et néfastes sur une icône détourée. Toute retouche du logo doit être
+  reportée ici ET dans Logo.jsx.
+-->
+<svg viewBox="0 0 32 40" width="32" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0f0c29"/><stop offset="100%" stop-color="#302b63"/>
-    </linearGradient>
-  </defs>
-  <rect width="48" height="48" rx="9.600000000000001" ry="9.600000000000001" fill="url(#bg)"/>
-  <g transform="translate(9.792 6.240) scale(0.88800)">
-<defs>
     <linearGradient id="pin" x1="16" y1="0" x2="16" y2="40" gradientUnits="userSpaceOnUse">
       <stop offset="0%"   stop-color="#33c97a"/>
       <stop offset="100%" stop-color="#005C35"/>
@@ -46,5 +48,4 @@
   <!-- Gemme centrale -->
   <circle cx="16" cy="15" r="2.8" fill="url(#gem)"/>
   <circle cx="15.1" cy="14.1" r="0.9" fill="#fff" opacity="0.55"/>
-  </g>
 </svg>
