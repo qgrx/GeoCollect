@@ -84,9 +84,18 @@ Les URLs indexables sont de **vrais fichiers** dans `dist/`, générés au build
   dans l'onglet admin Cartes. `cardLongDescription()` retombe sur la courte à
   l'affichage, **mais pas** pour décider de l'indexation (`{ fallback: false }`) —
   sans quoi une description de vignette suffirait à faire indexer une page vide.
+- **La description longue est du HTML riche** (même éditeur que les notes de
+  version : titres, listes, couleurs, tableaux, **liens**). Images désactivées
+  (`allowImages={false}`) : elles seraient intégrées en base64 dans la colonne,
+  donc servies à tous les joueurs avec le pool de cartes. Les fiches rédigées
+  avant l'éditeur sont restées en **texte brut** et cohabitent dans la même
+  colonne : tout affichage passe par `richTextHtml()` (`utils/richText.js`), qui
+  convertit ce texte en paragraphes, puis par `sanitizeHtml()`.
 - **Une fiche sans description longue part en `noindex`** et reste hors du sitemap
   (`MIN_INDEXABLE_DESCRIPTION`) : publier des pages réduites à un nom et une
-  rareté nuirait au domaine. La rédiger l'indexe au build suivant.
+  rareté nuirait au domaine. La rédiger l'indexe au build suivant. Le seuil
+  compte le **texte** (`richTextLength`), jamais le balisage — sinon quelques
+  `<p>` et une URL de lien suffiraient à le franchir.
 
 ## Documentation
 

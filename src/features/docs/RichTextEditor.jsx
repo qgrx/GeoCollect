@@ -102,7 +102,33 @@ function ToolBtn({ label, title, active, onClick, style = {} }) {
   )
 }
 
-export default function RichTextEditor({ value, onChange, placeholder = '', mode = 'dark' }) {
+/**
+ * Ajoute / modifie / retire un lien sur la sélection.
+ *
+ * Une chaîne vide retire le lien : c'est le seul moyen de le défaire une fois
+ * posé, et l'utilisateur qui efface l'URL veut évidemment ça.
+ * `https://` est ajouté d'office à une saisie sans protocole — sans lui, le
+ * navigateur interprète « geocaching.com » comme un chemin RELATIF et envoie le
+ * visiteur sur geocoins.io/geocaching.com.
+ */
+function promptLink(editor) {
+  if (!editor) return
+  const current = editor.getAttributes('link')?.href || ''
+  const input = window.prompt('Adresse du lien (vide pour retirer le lien)', current)
+  if (input === null) return                       // annulé : on ne touche à rien
+  const url = input.trim()
+  if (!url) { editor.chain().focus().extendMarkRange('link').unsetLink().run(); return }
+  const href = /^(https?:|mailto:|tel:|\/|#)/i.test(url) ? url : `https://${url}`
+  editor.chain().focus().extendMarkRange('link').setLink({ href }).run()
+}
+
+/**
+ * @param allowImages  false retire l'insertion d'images. Les images sont
+ *   intégrées en data URI DANS le contenu : acceptable pour une page docs
+ *   chargée à la demande, ruineux pour un champ embarqué dans un pool servi à
+ *   tous les joueurs (cf. description longue des geocoins).
+ */
+export default function RichTextEditor({ value, onChange, placeholder = '', mode = 'dark', allowImages = true }) {
   const fileInput = useRef(null)
   const editorRef = useRef(null)
   const bg     = mode === 'light' ? '#f8f9fa' : '#0f1923'
@@ -113,7 +139,9 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
   // compression évite des contenus énormes qui font échouer l'enregistrement.
   const insertImages = useCallback(async (files) => {
     const ed = editorRef.current
-    if (!ed) return
+    // Le garde-fou est ici et pas seulement sur le bouton : sans lui, un
+    // collage ou un glisser-déposer contournerait `allowImages`.
+    if (!ed || !allowImages) return
     for (const file of files) {
       if (!file.type.startsWith('image/')) continue
       try {
@@ -121,11 +149,23 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
         ed.chain().focus().setImage({ src: dataUri }).run()
       } catch { /* image illisible — ignorée */ }
     }
-  }, [])
+  }, [allowImages])
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3] }, underline: false }),
+      // Link vient de StarterKit. `openOnClick: false` : dans l'éditeur, cliquer
+      // un lien doit placer le curseur pour le corriger, pas quitter la page en
+      // cours d'écriture. Le rendu, lui, ouvre bien le lien (cf. RichContent).
+      StarterKit.configure({
+        heading: { levels: [2, 3] },
+        underline: false,
+        link: {
+          openOnClick: false,
+          autolink: true,
+          defaultProtocol: 'https',
+          HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer nofollow' },
+        },
+      }),
       Underline,
       TextStyle,
       Color,
@@ -141,6 +181,14 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
     ],
     content: neutralizeDarkText(value || ''),
     editorProps: {
+      // Un collage depuis Word, Google Docs ou une page web embarque les
+      // couleurs de sa source. Sur le thème sombre, elles donnent du texte noir
+      // sur fond noir, et l'auteur ne voit le problème qu'une fois publié. On
+      // ne garde donc que les couleurs CHOISIES dans la palette : celles-là
+      // passent par TipTap, pas par le presse-papiers.
+      // (le caractère qui précède est capturé et rendu : sans lui, la règle
+      // mordrait aussi sur `background-color`, dont on ne veut pas ici)
+      transformPastedHTML: (html) => html.replace(/(^|[;"'\s{])color\s*:\s*[^;"']*;?/gi, '$1'),
       handlePaste: (_view, event) => {
         const files = Array.from(event.clipboardData?.files || []).filter(f => f.type.startsWith('image/'))
         if (!files.length) return false
@@ -214,6 +262,14 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
 
         <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
 
+        {/* Lien : pose, modifie ou retire selon ce qui est saisi */}
+        <ToolBtn label="🔗" title="Insérer / modifier un lien" onClick={() => promptLink(editorRef.current)} active={editor?.isActive('link')} />
+        {editor?.isActive('link') && (
+          <ToolBtn label="⛓️‍💥" title="Retirer le lien" onClick={() => editor?.chain().focus().extendMarkRange('link').unsetLink().run()} style={{ color: '#e74c3c88' }} />
+        )}
+
+        <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
+
         {/* Tableau : insertion, puis contrôles lignes/colonnes quand on est dedans */}
         <ToolBtn label="⊞" title="Insérer un tableau (3×3)" onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} active={editor?.isActive('table')} />
         {editor?.isActive('table') && (<>
@@ -241,20 +297,22 @@ export default function RichTextEditor({ value, onChange, placeholder = '', mode
 
         <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
 
-        <ToolBtn label="🖼️" title="Insérer une image" onClick={() => fileInput.current?.click()} />
+        {allowImages && <ToolBtn label="🖼️" title="Insérer une image" onClick={() => fileInput.current?.click()} />}
 
-        <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />
+        {allowImages && <div style={{ width: 1, height: 18, background: border, margin: '0 4px' }} />}
 
         <ToolBtn label="✕" title="Effacer la mise en forme" onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()} style={{ color: '#e74c3c88' }} />
 
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={e => { insertImages(Array.from(e.target.files || [])); e.target.value = '' }}
-        />
+        {allowImages && (
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={e => { insertImages(Array.from(e.target.files || [])); e.target.value = '' }}
+          />
+        )}
       </div>
 
       {/* ── Zone de texte ── */}

@@ -111,4 +111,7 @@ export const PRERENDER_STYLE = `<style>
   .prerendered h2 { font-size: 16px; margin: 24px 0 8px; }
   .prerendered a { color: #a29bfe; }
   .prerendered img { max-width: 100%; height: auto; }
+  .prerendered dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0 0 16px; }
+  .prerendered dt { font-size: 12px; color: #8daacc; }
+  .prerendered dd { margin: 0; font-weight: 700; }
 </style>`

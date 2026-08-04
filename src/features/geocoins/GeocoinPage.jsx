@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import Logo from '../../components/Logo.jsx'
 import PublicFooter from '../../components/PublicFooter.jsx'
-import { apiGetCards, apiGetPublicConfig } from '../../services/api.js'
+import { apiGetCards, apiGetPublicConfig, apiGetCardOwners } from '../../services/api.js'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { RC, cardName, cardLongDescription, rarityLabel, typeLabel } from '../../data/cards.js'
 import { geocoinIdFromSlug, buildPath } from '../../routes.js'
 import { isPublicGeocoin, relatedGeocoins } from './publicGeocoins.js'
+import { richTextHtml, richTextLength } from '../../utils/richText.js'
+import { geocacheType, geocacheTypeLabel, gcCodeUrl } from '../../data/geocaching.js'
+import RichContent from '../docs/RichContent.jsx'
 
 /**
  * Fiche publique d'un geocoin — page d'atterrissage depuis les moteurs.
@@ -16,6 +19,41 @@ import { isPublicGeocoin, relatedGeocoins } from './publicGeocoins.js'
  * l'application dès l'hydratation : le visiteur venu de Google verrait la page
  * correcte disparaître sous ses yeux.
  */
+/**
+ * Bloc de caractéristiques.
+ *
+ * La fiche mélange deux sources qu'il ne faut surtout pas confondre : ce que le
+ * JEU sait du geocoin (rareté, forge, collectionneurs) et ce que geocaching.com
+ * dit de la CACHE à laquelle il rend hommage (type, code GC, poseur). Deux
+ * panneaux distincts, deux couleurs d'accent : on voit d'un coup d'œil de qui
+ * vient quelle information.
+ */
+function FactPanel({ icon, title, accent, rows, cardBg, border, textColor, mutedColor }) {
+  const visible = rows.filter(r => r && r.value !== null && r.value !== undefined && r.value !== '')
+  if (!visible.length) return null
+  return (
+    <section style={{
+      background: cardBg, border: `1px solid ${border}`, borderTop: `3px solid ${accent}`,
+      borderRadius: 12, padding: '14px 16px', minWidth: 0,
+    }}>
+      <h2 style={{
+        margin: '0 0 10px', fontSize: 11, fontWeight: 900, letterSpacing: 1,
+        textTransform: 'uppercase', color: accent, display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <span aria-hidden="true">{icon}</span>{title}
+      </h2>
+      <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '7px 14px', alignItems: 'baseline' }}>
+        {visible.map(r => (
+          <Fragment key={r.label}>
+            <dt style={{ fontSize: 11, fontWeight: 700, color: mutedColor, whiteSpace: 'nowrap' }}>{r.label}</dt>
+            <dd style={{ margin: 0, fontSize: 13.5, fontWeight: 800, color: textColor, textAlign: 'right', wordBreak: 'break-word' }}>{r.value}</dd>
+          </Fragment>
+        ))}
+      </dl>
+    </section>
+  )
+}
+
 export default function GeocoinPage({ slug, onNavigate }) {
   const { t, lang } = useT()
   const { theme, mode } = useTheme()
@@ -23,6 +61,10 @@ export default function GeocoinPage({ slug, onNavigate }) {
   // Les libellés de types vivent dans la config publique, pas sur la carte : sans
   // eux, une page anglaise afficherait le type en français.
   const [typeTranslations, setTypeTranslations] = useState({})
+  // Nombre de collectionneurs par geocoin. `null` tant qu'on ne sait pas : c'est
+  // une information sociale, une fiche ne doit jamais afficher « 0 joueur » à
+  // cause d'un appel qui n'a pas encore répondu ou qui a échoué.
+  const [owners, setOwners] = useState(null)
   const id = geocoinIdFromSlug(slug)
 
   useEffect(() => {
@@ -32,6 +74,9 @@ export default function GeocoinPage({ slug, onNavigate }) {
       .catch(() => { if (alive) setPool([]) })
     apiGetPublicConfig()
       .then(({ data }) => { if (alive && data?.config?.type_translations) setTypeTranslations(data.config.type_translations) })
+      .catch(() => {})
+    apiGetCardOwners()
+      .then(({ data }) => { if (alive && data?.owners) setOwners(data.owners) })
       .catch(() => {})
     return () => { alive = false }
   }, [])
@@ -84,13 +129,53 @@ export default function GeocoinPage({ slug, onNavigate }) {
               {cardName(card, lang)}
             </h1>
 
-            <p style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '0 0 20px', fontSize: 13, fontWeight: 800 }}>
-              {rc && <span style={{ color: rc.color, background: `${rc.color}1f`, padding: '3px 10px', borderRadius: 999 }}>{rarityLabel(card.rarity, t)}</span>}
-              {card.type && <span style={{ color: mutedColor }}>{typeLabel(card.type, typeTranslations, lang)}</span>}
-            </p>
+            {/* En-tête : ce que dit le jeu / ce que dit geocaching.com */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 12, margin: '0 0 24px' }}>
+              <FactPanel
+                icon="🪙" title={t('geocoin_facts_game')} accent={rc?.color || theme.gold}
+                cardBg={cardBg} border={theme.border} textColor={textColor} mutedColor={mutedColor}
+                rows={[
+                  { label: t('geocoin_label_category'), value: card.type ? typeLabel(card.type, typeTranslations, lang) : null },
+                  { label: t('geocoin_label_rarity'), value: rc
+                    ? <span style={{ color: rc.color, background: `${rc.color}1f`, padding: '2px 10px', borderRadius: 999 }}>{rarityLabel(card.rarity, t)}</span>
+                    : rarityLabel(card.rarity, t) },
+                  { label: t('geocoin_label_forge'), value: card.forgeable
+                    ? `🔨 ${t('geocoin_forge_yes')}`
+                    : t('geocoin_forge_no') },
+                  // Ligne absente tant que le compte n'est pas connu : afficher
+                  // « 0 joueur » sur un appel en cours serait un mensonge.
+                  { label: t('geocoin_label_owners'), value: owners === null ? null
+                    : (owners[card.id] > 0 ? t('geocoin_owners_count', { n: owners[card.id] }) : t('geocoin_owners_none')) },
+                ]}
+              />
+              <FactPanel
+                icon="🧭" title={t('geocoin_facts_gc')} accent="#00b894"
+                cardBg={cardBg} border={theme.border} textColor={textColor} mutedColor={mutedColor}
+                rows={[
+                  { label: t('geocoin_label_cache_type'), value: card.gc_cache_type
+                    ? `${geocacheType(card.gc_cache_type)?.icon ?? ''} ${geocacheTypeLabel(card.gc_cache_type, lang)}`.trim()
+                    : null },
+                  { label: t('geocoin_label_gc_code'), value: card.gc_code
+                    ? <a href={gcCodeUrl(card.gc_code)} target="_blank" rel="noopener noreferrer nofollow"
+                        style={{ color: '#00b894', textDecoration: 'none', borderBottom: '1px dotted #00b894' }}>{card.gc_code} ↗</a>
+                    : null },
+                  { label: t('geocoin_label_gc_owner'), value: card.gc_owner || null },
+                ]}
+              />
+            </div>
 
-            {cardLongDescription(card, lang) && (
-              <p style={{ fontSize: 15, lineHeight: 1.6, margin: '0 0 28px', whiteSpace: 'pre-line' }}>{cardLongDescription(card, lang)}</p>
+            {/* Contenu riche saisi dans l'admin (titres, listes, liens…).
+                `richTextHtml` couvre aussi les fiches rédigées avant l'éditeur,
+                restées en texte brut : leurs sauts de ligne deviennent des
+                paragraphes au lieu de fondre en un seul pavé.
+                La couleur est passée EXPLICITEMENT : le contenu vient d'un
+                éditeur, donc peut porter ses propres couleurs, et hériter en
+                silence a déjà donné du texte sombre sur fond sombre. */}
+            {richTextLength(cardLongDescription(card, lang)) > 0 && (
+              <RichContent
+                html={richTextHtml(cardLongDescription(card, lang))}
+                style={{ fontSize: 15, lineHeight: 1.7, margin: '0 0 28px', color: textColor }}
+              />
             )}
 
             <a

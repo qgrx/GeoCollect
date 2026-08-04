@@ -8,6 +8,7 @@
 import { geocoinSlug } from '../../routes.js'
 import { cardLongDescription } from '../../data/cards.js'
 import { DEFAULT_LANG } from '../../seo/site.js'
+import { richTextLength } from '../../utils/richText.js'
 
 /**
  * Seuls les geocoins d'hommage sont publiés.
@@ -65,13 +66,17 @@ export function publicGeocoins(pool) {
  *
  * La langue n'entre pas en jeu : `cardLongDescription` retombe sur la langue par
  * défaut quand une traduction manque, donc une fiche décrite l'est partout.
+ *
+ * Le seuil porte sur le TEXTE, balisage exclu : la description est saisie dans
+ * un éditeur riche, et compter son HTML laisserait entrer au sitemap une fiche
+ * dont les `<p>`, `<strong>` et attributs de lien font tout le volume.
  */
 export const MIN_INDEXABLE_DESCRIPTION = 160
 
 export function isIndexableGeocoin(card) {
   // `fallback: false` — la description courte de la carte ne doit jamais suffire
   // à faire indexer une fiche qui n'a pas de contenu propre.
-  return cardLongDescription(card, DEFAULT_LANG, { fallback: false }).trim().length >= MIN_INDEXABLE_DESCRIPTION
+  return richTextLength(cardLongDescription(card, DEFAULT_LANG, { fallback: false })) >= MIN_INDEXABLE_DESCRIPTION
 }
 
 /**

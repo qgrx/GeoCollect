@@ -68,6 +68,15 @@ describe('isIndexableGeocoin', () => {
   it('tient compte de la traduction dans la langue par défaut', () => {
     expect(isIndexableGeocoin({ description_long: '', description_long_translations: { en: long } })).toBe(true)
   })
+
+  it('mesure le TEXTE, pas le balisage de l’éditeur riche', () => {
+    // Un habillage HTML ne raconte rien de plus : il ne doit pas faire franchir
+    // le seuil à une fiche qui reste vide de contenu.
+    const court = `<h2>Titre</h2><p><a href="https://www.geocaching.com/geocache/GC1234_une-cache">${'x'.repeat(100)}</a></p>`
+    expect(court.length).toBeGreaterThan(MIN_INDEXABLE_DESCRIPTION)
+    expect(isIndexableGeocoin({ description_long: court })).toBe(false)
+    expect(isIndexableGeocoin({ description_long: `<p>${long}</p>` })).toBe(true)
+  })
 })
 
 describe('relatedGeocoins', () => {

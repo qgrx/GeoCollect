@@ -102,6 +102,8 @@ async function apiFetch(path, options = {}) {
 
 // ─── Cards ────────────────────────────────────────────────────────────────────
 export const apiGetCards = () => apiFetch('/api/cards')
+// Nombre de collectionneurs par geocoin (public, mis en cache 10 min côté API).
+export const apiGetCardOwners = () => apiFetch('/api/cards/owners')
 
 // ─── Collection ───────────────────────────────────────────────────────────────
 export const apiGetCollection   = ()          => apiFetch('/api/collection')
@@ -310,6 +312,9 @@ export const apiCreateAchievementDef   = (body)   => apiFetch('/api/admin/achiev
 export const apiUpdateAchievementDef   = (id, body) => apiFetch(`/api/admin/achievement-definitions/${id}`, { method: 'PATCH', body })
 export const apiDeleteAchievementDef   = (id)     => apiFetch(`/api/admin/achievement-definitions/${id}`, { method: 'DELETE' })
 export const apiAdminGetCards         = () => apiFetch('/api/admin/cards')
+// Force le Deploy Hook Vercel : les fiches /geocoins/… sont des pages statiques
+// figées au dernier build, et rien ne le relance automatiquement pour elles.
+export const apiAdminDeployFrontend   = (reason) => apiFetch('/api/admin/deploy-frontend', { method: 'POST', body: { reason } })
 export const apiReleaseHiddenCards    = () => apiFetch('/api/admin/cards/release-hidden', { method: 'POST' })
 // Publication d'une sélection de cartes cachées : publish_at null → tout de suite,
 // publish_at ISO futur → programmation (le cardPublishScheduler s'en charge).

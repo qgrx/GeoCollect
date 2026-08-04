@@ -40,6 +40,8 @@ const { TRANSLATIONS } = await import('../src/i18n/translations.js')
 const { cardName, cardLongDescription, typeLabel, RARITY_CONFIG } = await import('../src/data/cards.js')
 const { publicGeocoins, relatedGeocoins, isIndexableGeocoin, MIN_INDEXABLE_DESCRIPTION } =
   await import('../src/features/geocoins/publicGeocoins.js')
+const { richTextHtml } = await import('../src/utils/richText.js')
+const { geocacheTypeLabel, gcCodeUrl } = await import('../src/data/geocaching.js')
 
 const API = (process.env.VITE_API_URL || '').replace(/\/$/, '')
 
@@ -175,22 +177,33 @@ async function buildDocs(route, lang, content) {
 // ─── Fiches geocoin ───────────────────────────────────────────────────────────
 
 /**
- * Texte libre saisi par un admin → paragraphes HTML. Les descriptions longues
- * sont écrites dans un simple textarea : leurs sauts de ligne portent la
- * structure, et les perdre transformerait le texte en un unique pavé.
+ * Description longue → HTML de la page statique.
+ *
+ * `richTextHtml` rend son HTML au contenu de l'éditeur riche et convertit en
+ * paragraphes les fiches restées en texte brut (celles d'avant l'éditeur) ;
+ * `sanitize` applique ensuite l'allowlist de l'application — c'est la même
+ * chaîne que le rendu React, donc robots et visiteurs voient la même page.
  */
-function paragraphs(text) {
-  return String(text ?? '')
-    .split(/\n\s*\n/)
-    .map(p => p.trim())
-    .filter(Boolean)
-    .map(p => `<p>${escapeText(p).replace(/\n/g, '<br />')}</p>`)
-    .join('\n')
-}
+const longDescriptionHtml = (value) => sanitize(richTextHtml(value))
 
 const rarityLabelFor = (rarity, lang) => {
   const rc = RARITY_CONFIG[rarity]
   return rc ? (tr(lang, rc.labelKey) || rc.label) : rarity
+}
+
+/**
+ * Caractéristiques de la fiche, en deux listes de définitions : ce que dit le
+ * JEU, puis ce que dit geocaching.com de la cache honorée.
+ *
+ * Le composant React affiche exactement les mêmes lignes : un crawler et un
+ * visiteur doivent lire la même chose, sinon on sert deux pages différentes.
+ * Une ligne sans valeur est omise — pas de « Poseur : — » dans le HTML indexé.
+ */
+function factList(rows, heading) {
+  const kept = rows.filter(([, v]) => v !== null && v !== undefined && v !== '')
+  if (!kept.length) return ''
+  const items = kept.map(([k, v]) => `<dt>${escapeText(k)}</dt><dd>${v}</dd>`).join('')
+  return `<section><h2>${escapeText(heading)}</h2><dl>${items}</dl></section>`
 }
 
 async function buildGeocoin(card, related, lang) {
@@ -203,11 +216,28 @@ async function buildGeocoin(card, related, lang) {
     .map(c => `<li><a href="${buildPath('geocoin', { lang, param: c.slug })}">${escapeText(cardName(c, lang))}</a></li>`)
     .join('')
 
+  const nbOwners = cardOwners[card.id] ?? cardOwners[String(card.id)]
+  const gameFacts = factList([
+    [tr(lang, 'geocoin_label_category'), type ? escapeText(type) : ''],
+    [tr(lang, 'geocoin_label_rarity'),   escapeText(rar)],
+    [tr(lang, 'geocoin_label_forge'),    escapeText(tr(lang, card.forgeable ? 'geocoin_forge_yes' : 'geocoin_forge_no'))],
+    [tr(lang, 'geocoin_label_owners'),   nbOwners === undefined ? ''
+      : escapeText(nbOwners > 0 ? tr(lang, 'geocoin_owners_count').replace('{n}', nbOwners) : tr(lang, 'geocoin_owners_none'))],
+  ], tr(lang, 'geocoin_facts_game'))
+
+  const gcFacts = factList([
+    [tr(lang, 'geocoin_label_cache_type'), card.gc_cache_type ? escapeText(geocacheTypeLabel(card.gc_cache_type, lang)) : ''],
+    [tr(lang, 'geocoin_label_gc_code'),    card.gc_code
+      ? `<a href="${escapeText(gcCodeUrl(card.gc_code))}" rel="noopener noreferrer nofollow">${escapeText(card.gc_code)}</a>` : ''],
+    [tr(lang, 'geocoin_label_gc_owner'),   card.gc_owner ? escapeText(card.gc_owner) : ''],
+  ], tr(lang, 'geocoin_facts_gc'))
+
   const body = `<main class="prerendered">
 <h1>${escapeText(name)}</h1>
 ${card.image_url ? `<img src="${escapeText(card.image_url)}" alt="${escapeText(name)}" width="320" height="320" />` : ''}
-<p>${escapeText(rar)}${type ? ` · ${escapeText(type)}` : ''}</p>
-${paragraphs(desc)}
+${gameFacts}
+${gcFacts}
+${longDescriptionHtml(desc)}
 ${links ? `<nav><h2>${escapeText(tr(lang, 'geocoin_related'))}</h2><ul>${links}</ul></nav>` : ''}
 </main>`
 
@@ -289,6 +319,10 @@ for (const route of DOCS_ROUTES) {
 // de sitemap, pour qu'aucune URL indexée ne pointe sur une page absente.
 const cardsJson = await apiGet('/api/cards')
 const geocoins  = publicGeocoins(cardsJson?.data?.cards ?? cardsJson?.cards ?? [])
+// Nombre de collectionneurs par geocoin. Absent (API en retard sur ce build,
+// endpoint injoignable) = la ligne disparaît de la fiche, rien ne casse.
+const ownersJson = await apiGet('/api/cards/owners')
+const cardOwners = ownersJson?.data?.owners ?? ownersJson?.owners ?? {}
 
 let indexableGeocoins = 0
 for (const card of geocoins) {

@@ -3,10 +3,13 @@ import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
-import { apiAdminSaveCardNameTrans, apiAdminSaveCardDescTrans, apiAdminSaveCardLongDesc, apiGetAdminSeasons, apiReleaseHiddenCards } from '../../services/api.js';
+import { apiAdminSaveCardNameTrans, apiAdminSaveCardDescTrans, apiAdminSaveCardLongDesc, apiGetAdminSeasons, apiReleaseHiddenCards, apiAdminDeployFrontend } from '../../services/api.js';
 import { PUBLISHED_TYPES, MIN_INDEXABLE_DESCRIPTION } from '../geocoins/publicGeocoins.js';
+import { TRIBUTE_TYPES, GEOCACHE_TYPES, GEOCACHE_TYPE_GROUPS, gcCodeIssue, gcCodeUrl, gcCodeFromInput } from '../../data/geocaching.js';
 import Card from '../../components/Card.jsx';
 import AdminCardBatch from './AdminCardBatch.jsx';
+import RichTextEditor from '../docs/RichTextEditor.jsx';
+import { richTextHtml, richTextLength } from '../../utils/richText.js';
 
 // Petits utilitaires dupliqués pour rendre le composant autonome
 function Fld({lbl,children}){
@@ -49,7 +52,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const [filterForgeCostVal, setFilterForgeCostVal] = useState('');
   const advActiveCount = [filterSellable, filterMinPrice, filterShiny, filterForgeCost].filter(Boolean).length;
   const [circulation, setCirculation] = useState(null);
-  const [nc, setNc] = useState({ name: "", type: cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "", forgeable: false, forgeCost: "", shiny_forge_cost: null, season_id: null, hidden: false });
+  const [nc, setNc] = useState({ name: "", type: cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "", forgeable: false, forgeCost: "", shiny_forge_cost: null, season_id: null, hidden: false, gc_code: "", gc_owner: "", gc_cache_type: "" });
 
   const displayCards = useMemo(() => {
     const RARITY_ORDER = { légendaire: 0, épique: 1, rare: 2, commun: 3 };
@@ -82,6 +85,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   }, [cardPool, filterType, filterRarity, filterSeason, search, filterForgeable, filterHidden, filterSellable, filterMinPrice, filterMinPriceVal, filterShiny, filterShinyVal, filterForgeCost, filterForgeCostVal]);
 
   const [seasons, setSeasons] = useState([]);
+  const [deploying, setDeploying] = useState(false);
   const [transCard, setTransCard] = useState(null);
   const [transCardLang, setTransCardLang] = useState('en');
   const [transDescLang, setTransDescLang] = useState('en');
@@ -208,7 +212,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
 
   function closeForm() {
     setEditCard(null); setNewCardMode(false); setBatchMode(false);
-    setNc({ name:"", type: filterType !== 'Tous' ? filterType : cardTypes[0]||"", rarity:"commun", image:null, thumbnail:null, desc:"", sellable:true, minPrice:"", forgeable:false, forgeCost:"", shiny_forge_cost:null, season_id:null });
+    setNc({ name:"", type: filterType !== 'Tous' ? filterType : cardTypes[0]||"", rarity:"commun", image:null, thumbnail:null, desc:"", sellable:true, minPrice:"", forgeable:false, forgeCost:"", shiny_forge_cost:null, season_id:null, gc_code:"", gc_owner:"", gc_cache_type:"" });
     if (fileRef.current) fileRef.current.value = '';
     if (editFileRef.current) editFileRef.current.value = '';
   }
@@ -221,7 +225,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
           {editCard ? `✏️ ${editCard.name}` : newCardMode ? "➕ Nouvelle carte" : batchMode ? "📦 Création par lot" : "🃏 Geocoins"}
         </div>
         {!editCard && !newCardMode && !batchMode && (
-          <button onClick={()=>{ setNewCardMode(true); setNc({name:"",type:filterType!=='Tous'?filterType:cardTypes[0]||"",rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:"",shiny_forge_cost:null,season_id:null,hidden:false}); }}
+          <button onClick={()=>{ setNewCardMode(true); setNc({name:"",type:filterType!=='Tous'?filterType:cardTypes[0]||"",rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:"",shiny_forge_cost:null,season_id:null,hidden:false,gc_code:"",gc_owner:"",gc_cache_type:""}); }}
             style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"6px 14px",fontSize:12,borderRadius:8}}>➕ Nouvelle carte</button>
         )}
         {!editCard && !newCardMode && !batchMode && (
@@ -399,6 +403,49 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
           <div style={{flex:1,minWidth:240}}>
             {[["Nom de la carte","name","ex: Frostpike"],["Description","desc","Courte description…"]].map(([label,key,ph])=>(<Fld key={key} lbl={label}><input value={editCard?editCard[key]:nc[key]} onChange={e=>{editCard?setEditCard({...editCard,[key]:e.target.value}):setNc({...nc,[key]:e.target.value});}} placeholder={ph} style={INP}/></Fld>))}
             <Fld lbl="Type"><select value={editCard?editCard.type:nc.type} onChange={e=>{editCard?setEditCard({...editCard,type:e.target.value}):setNc({...nc,type:e.target.value});}} style={SEL}>{cardTypes.map(tp=><option key={tp} value={tp}>{tp}</option>)}</select></Fld>
+            {/* ── Cache honorée : réservé aux geocoins d'hommage ──
+                 Un geocoin de pays ou de chasseur de trésor ne renvoie à aucune
+                 cache du monde réel — le bloc n'apparaît donc que pour les types
+                 d'hommage. Les valeurs déjà saisies sont conservées si le type
+                 change : elles réapparaissent telles quelles au retour. */}
+            {(() => {
+              const src = editCard || nc;
+              if (!TRIBUTE_TYPES.includes(src.type)) return null;
+              const set = patch => { editCard ? setEditCard({...editCard, ...patch}) : setNc({...nc, ...patch}); };
+              const issue = gcCodeIssue(src.gc_code);
+              // Le lien se construit sur le code NORMALISÉ — celui qui sera
+              // réellement enregistré — et pas sur la saisie, qui peut déjà être
+              // une URL collée.
+              const code  = gcCodeFromInput(src.gc_code);
+              return (
+                <div style={{background:"#0a2436",border:"1.5px solid #00b89444",borderRadius:10,padding:"12px 12px 2px",marginBottom:12}}>
+                  <div style={{fontWeight:900,color:"#00b894",fontSize:12,marginBottom:3}}>🧭 Cache honorée par ce geocoin</div>
+                  <div style={{fontSize:11,color:"#8887a8",marginBottom:10}}>Facultatif — la cache réelle à laquelle ce geocoin rend hommage.</div>
+                  <Fld lbl="Code GC">
+                    <input value={src.gc_code??''} onChange={e=>set({gc_code:e.target.value})}
+                      placeholder="GC1A2B3 — ou collez le lien de la cache" style={INP}/>
+                    {issue && <div style={{fontSize:11,color:"#e17055",fontWeight:700,marginTop:4}}>⚠️ {issue}</div>}
+                    {!issue && code && <a href={gcCodeUrl(code)} target="_blank" rel="noreferrer" style={{fontSize:11,color:"#74b9ff",fontWeight:700,marginTop:4,display:"inline-block"}}>↗ Ouvrir {code} sur geocaching.com</a>}
+                  </Fld>
+                  <Fld lbl="Poseur">
+                    <input value={src.gc_owner??''} onChange={e=>set({gc_owner:e.target.value})}
+                      placeholder="Pseudo geocaching.com du poseur" style={INP}/>
+                  </Fld>
+                  <Fld lbl="Type de cache">
+                    <select value={src.gc_cache_type??''} onChange={e=>set({gc_cache_type:e.target.value||null})} style={SEL}>
+                      <option value="">— Non renseigné —</option>
+                      {GEOCACHE_TYPE_GROUPS.map(g=>(
+                        <optgroup key={g} label={g}>
+                          {GEOCACHE_TYPES.filter(t=>t.group===g).map(t=>(
+                            <option key={t.code} value={t.code}>{t.icon} {t.label.fr}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </Fld>
+                </div>
+              );
+            })()}
             <Fld lbl="Rareté (définit les couleurs)"><select value={editCard?editCard.rarity:nc.rarity} onChange={e=>{editCard?setEditCard({...editCard,rarity:e.target.value}):setNc({...nc,rarity:e.target.value});}} style={SEL}>{["commun","rare","épique","légendaire"].map(r=><option key={r} value={r}>{RC[r].label}</option>)}</select><div style={{marginTop:5,height:6,borderRadius:3,background:`linear-gradient(90deg,${c1p},${c2p})`,transition:"background .3s"}}/></Fld>
             <Fld lbl="Image PNG"><div onClick={()=>(editCard?editFileRef:fileRef).current.click()} style={{border:"2px dashed #ffffff33",borderRadius:9,padding:"13px",textAlign:"center",cursor:"pointer",background:"#ffffff08"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#f9ca2466"} onMouseLeave={e=>e.currentTarget.style.borderColor="#ffffff33"}>{(editCard?editCard.image:nc.image)?<img src={editCard?editCard.image:nc.image} style={{maxWidth:"100%",maxHeight:80,objectFit:"contain",borderRadius:5}} alt="prev"/>:<div style={{color:"#8daacc",fontSize:12}}>📁 Choisir un PNG<br/><span style={{fontSize:10,color:"#a8bfcf"}}>Carré, fond transparent recommandé</span></div>}</div><input ref={editCard?editFileRef:fileRef} type="file" accept=".png,image/png" onChange={e=>{const src=editCard||nc;imgUpload(e,({imageBase64, thumbnailBase64})=>editCard?setEditCard({...editCard,image:imageBase64,thumbnail:thumbnailBase64}):setNc({...nc,image:imageBase64,thumbnail:thumbnailBase64}),{name:src.name||'',type:src.type||'',rarity:src.rarity||''});}} style={{display:"none"}}/></Fld>
             <Fld lbl="Saison (optionnel)"><select value={(editCard?editCard.season_id:nc.season_id)??''} onChange={e=>{const v=e.target.value===''?null:+e.target.value;editCard?setEditCard({...editCard,season_id:v}):setNc({...nc,season_id:v});}} style={SEL}><option value="">Aucune saison (disponible en permanence)</option>{seasons.map(s=><option key={s.id} value={s.id}>{s.name} ({s.start_date} → {s.end_date})</option>)}</select></Fld>
@@ -451,7 +498,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
                 <span style={{color:"#aaa",fontSize:12}}>pts</span>
               </div>
             </Fld>
-            <div style={{display:"flex",gap:8,marginTop:4}}>{editCard?(<><button onClick={async()=>{if(!editCard.name.trim()){setMsg("❌ Nom requis.");return;}const payload={...editCard, image_url: editCard.image, image_url_thumb: editCard.thumbnail, is_offered: !!editCard.is_offered, forgeable: !!editCard.forgeable, forge_cost: editCard.forgeable ? (editCard.forge_cost != null ? editCard.forge_cost : (editCard.forgeCost !== '' && editCard.forgeCost != null ? +editCard.forgeCost : null)) : null}; if(payload.minPrice!==undefined){payload.min_price=payload.minPrice; delete payload.minPrice;} delete payload.image; delete payload.thumbnail; delete payload.forgeCost; const err=await onEditCard(payload);if(err){setMsg("❌ "+err);return;}onUpdateCardInPool?.(payload);closeForm();setMsg(`✅ "${editCard.name}" mis à jour !`);}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>Enregistrer ✏️</button><button onClick={closeForm} style={{...BTN("#ffffff18"),padding:"11px",borderRadius:10}}>Annuler</button><button onClick={async()=>{if(!window.confirm(`Supprimer définitivement "${editCard.name}" ?`)) return;const name=editCard.name;const err=await onDeleteCard(editCard.id);if(err){setMsg("❌ "+err);return;}closeForm();setMsg(`✅ "${name}" supprimée.`);}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)","#fff"),padding:"11px",borderRadius:10}} title="Supprimer cette carte">🗑️</button></>):(<button onClick={async()=>{if(!nc.name.trim()){setMsg("❌ Nom requis.");return;}const payload={name:nc.name.trim(), type:nc.type||cardTypes[0]||"", rarity:nc.rarity, image_url:nc.image, image_url_thumb:nc.thumbnail, desc:nc.desc, sellable:(nc.forgeable||nc.hidden)?false:nc.sellable, min_price:nc.minPrice||null, forgeable:!!nc.forgeable, forge_cost:nc.forgeable?(nc.forge_cost??null):null, season_id:nc.season_id||null, offseason_gold_cost:nc.offseason_gold_cost??null, offseason_pf_cost:nc.offseason_pf_cost??null, hidden:!!nc.hidden}; const err=await onAddCard(payload);if(err){setMsg("❌ "+err);return;}setMsg(`✅ "${nc.name}" créée !`);closeForm();}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>{t("admin_create_card")}</button>)}</div>
+            <div style={{display:"flex",gap:8,marginTop:4}}>{editCard?(<><button onClick={async()=>{if(!editCard.name.trim()){setMsg("❌ Nom requis.");return;}const payload={...editCard, image_url: editCard.image, image_url_thumb: editCard.thumbnail, is_offered: !!editCard.is_offered, gc_code: gcCodeFromInput(editCard.gc_code), gc_owner: editCard.gc_owner?.trim()||null, gc_cache_type: editCard.gc_cache_type||null, forgeable: !!editCard.forgeable, forge_cost: editCard.forgeable ? (editCard.forge_cost != null ? editCard.forge_cost : (editCard.forgeCost !== '' && editCard.forgeCost != null ? +editCard.forgeCost : null)) : null}; if(payload.minPrice!==undefined){payload.min_price=payload.minPrice; delete payload.minPrice;} delete payload.image; delete payload.thumbnail; delete payload.forgeCost; const err=await onEditCard(payload);if(err){setMsg("❌ "+err);return;}onUpdateCardInPool?.(payload);closeForm();setMsg(`✅ "${editCard.name}" mis à jour !`);}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>Enregistrer ✏️</button><button onClick={closeForm} style={{...BTN("#ffffff18"),padding:"11px",borderRadius:10}}>Annuler</button><button onClick={async()=>{if(!window.confirm(`Supprimer définitivement "${editCard.name}" ?`)) return;const name=editCard.name;const err=await onDeleteCard(editCard.id);if(err){setMsg("❌ "+err);return;}closeForm();setMsg(`✅ "${name}" supprimée.`);}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)","#fff"),padding:"11px",borderRadius:10}} title="Supprimer cette carte">🗑️</button></>):(<button onClick={async()=>{if(!nc.name.trim()){setMsg("❌ Nom requis.");return;}const payload={name:nc.name.trim(), type:nc.type||cardTypes[0]||"", rarity:nc.rarity, image_url:nc.image, image_url_thumb:nc.thumbnail, desc:nc.desc, sellable:(nc.forgeable||nc.hidden)?false:nc.sellable, min_price:nc.minPrice||null, forgeable:!!nc.forgeable, forge_cost:nc.forgeable?(nc.forge_cost??null):null, season_id:nc.season_id||null, offseason_gold_cost:nc.offseason_gold_cost??null, offseason_pf_cost:nc.offseason_pf_cost??null, hidden:!!nc.hidden, gc_code:gcCodeFromInput(nc.gc_code), gc_owner:nc.gc_owner?.trim()||null, gc_cache_type:nc.gc_cache_type||null}; const err=await onAddCard(payload);if(err){setMsg("❌ "+err);return;}setMsg(`✅ "${nc.name}" créée !`);closeForm();}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>{t("admin_create_card")}</button>)}</div>
           </div>
           <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:7}}><div style={{fontSize:10,color:"#8daacc",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Aperçu</div>{(()=>{const src=editCard||nc;const {c1,c2}=cardCC(src.rarity);const isLeg=src.rarity==="légendaire";return(<div style={{position:"relative",width:148,height:190,borderRadius:16,border:isLeg?`2px solid ${c1}`:`1.5px solid ${c1}66`,boxShadow:isLeg?`0 0 20px ${c1}66,0 4px 20px #0004`:"0 4px 14px #0003",overflow:"hidden",background:src.image?"transparent":`linear-gradient(145deg,${c1}44,${c2}66)`,fontFamily:"'Nunito',sans-serif"}}>{isLeg&&<div style={{position:"absolute",inset:0,borderRadius:16,zIndex:2,background:"linear-gradient(135deg,transparent 40%,#ffffff1a 50%,transparent 60%)",backgroundSize:"400px 100%",animation:"shimmer 2.5s linear infinite",pointerEvents:"none"}}/>}<div style={{position:"absolute",inset:0,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:6}}>{src.image?<img src={src.image} style={{width:"100%",height:"88%",objectFit:"contain"}} alt=""/>:<div style={{fontSize:52,opacity:.22,marginTop:40}}>🃏</div>}</div><div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,background:`linear-gradient(to top,${c1}ee 0%,${c1}99 50%,transparent 100%)`,padding:"28px 8px 7px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:13,color:"#fff",textShadow:"0 1px 4px #0008",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",letterSpacing:.3}}>{src.name||"Nom"}</div></div><div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:4,height:4,background:`linear-gradient(90deg,${c1},${c2})`}}/>{src.forgeable&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#6c5ce7cc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>🔨 {src.forge_cost??src.forgeCost??'?'}pts</div>}{!src.forgeable&&!src.hidden&&src.sellable===false&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#e74c3ccc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>NON VENDABLE</div>}{src.hidden&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#e17055ee",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>🚫 CACHÉE</div>}{!src.forgeable&&src.minPrice>0&&<div style={{position:"absolute",top:5,right:5,zIndex:5,background:"#f39c12cc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>MIN {src.minPrice}G</div>}</div>);})()}</div>
         </div>
@@ -528,7 +575,10 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
       {editCard && (() => {
         const published  = PUBLISHED_TYPES.includes(editCard.type);
         const longFr     = editCard.description_long || "";
-        const indexable  = longFr.trim().length >= MIN_INDEXABLE_DESCRIPTION;
+        // On compte le TEXTE, pas le balisage : sinon quelques `<p>` suffiraient
+        // à franchir le seuil d'indexation sans rien raconter de plus.
+        const textLen    = richTextLength(longFr);
+        const indexable  = textLen >= MIN_INDEXABLE_DESCRIPTION;
         return (
           <div style={{background:"#0a2a1a",border:"1.5px solid #00b89466",borderRadius:12,padding:16,marginTop:12}}>
             <div style={{fontWeight:900,color:"#00b894",fontSize:13,marginBottom:6}}>
@@ -537,20 +587,26 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
             <div style={{fontSize:11,color:"#8887a8",marginBottom:10,lineHeight:1.5}}>
               Texte de la page <code>/geocoins/…</code> visible par les moteurs de recherche.
               Distinct de la description courte, qui reste affichée sur la carte dans le jeu.
+              Mise en forme et liens (🔗) disponibles ; pas d'images, elles seraient
+              embarquées dans le pool de cartes de tous les joueurs.
               {published
                 ? <> Cette page n'est <b>référencée</b> qu'à partir de <b>{MIN_INDEXABLE_DESCRIPTION} caractères</b> — en dessous elle reste consultable mais en <code>noindex</code>.</>
                 : <> ⚠️ Seuls les geocoins de type <b>{PUBLISHED_TYPES.join(", ")}</b> ont une page publique : ce texte ne sera pas publié pour le type « {editCard.type} ».</>}
             </div>
 
             <Fld lbl="Description longue (français, texte source)">
-              <textarea
-                value={longFr}
-                onChange={e=>setEditCard(c=>({...c,description_long:e.target.value}))}
-                style={{...INP,minHeight:150,resize:"vertical"}}
+              {/* Éditeur riche, comme les notes de version : titres, listes,
+                  couleurs, tableaux et LIENS (bouton 🔗). Sans images : elles
+                  seraient intégrées en base64 dans la colonne, donc renvoyées à
+                  tous les joueurs avec le pool de cartes. */}
+              <RichTextEditor
+                value={richTextHtml(longFr)}
+                onChange={html=>setEditCard(c=>({...c,description_long:html}))}
+                allowImages={false}
                 placeholder="Raconte l'histoire de ce geocoin : la cache ou la personne à qui il rend hommage, le lieu, l'anecdote…"/>
             </Fld>
             <div style={{fontSize:11,color:indexable?"#00b894":"#e17055",fontWeight:800,marginTop:-4,marginBottom:10}}>
-              {longFr.trim().length} caractères — {indexable ? "✅ référençable" : `encore ${MIN_INDEXABLE_DESCRIPTION - longFr.trim().length} pour être référencée`}
+              {textLen} caractères — {indexable ? "✅ référençable" : `encore ${MIN_INDEXABLE_DESCRIPTION - textLen} pour être référencée`}
             </div>
 
             <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
@@ -563,10 +619,14 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
             </div>
             {TRANS_LANGS.filter(l=>l.code===transLongLang).map(l=>(
               <Fld key={l.code} lbl={`Description longue en ${l.label}`}>
-                <textarea
-                  value={editCard.description_long_translations?.[l.code]||""}
-                  onChange={e=>setEditCard(c=>({...c,description_long_translations:{...c.description_long_translations,[l.code]:e.target.value}}))}
-                  style={{...INP,minHeight:150,resize:"vertical"}} placeholder={`Description longue en ${l.label}…`}/>
+                {/* Clé sur la langue : chaque onglet a SON éditeur, dont le
+                    contenu ne peut pas déborder sur celui d'à côté. */}
+                <RichTextEditor
+                  key={l.code}
+                  value={richTextHtml(editCard.description_long_translations?.[l.code]||"")}
+                  onChange={html=>setEditCard(c=>({...c,description_long_translations:{...c.description_long_translations,[l.code]:html}}))}
+                  allowImages={false}
+                  placeholder={`Description longue en ${l.label}…`}/>
               </Fld>
             ))}
 
@@ -582,6 +642,24 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
             }} style={{...BTN("linear-gradient(135deg,#00b894,#55efc4)"),padding:"8px 18px",borderRadius:8,fontSize:12,marginTop:8}}>
               💾 Sauvegarder la description longue
             </button>
+
+            {/* La sauvegarde ne met à jour que la base : la page /geocoins/… est
+                un fichier statique du dernier build, et aucun hook ne part tout
+                seul pour les fiches geocoin (contrairement aux pages docs). */}
+            <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #ffffff14",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+              <button disabled={deploying} onClick={async()=>{
+                if(!window.confirm("Lancer un déploiement du site ?\n\nIl republie les pages statiques (/geocoins/…, FAQ, notes de version) avec le contenu actuel. Compter quelques minutes.")) return;
+                setDeploying(true);
+                const {data,error}=await apiAdminDeployFrontend(`admin: fiche geocoin ${editCard.id}`);
+                setDeploying(false);
+                setMsg(error ? "❌ "+error : `🚀 Déploiement lancé (${data?.reasons||"manuel"}) — les pages publiques se mettront à jour à la fin du build.`);
+              }} style={{...BTN(deploying?"#ffffff18":"linear-gradient(135deg,#6c5ce7,#a29bfe)"),padding:"8px 18px",borderRadius:8,fontSize:12,opacity:deploying?.6:1,cursor:deploying?"default":"pointer"}}>
+                {deploying ? "⏳ Déploiement…" : "🚀 Déployer le site"}
+              </button>
+              <div style={{fontSize:11,color:"#8887a8",flex:1,minWidth:180,lineHeight:1.4}}>
+                Nécessaire pour que le texte ci-dessus apparaisse sur la page publique et dans les aperçus de partage.
+              </div>
+            </div>
           </div>
         );
       })()}

@@ -16,7 +16,12 @@ function isDarkColor(c) {
   else if ((m = c.match(/^#([0-9a-f]{6})$/))) { r = parseInt(m[1].slice(0, 2), 16); g = parseInt(m[1].slice(2, 4), 16); b = parseInt(m[1].slice(4, 6), 16) }
   else if ((m = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/))) { r = +m[1]; g = +m[2]; b = +m[3] }
   else return false
-  return Math.max(r, g, b) <= 64
+  // Seuil relevé de 64 à 96 : les gris « presque noirs » des contenus collés
+  // depuis un traitement de texte ou une page web (rgb(55,65,81), #444, #555…)
+  // passaient à travers et donnaient du texte illisible sur le thème sombre.
+  // 96 reste sous les couleurs sombres de la palette de l'éditeur (#636e72),
+  // qui restent donc choisissables.
+  return Math.max(r, g, b) <= 96
 }
 
 /**
