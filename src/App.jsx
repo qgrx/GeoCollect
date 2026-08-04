@@ -36,6 +36,7 @@ import CollectionOverview from './components/CollectionOverview.jsx';
 import CardDetailModal from './components/CardDetailModal.jsx';
 import OnboardingTour from './components/OnboardingTour.jsx';
 import PseudoDisplay from './components/PseudoDisplay.jsx';
+import OverflowDebug from './components/OverflowDebug.jsx';
 import Avatar from './components/Avatar.jsx';
 import GeocachingModal from './features/geocaching/GeocachingPanel.jsx';
 import { getRank, isTopRank, rankCC, getRankLabel } from './utils/rankUtils.js';
@@ -2319,6 +2320,8 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', fontFamily: "'Nunito', sans-serif", color: theme.textPrimary, background: theme.bgMain, display: 'flex', flexDirection: 'column', paddingBottom: (auth.profile && isMobile) ? 68 : 0 }}>
+      {/* Sonde de débordement horizontal — éteinte sauf `?ovf=1` (cf. OverflowDebug.jsx) */}
+      <OverflowDebug />
       {gs.loadingData && <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 3, zIndex: 9999, background: 'linear-gradient(90deg,#74c7ec,#f9ca24,#e17055,#74c7ec)', backgroundSize: '300% 100%', animation: 'shimmer 1.2s linear infinite' }} />}
       <style>{`
         @keyframes pulseBadge { 0%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,.7)}70%{transform:scale(1.15);box-shadow:0 0 0 5px rgba(231,76,60,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(231,76,60,0)} }
