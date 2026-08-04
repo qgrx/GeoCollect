@@ -22,9 +22,26 @@ export function escapeText(s) {
 
 const identity = (h) => h ?? ''
 
+const NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
+
+/**
+ * Entités HTML → caractères. Une meta description est du TEXTE : l'échappement
+ * appliqué en amont y est donc à défaire, sinon `seoHead` le rejoue et
+ * « Plafonds hebdomadaires & mécénat » sort en `&amp;amp;` dans l'aperçu de
+ * partage. À n'appeler qu'APRÈS le retrait des balises — décoder d'abord
+ * ressusciterait un `&lt;script&gt;` en balise.
+ */
+function decodeEntities(text) {
+  return text.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (whole, ent) => {
+    if (ent[0] !== '#') return NAMED_ENTITIES[ent.toLowerCase()] ?? whole
+    const cp = ent[1].toLowerCase() === 'x' ? parseInt(ent.slice(2), 16) : Number(ent.slice(1))
+    return Number.isInteger(cp) && cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : whole
+  })
+}
+
 /** Premiers mots utiles du contenu, pour une meta description à défaut de copie dédiée. */
 export function excerpt(text, max = 155) {
-  const clean = String(text ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const clean = decodeEntities(String(text ?? '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim()
   if (clean.length <= max) return clean
   return clean.slice(0, max - 1).replace(/\s+\S*$/, '') + '…'
 }

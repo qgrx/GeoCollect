@@ -97,6 +97,17 @@ describe('excerpt', () => {
   it('laisse un texte court intact', () => {
     expect(excerpt('<b>court</b>', 40)).toBe('court')
   })
+
+  // seoHead rééchappe la description : laisser passer les entités produisait
+  // « &amp;amp; » dans l'aperçu Discord.
+  it('rend les entités à leur caractère — la description est du texte', () => {
+    expect(excerpt('<h2>Plafonds &amp; mécénat</h2>')).toBe('Plafonds & mécénat')
+    expect(excerpt('un&nbsp;espace &#39;cité&#39; &#x1F381;')).toBe("un espace 'cité' 🎁")
+  })
+
+  it('décode après le retrait des balises, jamais avant', () => {
+    expect(excerpt('&lt;script&gt;alert(1)&lt;/script&gt;')).toBe('<script>alert(1)</script>')
+  })
 })
 
 describe('escapeText', () => {

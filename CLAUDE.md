@@ -63,6 +63,14 @@ Les URLs indexables sont de **vrais fichiers** dans `dist/`, générés au build
   pré-rendue doit donc être ajoutée aux `rewrites`.
 - **Le domaine canonique est `geocoins.io`** (`src/seo/site.js`), jamais
   `window.location.origin` : `.fr` sert le même site et se ferait déclarer canonique.
+- **Le contenu éditorial de ces pages est une PHOTO prise au build.** Publier une
+  note de version, une entrée de FAQ ou une description de geocoin depuis l'admin
+  ne change que la base : le fichier `dist/` servi aux crawlers garde l'ancien
+  texte **et ses `og:*`**, alors que le visiteur avec JS voit la nouvelle version.
+  D'où l'aperçu Discord annonçant une note périmée (04/08). L'API rappelle le
+  build via un Deploy Hook Vercel après un `PATCH /api/docs/:page`
+  (`VERCEL_DEPLOY_HOOK_URL`, cf. `services/frontendRebuild.js` côté API) ; les
+  fiches geocoin, elles, attendent toujours un déploiement.
 - **`npm run build` interroge l'API** (`VITE_API_URL`). API injoignable = pages
   publiées sans contenu éditorial, avec avertissement — le build ne casse pas.
   `scripts/prerender.mjs` **n'est pas rejouable seul** : il consomme la coquille
