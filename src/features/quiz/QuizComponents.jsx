@@ -335,7 +335,17 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
   const [submitError,setSubmitError]=useState(null);
   // Anti-spam gradué : timestamp jusqu'auquel la saisie est bloquée (pénalité serveur
   // « trop d'essais »). Le décompte (penaltyLeft) se rafraîchit au ticker `elapsed`.
+  // `penaltyUntilRef` en double : le renvoi automatique ci-dessous lève le verrou et
+  // rappelle submit() dans la FOULÉE — un garde lisant l'état du rendre précédent
+  // (penaltyLeft encore > 0) le bloquerait.
   const [penaltyUntil,setPenaltyUntil]=useState(0);
+  const penaltyUntilRef=useRef(0);
+  // Réponse RETENUE par la pénalité anti-spam. Le serveur refuse l'essai AVANT de
+  // l'évaluer : la réponse n'a donc pas été jugée fausse, elle n'a pas été jugée du
+  // tout. On la garde (champ intact, pas de son d'erreur) et on la renvoie seul à la
+  // fin du décompte — sinon le joueur voit sa BONNE réponse traitée comme une erreur,
+  // perd sa saisie et doit la retaper (retour Denfire, 04/08).
+  const [heldAnswer,setHeldAnswer]=useState(null);
   // Question récupérée après le délai cadeau (protection anti-domination) : le
   // serveur ne l'envoie pas au leader tant que sa fenêtre n'est pas écoulée.
   const [revealed,setRevealed]=useState(null);
@@ -398,8 +408,9 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     if(status!=="open") return;
     if(tooLate) return;  // mode débutant : décompte terminé, réponse bloquée
     if(handicapLeft>0) return;  // série : cadeau aux autres, envoi bloqué côté client
-    if(penaltyLeft>0) return;  // anti-spam : pénalité en cours, on attend la fin du décompte
+    if(Date.now()<penaltyUntilRef.current) return;  // anti-spam : pénalité en cours, on attend la fin du décompte
     if(submittingRef.current) return
+    setHeldAnswer(null);  // une réponse part : plus rien en attente (la branche throttled ré-arme)
     submittingRef.current = true
     setIsSubmitting(true)
     const startedAt = Date.now()
@@ -412,10 +423,14 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     else if (result && result.handicap) { setSubmitError(t('streak_handicap_wait')); } // série : délai cadeau pas encore écoulé
     else if (result === 'fast') { setSubmitError("⏱️ Réponse trop rapide ! Lis bien la question."); setIsSubmitting(false); submittingRef.current=false; return; }
     else if (result && result.throttled) {
-      // Anti-spam gradué : trop d'essais → pénalité chronométrée. On arme le décompte,
-      // on vide l'input et on efface l'erreur (la bannière de pénalité prend le relais).
-      setPenaltyUntil(Date.now() + (result.wait_ms || 0));
-      setSubmitError(null); setInp(""); soundWrong();
+      // Anti-spam gradué : trop d'essais → pénalité chronométrée. Cet essai N'A PAS ÉTÉ
+      // JUGÉ (le serveur refuse avant d'évaluer) : surtout PAS de son d'erreur ni de
+      // champ vidé, qui le feraient passer pour une mauvaise réponse. On garde la saisie
+      // et on la renvoie automatiquement à la fin du décompte.
+      const until = Date.now() + (result.wait_ms || 0);
+      penaltyUntilRef.current = until; setPenaltyUntil(until);
+      setHeldAnswer(inp.trim() ? inp : null);
+      setSubmitError(null);
       setIsSubmitting(false); submittingRef.current=false; retryRef.current=0; return;
     }
     else if (result === 'blocked') { onClose?.(); }   // protection inter-modes (prochaine manche)
@@ -435,6 +450,19 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
     }
     else { soundWrong(); setShake(true); setInp(""); setTimeout(()=>setShake(false),480); retryRef.current=0; }
   }
+
+  // Fin de la pénalité anti-spam : on lève le verrou À L'HEURE EXACTE (le ticker
+  // `elapsed` a 1 s de granularité, une pénalité d'1 s pouvait donc paraître figée)
+  // et on renvoie la réponse retenue telle quelle. Marge de 120 ms : le serveur
+  // recompare à SON horloge, arriver 10 ms trop tôt relancerait un 429.
+  useEffect(()=>{
+    if(!penaltyUntil) return;
+    const id=setTimeout(()=>{
+      penaltyUntilRef.current=0; setPenaltyUntil(0);
+      if(heldAnswer&&!doneRef.current&&!submittingRef.current) submit();
+    },Math.max(0,penaltyUntil-Date.now())+120);
+    return ()=>clearTimeout(id);
+  },[penaltyUntil,heldAnswer]);
 
   // Texte "jusqu'à quand" pour la bannière de limite atteinte
   const limitWhen = useMemo(()=>{
@@ -770,7 +798,10 @@ export function QuizModal({quiz,onAnswer,onExpire,onClose,isShiny=false,limitSta
           {penaltyLeft>0&&(
             <div style={{fontSize:12.5,fontWeight:800,color:"#ffd28a",background:"#e74c3c1a",border:"1px solid #e74c3caa",borderRadius:11,padding:"9px 12px",marginBottom:8,display:"flex",alignItems:"center",gap:9}}>
               <span style={{fontSize:19,flexShrink:0}}>⏱️</span>
-              <span>{(t('quiz_penalty_wait')||'Trop d\'essais — prends le temps de lire la question. Nouvelle tentative dans {n}s.').replace('{n}',penaltyLeft)}</span>
+              <span>{(heldAnswer
+                ? (t('quiz_penalty_held')||'Trop d\'essais — ta réponse n\'a pas été vérifiée : elle part automatiquement dans {n}s.')
+                : (t('quiz_penalty_wait')||'Trop d\'essais — prends le temps de lire la question. Nouvelle tentative dans {n}s.')
+              ).replace('{n}',penaltyLeft)}</span>
             </div>
           )}
           <div style={{display:"flex",gap:9}}>
