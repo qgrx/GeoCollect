@@ -99,12 +99,20 @@ export function renderDocsPage({ page, content, heading, sanitize = identity }) 
 }
 
 /**
- * Feuille de style minimale du contenu pré-rendu. Il n'est visible qu'avant
- * l'hydratation ; l'objectif est seulement d'éviter un flash de page blanche non
- * stylée sur une connexion lente.
+ * Feuille de style minimale du contenu pré-rendu, pour qui le VOIT vraiment :
+ * les moteurs et les visiteurs sans JS.
+ *
+ * Avec JS, ce contenu ne doit JAMAIS apparaître. Il est peint dès l'arrivée du
+ * HTML, puis remplacé par React au premier rendu : quelques centaines de
+ * millisecondes d'accroche marketing sur toutes les pages de l'application —
+ * /admin compris, que Vercel réécrit vers index.html. La règle `html.js`
+ * l'escamote AVANT le premier rendu, la classe étant posée dès le <head> par
+ * PRERENDER_SCRIPT. Le fond reste celui du corps : on passe du flash à un écran
+ * sombre, indistinct du chargement de l'application.
  */
 export const PRERENDER_STYLE = `<style>
   body { margin: 0; background: #0f0f1e; }
+  html.js .prerendered { display: none; }
   .prerendered { max-width: 680px; margin: 0 auto; padding: 32px 24px 64px;
     font-family: 'Nunito', system-ui, sans-serif; color: #d4e8f8; line-height: 1.55; }
   .prerendered h1 { font-family: 'Fredoka One', 'Nunito', sans-serif; font-size: 28px; color: #f9ca24; margin: 0 0 24px; }
@@ -115,3 +123,17 @@ export const PRERENDER_STYLE = `<style>
   .prerendered dt { font-size: 12px; color: #8daacc; }
   .prerendered dd { margin: 0; font-weight: 700; }
 </style>`
+
+/**
+ * Marque le document « JS actif », ce qui déclenche la règle `html.js` ci-dessus.
+ *
+ * En ligne et dans le <head> : le script s'exécute pendant l'analyse du document,
+ * donc avant que le corps — et le contenu pré-rendu — n'existe. Un `DOMContentLoaded`
+ * ou le bundle de l'application arriveraient trop tard, après le premier rendu :
+ * le flash aurait déjà eu lieu.
+ *
+ * Corollaire assumé : si le bundle ne se charge pas du tout, le visiteur voit une
+ * page vide plutôt que ce contenu de repli. L'application est injouable sans son
+ * JS de toute façon, et les moteurs, eux, lisent le HTML sans exécuter ce script.
+ */
+export const PRERENDER_SCRIPT = `<script>document.documentElement.classList.add('js')</script>`

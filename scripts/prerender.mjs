@@ -11,6 +11,11 @@
  * éditorial en HTML sémantique. React le remplace à l'hydratation par la version
  * live : robots et visiteurs voient la même chose.
  *
+ * Ce contenu est en revanche masqué d'entrée aux navigateurs qui exécutent du JS
+ * (cf. PRERENDER_STYLE / PRERENDER_SCRIPT) : sans cela, il s'affichait le temps
+ * du démarrage de l'application — l'accroche de l'accueil clignotant même sur
+ * /admin, que Vercel réécrit vers index.html.
+ *
  * Si l'API est injoignable, on émet des coquilles « métadonnées seules » avec un
  * avertissement bien visible : une API en panne ne doit pas bloquer un déploiement.
  */
@@ -30,7 +35,7 @@ globalThis.window   = dom.window
 globalThis.document = dom.window.document
 
 const { sanitizeHtml, neutralizeDarkText } = await import('../src/utils/sanitize.js')
-const { renderDocsPage, PRERENDER_STYLE, escapeText, excerpt } = await import('./lib/renderDocs.mjs')
+const { renderDocsPage, PRERENDER_STYLE, PRERENDER_SCRIPT, escapeText, excerpt } = await import('./lib/renderDocs.mjs')
 const { seoHead } = await import('../src/seo/head.js')
 const { seoCopy } = await import('../src/seo/copy.js')
 const { organizationLd, websiteLd, videoGameLd, faqPageLd, geocoinLd } = await import('../src/seo/jsonld.js')
@@ -101,7 +106,7 @@ if (!/<!--seo:start-->[\s\S]*<!--seo:end-->/.test(shell)) {
 function page({ lang, head, body }) {
   return shell
     .replace(/<html lang="[^"]*"/, `<html lang="${lang}"`)
-    .replace(/<!--seo:start-->[\s\S]*<!--seo:end-->/, `${head}\n    ${PRERENDER_STYLE}`)
+    .replace(/<!--seo:start-->[\s\S]*<!--seo:end-->/, `${head}\n    ${PRERENDER_STYLE}\n    ${PRERENDER_SCRIPT}`)
     .replace('<div id="root"></div>', `<div id="root">${body}</div>`)
 }
 
