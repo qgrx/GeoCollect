@@ -19,6 +19,20 @@ html, body {
   overflow-x: clip;
 }
 
+/* Double-tap = zoom du navigateur. Deux taps rapprochés sur une zone INERTE
+   zooment la page, que le joueur doit ensuite dézoomer à la main (constaté sur
+   Android). Ça arrive systématiquement quand un bloc apparaît sous le doigt à
+   la place d'un bouton : l'annonce « en feu » remplace « Participer » pendant
+   10 s, les taps du joueur tombent alors sur le bandeau. Poser la règle sur la
+   racine couvre TOUT (bandeaux, overlays, portails) au lieu de la répéter
+   bouton par bouton — c'est la même famille de bug que les taps traversants.
+   `manipulation` ne retire QUE le double-tap-zoom : le pinch-to-zoom et le
+   défilement restent intacts (contrairement à `none`, cf. la note du blocage
+   de scroll dans App.jsx). */
+html {
+  touch-action: manipulation;
+}
+
 /* Barre de défilement quasi invisible : la barre dorée épaisse sautait aux yeux
    (colonne de gauche, modales). Au repos le curseur est transparent ; il
    n'apparaît, très discret et neutre, qu'au survol du conteneur qui défile.

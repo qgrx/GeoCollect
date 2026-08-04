@@ -149,6 +149,11 @@ Chacun a déjà causé un bug en production.
 
 - `::-webkit-scrollbar` est ignoré. Toujours accompagner les règles webkit des
   propriétés standard `scrollbar-width` / `scrollbar-color`.
+- **Double-tap = zoom.** Un bloc inerte qui apparaît sous le doigt à la place
+  d'un bouton (l'annonce « en feu » remplace « Participer » 10 s) transforme les
+  taps du joueur en double-tap-to-zoom : la page reste zoomée. `touch-action:
+  manipulation` est posé sur `html` (`index.css`) — ne pas le retirer, et ne
+  jamais le remplacer par `none` (casse le pinch-zoom et les gestes des modales).
 
 ### Domaines
 
