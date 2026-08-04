@@ -231,7 +231,11 @@ function Tile({ card, lang, t, index, cardBg, border, textColor, mutedColor, onO
   const { c1, c2 } = cardCC(card.rarity)
   const subtitle = cardNameTranslation(card, lang)
   const type = card.gc_cache_type ? geocacheType(card.gc_cache_type) : null
-  const image = card.image_url_thumb || card.image_url
+  // L'image PLEINE (600 px, qualité 0.85), pas `image_url_thumb` : cette
+  // vignette-là fait 120 px en qualité 0.70 et sert les listes du jeu. Dans une
+  // tuile de ~200 px sur un écran à 2× ou 3×, elle est agrandie trois fois et
+  // se voit. Le repli inverse reste utile : quelques cartes n'ont que la petite.
+  const image = card.image_url || card.image_url_thumb
 
   return (
     <a
@@ -265,7 +269,7 @@ function Tile({ card, lang, t, index, cardBg, border, textColor, mutedColor, onO
       }}>
         {image
           ? <img
-              className="gc-thumb" src={image} alt="" loading="lazy" decoding="async" width="240" height="240"
+              className="gc-thumb" src={image} alt="" loading="lazy" decoding="async" width="600" height="600"
               style={{ width: '100%', height: '100%', objectFit: 'contain', transition: 'transform .3s cubic-bezier(.2,.7,.3,1)' }}
             />
           : <span className="gc-thumb" aria-hidden="true" style={{ fontSize: 34, fontWeight: 900, color: '#ffffffcc', transition: 'transform .3s' }}>
