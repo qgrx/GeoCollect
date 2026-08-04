@@ -84,13 +84,20 @@ export default function GeocoinPage({ slug, onNavigate }) {
   const card    = pool?.find(c => c.id === id && isPublicGeocoin(c)) ?? null
   const related = card && pool ? relatedGeocoins(pool, card, 6) : []
 
+  // Mêmes couleurs que DocsLayout : les pages publiques doivent se ressembler.
+  // ⚠️ `pageBg` est explicite et NON tiré de `theme` : la page a longtemps posé
+  // `background: theme.bg`, une clé qui n'existe pas dans THEMES. Le fond était
+  // donc vide, laissant apparaître celui du <body> — que la feuille de style du
+  // pré-rendu fixe à #0f0f1e — pendant que le texte suivait le thème CLAIR par
+  // défaut. Résultat : texte sombre sur fond sombre, illisible.
+  const pageBg     = mode === 'light' ? '#f5f7fa' : '#0f1923'
   const textColor  = mode === 'light' ? '#1e2d3d' : '#d4e8f8'
   const mutedColor = mode === 'light' ? '#6b7c8d' : '#7d8fa3'
   const cardBg     = mode === 'light' ? '#ffffff' : '#16213a'
   const rc         = card ? RC[card.rarity] : null
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: theme.bg, fontFamily: "'Nunito',sans-serif", color: textColor }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: pageBg, fontFamily: "'Nunito',sans-serif", color: textColor }}>
       <header style={{ padding: '12px 18px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <a href={buildPath('home', { lang })} onClick={e => { e.preventDefault(); onNavigate?.('home') }} style={{ textDecoration: 'none' }}>
           <Logo iconSize={30} textSize={19} />
