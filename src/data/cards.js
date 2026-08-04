@@ -1,3 +1,5 @@
+import { isTributeCard } from './geocaching.js'
+
 // Rarity Config
 export const RARITY_CONFIG = {
   commun:     { color: '#78909c', bg: '#eceff1', stars: 1, label: 'Commun',     labelKey: 'rarity_commun',     order: 3, cc: '#74c7ec,#b0bec5' },
@@ -17,10 +19,39 @@ export const typeLabel = (type, typeTranslations, lang) => {
   if (lang && lang !== 'fr' && typeTranslations?.[type]?.[lang]) return typeTranslations[type][lang]
   return type
 };
+/**
+ * Nom affiché d'un geocoin.
+ *
+ * Cas particulier des geocoins d'HOMMAGE : leur nom est celui d'une cache réelle
+ * (« Die grünen Geister », « Kluis tot kookhuis »…). C'est un nom propre, et
+ * c'est sous ce nom-là que la cache existe sur geocaching.com : le traduire à la
+ * place du titre couperait le lien entre le geocoin et la cache qu'il honore.
+ * La traduction n'est donc pas un remplacement mais un sous-titre, cf.
+ * `cardNameTranslation`.
+ */
 export const cardName = (card, lang) => {
   if (!card) return ''
+  if (isTributeCard(card)) return card.name || ''
   if (lang && lang !== 'fr' && card.name_translations?.[lang]) return card.name_translations[lang]
   return card.name || ''
+}
+
+/**
+ * Traduction du nom à afficher SOUS le titre d'origine, ou '' s'il n'y a rien à
+ * montrer — parce qu'aucune traduction n'existe dans cette langue, ou parce
+ * qu'elle est identique au titre (« Mingo », « Sagrada familia » : un nom propre
+ * ne se traduit pas, et le répéter en petit n'apprendrait rien).
+ *
+ * Le français en fait partie, contrairement au reste de l'application : ici la
+ * langue SOURCE est celle de la cache, pas le français.
+ */
+export const cardNameTranslation = (card, lang) => {
+  if (!card || !lang) return ''
+  const tr = String(card.name_translations?.[lang] || '').trim()
+  if (!tr) return ''
+  const same = (a, b) => a.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+                      === b.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return same(tr, String(card.name || '').trim()) ? '' : tr
 }
 // Jumeau de cardName pour la description. Accepte les deux formes portées par un
 // objet carte : brute du pool/API (description / description_translations) et

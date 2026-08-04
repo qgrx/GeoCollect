@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cardName, cardDescription, cardLongDescription } from '../data/cards.js'
+import { cardName, cardNameTranslation, cardDescription, cardLongDescription } from '../data/cards.js'
 
 const card = {
   name: 'Original Stash',
@@ -16,6 +16,36 @@ describe('cardName / cardDescription', () => {
     expect(cardName(card, 'es')).toBe('Original Stash')
     expect(cardDescription(card, 'en')).toBe('The very first cache.')
     expect(cardDescription(card, 'es')).toBe('La toute première cache.')
+  })
+})
+
+describe('nom d’un geocoin d’hommage', () => {
+  // Le titre est celui de la vraie cache : c'est sous ce nom qu'elle existe sur
+  // geocaching.com, le traduire couperait le lien entre geocoin et cache.
+  const tribute = {
+    type: 'Hommages',
+    name: 'Die grünen Geister',
+    name_translations: { fr: 'Les esprits verts', en: 'The green ghosts', de: 'Die grünen Geister' },
+  }
+
+  it('garde le nom d’origine comme titre, dans toutes les langues', () => {
+    expect(cardName(tribute, 'fr')).toBe('Die grünen Geister')
+    expect(cardName(tribute, 'en')).toBe('Die grünen Geister')
+  })
+
+  it('propose la traduction en sous-titre, français compris', () => {
+    expect(cardNameTranslation(tribute, 'fr')).toBe('Les esprits verts')
+    expect(cardNameTranslation(tribute, 'en')).toBe('The green ghosts')
+  })
+
+  it('ne répète pas le titre : rien à montrer dans la langue d’origine ni sans traduction', () => {
+    expect(cardNameTranslation(tribute, 'de')).toBe('')
+    expect(cardNameTranslation(tribute, 'es')).toBe('')
+    expect(cardNameTranslation({ type: 'Hommages', name: 'Mingo' }, 'fr')).toBe('')
+  })
+
+  it('laisse les autres types traduire leur titre comme avant', () => {
+    expect(cardName(card, 'de')).toBe('Ursprüngliches Versteck')
   })
 })
 

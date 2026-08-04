@@ -4,7 +4,7 @@ import PublicFooter from '../../components/PublicFooter.jsx'
 import { apiGetCards, apiGetPublicConfig, apiGetCardOwners } from '../../services/api.js'
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
-import { RC, cardName, cardLongDescription, rarityLabel, typeLabel } from '../../data/cards.js'
+import { RC, cardName, cardNameTranslation, cardLongDescription, rarityLabel, typeLabel } from '../../data/cards.js'
 import { geocoinIdFromSlug, buildPath } from '../../routes.js'
 import { isPublicGeocoin, relatedGeocoins } from './publicGeocoins.js'
 import { richTextHtml, richTextLength } from '../../utils/richText.js'
@@ -132,9 +132,20 @@ export default function GeocoinPage({ slug, onNavigate }) {
               />
             )}
 
-            <h1 style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 30, color: theme.gold, margin: '0 0 10px' }}>
+            <h1 style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 30, color: theme.gold, margin: '0 0 4px' }}>
               {cardName(card, lang)}
             </h1>
+
+            {/* Le titre reste celui de la cache, dans SA langue — c'est sous ce
+                nom qu'elle existe sur geocaching.com. Sa traduction se glisse
+                dessous, en petit, pour qui ne lit pas l'allemand ou le tchèque.
+                `lang` sur l'élément : sans lui, un lecteur d'écran prononcerait
+                cette ligne avec la phonétique de la page. */}
+            {cardNameTranslation(card, lang) && (
+              <p lang={lang} style={{ margin: '0 0 10px', fontSize: 13, fontStyle: 'italic', color: mutedColor }}>
+                {cardNameTranslation(card, lang)}
+              </p>
+            )}
 
             {/* En-tête : ce que dit le jeu / ce que dit geocaching.com */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 12, margin: '0 0 24px' }}>
@@ -209,6 +220,15 @@ export default function GeocoinPage({ slug, onNavigate }) {
                     </li>
                   ))}
                 </ul>
+                {/* Six voisines ne font pas le tour de la collection : la galerie
+                    complète, elle, mène à toutes les fiches. */}
+                <a
+                  href={buildPath('geocoins', { lang })}
+                  onClick={e => { e.preventDefault(); onNavigate?.('geocoins') }}
+                  style={{ display: 'inline-block', marginTop: 14, fontSize: 13, fontWeight: 800, color: theme.gold, textDecoration: 'none', borderBottom: `1px dotted ${theme.gold}` }}
+                >
+                  {t('gallery_cta')} →
+                </a>
               </section>
             )}
           </>

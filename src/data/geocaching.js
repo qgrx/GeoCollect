@@ -70,6 +70,8 @@ export const GEOCACHE_TYPES = [
     label: { fr: '10 Years! Event', en: '10 Years! Event Cache', de: '10 Years! Event-Cache', es: 'Evento 10 Years!' } },
   { code: 'gps_maze',      icon: '🗺️', group: 'Types historiques',
     label: { fr: 'GPS Adventures Maze Exhibit', en: 'GPS Adventures Maze Exhibit', de: 'GPS Adventures Maze Exhibit', es: 'GPS Adventures Maze Exhibit' } },
+  { code: 'hq',            icon: '🏠', group: 'Types historiques',
+    label: { fr: 'Geocaching HQ', en: 'Geocaching HQ', de: 'Geocaching HQ', es: 'Geocaching HQ' } },
   { code: 'hq_block_party', icon: '🏢', group: 'Types historiques',
     label: { fr: 'Geocaching HQ Block Party', en: 'Geocaching HQ Block Party', de: 'Geocaching HQ Block Party', es: 'Geocaching HQ Block Party' } },
   { code: 'community_celebration', icon: '🥳', group: 'Types historiques',

@@ -28,6 +28,24 @@ export const SEO_COPY = {
       description: 'Colecciona geocoins raros respondiendo preguntas de geocaching. Duelos en tiempo real, mercado entre jugadores y colección sincronizada.',
     },
   },
+  geocoins: {
+    en: {
+      title: 'All geocoins — the Geocoins collection',
+      description: 'Browse every geocoin in the collection: each one pays tribute to a real geocache, with its GC code, its type and the cacher who hid it.',
+    },
+    fr: {
+      title: 'Tous les geocoins — la collection Geocoins',
+      description: 'Parcourez toute la collection : chaque geocoin rend hommage à une géocache réelle, avec son code GC, son type de cache et son poseur.',
+    },
+    de: {
+      title: 'Alle Geocoins — die Geocoins-Sammlung',
+      description: 'Entdecke die ganze Sammlung: Jeder Geocoin ehrt einen echten Geocache, mit GC-Code, Cache-Typ und dem Owner, der ihn versteckt hat.',
+    },
+    es: {
+      title: 'Todos los geocoins — la colección Geocoins',
+      description: 'Recorre toda la colección: cada geocoin rinde homenaje a un geocaché real, con su código GC, su tipo de caché y su dueño.',
+    },
+  },
 }
 
 /** Copie d'une route, avec repli sur la langue par défaut puis sur l'accueil. */

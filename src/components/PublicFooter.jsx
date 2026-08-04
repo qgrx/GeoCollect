@@ -60,6 +60,11 @@ export default function PublicFooter({ onNavigate, hiddenPages = [] }) {
       </a>
 
       <nav style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center' }}>
+        {/* La galerie en tête : c'est la vitrine, et le seul lien qui mène aux
+            fiches geocoin depuis n'importe quelle page publique. */}
+        <a href={buildPath('geocoins', { lang })} onClick={e => handleNavigate(e, 'geocoins')} style={linkStyle}>
+          {t('gallery_cta')}
+        </a>
         {/* Une page masquée par un admin n'est plus pré-rendue : la lier enverrait
             le visiteur sur un vrai 404 au rechargement. */}
         {DOCS_ROUTES.filter(r => !hiddenPages.includes(r)).map(route => (

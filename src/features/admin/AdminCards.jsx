@@ -6,6 +6,8 @@ import { supabase } from '../../lib/supabase.js';
 import { apiAdminSaveCardNameTrans, apiAdminSaveCardDescTrans, apiAdminSaveCardLongDesc, apiGetAdminSeasons, apiReleaseHiddenCards, apiAdminDeployFrontend } from '../../services/api.js';
 import { PUBLISHED_TYPES, MIN_INDEXABLE_DESCRIPTION } from '../geocoins/publicGeocoins.js';
 import { TRIBUTE_TYPES, GEOCACHE_TYPES, GEOCACHE_TYPE_GROUPS, gcCodeIssue, gcCodeUrl, gcCodeFromInput } from '../../data/geocaching.js';
+import { buildPath, geocoinSlug } from '../../routes.js';
+import { abs } from '../../seo/site.js';
 import Card from '../../components/Card.jsx';
 import AdminCardBatch from './AdminCardBatch.jsx';
 import RichTextEditor from '../docs/RichTextEditor.jsx';
@@ -91,6 +93,12 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const [transDescLang, setTransDescLang] = useState('en');
   const [transLongLang, setTransLongLang] = useState('en');
   const TRANS_LANGS = [{code:'en',label:'English'},{code:'de',label:'Deutsch'},{code:'es',label:'Español'}];
+  // Le nom d'un geocoin d'hommage est celui d'une cache réelle, donc rarement
+  // français : sa traduction FRANÇAISE a un sens, et elle seule s'affiche en
+  // sous-titre pour un joueur francophone (cf. cardNameTranslation).
+  const NAME_TRANS_LANGS = TRIBUTE_TYPES.includes(editCard?.type)
+    ? [{code:'fr',label:'Français'}, ...TRANS_LANGS]
+    : TRANS_LANGS;
 
   const csvCardRef = useRef();
   const fileRef = useRef();
@@ -511,14 +519,14 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
             <div style={{fontWeight:900,color:"#a29bfe",fontSize:13}}>🌐 Traduction du nom — <span style={{color:"#fff"}}>{editCard.name}</span></div>
           </div>
           <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-            {TRANS_LANGS.map(l=>(
+            {NAME_TRANS_LANGS.map(l=>(
               <button key={l.code} onClick={()=>setTransCardLang(l.code)}
                 style={{background:transCardLang===l.code?"#6c5ce7":"#ffffff10",border:"none",color:transCardLang===l.code?"#fff":"#aaa",padding:"5px 12px",borderRadius:8,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>
                 {l.label} {editCard.name_translations?.[l.code]?"✓":""}
               </button>
             ))}
           </div>
-          {TRANS_LANGS.filter(l=>l.code===transCardLang).map(l=>(
+          {NAME_TRANS_LANGS.filter(l=>l.code===transCardLang).map(l=>(
             <Fld key={l.code} lbl={`Nom en ${l.label}`}>
               <input
                 value={editCard.name_translations?.[l.code]||""}
@@ -581,8 +589,20 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
         const indexable  = textLen >= MIN_INDEXABLE_DESCRIPTION;
         return (
           <div style={{background:"#0a2a1a",border:"1.5px solid #00b89466",borderRadius:12,padding:16,marginTop:12}}>
-            <div style={{fontWeight:900,color:"#00b894",fontSize:13,marginBottom:6}}>
-              🌍 Description longue (page publique) — <span style={{color:"#fff"}}>{editCard.name}</span>
+            <div style={{fontWeight:900,color:"#00b894",fontSize:13,marginBottom:6,display:"flex",flexWrap:"wrap",alignItems:"center",gap:8}}>
+              <span>🌍 Description longue (page publique) — <span style={{color:"#fff"}}>{editCard.name}</span></span>
+              {/* Lien vers la fiche telle qu'elle est SERVIE : c'est le seul moyen
+                  de voir le rendu réel du texte saisi ici. En français, langue de
+                  rédaction. ⚠️ La page publique est une photo prise au build : une
+                  description tout juste enregistrée n'y apparaît qu'après le
+                  déploiement du front (bouton de déploiement plus haut). */}
+              {published && (
+                <a href={abs(buildPath('geocoin', { lang: 'fr', param: geocoinSlug(editCard.id, editCard.name) }))}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{color:"#00b894",fontSize:11,fontWeight:800,textDecoration:"none",border:"1px solid #00b89466",borderRadius:8,padding:"3px 9px"}}>
+                  ↗ Voir la fiche publique
+                </a>
+              )}
             </div>
             <div style={{fontSize:11,color:"#8887a8",marginBottom:10,lineHeight:1.5}}>
               Texte de la page <code>/geocoins/…</code> visible par les moteurs de recherche.

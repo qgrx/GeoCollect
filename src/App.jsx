@@ -8,6 +8,7 @@ import LangSelector from './i18n/LangSelector.jsx';
 import Logo from './components/Logo.jsx';
 import PublicFooter from './components/PublicFooter.jsx';
 import GeocoinPage from './features/geocoins/GeocoinPage.jsx';
+import GeocoinsGallery from './features/geocoins/GeocoinsGallery.jsx';
 
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
@@ -2286,6 +2287,12 @@ export default function App() {
   // au visiteur venu d'un moteur — sans charger le jeu ni exiger de compte.
   if (route === 'geocoin') {
     return <GeocoinPage slug={routeParam} onNavigate={(r, param) => navigateTo(r, { param })} />
+  }
+
+  // Galerie publique de tous les geocoins publiés — même statut que la fiche :
+  // page d'atterrissage autonome, et maillage interne vers chaque fiche.
+  if (route === 'geocoins') {
+    return <GeocoinsGallery onNavigate={(r, param) => navigateTo(r, { param })} />
   }
 
   // ── Écrans d'onboarding (bloquent l'accès au site) ──────────────────────────

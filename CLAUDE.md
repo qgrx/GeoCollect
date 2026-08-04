@@ -75,6 +75,16 @@ Les URLs indexables sont de **vrais fichiers** dans `dist/`, générés au build
   publiées sans contenu éditorial, avec avertissement — le build ne casse pas.
   `scripts/prerender.mjs` **n'est pas rejouable seul** : il consomme la coquille
   `dist/index.html`, que seul `vite build` régénère.
+- **`/geocoins` (galerie) et `/geocoins/<id>-<slug>` (fiche) partagent un
+  segment** : `parsePath` les départage sur la PRÉSENCE de l'identifiant
+  (`BY_SEGMENT[segment] = { list, detail }`). La galerie est la vitrine et le
+  maillage interne des fiches — avant elle, une fiche n'était atteignable que par
+  le sitemap ou les six liens « à découvrir » d'une voisine.
+- **Le titre d'un geocoin d'hommage n'est jamais traduit** : c'est le nom réel de
+  la cache, celui sous lequel elle existe sur geocaching.com. `cardName` renvoie
+  donc `card.name` pour ces geocoins, et `cardNameTranslation` fournit le
+  sous-titre en petit — **français compris**, contrairement au reste de
+  l'application où le français est la langue source.
 - **Seuls les geocoins de type `Hommages` ont une page publique**
   (`PUBLISHED_TYPES` dans `features/geocoins/publicGeocoins.js`). C'est une liste
   BLANCHE : un nouveau type ne doit pas se retrouver publié par inadvertance. Les

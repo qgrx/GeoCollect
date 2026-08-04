@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { RC, cardCC, rarityLabel, cardName, cardDescription, typeLabel } from '../data/cards.js'
+import { RC, cardCC, rarityLabel, cardName, cardNameTranslation, cardDescription, typeLabel } from '../data/cards.js'
 import { useT } from '../i18n/translations.js'
 import { ShinyEffect } from './Card.jsx'
 import { ReferralPanel } from '../features/referral/ReferralModal.jsx'
@@ -118,6 +118,13 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
           <div style={{ fontFamily: "'Fredoka One',sans-serif", fontSize: 24, color: isShiny ? '#f9ca24' : '#fff', marginBottom: 4, textShadow: isShiny ? '-1px -1px 0 #0009, 1px -1px 0 #0009, -1px 1px 0 #0009, 1px 1px 0 #0009, 0 0 12px #f9ca2455' : 'none' }}>
             {cardName(card, lang)}
           </div>
+          {/* Geocoin d'hommage au nom étranger : sa traduction en petit sous le
+              titre, qui lui garde le nom réel de la cache (cf. cardName). */}
+          {cardNameTranslation(card, lang) && (
+            <div lang={lang} style={{ fontSize: 12, fontStyle: 'italic', color: '#8b9bb4', marginBottom: 6 }}>
+              {cardNameTranslation(card, lang)}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span style={{ color: rc.color, fontSize: 14 }}>{'★'.repeat(rc.stars)}{'☆'.repeat(4 - rc.stars)}</span>
             <span style={{ fontSize: 11, color: rc.color, fontWeight: 800, background: rc.bg, borderRadius: 50, padding: '2px 10px' }}>{rarityLabel(card.rarity, t)}</span>

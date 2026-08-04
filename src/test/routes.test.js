@@ -35,8 +35,13 @@ describe('parsePath', () => {
     // Segment en trop sur une route qui n’attend pas de paramètre : sinon deux URLs
     // distinctes serviraient la même page (duplicate content).
     expect(parsePath('/faq/12').route).toBeNull()
-    // …et inversement, la liste des geocoins n’existe pas comme page.
-    expect(parsePath('/geocoins').route).toBeNull()
+  })
+
+  it('distingue la galerie des geocoins de la fiche d’un geocoin', () => {
+    expect(parsePath('/geocoins')).toEqual({ lang: 'en', route: 'geocoins', param: null })
+    expect(parsePath('/fr/geocoins')).toEqual({ lang: 'fr', route: 'geocoins', param: null })
+    expect(parsePath('/geocoins/12-ftf')).toEqual({ lang: 'en', route: 'geocoin', param: '12-ftf' })
+    expect(parsePath('/geocoins/12-ftf/trop-loin').route).toBeNull()
   })
 
   it('ne traite pas « /en » comme un préfixe : la langue par défaut n’en a pas', () => {

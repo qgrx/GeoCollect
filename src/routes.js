@@ -29,6 +29,9 @@ export const ROUTES = {
   faq:             { segment: 'faq',           indexable: true },
   'release-notes': { segment: 'release-notes', indexable: true },
   support:         { segment: 'support',       indexable: true },
+  // Même segment, deux routes : la galerie (/geocoins) et une fiche
+  // (/geocoins/12-ftf). C'est la présence de l'identifiant qui les départage.
+  geocoins:        { segment: 'geocoins',      indexable: true },
   geocoin:         { segment: 'geocoins',      indexable: true, param: true },
   admin:           { segment: 'admin',         indexable: false },
 }
@@ -39,9 +42,15 @@ export const INDEXABLE_ROUTES = Object.keys(ROUTES).filter(r => ROUTES[r].indexa
 /** Routes servies par la couche « docs » (DocsLayout). */
 export const DOCS_ROUTES = ['release-notes', 'faq', 'support']
 
-const BY_SEGMENT = Object.fromEntries(
-  Object.entries(ROUTES).map(([name, def]) => [def.segment, name]),
-)
+/**
+ * segment → { list, detail } : deux routes peuvent partager un segment, l'une
+ * sans identifiant (la galerie), l'autre avec (une fiche).
+ */
+const BY_SEGMENT = {}
+for (const [name, def] of Object.entries(ROUTES)) {
+  const slot = BY_SEGMENT[def.segment] ?? (BY_SEGMENT[def.segment] = {})
+  slot[def.param ? 'detail' : 'list'] = name
+}
 
 /**
  * Découpe un chemin en `{ lang, route, param }`.
@@ -57,17 +66,17 @@ export function parsePath(pathname = '/') {
   }
 
   const segment = parts.shift() ?? ''
-  const route   = BY_SEGMENT[segment]
-  if (route === undefined) return { lang, route: null, param: null }
+  const slot    = BY_SEGMENT[segment]
+  if (slot === undefined) return { lang, route: null, param: null }
 
-  const def   = ROUTES[route]
   const param = parts.shift() ?? null
 
-  // Segment surnuméraire, ou identifiant fourni à une route qui n'en attend pas :
-  // deux URLs distinctes ne doivent jamais servir le même contenu.
+  // Segment surnuméraire : deux URLs distinctes ne doivent jamais servir le même
+  // contenu. Et un identifiant sur une route qui n'en attend pas — ou l'inverse —
+  // reste un 404, faute de route pour ce cas.
   if (parts.length) return { lang, route: null, param: null }
-  if (param && !def.param) return { lang, route: null, param: null }
-  if (!param && def.param) return { lang, route: null, param: null }
+  const route = param ? slot.detail : slot.list
+  if (!route) return { lang, route: null, param: null }
 
   return { lang, route, param }
 }

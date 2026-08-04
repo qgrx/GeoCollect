@@ -263,10 +263,46 @@ ${links ? `<nav><h2>${escapeText(tr(lang, 'geocoin_related'))}</h2><ul>${links}<
   await writePage(path, page({ lang, head, body }))
 }
 
+// ─── Galerie des geocoins ─────────────────────────────────────────────────────
+
+/**
+ * Page statique de la galerie : la liste COMPLÈTE des fiches, en vrais liens.
+ *
+ * C'est le maillage interne qui manquait — sans elle, une fiche n'était
+ * atteignable que par le sitemap ou par les six liens « à découvrir » de ses
+ * voisines, ce qu'un moteur suit mal. Les vignettes ne sont pas reprises ici :
+ * le pré-rendu sert le texte et les liens, l'application pose l'habillage.
+ */
+async function buildGallery(cards, lang) {
+  const { title, description } = seoCopy('geocoins', lang)
+  const items = cards.map(card => {
+    const rar = rarityLabelFor(card.rarity, lang)
+    return `<li><a href="${buildPath('geocoin', { lang, param: card.slug })}">${escapeText(cardName(card, lang))}</a>`
+      + ` — ${escapeText(rar)}${card.gc_code ? ` · ${escapeText(card.gc_code)}` : ''}</li>`
+  }).join('')
+
+  const body = `<main class="prerendered">
+<h1>${escapeText(tr(lang, 'gallery_title'))}</h1>
+<p>${escapeText(tr(lang, 'gallery_sub'))}</p>
+<ul>${items}</ul>
+</main>`
+
+  const head = seoHead({
+    lang,
+    path: buildPath('geocoins', { lang }),
+    title,
+    description,
+    alternates: alternatesFor('geocoins'),
+  })
+  await writePage(buildPath('geocoins', { lang }), page({ lang, head, body }))
+}
+
 // ─── Sitemap ──────────────────────────────────────────────────────────────────
 
-const CHANGEFREQ = { home: 'daily', 'release-notes': 'weekly', faq: 'monthly', support: 'monthly' }
-const PRIORITY   = { home: '1.0', 'release-notes': '0.7', faq: '0.7', support: '0.5' }
+// La galerie change à chaque geocoin publié, et c'est la porte d'entrée vers
+// toutes les fiches : juste derrière l'accueil.
+const CHANGEFREQ = { home: 'daily', geocoins: 'weekly', 'release-notes': 'weekly', faq: 'monthly', support: 'monthly' }
+const PRIORITY   = { home: '1.0', geocoins: '0.9', 'release-notes': '0.7', faq: '0.7', support: '0.5' }
 
 function sitemap(entries) {
   const urls = entries.map(({ route, param }) => {
@@ -333,6 +369,14 @@ for (const card of geocoins) {
     indexableGeocoins++
   }
 }
+// La galerie n'est publiée que s'il y a quelque chose à montrer : une page
+// « vitrine » vide vaut moins que pas de page du tout.
+if (geocoins.length) {
+  for (const lang of SEO_LANGS) await buildGallery(geocoins, lang)
+  published.push({ route: 'geocoins' })
+  console.log(`✅ /geocoins (galerie) — ${SEO_LANGS.length} langues, ${geocoins.length} liens`)
+}
+
 if (geocoins.length) {
   console.log(`✅ /geocoins — ${geocoins.length} fiches × ${SEO_LANGS.length} langues, dont ${indexableGeocoins} indexables`)
   if (indexableGeocoins < geocoins.length) {
