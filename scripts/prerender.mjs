@@ -36,6 +36,7 @@ globalThis.document = dom.window.document
 
 const { sanitizeHtml, neutralizeDarkText } = await import('../src/utils/sanitize.js')
 const { renderDocsPage, PRERENDER_STYLE, PRERENDER_SCRIPT, escapeText, excerpt } = await import('./lib/renderDocs.mjs')
+const { buildSitemap, mostRecent } = await import('./lib/sitemap.mjs')
 const { seoHead } = await import('../src/seo/head.js')
 const { seoCopy } = await import('../src/seo/copy.js')
 const { organizationLd, websiteLd, videoGameLd, faqPageLd, geocoinLd } = await import('../src/seo/jsonld.js')
@@ -86,7 +87,12 @@ async function fetchDocs(page, lang) {
   if (content && !Array.isArray(content) && typeof content === 'object') {
     content = content[lang] ?? content[DEFAULT_LANG] ?? content[SOURCE_LANG] ?? null
   }
-  return Array.isArray(content) ? content : null
+  // `updated_at` date la page entière, pas chaque langue : le stockage ne
+  // distingue pas. Il alimente le `<lastmod>` du sitemap.
+  return {
+    content: Array.isArray(content) ? content : null,
+    updatedAt: json?.data?.updated_at ?? json?.updated_at ?? null,
+  }
 }
 
 // ─── Écriture des pages ───────────────────────────────────────────────────────
@@ -306,33 +312,6 @@ async function buildGallery(cards, lang) {
   await writePage(buildPath('geocoins', { lang }), page({ lang, head, body }))
 }
 
-// ─── Sitemap ──────────────────────────────────────────────────────────────────
-
-// La galerie change à chaque geocoin publié, et c'est la porte d'entrée vers
-// toutes les fiches : juste derrière l'accueil.
-const CHANGEFREQ = { home: 'daily', geocoins: 'weekly', 'release-notes': 'weekly', faq: 'monthly', support: 'monthly' }
-const PRIORITY   = { home: '1.0', geocoins: '0.9', 'release-notes': '0.7', faq: '0.7', support: '0.5' }
-
-function sitemap(entries) {
-  const urls = entries.map(({ route, param }) => {
-    const alts = alternatesFor(route, param)
-    return SEO_LANGS.map(lang => `  <url>
-    <loc>${abs(alts[lang])}</loc>
-${SEO_LANGS.map(l => `    <xhtml:link rel="alternate" hreflang="${l}" href="${abs(alts[l])}" />`).join('\n')}
-    <xhtml:link rel="alternate" hreflang="x-default" href="${abs(alts[DEFAULT_LANG])}" />
-    <changefreq>${CHANGEFREQ[route] ?? 'monthly'}</changefreq>
-    <priority>${PRIORITY[route] ?? '0.6'}</priority>
-  </url>`).join('\n')
-  }).join('\n')
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
-${urls}
-</urlset>
-`
-}
-
 // ─── Exécution ────────────────────────────────────────────────────────────────
 
 if (!API) warn('VITE_API_URL absente : pages publiées sans contenu éditorial.')
@@ -351,11 +330,13 @@ console.log(`✅ accueil — ${SEO_LANGS.length} langues`)
 for (const route of DOCS_ROUTES) {
   if (hidden.includes(route)) continue
   let withContent = 0
+  let updatedAt = null
   for (const lang of SEO_LANGS) {
-    const content = await fetchDocs(route, lang)
-    if (await buildDocs(route, lang, content)) withContent++
+    const docs = await fetchDocs(route, lang)
+    if (await buildDocs(route, lang, docs.content)) withContent++
+    updatedAt ??= docs.updatedAt
   }
-  published.push({ route })
+  published.push({ route, lastmod: updatedAt })
   console.log(`✅ /${route} — ${SEO_LANGS.length} langues, ${withContent} avec contenu`)
   if (!withContent) warn(`/${route} publiée sans contenu (métadonnées seules).`)
 }
@@ -374,15 +355,17 @@ for (const card of geocoins) {
   const related = relatedGeocoins(geocoins, card, 6)
   for (const lang of SEO_LANGS) await buildGeocoin(card, related, lang)
   if (isIndexableGeocoin(card)) {
-    published.push({ route: 'geocoin', param: card.slug })
+    published.push({ route: 'geocoin', param: card.slug, lastmod: card.content_updated_at })
     indexableGeocoins++
   }
 }
+// La galerie liste les fiches : elle change dès que l'une d'elles change.
+const galleryLastmod = mostRecent(geocoins.map(c => c.content_updated_at))
 // La galerie n'est publiée que s'il y a quelque chose à montrer : une page
 // « vitrine » vide vaut moins que pas de page du tout.
 if (geocoins.length) {
   for (const lang of SEO_LANGS) await buildGallery(geocoins, lang)
-  published.push({ route: 'geocoins' })
+  published.push({ route: 'geocoins', lastmod: galleryLastmod })
   console.log(`✅ /geocoins (galerie) — ${SEO_LANGS.length} langues, ${geocoins.length} liens`)
 }
 
@@ -393,7 +376,7 @@ if (geocoins.length) {
   }
 } else warn('Aucune fiche geocoin publiée (pool vide ou API injoignable).')
 
-await fs.writeFile(path.join(DIST, 'sitemap.xml'), sitemap(published))
+await fs.writeFile(path.join(DIST, 'sitemap.xml'), buildSitemap(published))
 console.log(`✅ sitemap.xml — ${published.length * SEO_LANGS.length} URLs`)
 
 console.log(warnings ? `\nTerminé avec ${warnings} avertissement(s).` : '\nTerminé.')
