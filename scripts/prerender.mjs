@@ -125,25 +125,57 @@ async function writePage(routePath, html) {
 
 // ─── Accueil ──────────────────────────────────────────────────────────────────
 
+/**
+ * Navigation commune à TOUTES les pages pré-rendues.
+ *
+ * Le pied de page de l'application est un composant React : il n'existe pas dans
+ * le HTML que lit un robot. Sans ce bloc, chaque page pré-rendue était une
+ * impasse — un crawler entrant par /faq ou par une fiche n'atteignait aucune
+ * autre page, et la galerie n'était liée de nulle part. Les 60 fiches ne
+ * tenaient qu'au sitemap, ce qu'un moteur suit bien moins volontiers qu'un lien.
+ *
+ * @param current  route à ne pas lier depuis elle-même
+ * @param hidden   onglets docs dépubliés par un admin : jamais liés (404)
+ */
+function prerenderNav(lang, { current = null, hidden = [], withGallery = true } = {}) {
+  const entries = [
+    ['home', tr(lang, 'nav_home')],
+    ...(withGallery ? [['geocoins', tr(lang, 'gallery_title')]] : []),
+    ...DOCS_ROUTES.filter(r => !hidden.includes(r))
+      .map(r => [r, tr(lang, `docs_nav_${r === 'release-notes' ? 'release' : r}`)]),
+  ]
+  const links = entries
+    .filter(([route]) => route !== current)
+    .map(([route, label]) => `<li><a href="${buildPath(route, { lang })}">${escapeText(label)}</a></li>`)
+    .join('')
+  return `<nav class="prerendered-nav"><ul>${links}</ul></nav>`
+}
+
 /** Contenu d'accroche de l'accueil, repris des traductions déjà écrites. */
-function homeBody(lang, hidden) {
+function homeBody(lang, hidden, withGallery) {
   const benefits = [1, 2, 3]
     .map(i => `<section><h2>${escapeText(tr(lang, `landing_benefit${i}_title`))}</h2><p>${escapeText(tr(lang, `landing_benefit${i}_body`))}</p></section>`)
     .join('\n')
-  // Ne jamais lier une page masquée par un admin : elle n'est pas publiée, donc 404.
-  const links = DOCS_ROUTES
-    .filter(r => !hidden.includes(r))
-    .map(r => `<li><a href="${buildPath(r, { lang })}">${escapeText(tr(lang, `docs_nav_${r === 'release-notes' ? 'release' : r}`))}</a></li>`)
-    .join('')
   return `<main class="prerendered">
 <h1>${escapeText(tr(lang, 'landing_hero_title'))}</h1>
 <p>${escapeText(tr(lang, 'landing_hero_sub'))}</p>
 ${benefits}
-<nav><ul>${links}</ul></nav>
+${prerenderNav(lang, { current: 'home', hidden, withGallery })}
 </main>`
 }
 
-async function buildHome(lang, hidden) {
+/**
+ * Nœuds schema.org communs à TOUTES les pages.
+ *
+ * Ils portent des `@id` stables, que les autres blocs référencent (`publisher`,
+ * `isPartOf`). Les répéter sur chaque page est la pratique attendue : sans eux,
+ * une fiche déclarait appartenir à un `WebSite` introuvable sur la page — une
+ * référence qui ne résout pas. C'est aussi ce qui rattache le logo à la marque
+ * page après page.
+ */
+const commonLd = () => [organizationLd(), websiteLd()]
+
+async function buildHome(lang, hidden, hasGallery) {
   const { title, description } = seoCopy('home', lang)
   const head = seoHead({
     lang,
@@ -151,9 +183,9 @@ async function buildHome(lang, hidden) {
     title,
     description,
     alternates: alternatesFor('home'),
-    jsonLd: [organizationLd(), websiteLd(), videoGameLd({ description, lang })],
+    jsonLd: [...commonLd(), videoGameLd({ description, lang })],
   })
-  await writePage(buildPath('home', { lang }), page({ lang, head, body: homeBody(lang, hidden) }))
+  await writePage(buildPath('home', { lang }), page({ lang, head, body: homeBody(lang, hidden, hasGallery) }))
 }
 
 // ─── Pages docs ───────────────────────────────────────────────────────────────
@@ -164,7 +196,7 @@ const DOC_HEADING_KEY = {
   support: 'docs_nav_support',
 }
 
-async function buildDocs(route, lang, content) {
+async function buildDocs(route, lang, content, hidden, hasGallery) {
   const heading = tr(lang, DOC_HEADING_KEY[route])
   const { html, text } = content
     ? renderDocsPage({ page: route, content, heading, sanitize })
@@ -178,11 +210,15 @@ async function buildDocs(route, lang, content) {
     description: excerpt(description),
     ogType: route === 'release-notes' ? 'article' : 'website',
     alternates: alternatesFor(route),
-    jsonLd: route === 'faq'
-      ? [faqPageLd(content, { url: abs(buildPath(route, { lang })) })].filter(Boolean)
-      : [],
+    jsonLd: [
+      ...commonLd(),
+      ...(route === 'faq' ? [faqPageLd(content, { url: abs(buildPath(route, { lang })) })] : []),
+    ].filter(Boolean),
   })
-  await writePage(buildPath(route, { lang }), page({ lang, head, body: html }))
+  // La navigation est posée même sur une page sans contenu éditorial : elle reste
+  // alors le seul chemin de sortie pour un robot qui atterrit là.
+  const body = html + prerenderNav(lang, { current: route, hidden, withGallery: hasGallery })
+  await writePage(buildPath(route, { lang }), page({ lang, head, body }))
   return !!html
 }
 
@@ -218,7 +254,7 @@ function factList(rows, heading) {
   return `<section><h2>${escapeText(heading)}</h2><dl>${items}</dl></section>`
 }
 
-async function buildGeocoin(card, related, lang) {
+async function buildGeocoin(card, related, lang, hidden) {
   const name  = cardName(card, lang)
   const desc  = cardLongDescription(card, lang)
   const rar   = rarityLabelFor(card.rarity, lang)
@@ -254,6 +290,7 @@ ${gameFacts}
 ${gcFacts}
 ${longDescriptionHtml(desc)}
 ${links ? `<nav><h2>${escapeText(tr(lang, 'geocoin_related'))}</h2><ul>${links}</ul></nav>` : ''}
+${prerenderNav(lang, { current: 'geocoin', hidden })}
 </main>`
 
   // Description : le texte du geocoin s'il existe, sinon une phrase factuelle —
@@ -273,7 +310,7 @@ ${links ? `<nav><h2>${escapeText(tr(lang, 'geocoin_related'))}</h2><ul>${links}<
     // l'index — cf. MIN_INDEXABLE_DESCRIPTION.
     noindex: !isIndexableGeocoin(card),
     alternates: alternatesFor('geocoin', card.slug),
-    jsonLd: [geocoinLd(card, { name, description: desc, rarityLabel: rar, url: abs(path), lang })].filter(Boolean),
+    jsonLd: [...commonLd(), geocoinLd(card, { name, description: desc, rarityLabel: rar, url: abs(path), lang })].filter(Boolean),
   })
   await writePage(path, page({ lang, head, body }))
 }
@@ -288,7 +325,7 @@ ${links ? `<nav><h2>${escapeText(tr(lang, 'geocoin_related'))}</h2><ul>${links}<
  * voisines, ce qu'un moteur suit mal. Les vignettes ne sont pas reprises ici :
  * le pré-rendu sert le texte et les liens, l'application pose l'habillage.
  */
-async function buildGallery(cards, lang) {
+async function buildGallery(cards, lang, hidden) {
   const { title, description } = seoCopy('geocoins', lang)
   const items = cards.map(card => {
     const rar = rarityLabelFor(card.rarity, lang)
@@ -300,6 +337,7 @@ async function buildGallery(cards, lang) {
 <h1>${escapeText(tr(lang, 'gallery_title'))}</h1>
 <p>${escapeText(tr(lang, 'gallery_sub'))}</p>
 <ul>${items}</ul>
+${prerenderNav(lang, { current: 'geocoins', hidden })}
 </main>`
 
   const head = seoHead({
@@ -308,6 +346,7 @@ async function buildGallery(cards, lang) {
     title,
     description,
     alternates: alternatesFor('geocoins'),
+    jsonLd: commonLd(),
   })
   await writePage(buildPath('geocoins', { lang }), page({ lang, head, body }))
 }
@@ -324,7 +363,18 @@ if (hidden.length) console.log(`ℹ️  Onglets docs masqués, non publiés : ${
 
 const published = [{ route: 'home' }]
 
-for (const lang of SEO_LANGS) await buildHome(lang, hidden)
+// Le pool est lu AVANT toute écriture : la navigation commune ne doit annoncer
+// la galerie que si elle est effectivement publiée, sous peine de lier un 404
+// depuis chaque page.
+const cardsJson = await apiGet('/api/cards')
+const geocoins  = publicGeocoins(cardsJson?.data?.cards ?? cardsJson?.cards ?? [])
+// Nombre de collectionneurs par geocoin. Absent (API en retard sur ce build,
+// endpoint injoignable) = la ligne disparaît de la fiche, rien ne casse.
+const ownersJson = await apiGet('/api/cards/owners')
+const cardOwners = ownersJson?.data?.owners ?? ownersJson?.owners ?? {}
+const hasGallery = geocoins.length > 0
+
+for (const lang of SEO_LANGS) await buildHome(lang, hidden, hasGallery)
 console.log(`✅ accueil — ${SEO_LANGS.length} langues`)
 
 for (const route of DOCS_ROUTES) {
@@ -333,7 +383,7 @@ for (const route of DOCS_ROUTES) {
   let updatedAt = null
   for (const lang of SEO_LANGS) {
     const docs = await fetchDocs(route, lang)
-    if (await buildDocs(route, lang, docs.content)) withContent++
+    if (await buildDocs(route, lang, docs.content, hidden, hasGallery)) withContent++
     updatedAt ??= docs.updatedAt
   }
   published.push({ route, lastmod: updatedAt })
@@ -341,19 +391,10 @@ for (const route of DOCS_ROUTES) {
   if (!withContent) warn(`/${route} publiée sans contenu (métadonnées seules).`)
 }
 
-// Fiches geocoin : le pool public sert à la fois de source de pages et d'entrées
-// de sitemap, pour qu'aucune URL indexée ne pointe sur une page absente.
-const cardsJson = await apiGet('/api/cards')
-const geocoins  = publicGeocoins(cardsJson?.data?.cards ?? cardsJson?.cards ?? [])
-// Nombre de collectionneurs par geocoin. Absent (API en retard sur ce build,
-// endpoint injoignable) = la ligne disparaît de la fiche, rien ne casse.
-const ownersJson = await apiGet('/api/cards/owners')
-const cardOwners = ownersJson?.data?.owners ?? ownersJson?.owners ?? {}
-
 let indexableGeocoins = 0
 for (const card of geocoins) {
   const related = relatedGeocoins(geocoins, card, 6)
-  for (const lang of SEO_LANGS) await buildGeocoin(card, related, lang)
+  for (const lang of SEO_LANGS) await buildGeocoin(card, related, lang, hidden)
   if (isIndexableGeocoin(card)) {
     published.push({ route: 'geocoin', param: card.slug, lastmod: card.content_updated_at })
     indexableGeocoins++
@@ -364,7 +405,7 @@ const galleryLastmod = mostRecent(geocoins.map(c => c.content_updated_at))
 // La galerie n'est publiée que s'il y a quelque chose à montrer : une page
 // « vitrine » vide vaut moins que pas de page du tout.
 if (geocoins.length) {
-  for (const lang of SEO_LANGS) await buildGallery(geocoins, lang)
+  for (const lang of SEO_LANGS) await buildGallery(geocoins, lang, hidden)
   published.push({ route: 'geocoins', lastmod: galleryLastmod })
   console.log(`✅ /geocoins (galerie) — ${SEO_LANGS.length} langues, ${geocoins.length} liens`)
 }
