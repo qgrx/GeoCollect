@@ -150,8 +150,12 @@ export default function GeocoinPage({ slug, onNavigate }) {
 
             {/* En-tête : ce que dit le jeu / ce que dit geocaching.com */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 12, margin: '0 0 24px' }}>
+              {/* Le vrai logo du site en guise d'icône, pas un emoji de pièce :
+                  ce panneau dit ce que GEOCOINS sait du geocoin, face à celui
+                  de geocaching.com juste à côté. La marque signe son panneau
+                  comme la boussole signe l'autre. */}
               <FactPanel
-                icon="🪙" title={t('geocoin_facts_game')} accent={rc?.color || theme.gold}
+                icon={<Logo iconSize={16} showText={false} />} title={t('geocoin_facts_game')} accent={rc?.color || theme.gold}
                 cardBg={cardBg} border={theme.border} textColor={textColor} mutedColor={mutedColor}
                 rows={[
                   { label: t('geocoin_label_category'), value: card.type ? typeLabel(card.type, typeTranslations, lang) : null },

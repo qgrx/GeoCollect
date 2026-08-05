@@ -12,9 +12,13 @@ export default function Logo({ iconSize = 34, textSize = 22, showText = true, di
   // IDs uniques pour éviter les conflits si le logo est monté plusieurs fois
   const uid = dim ? 'logo-dim' : 'logo-main'
 
+  // Racine en <span> et non <div> : le logo sert aussi d'icône AU FIL du texte
+  // (titre de panneau sur la fiche geocoin), où un <div> serait un contenu de
+  // flux dans du contenu de phrase — HTML invalide, y compris dans les pages
+  // pré-rendues. `inline-flex` conserve exactement la mise en page d'origine.
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0,
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 9, flexShrink: 0,
       opacity: dim ? 0.22 : 1,
     }}>
       {/* ── Icône SVG ── */}
@@ -118,6 +122,6 @@ export default function Logo({ iconSize = 34, textSize = 22, showText = true, di
           geocoins
         </span>
       )}
-    </div>
+    </span>
   )
 }
