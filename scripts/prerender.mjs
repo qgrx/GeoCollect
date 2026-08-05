@@ -43,8 +43,9 @@ const { abs, SEO_LANGS, DEFAULT_LANG, SOURCE_LANG } = await import('../src/seo/s
 const { buildPath, alternatesFor, DOCS_ROUTES } = await import('../src/routes.js')
 const { TRANSLATIONS } = await import('../src/i18n/translations.js')
 const { cardName, cardLongDescription, typeLabel, RARITY_CONFIG } = await import('../src/data/cards.js')
-const { publicGeocoins, relatedGeocoins, isIndexableGeocoin, MIN_INDEXABLE_DESCRIPTION } =
+const { publicGeocoins, relatedGeocoins, isIndexableGeocoin, geocoinDate, MIN_INDEXABLE_DESCRIPTION } =
   await import('../src/features/geocoins/publicGeocoins.js')
+const { cardCollectionLabel } = await import('../src/data/collections.js')
 const { richTextHtml } = await import('../src/utils/richText.js')
 const { geocacheTypeLabel, gcCodeUrl } = await import('../src/data/geocaching.js')
 
@@ -225,6 +226,8 @@ async function buildGeocoin(card, related, lang) {
   const gameFacts = factList([
     [tr(lang, 'geocoin_label_category'), type ? escapeText(type) : ''],
     [tr(lang, 'geocoin_label_rarity'),   escapeText(rar)],
+    [tr(lang, 'geocoin_label_published'), escapeText(geocoinDate(card.published_at, lang))],
+    [tr(lang, 'geocoin_label_collection'), escapeText(cardCollectionLabel(card, lang))],
     [tr(lang, 'geocoin_label_forge'),    escapeText(tr(lang, card.forgeable ? 'geocoin_forge_yes' : 'geocoin_forge_no'))],
     [tr(lang, 'geocoin_label_owners'),   nbOwners === undefined ? ''
       : escapeText(nbOwners > 0 ? tr(lang, 'geocoin_owners_count').replace('{n}', nbOwners) : tr(lang, 'geocoin_owners_none'))],
@@ -235,6 +238,7 @@ async function buildGeocoin(card, related, lang) {
     [tr(lang, 'geocoin_label_gc_code'),    card.gc_code
       ? `<a href="${escapeText(gcCodeUrl(card.gc_code))}" rel="noopener noreferrer nofollow">${escapeText(card.gc_code)}</a>` : ''],
     [tr(lang, 'geocoin_label_gc_owner'),   card.gc_owner ? escapeText(card.gc_owner) : ''],
+    [tr(lang, 'geocoin_label_gc_placed'),  escapeText(geocoinDate(card.gc_placed_date, lang))],
   ], tr(lang, 'geocoin_facts_gc'))
 
   const body = `<main class="prerendered">

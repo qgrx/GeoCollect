@@ -53,6 +53,29 @@ export function publicGeocoins(pool) {
     .sort((a, b) => a.id - b.id)
 }
 
+const DATE_LOCALES = { fr: 'fr-FR', en: 'en-GB', de: 'de-DE', es: 'es-ES' }
+
+/**
+ * Date affichée sur une fiche publique (« 26 juin 2007 »), ou '' si absente.
+ *
+ * Tout est formaté en **UTC**, quelle que soit la position du lecteur : une date
+ * de pose n'a pas d'heure, et la laisser au fuseau local ferait afficher la
+ * veille à l'ouest de Greenwich — la fiche pré-rendue et la page hydratée
+ * annonceraient alors deux dates différentes pour le même geocoin.
+ *
+ * Accepte le `YYYY-MM-DD` de `gc_placed_date` comme l'horodatage complet de
+ * `published_at`.
+ */
+export function geocoinDate(value, lang = DEFAULT_LANG) {
+  if (!value) return ''
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? `${value}T12:00:00Z` : String(value)
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString(DATE_LOCALES[lang] || DATE_LOCALES[DEFAULT_LANG], {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+  })
+}
+
 /**
  * Longueur de description LONGUE à partir de laquelle une fiche est indexée.
  *

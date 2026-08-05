@@ -222,6 +222,10 @@ export const apiAdminSaveCardDescTrans     = (id, description_translations) => a
 // Description longue = fiche publique du geocoin (SEO), distincte de la courte
 // affichée sur la carte. Texte source et traductions passent par la même route.
 export const apiAdminSaveCardLongDesc      = (id, description_long, description_long_translations) => apiFetch(`/api/admin/cards/${id}/long-description`, { method: 'PATCH', body: { description_long, description_long_translations } })
+// Fiche d'une cache sur geocaching.com, lue par l'API avec son compte de
+// service : alimente le bouton « ⤓ Remplir » du formulaire de carte. Lecture
+// seule — c'est l'admin qui enregistre ensuite ce qu'il a relu.
+export const apiAdminLookupGeocache        = (code) => apiFetch(`/api/admin/geocache/${encodeURIComponent(code)}`)
 export const apiGetPublicConfig       = () => apiFetch('/api/config')
 export const apiGetAdminConfig        = () => apiFetch('/api/admin/config')
 export const apiAdminGetMarketHistory = (params = {}) => { const qs = new URLSearchParams(params).toString(); return apiFetch(`/api/admin/market-history${qs ? '?' + qs : ''}`) }

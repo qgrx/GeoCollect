@@ -80,6 +80,14 @@ Les URLs indexables sont de **vrais fichiers** dans `dist/`, générés au build
   (`BY_SEGMENT[segment] = { list, detail }`). La galerie est la vitrine et le
   maillage interne des fiches — avant elle, une fiche n'était atteignable que par
   le sitemap ou les six liens « à découvrir » d'une voisine.
+- **La COLLECTION d'un geocoin se déduit de `published_at`** (`data/collections.js`,
+  « Vanilla » = tout ce qui précède août 2026) : aucune colonne, aucune saisie, donc
+  aucune carte mal rangée. À ne pas confondre avec `season_id`, qui pilote la
+  disponibilité dans le jeu. Ouvrir une collection = fermer la précédente à la même
+  date, sinon un geocoin publié dans le trou n'a plus de collection.
+- **Toute date de fiche publique passe par `geocoinDate`**, qui formate en **UTC** :
+  au fuseau local, la page pré-rendue et la page hydratée afficheraient deux jours
+  différents pour le même geocoin.
 - **Le titre d'un geocoin d'hommage n'est jamais traduit** : c'est le nom réel de
   la cache, celui sous lequel elle existe sur geocaching.com. `cardName` renvoie
   donc `card.name` pour ces geocoins, et `cardNameTranslation` fournit le

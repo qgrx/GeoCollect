@@ -3,7 +3,7 @@ import { INP, SEL, BTN } from '../../utils/styles.js';
 import { useT } from '../../i18n/translations.js';
 import { RC, cardCC } from '../../data/cards.js';
 import { supabase } from '../../lib/supabase.js';
-import { apiAdminSaveCardNameTrans, apiAdminSaveCardDescTrans, apiAdminSaveCardLongDesc, apiGetAdminSeasons, apiReleaseHiddenCards, apiAdminDeployFrontend } from '../../services/api.js';
+import { apiAdminSaveCardNameTrans, apiAdminSaveCardDescTrans, apiAdminSaveCardLongDesc, apiAdminLookupGeocache, apiGetAdminSeasons, apiReleaseHiddenCards, apiAdminDeployFrontend } from '../../services/api.js';
 import { PUBLISHED_TYPES, MIN_INDEXABLE_DESCRIPTION } from '../geocoins/publicGeocoins.js';
 import { TRIBUTE_TYPES, GEOCACHE_TYPES, GEOCACHE_TYPE_GROUPS, gcCodeIssue, gcCodeUrl, gcCodeFromInput } from '../../data/geocaching.js';
 import { buildPath, geocoinSlug } from '../../routes.js';
@@ -54,7 +54,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const [filterForgeCostVal, setFilterForgeCostVal] = useState('');
   const advActiveCount = [filterSellable, filterMinPrice, filterShiny, filterForgeCost].filter(Boolean).length;
   const [circulation, setCirculation] = useState(null);
-  const [nc, setNc] = useState({ name: "", type: cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "", forgeable: false, forgeCost: "", shiny_forge_cost: null, season_id: null, hidden: false, gc_code: "", gc_owner: "", gc_cache_type: "" });
+  const [nc, setNc] = useState({ name: "", type: cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "", forgeable: false, forgeCost: "", shiny_forge_cost: null, season_id: null, hidden: false, gc_code: "", gc_owner: "", gc_cache_type: "", gc_placed_date: "" });
 
   const displayCards = useMemo(() => {
     const RARITY_ORDER = { légendaire: 0, épique: 1, rare: 2, commun: 3 };
@@ -99,6 +99,41 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const NAME_TRANS_LANGS = TRIBUTE_TYPES.includes(editCard?.type)
     ? [{code:'fr',label:'Français'}, ...TRANS_LANGS]
     : TRANS_LANGS;
+
+  // Retour du bouton « ⤓ Remplir » : '…' pendant l'appel, sinon le résumé de ce
+  // qui a été posé (ou l'erreur). Effacé dès qu'on ouvre une autre carte.
+  const [gcLookup, setGcLookup] = useState('');
+  useEffect(() => { setGcLookup(''); }, [editCard?.id, newCardMode]);
+
+  /**
+   * Remplit les champs de la cache honorée depuis geocaching.com.
+   *
+   * Ne pose QUE ce que la fiche donne : un champ absent (type inconnu de notre
+   * liste, poseur illisible) laisse la saisie en place plutôt que de l'effacer.
+   * Le titre de la carte n'est écrasé que s'il est vide — le nom d'un geocoin
+   * est un choix éditorial, souvent volontairement plus court que celui de la
+   * cache, et le perdre d'un clic serait rageant.
+   */
+  async function lookupGeocache(code, set, src) {
+    if (!code) return;
+    setGcLookup('…');
+    const { data, error } = await apiAdminLookupGeocache(code);
+    if (error || !data?.geocache) { setGcLookup(`❌ ${error || 'Réponse illisible'}`); return; }
+
+    const g = data.geocache;
+    const patch = { gc_code: g.gc_code };
+    const filled = [];
+    if (g.name && !src.name?.trim()) { patch.name = g.name; filled.push('titre'); }
+    if (g.gc_owner)       { patch.gc_owner = g.gc_owner;             filled.push('poseur'); }
+    if (g.gc_cache_type)  { patch.gc_cache_type = g.gc_cache_type;   filled.push('type'); }
+    if (g.gc_placed_date) { patch.gc_placed_date = g.gc_placed_date; filled.push('date'); }
+    set(patch);
+
+    const skipped = [];
+    if (g.name && src.name?.trim() && g.name !== src.name) skipped.push(`titre gardé (la cache s'appelle « ${g.name} »)`);
+    if (!g.gc_cache_type && g.type_label) skipped.push(`type « ${g.type_label} » inconnu de la liste`);
+    setGcLookup(`✅ ${filled.length ? filled.join(', ') + ' — ' : ''}à vérifier puis enregistrer${skipped.length ? ` · ${skipped.join(' · ')}` : ''}`);
+  }
 
   const csvCardRef = useRef();
   const fileRef = useRef();
@@ -220,7 +255,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
 
   function closeForm() {
     setEditCard(null); setNewCardMode(false); setBatchMode(false);
-    setNc({ name:"", type: filterType !== 'Tous' ? filterType : cardTypes[0]||"", rarity:"commun", image:null, thumbnail:null, desc:"", sellable:true, minPrice:"", forgeable:false, forgeCost:"", shiny_forge_cost:null, season_id:null, gc_code:"", gc_owner:"", gc_cache_type:"" });
+    setNc({ name:"", type: filterType !== 'Tous' ? filterType : cardTypes[0]||"", rarity:"commun", image:null, thumbnail:null, desc:"", sellable:true, minPrice:"", forgeable:false, forgeCost:"", shiny_forge_cost:null, season_id:null, gc_code:"", gc_owner:"", gc_cache_type:"", gc_placed_date:"" });
     if (fileRef.current) fileRef.current.value = '';
     if (editFileRef.current) editFileRef.current.value = '';
   }
@@ -233,7 +268,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
           {editCard ? `✏️ ${editCard.name}` : newCardMode ? "➕ Nouvelle carte" : batchMode ? "📦 Création par lot" : "🃏 Geocoins"}
         </div>
         {!editCard && !newCardMode && !batchMode && (
-          <button onClick={()=>{ setNewCardMode(true); setNc({name:"",type:filterType!=='Tous'?filterType:cardTypes[0]||"",rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:"",shiny_forge_cost:null,season_id:null,hidden:false,gc_code:"",gc_owner:"",gc_cache_type:""}); }}
+          <button onClick={()=>{ setNewCardMode(true); setNc({name:"",type:filterType!=='Tous'?filterType:cardTypes[0]||"",rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:"",shiny_forge_cost:null,season_id:null,hidden:false,gc_code:"",gc_owner:"",gc_cache_type:"",gc_placed_date:""}); }}
             style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"6px 14px",fontSize:12,borderRadius:8}}>➕ Nouvelle carte</button>
         )}
         {!editCard && !newCardMode && !batchMode && (
@@ -430,9 +465,23 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
                   <div style={{fontWeight:900,color:"#00b894",fontSize:12,marginBottom:3}}>🧭 Cache honorée par ce geocoin</div>
                   <div style={{fontSize:11,color:"#8887a8",marginBottom:10}}>Facultatif — la cache réelle à laquelle ce geocoin rend hommage.</div>
                   <Fld lbl="Code GC">
-                    <input value={src.gc_code??''} onChange={e=>set({gc_code:e.target.value})}
-                      placeholder="GC1A2B3 — ou collez le lien de la cache" style={INP}/>
+                    <div style={{display:"flex",gap:6}}>
+                      <input value={src.gc_code??''} onChange={e=>set({gc_code:e.target.value})}
+                        placeholder="GC1A2B3 — ou collez le lien de la cache" style={{...INP,flex:1,minWidth:0}}/>
+                      {/* Le code suffit : l'API lit la fiche sur geocaching.com et
+                          renvoie titre, poseur, type et date. Rien n'est
+                          enregistré ici — les champs sont remplis dans le
+                          formulaire, l'admin relit puis sauvegarde. */}
+                      <button
+                        onClick={()=>lookupGeocache(code, set, src)}
+                        disabled={!code || gcLookup==='…'}
+                        title={code ? `Lire ${code} sur geocaching.com et remplir les champs` : "Saisir d'abord un code GC"}
+                        style={{...BTN(code?"linear-gradient(135deg,#00b894,#0984e3)":"#ffffff18"),padding:"0 14px",borderRadius:8,fontSize:12,whiteSpace:"nowrap",cursor:code?"pointer":"not-allowed",opacity:code?1:.5}}>
+                        {gcLookup==='…' ? '⏳' : '⤓ Remplir'}
+                      </button>
+                    </div>
                     {issue && <div style={{fontSize:11,color:"#e17055",fontWeight:700,marginTop:4}}>⚠️ {issue}</div>}
+                    {gcLookup && gcLookup!=='…' && <div style={{fontSize:11,color:gcLookup.startsWith('❌')?"#e17055":"#00b894",fontWeight:700,marginTop:4}}>{gcLookup}</div>}
                     {!issue && code && <a href={gcCodeUrl(code)} target="_blank" rel="noreferrer" style={{fontSize:11,color:"#74b9ff",fontWeight:700,marginTop:4,display:"inline-block"}}>↗ Ouvrir {code} sur geocaching.com</a>}
                   </Fld>
                   <Fld lbl="Poseur">
@@ -450,6 +499,9 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
                         </optgroup>
                       ))}
                     </select>
+                  </Fld>
+                  <Fld lbl="Date de publication de la cache (geocaching.com)">
+                    <input type="date" value={src.gc_placed_date??''} onChange={e=>set({gc_placed_date:e.target.value||null})} style={INP}/>
                   </Fld>
                 </div>
               );
@@ -506,7 +558,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
                 <span style={{color:"#aaa",fontSize:12}}>pts</span>
               </div>
             </Fld>
-            <div style={{display:"flex",gap:8,marginTop:4}}>{editCard?(<><button onClick={async()=>{if(!editCard.name.trim()){setMsg("❌ Nom requis.");return;}const payload={...editCard, image_url: editCard.image, image_url_thumb: editCard.thumbnail, is_offered: !!editCard.is_offered, gc_code: gcCodeFromInput(editCard.gc_code), gc_owner: editCard.gc_owner?.trim()||null, gc_cache_type: editCard.gc_cache_type||null, forgeable: !!editCard.forgeable, forge_cost: editCard.forgeable ? (editCard.forge_cost != null ? editCard.forge_cost : (editCard.forgeCost !== '' && editCard.forgeCost != null ? +editCard.forgeCost : null)) : null}; if(payload.minPrice!==undefined){payload.min_price=payload.minPrice; delete payload.minPrice;} delete payload.image; delete payload.thumbnail; delete payload.forgeCost; const err=await onEditCard(payload);if(err){setMsg("❌ "+err);return;}onUpdateCardInPool?.(payload);closeForm();setMsg(`✅ "${editCard.name}" mis à jour !`);}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>Enregistrer ✏️</button><button onClick={closeForm} style={{...BTN("#ffffff18"),padding:"11px",borderRadius:10}}>Annuler</button><button onClick={async()=>{if(!window.confirm(`Supprimer définitivement "${editCard.name}" ?`)) return;const name=editCard.name;const err=await onDeleteCard(editCard.id);if(err){setMsg("❌ "+err);return;}closeForm();setMsg(`✅ "${name}" supprimée.`);}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)","#fff"),padding:"11px",borderRadius:10}} title="Supprimer cette carte">🗑️</button></>):(<button onClick={async()=>{if(!nc.name.trim()){setMsg("❌ Nom requis.");return;}const payload={name:nc.name.trim(), type:nc.type||cardTypes[0]||"", rarity:nc.rarity, image_url:nc.image, image_url_thumb:nc.thumbnail, desc:nc.desc, sellable:(nc.forgeable||nc.hidden)?false:nc.sellable, min_price:nc.minPrice||null, forgeable:!!nc.forgeable, forge_cost:nc.forgeable?(nc.forge_cost??null):null, season_id:nc.season_id||null, offseason_gold_cost:nc.offseason_gold_cost??null, offseason_pf_cost:nc.offseason_pf_cost??null, hidden:!!nc.hidden, gc_code:gcCodeFromInput(nc.gc_code), gc_owner:nc.gc_owner?.trim()||null, gc_cache_type:nc.gc_cache_type||null}; const err=await onAddCard(payload);if(err){setMsg("❌ "+err);return;}setMsg(`✅ "${nc.name}" créée !`);closeForm();}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>{t("admin_create_card")}</button>)}</div>
+            <div style={{display:"flex",gap:8,marginTop:4}}>{editCard?(<><button onClick={async()=>{if(!editCard.name.trim()){setMsg("❌ Nom requis.");return;}const payload={...editCard, image_url: editCard.image, image_url_thumb: editCard.thumbnail, is_offered: !!editCard.is_offered, gc_code: gcCodeFromInput(editCard.gc_code), gc_owner: editCard.gc_owner?.trim()||null, gc_cache_type: editCard.gc_cache_type||null, gc_placed_date: editCard.gc_placed_date||null, forgeable: !!editCard.forgeable, forge_cost: editCard.forgeable ? (editCard.forge_cost != null ? editCard.forge_cost : (editCard.forgeCost !== '' && editCard.forgeCost != null ? +editCard.forgeCost : null)) : null}; if(payload.minPrice!==undefined){payload.min_price=payload.minPrice; delete payload.minPrice;} delete payload.image; delete payload.thumbnail; delete payload.forgeCost; const err=await onEditCard(payload);if(err){setMsg("❌ "+err);return;}onUpdateCardInPool?.(payload);closeForm();setMsg(`✅ "${editCard.name}" mis à jour !`);}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>Enregistrer ✏️</button><button onClick={closeForm} style={{...BTN("#ffffff18"),padding:"11px",borderRadius:10}}>Annuler</button><button onClick={async()=>{if(!window.confirm(`Supprimer définitivement "${editCard.name}" ?`)) return;const name=editCard.name;const err=await onDeleteCard(editCard.id);if(err){setMsg("❌ "+err);return;}closeForm();setMsg(`✅ "${name}" supprimée.`);}} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)","#fff"),padding:"11px",borderRadius:10}} title="Supprimer cette carte">🗑️</button></>):(<button onClick={async()=>{if(!nc.name.trim()){setMsg("❌ Nom requis.");return;}const payload={name:nc.name.trim(), type:nc.type||cardTypes[0]||"", rarity:nc.rarity, image_url:nc.image, image_url_thumb:nc.thumbnail, desc:nc.desc, sellable:(nc.forgeable||nc.hidden)?false:nc.sellable, min_price:nc.minPrice||null, forgeable:!!nc.forgeable, forge_cost:nc.forgeable?(nc.forge_cost??null):null, season_id:nc.season_id||null, offseason_gold_cost:nc.offseason_gold_cost??null, offseason_pf_cost:nc.offseason_pf_cost??null, hidden:!!nc.hidden, gc_code:gcCodeFromInput(nc.gc_code), gc_owner:nc.gc_owner?.trim()||null, gc_cache_type:nc.gc_cache_type||null, gc_placed_date:nc.gc_placed_date||null}; const err=await onAddCard(payload);if(err){setMsg("❌ "+err);return;}setMsg(`✅ "${nc.name}" créée !`);closeForm();}} style={{flex:1,...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"11px",borderRadius:10}}>{t("admin_create_card")}</button>)}</div>
           </div>
           <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:7}}><div style={{fontSize:10,color:"#8daacc",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Aperçu</div>{(()=>{const src=editCard||nc;const {c1,c2}=cardCC(src.rarity);const isLeg=src.rarity==="légendaire";return(<div style={{position:"relative",width:148,height:190,borderRadius:16,border:isLeg?`2px solid ${c1}`:`1.5px solid ${c1}66`,boxShadow:isLeg?`0 0 20px ${c1}66,0 4px 20px #0004`:"0 4px 14px #0003",overflow:"hidden",background:src.image?"transparent":`linear-gradient(145deg,${c1}44,${c2}66)`,fontFamily:"'Nunito',sans-serif"}}>{isLeg&&<div style={{position:"absolute",inset:0,borderRadius:16,zIndex:2,background:"linear-gradient(135deg,transparent 40%,#ffffff1a 50%,transparent 60%)",backgroundSize:"400px 100%",animation:"shimmer 2.5s linear infinite",pointerEvents:"none"}}/>}<div style={{position:"absolute",inset:0,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:6}}>{src.image?<img src={src.image} style={{width:"100%",height:"88%",objectFit:"contain"}} alt=""/>:<div style={{fontSize:52,opacity:.22,marginTop:40}}>🃏</div>}</div><div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,background:`linear-gradient(to top,${c1}ee 0%,${c1}99 50%,transparent 100%)`,padding:"28px 8px 7px",textAlign:"center"}}><div style={{fontWeight:900,fontSize:13,color:"#fff",textShadow:"0 1px 4px #0008",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",letterSpacing:.3}}>{src.name||"Nom"}</div></div><div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:4,height:4,background:`linear-gradient(90deg,${c1},${c2})`}}/>{src.forgeable&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#6c5ce7cc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>🔨 {src.forge_cost??src.forgeCost??'?'}pts</div>}{!src.forgeable&&!src.hidden&&src.sellable===false&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#e74c3ccc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>NON VENDABLE</div>}{src.hidden&&<div style={{position:"absolute",top:5,left:5,zIndex:5,background:"#e17055ee",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>🚫 CACHÉE</div>}{!src.forgeable&&src.minPrice>0&&<div style={{position:"absolute",top:5,right:5,zIndex:5,background:"#f39c12cc",color:"#fff",fontSize:8,fontWeight:800,borderRadius:4,padding:"2px 5px"}}>MIN {src.minPrice}G</div>}</div>);})()}</div>
         </div>

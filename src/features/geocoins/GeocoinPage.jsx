@@ -6,7 +6,8 @@ import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { RC, cardName, cardNameTranslation, cardLongDescription, rarityLabel, typeLabel } from '../../data/cards.js'
 import { geocoinIdFromSlug, buildPath } from '../../routes.js'
-import { isPublicGeocoin, relatedGeocoins } from './publicGeocoins.js'
+import { isPublicGeocoin, relatedGeocoins, geocoinDate } from './publicGeocoins.js'
+import { cardCollectionLabel } from '../../data/collections.js'
 import { richTextHtml, richTextLength } from '../../utils/richText.js'
 import { geocacheType, geocacheTypeLabel, gcCodeUrl } from '../../data/geocaching.js'
 import RichContent from '../docs/RichContent.jsx'
@@ -157,6 +158,10 @@ export default function GeocoinPage({ slug, onNavigate }) {
                   { label: t('geocoin_label_rarity'), value: rc
                     ? <span style={{ color: rc.color, background: `${rc.color}1f`, padding: '2px 10px', borderRadius: 999 }}>{rarityLabel(card.rarity, t)}</span>
                     : rarityLabel(card.rarity, t) },
+                  { label: t('geocoin_label_published'), value: geocoinDate(card.published_at, lang) || null },
+                  // La collection se déduit de la date de publication : pas de
+                  // ligne tant qu'on ne connaît pas cette date.
+                  { label: t('geocoin_label_collection'), value: cardCollectionLabel(card, lang) || null },
                   { label: t('geocoin_label_forge'), value: card.forgeable
                     ? `🔨 ${t('geocoin_forge_yes')}`
                     : t('geocoin_forge_no') },
@@ -178,6 +183,7 @@ export default function GeocoinPage({ slug, onNavigate }) {
                         style={{ color: '#00b894', textDecoration: 'none', borderBottom: '1px dotted #00b894' }}>{card.gc_code} ↗</a>
                     : null },
                   { label: t('geocoin_label_gc_owner'), value: card.gc_owner || null },
+                  { label: t('geocoin_label_gc_placed'), value: geocoinDate(card.gc_placed_date, lang) || null },
                 ]}
               />
             </div>
