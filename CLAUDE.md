@@ -156,6 +156,12 @@ Chacun a déjà causé un bug en production.
 - **Toute statistique joueur calculée depuis `gs.cardPool` doit filtrer les
   cartes cachées** (`publicCardPool` dans `App.jsx`). Le pool admin contient des
   brouillons jamais publiés.
+- **Ne jamais remplacer `cardPool` en entier avec `apiGetCards()`** : cet endpoint
+  sert le pool PUBLIC (`active=true`, `hidden=false`). Chez un admin, il vide
+  l'onglet 🚫 Cachées d'un coup — ce qui ressemble à une suppression de masse
+  alors que la base est intacte (supprimer une carte le faisait, 05/08).
+  Passer par `gs.reloadCards()`, seul chemin qui choisit `apiAdminGetCards()`
+  pour un admin.
 - **Ne jamais présumer du succès d'un appel API dans un toast.** Un toast de
   réussite affiché avant la réponse masque tous les refus serveur.
 

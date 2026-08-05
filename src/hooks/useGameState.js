@@ -705,6 +705,30 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
   // Ref pour checkAchievements (évite dépendance circulaire avec earnCard)
   const checkAchievementsRef = useRef(null)
 
+  // Recharge le pool de cartes depuis le serveur (event socket cards:released après une
+  // publication groupée, ou tout besoin de resync). L'admin récupère le pool complet.
+  //
+  // ⚠️ C'est le SEUL chemin autorisé pour remplacer `cardPool` en entier. Un
+  // `apiGetCards()` direct sert le pool PUBLIC (cartes cachées et inactives
+  // filtrées) : appliqué à un admin, il fait disparaître d'un coup toutes les
+  // cartes cachées de l'interface — ce qui ressemble à une suppression de masse
+  // alors que la base est intacte (bug du 05/08 après une suppression de carte).
+  const reloadCards = useCallback(async () => {
+    const { data } = await (profile?.role === 'admin' ? apiAdminGetCards() : apiGetCards())
+    if (data?.cards && mounted.current) {
+      const normalized = data.cards.map(c => ({
+        ...c,
+        desc:      c.desc      ?? c.description    ?? '',
+        image:     c.image     ?? c.image_url      ?? null,
+        thumbnail: c.thumbnail ?? c.image_url_thumb ?? null,
+        minPrice:  c.minPrice  ?? c.min_price      ?? null,
+      }))
+      normalized.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
+      setCardPool(normalized)
+      setCardTypes([...new Set(normalized.map(c => c.type).filter(t => t !== 'Achievement'))])
+    }
+  }, [profile?.role])
+
   // ── Crédit gold / carte côté client ────────────────────────────────────────
   // Les plafonds quotidiens (or, cartes) sont calculés et appliqués par le serveur,
   // qui les persiste dans `profiles` avec une remise à zéro à minuit (`daily_reset_at`).
@@ -834,11 +858,7 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
 
       // Si la carte achetée n'est pas dans cardPool (nouvelle carte), recharger le pool
       if (!cardPool.find(c => c.id === listing.card.id)) {
-        apiGetCards().then(({ data }) => {
-          if (data?.cards?.length && mounted.current) {
-            setCardPool(data.cards)
-          }
-        })
+        reloadCards()
       }
     }
 
@@ -853,7 +873,7 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
       setTransactions(prev => [tx, ...prev])
     }
     return 'ok'
-  }, [gold, profile])
+  }, [gold, profile, reloadCards])
 
   const handleListCard = useCallback(async (card, price, sellerName) => {
     setCollection(prev => ({ ...prev, [card.id]: Math.max(0, (prev[card.id] || 0) - 1) }))
@@ -1032,18 +1052,16 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
       const { error } = await apiAdminDeleteCard(cardId)
       if (error) {
         // Rollback si erreur
-        const { data } = await apiGetCards()
-        if (data?.cards?.length) setCardPool(data.cards.map(c => ({ ...c, desc: c.desc ?? c.description ?? '', image: c.image ?? c.image_url ?? null, minPrice: c.minPrice ?? c.min_price ?? null })))
+        await reloadCards()
         return error
       }
-      // Re-fetch après un court délai pour que le cache soit invalidé
-      setTimeout(async () => {
-        const { data } = await apiGetCards()
-        if (data?.cards) setCardPool(data.cards.map(c => ({ ...c, desc: c.desc ?? c.description ?? '', image: c.image ?? c.image_url ?? null, minPrice: c.minPrice ?? c.min_price ?? null })))
-      }, 300)
+      // Re-fetch après un court délai pour que le cache soit invalidé.
+      // Toujours via reloadCards : un apiGetCards() ici effaçait toutes les
+      // cartes cachées du pool admin (elles ne sont pas dans le pool public).
+      setTimeout(() => { reloadCards() }, 300)
     }
     return null
-  }, [profile])
+  }, [profile, reloadCards])
 
   const adminAddType = useCallback((type) => setCardTypes(prev => [...prev, type]), [])
 
@@ -1090,23 +1108,6 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
   const adminBanIP         = useCallback((ip) => setBannedIPs(prev => [...prev, ip]), [])
   const adminUnbanIP       = useCallback((ip) => setBannedIPs(prev => prev.filter(i => i !== ip)), [])
 
-  // Recharge le pool de cartes depuis le serveur (event socket cards:released après une
-  // publication groupée, ou tout besoin de resync). L'admin récupère le pool complet.
-  const reloadCards = useCallback(async () => {
-    const { data } = await (profile?.role === 'admin' ? apiAdminGetCards() : apiGetCards())
-    if (data?.cards && mounted.current) {
-      const normalized = data.cards.map(c => ({
-        ...c,
-        desc:      c.desc      ?? c.description    ?? '',
-        image:     c.image     ?? c.image_url      ?? null,
-        thumbnail: c.thumbnail ?? c.image_url_thumb ?? null,
-        minPrice:  c.minPrice  ?? c.min_price      ?? null,
-      }))
-      normalized.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }))
-      setCardPool(normalized)
-      setCardTypes([...new Set(normalized.map(c => c.type).filter(t => t !== 'Achievement'))])
-    }
-  }, [profile?.role])
 
   return {
     // World
