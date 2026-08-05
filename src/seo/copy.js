@@ -28,6 +28,28 @@ export const SEO_COPY = {
       description: 'Colecciona geocoins raros respondiendo preguntas de geocaching. Duelos en tiempo real, mercado entre jugadores y colección sincronizada.',
     },
   },
+  // Page rédigée en français uniquement pour l'instant : les quatre langues sont
+  // servies (le contenu retombe sur le français côté API), mais la copie SEO est
+  // écrite dans chaque langue pour ne pas afficher un titre français dans un
+  // résultat de recherche anglais.
+  rules: {
+    en: {
+      title: 'How to play — Geocoins game rules',
+      description: 'Learn how Geocoins works: quiz duels, rarities, daily limits, the forge, the market and the deposit. Everything you need to start collecting.',
+    },
+    fr: {
+      title: 'Comment jouer — les règles du jeu Geocoins',
+      description: 'Découvrez comment fonctionne Geocoins : les quiz, les raretés, vos limites quotidiennes, la forge, le marché et le dépôt. Tout pour bien démarrer.',
+    },
+    de: {
+      title: 'Spielregeln — so funktioniert Geocoins',
+      description: 'So funktioniert Geocoins: Quiz-Duelle, Seltenheiten, Tageslimits, Schmiede, Marktplatz und Depot. Alles für einen guten Start.',
+    },
+    es: {
+      title: 'Cómo jugar — las reglas de Geocoins',
+      description: 'Descubre cómo funciona Geocoins: duelos de quiz, rarezas, límites diarios, la forja, el mercado y el depósito. Todo para empezar bien.',
+    },
+  },
   geocoins: {
     en: {
       title: 'All geocoins — the Geocoins collection',

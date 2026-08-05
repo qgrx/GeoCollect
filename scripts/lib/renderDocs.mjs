@@ -77,10 +77,25 @@ function support(content, sanitize) {
     .join('\n')
 }
 
-const RENDERERS = { 'release-notes': releaseNotes, faq, support }
+/**
+ * Règles du jeu : suite de sections `{ icon, title, body }`.
+ * Les marqueurs `{{…}}` du corps ont déjà été remplacés par l'appelant — le
+ * pré-rendu doit afficher les mêmes chiffres que l'application.
+ */
+function rules(content, sanitize) {
+  return content
+    .filter(s => s?.title || s?.body)
+    .map(s => {
+      const title = `${s.icon ? `${escapeText(s.icon)} ` : ''}${escapeText(s.title)}`
+      return `<section><h2>${title}</h2><div>${sanitize(s.body)}</div></section>`
+    })
+    .join('\n')
+}
+
+const RENDERERS = { 'release-notes': releaseNotes, faq, support, rules }
 
 /**
- * @param page      'release-notes' | 'faq' | 'support'
+ * @param page      'rules' | 'release-notes' | 'faq' | 'support'
  * @param content   tableau tel que servi par GET /api/docs/:page
  * @param heading   titre de niveau 1, déjà traduit
  * @param sanitize  nettoyage du HTML éditorial (identité par défaut, tests)

@@ -26,6 +26,7 @@ export const LANG_CODES = SEO_LANGS
  */
 export const ROUTES = {
   home:            { segment: '',              indexable: true },
+  rules:           { segment: 'rules',         indexable: true },
   faq:             { segment: 'faq',           indexable: true },
   'release-notes': { segment: 'release-notes', indexable: true },
   support:         { segment: 'support',       indexable: true },
@@ -39,8 +40,12 @@ export const ROUTES = {
 /** Routes destinées aux moteurs, dans l'ordre d'importance du sitemap. */
 export const INDEXABLE_ROUTES = Object.keys(ROUTES).filter(r => ROUTES[r].indexable)
 
-/** Routes servies par la couche « docs » (DocsLayout). */
-export const DOCS_ROUTES = ['release-notes', 'faq', 'support']
+/**
+ * Routes servies par la couche « docs » (DocsLayout).
+ * L'ordre est celui des onglets : les règles d'abord, c'est la porte d'entrée
+ * d'un visiteur qui découvre le jeu.
+ */
+export const DOCS_ROUTES = ['rules', 'release-notes', 'faq', 'support']
 
 /**
  * segment → { list, detail } : deux routes peuvent partager un segment, l'une

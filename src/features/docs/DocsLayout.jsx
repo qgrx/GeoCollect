@@ -5,14 +5,16 @@ import { apiGetPublicConfig, apiSetConfig } from '../../services/api.js'
 import FaqPage from './FaqPage.jsx'
 import ReleaseNotesPage from './ReleaseNotesPage.jsx'
 import SupportContent from './SupportContent.jsx'
+import RulesPage from './RulesPage.jsx'
 
 const NAV = [
+  { id: 'rules',         labelKey: 'docs_nav_rules',   icon: '📖' },
   { id: 'release-notes', labelKey: 'docs_nav_release', icon: '📋' },
   { id: 'faq',           labelKey: 'docs_nav_faq',     icon: '❓' },
   { id: 'support',       labelKey: 'docs_nav_support', icon: '💬' },
 ]
 
-const PAGES = { faq: FaqPage, 'release-notes': ReleaseNotesPage, support: SupportContent }
+const PAGES = { rules: RulesPage, faq: FaqPage, 'release-notes': ReleaseNotesPage, support: SupportContent }
 
 // `page` est piloté par l'URL (cf. src/routes.js) : c'est elle qui fait foi, pour
 // que chaque onglet soit partageable, indexable et compatible avec le bouton Retour.

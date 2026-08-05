@@ -38,7 +38,7 @@ const { sanitizeHtml, neutralizeDarkText } = await import('../src/utils/sanitize
 const { renderDocsPage, PRERENDER_STYLE, PRERENDER_SCRIPT, escapeText, excerpt } = await import('./lib/renderDocs.mjs')
 const { buildSitemap, mostRecent } = await import('./lib/sitemap.mjs')
 const { seoHead } = await import('../src/seo/head.js')
-const { seoCopy } = await import('../src/seo/copy.js')
+const { seoCopy, SEO_COPY } = await import('../src/seo/copy.js')
 const { organizationLd, websiteLd, videoGameLd, faqPageLd, geocoinLd } = await import('../src/seo/jsonld.js')
 const { abs, SEO_LANGS, DEFAULT_LANG, SOURCE_LANG } = await import('../src/seo/site.js')
 const { buildPath, alternatesFor, DOCS_ROUTES } = await import('../src/routes.js')
@@ -47,6 +47,7 @@ const { cardName, cardLongDescription, typeLabel, RARITY_CONFIG } = await import
 const { publicGeocoins, relatedGeocoins, isIndexableGeocoin, geocoinDate, MIN_INDEXABLE_DESCRIPTION } =
   await import('../src/features/geocoins/publicGeocoins.js')
 const { cardCollectionLabel } = await import('../src/data/collections.js')
+const { gameValues, resolveGameValues } = await import('../src/data/gameValues.js')
 const { richTextHtml } = await import('../src/utils/richText.js')
 const { geocacheTypeLabel, gcCodeUrl } = await import('../src/data/geocaching.js')
 
@@ -191,6 +192,7 @@ async function buildHome(lang, hidden, hasGallery) {
 // ─── Pages docs ───────────────────────────────────────────────────────────────
 
 const DOC_HEADING_KEY = {
+  rules: 'docs_rules_title',
   'release-notes': 'docs_release_title',
   faq: 'docs_nav_faq',
   support: 'docs_nav_support',
@@ -198,15 +200,25 @@ const DOC_HEADING_KEY = {
 
 async function buildDocs(route, lang, content, hidden, hasGallery) {
   const heading = tr(lang, DOC_HEADING_KEY[route])
-  const { html, text } = content
-    ? renderDocsPage({ page: route, content, heading, sanitize })
+  // Page « règles » : les marqueurs {{…}} citent des valeurs réglées en admin.
+  // Les résoudre ICI garantit que la page statique affiche les mêmes chiffres que
+  // l'application — sinon un crawler indexerait des accolades.
+  const resolved = route === 'rules' && Array.isArray(content)
+    ? content.map(s => ({ ...s, body: resolveGameValues(s.body, gameValues(config, lang)) }))
+    : content
+  const { html, text } = resolved
+    ? renderDocsPage({ page: route, content: resolved, heading, sanitize })
     : { html: '', text: '' }
 
-  const description = text || seoCopy('home', lang).description
+  // Copie SEO dédiée si la route en a une (cf. src/seo/copy.js) : elle est calibrée
+  // pour la SERP, là où un extrait du contenu est coupé au petit bonheur. À défaut,
+  // on garde l'extrait, puis la description du site.
+  const copy = SEO_COPY[route] ? seoCopy(route, lang) : null
+  const description = copy?.description || text || seoCopy('home', lang).description
   const head = seoHead({
     lang,
     path: buildPath(route, { lang }),
-    title: `${heading} — Geocoins`,
+    title: copy?.title ?? `${heading} — Geocoins`,
     description: excerpt(description),
     ogType: route === 'release-notes' ? 'article' : 'website',
     alternates: alternatesFor(route),
