@@ -1221,6 +1221,14 @@ export function CountdownWidget({secondsLeft,nextCard,nextQuizRarity=null,onJoin
 export function HoldModal({ holdCard, holds = [], holdSlots = 0, holdRentActive = false, rentPrice = 80, replacePrice = 50, gold = 0, onStored, onStoreError, onTakeForgePoint, onClose, forgeCapped = false, owned = false, onChoose = null }) {
   const { t } = useT()
   const { theme } = useTheme()
+  // iOS : cette modale s'ouvre ~1 s APRÈS la validation de la réponse, donc pendant
+  // que le clavier se referme. Un `inset:0` se cale alors sur le viewport de MISE EN
+  // PAGE, encore décalé : la modale est peinte là où on la voit, mais Safari teste les
+  // taps sur l'ancienne géométrie → appuyer sur « Remplacer » sélectionne le geocoin
+  // affiché ~60 px plus haut, et le bouton ne part jamais (aucun message, fenêtre
+  // inchangée — signalé le 05/08). On se cale sur la zone RÉELLEMENT visible, comme
+  // la modale de quiz (cf. hooks/useVisualViewport.js).
+  const vv = useVisualViewport()
   const [loading, setLoading] = useState(false)
   const [confirmReplace, setConfirmReplace] = useState(false)  // mode sélection du geocoin à remplacer
   const [selectedReplaceId, setSelectedReplaceId] = useState(null)
@@ -1269,8 +1277,8 @@ export function HoldModal({ holdCard, holds = [], holdSlots = 0, holdRentActive 
   if (!holdCard) return null
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000a', padding: 20 }}>
-      <div style={{ background: 'linear-gradient(145deg,#0f1923,#1a2736)', border: `1.5px solid ${c1}55`, borderRadius: 20, padding: '24px 22px', maxWidth: 380, width: '100%', boxShadow: `0 0 40px ${c1}33, 0 12px 40px #0008`, fontFamily: "'Nunito',sans-serif" }}>
+    <div style={{ position: 'fixed', left: 0, right: 0, top: vv ? vv.offsetTop : 0, height: vv ? vv.height : '100%', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000a', padding: 20 }}>
+      <div style={{ background: 'linear-gradient(145deg,#0f1923,#1a2736)', border: `1.5px solid ${c1}55`, borderRadius: 20, padding: '24px 22px', maxWidth: 380, width: '100%', maxHeight: vv ? `${Math.max(0, vv.height - 40)}px` : 'calc(100dvh - 40px)', overflowY: 'auto', boxSizing: 'border-box', boxShadow: `0 0 40px ${c1}33, 0 12px 40px #0008`, fontFamily: "'Nunito',sans-serif" }}>
 
         {/* Titre */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
