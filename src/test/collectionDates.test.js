@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { collSectionOf, isFreshlyObtained, withSectionHeaders, COLL_SECTION_ORDER } from '../utils/collectionDates.js'
+import { collSectionOf, isFreshlyObtained, withSectionHeaders, splitSeenKeys, COLL_SECTION_ORDER } from '../utils/collectionDates.js'
 
 // Référence : 15 août 2026, 10 h 00 locales.
 const NOW = new Date(2026, 7, 15, 10, 0, 0).getTime()
@@ -27,10 +27,10 @@ describe('collSectionOf', () => {
     expect(collSectionOf(at(2026, 7, 20), NOW)).toBe('today')
   })
 
-  it('renvoie « unknown » sans date exploitable', () => {
-    expect(collSectionOf(null, NOW)).toBe('unknown')
-    expect(collSectionOf(undefined, NOW)).toBe('unknown')
-    expect(collSectionOf('pas une date', NOW)).toBe('unknown')
+  it('range les geocoins sans date exploitable avec les plus anciens', () => {
+    expect(collSectionOf(null, NOW)).toBe('older')
+    expect(collSectionOf(undefined, NOW)).toBe('older')
+    expect(collSectionOf('pas une date', NOW)).toBe('older')
   })
 })
 
@@ -46,25 +46,42 @@ describe('isFreshlyObtained', () => {
   })
 })
 
+describe('splitSeenKeys', () => {
+  it('sépare geocoins normaux et brillants', () => {
+    expect(splitSeenKeys(['12', '30_shiny', '7'])).toEqual({ cardIds: [12, 7], shinyIds: [30] })
+  })
+
+  it('ignore les clés illisibles laissées par une autre version', () => {
+    expect(splitSeenKeys(['', 'abc', '0', '-3', null, undefined, '9'])).toEqual({ cardIds: [9], shinyIds: [] })
+  })
+
+  it('rend une liste vide sans rien à envoyer', () => {
+    expect(splitSeenKeys([])).toEqual({ cardIds: [], shinyIds: [] })
+  })
+})
+
 describe('withSectionHeaders', () => {
+  // Liste telle que la produit le tri « Récents » : plus récent d'abord, les
+  // geocoins sans date connue en toute fin.
   const items = [
     { id: 'a', at: at(2026, 7, 15) },
     { id: 'b', at: at(2026, 7, 12) },
     { id: 'c', at: at(2026, 6, 20) },
-    { id: 'd', at: null },
     { id: 'e', at: at(2026, 5, 1) },
+    { id: 'd', at: null },
   ]
 
   it('insère un en-tête par section non vide, dans l’ordre', () => {
     const out = withSectionHeaders(items, NOW)
-    expect(out.filter(x => x.__header).map(x => x.__header)).toEqual(['today', 'week', 'month', 'older', 'unknown'])
-    // Chaque en-tête précède immédiatement son groupe
-    expect(out.map(x => x.__header || x.id)).toEqual(['today', 'a', 'week', 'b', 'month', 'c', 'older', 'e', 'unknown', 'd'])
+    expect(out.filter(x => x.__header).map(x => x.__header)).toEqual(['today', 'week', 'month', 'older'])
+    // Chaque en-tête précède immédiatement son groupe ; les geocoins sans date
+    // (« d ») ferment la section des plus anciens.
+    expect(out.map(x => x.__header || x.id)).toEqual(['today', 'a', 'week', 'b', 'month', 'c', 'older', 'e', 'd'])
   })
 
   it('n’invente pas de section vide', () => {
     const out = withSectionHeaders([{ id: 'a', at: null }], NOW)
-    expect(out).toEqual([{ __header: 'unknown' }, { id: 'a', at: null }])
+    expect(out).toEqual([{ __header: 'older' }, { id: 'a', at: null }])
   })
 
   it('conserve tous les éléments', () => {
@@ -77,7 +94,7 @@ describe('withSectionHeaders', () => {
     expect(out.map(x => x.__header || x.id)).toEqual(['today', 'a', 'week', 'b', 'month', 'c'])
   })
 
-  it('COLL_SECTION_ORDER finit par les dates inconnues', () => {
-    expect(COLL_SECTION_ORDER[COLL_SECTION_ORDER.length - 1]).toBe('unknown')
+  it('COLL_SECTION_ORDER finit par les plus anciens', () => {
+    expect(COLL_SECTION_ORDER[COLL_SECTION_ORDER.length - 1]).toBe('older')
   })
 })

@@ -60,7 +60,7 @@ export function BackToTop({ theme, isMobile, label }) {
   )
 }
 
-export default function CollectionScroll({ items, batch = 24, renderItem, theme, isMobile, resetKey, gridKey, topLabel, layout = 'grid', listGap = 9, showCount = true, showTopBtn = true, initialIndex = null, countOverride = null }) {
+export default function CollectionScroll({ items, batch = 24, renderItem, theme, isMobile, resetKey, gridKey, topLabel, layout = 'grid', listGap = 9, showCount = true, showTopBtn = true, initialIndex = null, countOverride = null, align = 'center' }) {
   // countOverride : nombre affiché en pied de liste quand `items` contient autre
   // chose que des éléments comptables (en-têtes de section de la collection).
   // initialIndex : élément à rendre atteignable dès le départ (ex. geocoin ciblé
@@ -91,8 +91,15 @@ export default function CollectionScroll({ items, batch = 24, renderItem, theme,
 
   const containerStyle = layout === 'list'
     ? { display: 'flex', flexDirection: 'column', gap: listGap, marginTop: 18, marginBottom: 16 }
-    // marginTop : respiration entre la barre figée au-dessus et la 1ʳᵉ ligne
-    : { display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', rowGap: 14, marginTop: 18, marginBottom: 16 }
+    // marginTop : respiration entre la barre figée au-dessus et la 1ʳᵉ ligne.
+    // align='start' : grille sectionnée — les geocoins doivent partir du même
+    // bord que les en-têtes de section, un centrage les en décalerait.
+    : {
+        display: 'flex', flexWrap: 'wrap', rowGap: 14, marginTop: 18, marginBottom: 16,
+        ...(align === 'start'
+          ? { justifyContent: 'flex-start', columnGap: 14 }
+          : { justifyContent: 'space-evenly' }),
+      }
 
   return (
     <>

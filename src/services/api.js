@@ -107,6 +107,16 @@ export const apiGetCardOwners = () => apiFetch('/api/cards/owners')
 
 // ─── Collection ───────────────────────────────────────────────────────────────
 export const apiGetCollection   = ()          => apiFetch('/api/collection')
+// Acquittement du badge « New », par LOTS : le front accumule les geocoins
+// survolés/ouverts et n'envoie la liste qu'une fois (débounce, puis envoi de
+// sécurité quand la page est masquée — `keepalive` pour survivre à la fermeture
+// de l'onglet, ce que `sendBeacon` ne permettrait pas ici faute d'en-tête
+// Authorization). Un survol ne coûte donc jamais une requête.
+export const apiMarkCollectionSeen = (cardIds, shinyCardIds, { keepalive = false } = {}) =>
+  apiFetch('/api/collection/seen', {
+    method: 'POST', keepalive,
+    body: { card_ids: cardIds, shiny_card_ids: shinyCardIds },
+  })
 export const apiGetUserCollection = (userId)  => apiFetch(`/api/collection/${userId}`)
 
 // ─── Market ───────────────────────────────────────────────────────────────────

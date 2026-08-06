@@ -83,6 +83,9 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
   // date inconnue (acquise avant le suivi, ou par un chemin sans journal).
   const [obtainedAt,      setObtainedAt]      = useState({})
   const [shinyObtainedAt, setShinyObtainedAt] = useState({})
+  // Badges « New » déjà acquittés en base (clés `id` / `id_shiny`) : c'est ce qui
+  // rend l'acquittement valable sur TOUS les appareils du joueur.
+  const [serverSeenKeys,  setServerSeenKeys]  = useState(() => new Set())
   const [myListings,   setMyListings]  = useState([])
   const [totalBuys,    setTotalBuys]   = useState(0)
   const [totalSells,   setTotalSells]  = useState(0)
@@ -427,7 +430,7 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
       setGold(0); setCollection({}); setShinyCollection({}); setMarket([]); setMyListings([]); setMarketLoaded(false)
       // Repartir sans repère : sinon la collection du compte suivant, comparée à
       // une collection vide, serait entièrement datée « à l'instant ».
-      setObtainedAt({}); setShinyObtainedAt({})
+      setObtainedAt({}); setShinyObtainedAt({}); setServerSeenKeys(new Set())
       prevOwnedRef.current = null; prevShinyOwnedRef.current = null
       setTransactions([]); setTotalBuys(0); setTotalSells(0); setStreak(0)
       _setUnreadSales(0); setSaleNotifs([]); setUnlockedAch([]); setPendingAch([])
@@ -487,6 +490,10 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
         if (colData.description_translations) setCollectionDescriptionTranslations(colData.description_translations)
         if (colData.obtained_at) setObtainedAt(colData.obtained_at)
         if (colData.shiny_obtained_at) setShinyObtainedAt(colData.shiny_obtained_at)
+        setServerSeenKeys(new Set([
+          ...(colData.seen_ids || []).map(String),
+          ...(colData.shiny_seen_ids || []).map(id => `${id}_shiny`),
+        ]))
         const alreadyUnlocked = ACHIEVEMENT_DEF
           .filter(def => (colData.collection[def.cardId] || 0) > 0)
           .map(def => def.id)
@@ -1162,7 +1169,7 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
     cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs, seasons, seasonById,
     limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded, collectionLoaded, marketLoaded,
     // Player
-    gold, setGold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, collectionDescriptionTranslations, obtainedAt, shinyObtainedAt, myListings, totalBuys, totalSells,
+    gold, setGold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, collectionDescriptionTranslations, obtainedAt, shinyObtainedAt, serverSeenKeys, myListings, totalBuys, totalSells,
     streak, setStreak, transactions, setTransactions, unlockedAch, achievementProgress, pendingAch, setPendingAch,
     pendingUpgrade, setPendingUpgrade, checkAchievementUpgrades,
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,

@@ -17,7 +17,7 @@ import { DOCS_ROUTES } from './routes.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, PSEUDO_CHANGE_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
 import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard, patronageHaloColor, answerWordCount } from './utils/gameUtils.js';
 import { isCorrectAnswer } from './utils/answer.js';
-import { withSectionHeaders, isFreshlyObtained, SEEN_CARDS_KEY } from './utils/collectionDates.js';
+import { withSectionHeaders, isFreshlyObtained, splitSeenKeys, SEEN_CARDS_KEY, SEEN_FLUSH_DELAY_MS } from './utils/collectionDates.js';
 
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
@@ -27,7 +27,7 @@ import useVisualViewport from './hooks/useVisualViewport.js'
 import { useRoute } from './hooks/useRoute.js'
 import useBlurOnResume from './hooks/useBlurOnResume.js'
 import { useQuizOpen } from './utils/quizOpenSignal.js'
-import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiBuyShinyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard, apiGetPatronagePending } from './services/api.js'
+import { apiSetConfig, apiGetCurrentQuiz, apiAdminToggleQuestion, apiGetQuizHistory, apiAdminGetQuestions, apiAdminAddQuestion, apiReleaseHiddenQuestions, apiGetDailyTreasure, apiClaimDailyTreasure, apiGetCurrentSeason, apiMarkSeasonSeen, apiGetHold, apiClaimHold, apiBuyHoldSlot, apiRentHoldSlot, apiTakeForgeInsteadOfHold, apiBuyPocketBoost, apiBuyBagSlot, apiBuyShinyBagSlot, apiPingProfile, apiGetDemo, apiDemoClaim, apiBuyOffseasonCard, apiGetPatronagePending, apiMarkCollectionSeen } from './services/api.js'
 import { soundQuizNew, soundMarketSale, soundCorrect, useVolume } from './utils/sounds.js'
 import { getSocket, disconnectSocket } from './services/socket.js'
 import { useAuth } from './hooks/useAuth.js';
@@ -1090,22 +1090,42 @@ export default function App() {
   const [sortBy,          setSortBy]          = useState(() => { // 'rarity'|'name-asc'|'name-desc'|'recent'
     try { const s = localStorage.getItem('geocoins_coll_sort'); return ['rarity', 'name-asc', 'name-desc', 'recent'].includes(s) ? s : 'rarity' } catch { return 'rarity' }
   });
-  // Geocoins dont le badge « New » a été acquitté (survol ou ouverture), par
-  // navigateur. On ne conserve que les clés encore fraîches : sans cet élagage,
-  // la liste grossirait indéfiniment alors que le badge ne concerne que les 7
-  // derniers jours.
+  // ── Acquittement du badge « New » ────────────────────────────────────────
+  // Le localStorage reste la vérité IMMÉDIATE (le badge disparaît sans attendre
+  // le réseau) ; la base porte la vérité PARTAGÉE entre les appareils du joueur.
+  // L'envoi est groupé et différé : un survol ne déclenche pas une requête.
+  // On n'y conserve que les clés encore fraîches — sans cet élagage la liste
+  // grossirait indéfiniment alors que le badge ne vit que 7 jours.
   const [seenCards, setSeenCards] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem(SEEN_CARDS_KEY) || '[]')) } catch { return new Set() }
   });
-  const freshKeysRef = useRef(new Set());
+  // Photo des trois ensembles nécessaires à l'envoi, lisible depuis un callback
+  // stable : acquittés en local, encore assez récents pour un badge, déjà connus
+  // du serveur.
+  const seenSyncRef = useRef({ local: new Set(), fresh: new Set(), server: new Set() });
+  const sentSeenRef = useRef(new Set());   // envoyés et confirmés dans cette session
   const markCardSeen = useCallback(key => {
     setSeenCards(prev => {
       if (prev.has(key)) return prev;
       const next = new Set(prev); next.add(key);
-      try { localStorage.setItem(SEEN_CARDS_KEY, JSON.stringify([...next].filter(k => freshKeysRef.current.has(k)))) } catch { /* quota/private */ }
+      try { localStorage.setItem(SEEN_CARDS_KEY, JSON.stringify([...next].filter(k => seenSyncRef.current.fresh.has(k)))) } catch { /* quota/private */ }
       return next;
     });
   }, []);
+  // `keepalive` : la requête survit à la fermeture de l'onglet (impossible avec
+  // sendBeacon, qui ne porterait pas l'en-tête Authorization).
+  const flushSeenCards = useCallback(async ({ keepalive = false } = {}) => {
+    if (!auth.profile || auth.isDemo) return
+    const { local, fresh, server } = seenSyncRef.current
+    const keys = [...local].filter(k => fresh.has(k) && !server.has(k) && !sentSeenRef.current.has(k))
+    if (!keys.length) return
+    const { cardIds, shinyIds } = splitSeenKeys(keys)
+    keys.forEach(k => sentSeenRef.current.add(k))          // optimiste : pas de double envoi
+    const { error } = await apiMarkCollectionSeen(cardIds, shinyIds, { keepalive })
+    // Échec (réseau, migration absente) : on remet en file, le prochain envoi
+    // réessaiera. Rien n'est perdu, l'acquittement local tient déjà l'affichage.
+    if (error) keys.forEach(k => sentSeenRef.current.delete(k))
+  }, [auth.profile, auth.isDemo]);
   const [sortMenuOpen,    setSortMenuOpen]    = useState(false);
   const [gridAnimKey,     setGridAnimKey]     = useState(0);
   const [cardSearch,      setCardSearch]      = useState('');
@@ -2367,11 +2387,31 @@ export default function App() {
     Object.entries(gs.shinyObtainedAt || {}).forEach(([id, at]) => { if (isFreshlyObtained(at, now)) keys.add(`${id}_shiny`) })
     return keys
   }, [gs.obtainedAt, gs.shinyObtainedAt]);
-  freshKeysRef.current = freshKeys;
+  seenSyncRef.current = { local: seenCards, fresh: freshKeys, server: gs.serverSeenKeys };
   const isNewCard = useCallback((cardId, isShiny) => {
     const key = isShiny ? `${cardId}_shiny` : `${cardId}`
-    return freshKeys.has(key) && !seenCards.has(key)
-  }, [freshKeys, seenCards]);
+    return freshKeys.has(key) && !seenCards.has(key) && !gs.serverSeenKeys.has(key)
+  }, [freshKeys, seenCards, gs.serverSeenKeys]);
+
+  // Envoi groupé : 3 s après le dernier acquittement. Se déclenche aussi à
+  // l'arrivée de la collection, ce qui rattrape un lot perdu à la session
+  // précédente (onglet fermé avant l'envoi de sécurité).
+  useEffect(() => {
+    const timer = setTimeout(() => { flushSeenCards() }, SEEN_FLUSH_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [seenCards, freshKeys, gs.serverSeenKeys, flushSeenCards]);
+
+  // Filet de sécurité : page masquée ou onglet fermé avant la fin du débounce.
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flushSeenCards({ keepalive: true }) }
+    const onPageHide = () => flushSeenCards({ keepalive: true })
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('pagehide', onPageHide)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('pagehide', onPageHide)
+    }
+  }, [flushSeenCards]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0
   const pseudoChanged   = pseudoChangedAt > 0 && (Date.now() - pseudoChangedAt) < PSEUDO_NOTIF_DAYS * 864e5
@@ -2987,6 +3027,7 @@ export default function App() {
                   ) : (
                     <CollectionScroll
                       items={sectionedCards} countOverride={displayCards.length} batch={COLL_PAGE_SIZE} theme={theme} isMobile={isMobile}
+                      align={sortBy === 'recent' ? 'start' : 'center'}
                       gridKey={gridAnimKey} topLabel={t('coll_back_top')}
                       resetKey={`${filter}|${sortBy}|${cardSearch}|${showShiny}|${showMissing}|${gridAnimKey}`}
                       renderItem={({ card, count, cnt, missing, isShiny, shinyOwned, at, __header }, idx) => {
