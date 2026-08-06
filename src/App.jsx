@@ -370,11 +370,32 @@ export default function App() {
     // Pull « quiz courant » : au montage ET au retour d'onglet après une longue absence
     // (mobile : quiz:new / quiz:solved perdus pendant la suspension de l'onglet, même
     // quand le socket se croit encore connecté → bandeau figé jusqu'au rechargement).
-    const syncCurrentQuiz = () => apiGetCurrentQuiz().then(({ data }) => {
+    const syncCurrentQuiz = ({ quiet = false } = {}) => apiGetCurrentQuiz().then(({ data }) => {
       if (!data) return
+      // Mode filet (watchdog ci-dessous) : ne RIEN toucher tant que le serveur est
+      // d'accord avec l'état local. Le resync complet n'est légitime qu'au montage /
+      // à la reconnexion ; ici seule une vraie divergence (clôture ou quiz:new manqués)
+      // justifie d'écraser l'état — sinon on perdrait les patchs locaux (graceDeadline
+      // posé par quiz:prize_won…) ou on ferait sursauter le décompte toutes les 15 s.
+      if (quiet && data.quiz && !data.quiz.already_won) {
+        if (pendingQuizRef.current?.id === data.quiz.id) return   // même round en attente : rien à réparer
+        if (Date.now() < snoozedUntilRef.current) return          // question passée volontairement (« plus tard »)
+      }
+      if (quiet && !data.quiz && !pendingQuizRef.current) {
+        // Pas de round ouvert de part et d'autre : ne recaler le compteur que s'il
+        // s'est vraiment égaré (> 10 s d'écart avec l'horaire serveur — ex. clôture
+        // manquée après une victoire, compteur parqué un cycle trop loin par
+        // parkCountdownPastGrace). En deçà, on ne touche à rien : recaler à chaque
+        // tick ferait osciller l'affichage au gré de la latence réseau.
+        const nextAt = data.next_quiz_at ? new Date(data.next_quiz_at).getTime() : 0
+        const srvNow = data.server_time  ? new Date(data.server_time).getTime()  : Date.now()
+        const drift  = nextAt ? Math.abs(Date.now() + Math.max(0, nextAt - srvNow) - nextQuizTimeRef.current) : 0
+        if (drift < 10_000) { setWonRound(null); return }   // round clos : « ✓ Gagné » sans objet
+      }
       // Plus de quiz actif côté serveur : purger un éventuel quiz en attente périmé
-      // (round résolu pendant la suspension → sinon « Participer » sur un quiz mort).
-      if (!data.quiz) setPendingQuiz(p => (p && !p.winner ? null : p))
+      // (round résolu pendant la suspension → sinon « Participer » sur un quiz mort)
+      // et refermer un « ✓ Gagné / Répondu » qui n'a plus de round.
+      if (!data.quiz) { setPendingQuiz(p => (p && !p.winner ? null : p)); setWonRound(null) }
       const cycleTime = gs.limits?.quizInterval ?? QUIZ_INTERVAL
 
       // Calcul du countdown à partir de next_quiz_at (nouvelle API)
@@ -451,6 +472,21 @@ export default function App() {
       hiddenAt = null
     }
     document.addEventListener('visibilitychange', onVisResync)
+
+    // Filet « bandeau figé » : la clôture d'un round n'arrive QUE par socket, et
+    // dès qu'une question est en attente le poll de secours de useQuiz est coupé
+    // (son effet compteur s'arrête tant que pendingQuiz existe). Un quiz:solved /
+    // quiz:new perdu SANS vraie déconnexion (WebView in-app, socket zombie après
+    // < 45 s de veille — sous les seuils du kill zombie et du resync de visibilité,
+    // blip réseau) laissait donc « Participer » ou le décompte figés sur un round
+    // mort jusqu'au rechargement manuel — pendant que la question suivante tombait.
+    // Revérification lente de /current ; `quiet` garantit qu'elle ne touche à rien
+    // tant que le serveur est d'accord avec l'état local.
+    const watchdog = setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      if (activeQuizRef.current) return   // modale ouverte : ne jamais tirer l'état sous le joueur
+      syncCurrentQuiz({ quiet: true })
+    }, 15_000)
 
     getSocket().then(s => {
       if (!s) return  // API non configurée
@@ -964,6 +1000,7 @@ export default function App() {
 
     return () => {
       document.removeEventListener('visibilitychange', onVisResync)
+      clearInterval(watchdog)
       socket?.off('quiz:new')
       socket?.off('quiz:solved')
       socket?.off('quiz:prize_won')
