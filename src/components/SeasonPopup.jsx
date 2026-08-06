@@ -1,4 +1,5 @@
-import { cardCC } from '../data/cards.js';
+import { cardCC, cardName } from '../data/cards.js';
+import { seasonName } from '../data/seasons.js';
 import { useT } from '../i18n/translations.js'
 
 function formatDate(iso) {
@@ -9,7 +10,7 @@ function formatDate(iso) {
 }
 
 export default function SeasonPopup({ season, cards, onClose }) {
-  const { t } = useT()
+  const { t, lang } = useT()
   if (!season) return null;
 
   return (
@@ -64,7 +65,7 @@ export default function SeasonPopup({ season, cards, onClose }) {
             {t('season_new')}
           </div>
           <div style={{ fontSize: 17, fontWeight: 800, color: '#4a9eff', marginBottom: 8 }}>
-            {season.name}
+            {seasonName(season, lang)}
           </div>
           <div style={{
             display: 'inline-block',
@@ -111,9 +112,9 @@ export default function SeasonPopup({ season, cards, onClose }) {
                         boxShadow: card.rarity === 'légendaire' ? `0 0 12px ${c1}88` : 'none',
                       }}>
                         {(card.image_url_thumb || card.image_url)
-                          ? <img src={card.image_url_thumb || card.image_url} alt={card.name}
+                          ? <img src={card.image_url_thumb || card.image_url} alt={cardName(card, lang)}
                               style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                          : <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{card.name[0]}</div>
+                          : <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{cardName(card, lang)[0]}</div>
                         }
                       </div>
                       <div style={{
@@ -121,7 +122,7 @@ export default function SeasonPopup({ season, cards, onClose }) {
                         textAlign: 'center', width: '100%',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
-                        {card.name}
+                        {cardName(card, lang)}
                       </div>
                     </div>
                   );

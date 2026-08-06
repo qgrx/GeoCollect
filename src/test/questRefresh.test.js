@@ -20,6 +20,7 @@ vi.mock('../services/api.js', () => {
     apiSetConfig:       okNull,
     apiGetAdminConfig:  okNull,
     apiGetPublicConfig: okNull,
+    apiGetSeasons:      okNull,
     apiAdminGetCards:   okNull,
     apiAdminAddCard:    okNull,
     apiAdminEditCard:   okNull,

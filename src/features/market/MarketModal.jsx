@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } fr
 import { useT } from '../../i18n/translations.js'
 import { useTheme } from '../../ThemeContext.jsx'
 import { RC, cardCC, rarityLabel } from '../../data/cards.js'
+import { seasonName } from '../../data/seasons.js'
 import Card from '../../components/Card.jsx'
 import CollectionScroll from '../../components/CollectionScroll.jsx'
 import { TxHistoryModal } from '../achievements/NotifComponents.jsx'
@@ -61,8 +62,9 @@ export default function MarketModal({
   maxActiveListingsByRarity = {},
   forgePoints = 0,
   onBuyOffseason = null,
+  seasonById = {},
 }) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const { theme } = useTheme()
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 620)
   useEffect(() => {
@@ -846,7 +848,10 @@ export default function MarketModal({
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 900, fontSize: 14, color: theme.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.card.name}</div>
                           <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                            {it.season_name && <span style={{ fontStyle: 'italic' }}>{it.season_name}</span>}
+                            {/* `season_name` vient de l'API en français : on lui préfère la
+                                saison connue du client, qui porte ses traductions. */}
+                            {(seasonName(seasonById[it.card.season_id], lang) || it.season_name) &&
+                              <span style={{ fontStyle: 'italic' }}>{seasonName(seasonById[it.card.season_id], lang) || it.season_name}</span>}
                             <span style={{ color: canGold ? theme.gold : '#e74c3c', fontWeight: 800 }}>{it.gold_cost.toLocaleString()}G</span>
                             <span style={{ color: canPf ? '#a29bfe' : '#e74c3c', fontWeight: 800 }}>{it.pf_cost} PF</span>
                           </div>

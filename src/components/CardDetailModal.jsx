@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback } from 'react'
 import { RC, cardCC, rarityLabel, cardName, cardNameTranslation, cardDescription, typeLabel } from '../data/cards.js'
+import { seasonColor, seasonTextColor, seasonName } from '../data/seasons.js'
 import { useT } from '../i18n/translations.js'
 import { ShinyEffect } from './Card.jsx'
 import { ReferralPanel } from '../features/referral/ReferralModal.jsx'
 
-export default function CardDetailModal({ card, count, owned, onClose, onSell, isShiny = false, typeTranslations, patronagePoints = null, patronageInfo = null, onPatronage }) {
+export default function CardDetailModal({ card, count, owned, onClose, onSell, isShiny = false, typeTranslations, season = null, patronagePoints = null, patronageInfo = null, onPatronage }) {
   const { t, lang } = useT()
 
   const imgRef = useRef()
@@ -231,6 +232,16 @@ export default function CardDetailModal({ card, count, owned, onClose, onSell, i
             <div style={{ background: '#ffffff0a', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#888', fontWeight: 700 }}>
               Type : <span style={{ color: '#ccc' }}>{typeLabel(card.type, typeTranslations, lang)}</span>
             </div>
+            {/* Geocoin de saison : même couleur que la pastille de la grille, pour
+                que le joueur relie les deux d'un coup d'œil. */}
+            {season && (() => {
+              const bg = seasonColor(season)
+              return (
+                <div style={{ background: bg, borderRadius: 8, padding: '4px 10px', fontSize: 11, color: seasonTextColor(bg), fontWeight: 800 }}>
+                  {t('season_label')} : {seasonName(season, lang)}
+                </div>
+              )
+            })()}
             {card.sellable === false && <div style={{ background: '#e74c3c18', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#e74c3c', fontWeight: 700 }}>Non vendable</div>}
             {(card.minPrice || card.min_price) > 0 && <div style={{ background: '#f9ca2418', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#f9ca24', fontWeight: 700 }}>Min {card.minPrice || card.min_price}G</div>}
             {/* Mécénat d'un doublon : offrir ce geocoin à un autre joueur (bouton à côté du Type) */}

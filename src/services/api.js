@@ -353,6 +353,7 @@ export const apiGetJeuQuotidien = () => apiFetch('/api/jeu/quotidien')
 export const apiAdminSeedJeu    = () => apiFetch('/api/admin/jeu/seed', { method: 'POST' })
 
 // ─── Saisons ──────────────────────────────────────────────────────────────────
+export const apiGetSeasons            = ()         => apiFetch('/api/seasons')
 export const apiGetCurrentSeason      = ()         => apiFetch('/api/seasons/current')
 export const apiMarkSeasonSeen        = ()         => apiFetch('/api/seasons/current/seen', { method: 'POST' })
 export const apiGetAdminSeasons       = ()         => apiFetch('/api/admin/seasons')

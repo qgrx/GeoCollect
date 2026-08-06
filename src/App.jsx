@@ -12,6 +12,7 @@ import GeocoinsGallery from './features/geocoins/GeocoinsGallery.jsx';
 
 // ─── Data & utils ─────────────────────────────────────────────────────────────
 import { RC, cardCC, RARITY_CONFIG, rarityLabel, cardName, typeLabel } from './data/cards.js';
+import { seasonColor, seasonTextColor, seasonName } from './data/seasons.js';
 import { DOCS_ROUTES } from './routes.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, PSEUDO_CHANGE_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
 import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard, patronageHaloColor, answerWordCount } from './utils/gameUtils.js';
@@ -2921,6 +2922,7 @@ export default function App() {
                   ) : collViewAll ? (
                     <CollectionOverview
                       items={displayCards} theme={theme} isMobile={isMobile} lang={lang} shinyOwnedLabel={t('coll_owned_shiny')}
+                      seasonById={gs.seasonById} seasonLabel={t('season_label')}
                       onSelect={(card, isShiny, isAchievement) => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', desc_translations: (!isShiny && gs.collectionDescriptionTranslations?.[card.id]) || card.description_translations || null, progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(isShiny); setSelectedCardFromHistory(false); }}
                     />
                   ) : (
@@ -2932,6 +2934,10 @@ export default function App() {
                         const c = count || cnt || 0;
                         const isAchievement = card.type?.toLowerCase().startsWith('achievement')
                         const isEvolutive = isAchievement && !!gs.achievementProgress?.[card.id]?.tiers
+                        // Geocoin de saison : rien ne le distinguait d'un geocoin permanent
+                        // une fois dans la grille. Même principe que « ÉVOLUTIF », mais avec
+                        // le nom de la saison et sa couleur (cf. data/seasons.js).
+                        const season = card.season_id ? gs.seasonById?.[card.season_id] : null
                         // Cascade par lot : délai selon la position DANS le lot (stable pour un
                         // idx donné) → les cartes déjà montées ne rejouent pas leur animation
                         // quand le lot suivant apparaît en dessous.
@@ -2940,7 +2946,17 @@ export default function App() {
                           : `collBatchIn .45s ${(idx % COLL_PAGE_SIZE) * 0.02}s cubic-bezier(.34,1.56,.64,1) both`
                         return (
                           <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ position: 'relative', animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
-                            {isEvolutive && <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 7, background: '#f9ca24cc', color: '#1e3045', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, pointerEvents: 'none' }}>ÉVOLUTIF</div>}
+                            {isEvolutive && <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 7, background: '#f9ca24cc', color: '#1e3045', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, pointerEvents: 'none' }}>{t('evolutive_badge')}</div>}
+                            {season && (() => {
+                              const bg = seasonColor(season)
+                              const label = seasonName(season, lang)
+                              return (
+                                <div title={`${t('season_label')} : ${label}`}
+                                  style={{ position: 'absolute', top: isEvolutive ? 22 : 6, left: 6, zIndex: 7, maxWidth: 'calc(100% - 34px)', background: bg, color: seasonTextColor(bg), fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', boxShadow: '0 1px 4px #0006', pointerEvents: 'none' }}>
+                                  {label}
+                                </div>
+                              )
+                            })()}
                             <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', desc_translations: (!isShiny && gs.collectionDescriptionTranslations?.[card.id]) || card.description_translations || null, progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
                             {/* Possédé uniquement en brillant : le geocoin est bien acquis, mais rangé
                                 dans l'onglet ✨ — sans ce rappel il paraît simplement manquant. */}
@@ -2989,7 +3005,7 @@ export default function App() {
                   myListings={gs.myListings} transactions={gs.transactions}
                   onClose={() => setActiveTab('collection')}
                   onBuy={handleBuy} onListCard={handleListCard} onCancelListing={handleCancelListing} onCancelAllListings={handleCancelAllListings}
-                  onBuyOffseason={handleBuyOffseason} forgePoints={gs.forgePoints}
+                  onBuyOffseason={handleBuyOffseason} forgePoints={gs.forgePoints} seasonById={gs.seasonById}
                   initialTab={marketTab} initialSellCard={marketTab === 'vendre' ? marketSellCard : null}
                   ranks={gs.limits.playerRanks}
                   marketSalesOpen={gs.limits.marketSalesOpen !== false}
@@ -3502,6 +3518,7 @@ export default function App() {
         <CardDetailModal
           card={selectedCard}
           typeTranslations={gs.limits.typeTranslations}
+          season={selectedCard.season_id ? gs.seasonById?.[selectedCard.season_id] : null}
           count={selectedCardFromHistory ? 0 : selectedCardIsShiny ? (gs.shinyCollection?.[selectedCard.id] || 0) : (gs.collection[selectedCard.id] || 0)}
           owned={selectedCardIsShiny ? (gs.shinyCollection?.[selectedCard.id] || 0) > 0 : (gs.collection[selectedCard.id] || 0) > 0}
           isShiny={selectedCardIsShiny}

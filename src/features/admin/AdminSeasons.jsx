@@ -18,7 +18,12 @@ function formatDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
-const EMPTY_FORM = { name: '', start_date: '', end_date: '', is_cyclic: false };
+const EMPTY_FORM = { name: '', name_translations: {}, start_date: '', end_date: '', is_cyclic: false };
+
+// Le nom saisi ci-dessus est le FRANÇAIS (langue source) ; sans ces traductions,
+// l'étiquette de saison des geocoins s'affiche en français dans les 3 autres
+// langues, sans le moindre signe que quelque chose manque.
+const TRANS_LANGS = [{ code: 'en', label: 'English' }, { code: 'de', label: 'Deutsch' }, { code: 'es', label: 'Español' }];
 
 function isCyclicNow(s, todayMD) {
   const sm = s.start_date.slice(5), em = s.end_date.slice(5);
@@ -91,7 +96,7 @@ export default function AdminSeasons({ setMsg }) {
 
   function startEdit(s) {
     setEditId(s.id);
-    setForm({ name: s.name, start_date: s.start_date, end_date: s.end_date, is_cyclic: !!s.is_cyclic });
+    setForm({ name: s.name, name_translations: s.name_translations || {}, start_date: s.start_date, end_date: s.end_date, is_cyclic: !!s.is_cyclic });
   }
 
   function cancelEdit() {
@@ -106,13 +111,23 @@ export default function AdminSeasons({ setMsg }) {
     if (form.start_date > form.end_date) {
       setMsg('❌ La date de début doit être avant la date de fin.'); return;
     }
+    // Une traduction vide ne part pas en base : elle y ferait croire à un nom
+    // traduit alors que l'affichage retombe sur le français.
+    const payload = {
+      ...form,
+      name_translations: Object.fromEntries(
+        Object.entries(form.name_translations || {})
+          .map(([code, value]) => [code, String(value).trim()])
+          .filter(([, value]) => value),
+      ),
+    };
     if (editId) {
-      const { data, error } = await apiUpdateAdminSeason(editId, form);
+      const { data, error } = await apiUpdateAdminSeason(editId, payload);
       if (error) { setMsg('❌ ' + error); return; }
       setSeasons(s => s.map(x => x.id === editId ? data.season : x));
       setMsg(`✅ Saison "${data.season.name}" mise à jour.`);
     } else {
-      const { data, error } = await apiCreateAdminSeason(form);
+      const { data, error } = await apiCreateAdminSeason(payload);
       if (error) { setMsg('❌ ' + error); return; }
       setSeasons(s => [data.season, ...s]);
       setMsg(`✅ Saison "${data.season.name}" créée.`);
@@ -170,10 +185,25 @@ export default function AdminSeasons({ setMsg }) {
         <div style={{ fontWeight: 800, color: '#aaa', fontSize: 12, marginBottom: 10 }}>
           {editId ? '✏️ Modifier la saison' : '➕ Nouvelle saison'}
         </div>
-        <Fld lbl="Nom de la saison">
+        <Fld lbl="Nom de la saison (français)">
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             placeholder="ex: Saison Été 2025" style={INP} />
         </Fld>
+        <div style={{ background: '#1a0a3a', border: '1px solid #6c5ce744', borderRadius: 9, padding: 11, marginBottom: 10 }}>
+          <div style={{ fontWeight: 800, color: '#a29bfe', fontSize: 11, marginBottom: 8 }}>
+            🌐 Traductions du nom — affichées sur l'étiquette des geocoins de la saison
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {TRANS_LANGS.map(l => (
+              <div key={l.code} style={{ flex: '1 1 150px' }}>
+                <div style={{ fontSize: 10, color: '#aaa', fontWeight: 700, marginBottom: 4 }}>{l.label}</div>
+                <input value={form.name_translations?.[l.code] || ''}
+                  onChange={e => setForm(f => ({ ...f, name_translations: { ...f.name_translations, [l.code]: e.target.value } }))}
+                  placeholder={`Nom en ${l.label}…`} style={INP} />
+              </div>
+            ))}
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <Fld lbl="Date de début">
             <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} style={INP} />
@@ -219,6 +249,12 @@ export default function AdminSeasons({ setMsg }) {
                     <span style={{ fontWeight: 800, color: '#fff', fontSize: 13 }}>{s.name}</span>
                     <span style={{ fontSize: 9, fontWeight: 800, color: statusColor, background: statusColor + '22', padding: '2px 6px', borderRadius: 4, letterSpacing: .5 }}>{statusLabel}</span>
                     {s.is_cyclic && <span style={{ fontSize: 9, fontWeight: 800, color: '#74b9ff', background: '#74b9ff22', padding: '2px 6px', borderRadius: 4, letterSpacing: .5 }}>🔄 CYCLIQUE</span>}
+                    {/* Langues sans traduction : le joueur y verra le nom français. */}
+                    {(() => {
+                      const missing = TRANS_LANGS.filter(l => !String(s.name_translations?.[l.code] || '').trim()).map(l => l.code);
+                      if (!missing.length) return <span style={{ fontSize: 9, fontWeight: 800, color: '#2ecc71' }} title="Nom traduit dans les 4 langues">🌐 ✓</span>;
+                      return <span style={{ fontSize: 9, fontWeight: 800, color: '#f39c12', background: '#f39c1222', padding: '2px 6px', borderRadius: 4 }} title="Ces langues afficheront le nom français">🌐 {missing.join(' ')} manquant{missing.length > 1 ? 's' : ''}</span>;
+                    })()}
                   </div>
                   <div style={{ color: '#aaa', fontSize: 11 }}>{formatDate(s.start_date)} → {formatDate(s.end_date)}{s.is_cyclic && <span style={{ color: '#74b9ff', marginLeft: 6 }}>(fenêtre annuelle)</span>}</div>
                 </div>

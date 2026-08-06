@@ -8,7 +8,9 @@ import {
   apiPingProfile, apiSetConfig, apiGetAdminConfig, apiGetPublicConfig,
   apiAdminGetCards, apiAdminAddCard, apiAdminEditCard, apiAdminDeleteCard, apiAdminDeleteType, apiAdminRenameType,
   apiGetDailyQuests, apiQuestCheckin, apiRerollDailyQuest, apiGetWeeklyQuests, apiRerollWeeklyQuest, apiGetAchievements, apiClaimReferral,
+  apiGetSeasons,
 } from '../services/api.js'
+import { seasonsById } from '../data/seasons.js'
 
 
 // Parrainage — refus définitifs renvoyés par POST /api/referral/claim : inutile
@@ -62,6 +64,7 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
   const [cardTypes,   setCardTypes]   = useState([])
   const [market,      setMarket]      = useState([])
   const [bannedIPs,   setBannedIPs]   = useState([])
+  const [seasons,     setSeasons]     = useState([])
   const [limits,      setLimits]      = useState(INIT_LIMITS)
   const [maintenance, setMaintenance] = useState({ on: false, text: '' })
   const [loadingData, setLoadingData] = useState(false)
@@ -378,6 +381,12 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
         setConfigLoaded(true)
       }
     })
+
+    // Saisons — nom et fenêtre de chaque `cards.season_id`, pour l'étiquette
+    // portée par les geocoins de saison. Public : le mode démo en profite aussi.
+    apiGetSeasons().then(({ data }) => {
+      if (data?.seasons && mounted.current) setSeasons(data.seasons)
+    }).catch(() => {})
   }, [])
 
   // ── Charger les données depuis l'API quand le profil change ───────────────
@@ -701,6 +710,8 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
   const uniqueCards = useMemo(() => Object.keys(collection).filter(k => collection[k] > 0).length, [collection])
   const totalUnique = cardPool.length
   const myScore     = useMemo(() => collScore(collection, cardPool), [collection, cardPool])
+  // `cards.season_id` → saison, pour étiqueter un geocoin sans re-parcourir la liste.
+  const seasonById  = useMemo(() => seasonsById(seasons), [seasons])
 
   // Ref pour checkAchievements (évite dépendance circulaire avec earnCard)
   const checkAchievementsRef = useRef(null)
@@ -1111,7 +1122,7 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
 
   return {
     // World
-    cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs,
+    cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs, seasons, seasonById,
     limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded, collectionLoaded, marketLoaded,
     // Player
     gold, setGold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, collectionDescriptionTranslations, myListings, totalBuys, totalSells,

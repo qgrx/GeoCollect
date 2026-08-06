@@ -1,4 +1,5 @@
 import { cardCC, cardName } from '../data/cards.js'
+import { seasonColor, seasonName } from '../data/seasons.js'
 
 // ── Vue d'ensemble « tout en un » de la collection ───────────────────────────
 // Toutes les cartes du filtre courant sur une seule page, manquantes comprises
@@ -18,7 +19,7 @@ function injectOverviewStyle() {
 }
 injectOverviewStyle()
 
-export default function CollectionOverview({ items, theme, isMobile, lang, onSelect, shinyOwnedLabel }) {
+export default function CollectionOverview({ items, theme, isMobile, lang, onSelect, shinyOwnedLabel, seasonById = {}, seasonLabel = 'Saison' }) {
   const w = isMobile ? 52 : 64
   const h = Math.round(w * 1.3)
 
@@ -34,10 +35,19 @@ export default function CollectionOverview({ items, theme, isMobile, lang, onSel
           // Possédé uniquement en brillant : toujours « manquant » ici, mais moins
           // estompé et marqué ✨ — sinon il passe pour un geocoin jamais obtenu.
           const dim = missing ? (shinyOwned ? '0.6' : '0.3') : '1'
+          // Geocoin de saison : la vignette est trop petite pour un nom, mais un
+          // liseré de la couleur de la saison (la même que la pastille de la
+          // grille classique) suffit à le repérer — le nom reste dans l'infobulle.
+          const season = card.season_id ? seasonById[card.season_id] : null
+          const title = [
+            cardName(card, lang),
+            shinyOwned && shinyOwnedLabel ? shinyOwnedLabel : null,
+            season ? `${seasonLabel} : ${seasonName(season, lang)}` : null,
+          ].filter(Boolean).join(' — ')
           return (
             <div key={`${card.id}${isShiny ? '_shiny' : ''}`}
               onClick={clickable ? () => onSelect(card, !!isShiny, isAchievement) : undefined}
-              title={shinyOwned && shinyOwnedLabel ? `${cardName(card, lang)} — ${shinyOwnedLabel}` : cardName(card, lang)}
+              title={title}
               style={{
                 position: 'relative', width: w,
                 cursor: clickable ? 'pointer' : 'default',
@@ -50,6 +60,7 @@ export default function CollectionOverview({ items, theme, isMobile, lang, onSel
               onMouseLeave={e => { e.currentTarget.style.opacity = dim; e.currentTarget.style.filter = missing && !shinyOwned ? 'grayscale(1)' : 'none'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1' }}
             >
               <div style={{
+                position: 'relative',
                 width: w, height: h, borderRadius: 8, overflow: 'hidden', boxSizing: 'border-box',
                 border: `2px solid ${missing ? (shinyOwned ? '#f9ca2499' : theme.border) : isShiny ? '#f9ca24' : c1}`,
                 boxShadow: isShiny && !missing ? '0 0 8px #f9ca2466' : 'none',
@@ -59,6 +70,7 @@ export default function CollectionOverview({ items, theme, isMobile, lang, onSel
                 {thumb
                   ? <img src={thumb} alt={card.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   : <span style={{ fontSize: 16, fontWeight: 900, color: c1, fontFamily: "'Nunito',sans-serif" }}>{card.name[0]}</span>}
+                {season && <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, background: seasonColor(season), pointerEvents: 'none' }} />}
               </div>
               {((isShiny && !missing) || shinyOwned) && <div style={{ position: 'absolute', top: 2, left: 2, fontSize: 9, lineHeight: 1, pointerEvents: 'none' }}>✨</div>}
               {c > 1 && (
