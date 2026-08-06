@@ -65,8 +65,11 @@ import HoldCapModal from './features/treasures/HoldCapModal.jsx';
 import SeasonPopup  from './components/SeasonPopup.jsx';
 import DocsLayout   from './features/docs/DocsLayout.jsx';
 
-// Lien d'invitation Discord (menu avatar)
-const DISCORD_URL = 'https://discord.gg/NEnNv5bPu5';
+// Liens d'invitation Discord (menu avatar) — un serveur francophone, un serveur
+// international. Le choix suit la LANGUE D'AFFICHAGE du jeu, pas le pays.
+const DISCORD_URL_FR  = 'https://discord.gg/NEnNv5bPu5';
+const DISCORD_URL_INTL = 'https://discord.gg/yRCa4sDzkd';
+const discordUrl = lang => (lang === 'fr' ? DISCORD_URL_FR : DISCORD_URL_INTL);
 
 function OfferedCardModal({ card, remaining, lang, t, onDismiss }) {
   const imgRef = useRef(null)
@@ -1194,7 +1197,7 @@ export default function App() {
   const [forgeFlash,      setForgeFlash]      = useState(null);
   const [forgeFlashQuest, setForgeFlashQuest] = useState(false);   // « Quête réussie ! » au-dessus du flash PF
   const openDiscord = () => {
-    window.open(DISCORD_URL, '_blank', 'noopener,noreferrer');
+    window.open(discordUrl(lang), '_blank', 'noopener,noreferrer');
   };
 
   // ── Shiny Day banner ── null | { mode:'teaser', d, h, m, s } | { mode:'active' }
