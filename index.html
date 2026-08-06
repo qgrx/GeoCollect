@@ -8,7 +8,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Icônes. Le PNG carré est indispensable : Google n'affiche un favicon dans
-         ses résultats que s'il est carré, et iOS ignore un apple-touch-icon SVG. -->
+         ses résultats que s'il est carré, et iOS ignore un apple-touch-icon SVG.
+         Le .ico à la racine n'est pas décoratif : Bing (et Google en repli) va le
+         chercher sur /favicon.ico sans lire le HTML — sans lui, pas de logo dans
+         les résultats de recherche. -->
+    <link rel="icon" type="image/x-icon" sizes="48x48 96x96 192x192" href="/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
