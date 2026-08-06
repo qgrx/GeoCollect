@@ -61,6 +61,7 @@ import { AchievementToast, AchievementUpgradePopup, SaleNotif, TxHistoryModal } 
 import QuestsPanel from './features/quests/QuestsPanel.jsx';
 import ForgeModal  from './features/forge/ForgeModal.jsx'
 import TresorPage  from './features/treasures/TresorPage.jsx';
+import HoldCapModal from './features/treasures/HoldCapModal.jsx';
 import SeasonPopup  from './components/SeasonPopup.jsx';
 import DocsLayout   from './features/docs/DocsLayout.jsx';
 
@@ -1096,6 +1097,7 @@ export default function App() {
   const [holds,      setHolds]      = useState([]);          // geocoins en attente (multi-emplacements)
   const [holdSlots,  setHoldSlots]  = useState(0);           // emplacements permanents achetés (0→2)
   const [holdRentActive, setHoldRentActive] = useState(false); // emplacement 4 loué actif
+  const [holdCapBlock, setHoldCapBlock] = useState(null);    // récupération refusée : plafond atteint (+ reset_at)
   const [patronageGift, setPatronageGift] = useState(null);  // don reçu (popup bénéficiaire)
   const [patronageDupOffer, setPatronageDupOffer] = useState(null);  // offrir un doublon (mécénat depuis la collection)
   const [patronageIntro,   setPatronageIntro]   = useState(null);  // modale d'intro : { card, enabled, reason }
@@ -1742,6 +1744,15 @@ export default function App() {
     showToast(t('toast_daily_claimed').replace('{card}', data.card.name))
   }
 
+  // ── Recharger les compteurs du profil (plafonds jour/semaine) ───────────────
+  function refreshProfileCounters() {
+    import('./services/api.js')
+      .then(({ apiGetProfile }) => apiGetProfile?.().then(({ data }) => {
+        if (data?.profile) auth.setProfile(data.profile)
+      }))
+      .catch(() => {})
+  }
+
   // ── Recharger l'état du dépôt depuis le serveur ─────────────────────────────
   async function refreshHold() {
     const { data } = await apiGetHold()
@@ -1753,7 +1764,14 @@ export default function App() {
   // ── Réclamer un geocoin précis du dépôt d'attente ───────────────────────────
   async function handleClaimHold(holdId) {
     const claimed = holds.find(h => h.id === holdId)
-    const { data, error } = await apiClaimHold(holdId)
+    const { data, error, status, body } = await apiClaimHold(holdId)
+    // Plafond atteint (409) : le geocoin RESTE au dépôt. Une fenêtre dédiée explique
+    // lequel et affiche le décompte jusqu'à la remise à zéro — un toast d'erreur ne
+    // dirait ni pourquoi, ni jusqu'à quand.
+    if (status === 409 && body?.reason) {
+      setHoldCapBlock({ ...body, card: claimed?.card || null, is_shiny: claimed?.is_shiny || false })
+      return
+    }
     if (error) { showToast(error, 'error'); return }
     setHolds(prev => prev.filter(h => h.id !== holdId))
     if (claimed?.rented) setHoldRentActive(false)
@@ -1761,6 +1779,9 @@ export default function App() {
     if (data.forge_points_earned > 0) gs.addForgePoints(data.forge_points_earned)
     gs.triggerQuestRefresh?.()
     showQuestReward(data.quest_reward)   // quête « nouvelle carte » validée par le retrait
+    // Le retrait consomme les plafonds (jour + hebdo de la rareté) : recharger le
+    // profil, sinon les jauges affichées gardent les compteurs d'avant le retrait.
+    refreshProfileCounters()
     showToast(t('toast_hold_claimed').replace('{card}', data.card.name))
   }
 
@@ -3213,6 +3234,9 @@ export default function App() {
           <div><strong style={{ color: '#fff' }}>{t('no_api_title')}</strong> — {t('no_api_body')}</div>
         </div>
       )}
+
+      {/* ── Récupération refusée : un plafond (jour / semaine) est déjà atteint ── */}
+      {holdCapBlock && <HoldCapModal block={holdCapBlock} onClose={() => setHoldCapBlock(null)} />}
 
       {/* ── HoldModal — apparaît après un quiz hors-limite avec une carte éligible ── */}
       {holdOffer && (
