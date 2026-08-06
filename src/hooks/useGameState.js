@@ -78,6 +78,11 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
   const [shinyCollection, setShinyCollection] = useState({})
   const [collectionDescriptions, setCollectionDescriptions] = useState({})
   const [collectionDescriptionTranslations, setCollectionDescriptionTranslations] = useState({})
+  // Date d'entrée en collection, { cardId: ISO } — sert au tri « Récents », aux
+  // sections par période et au badge « New ». Une carte ABSENTE de la map a une
+  // date inconnue (acquise avant le suivi, ou par un chemin sans journal).
+  const [obtainedAt,      setObtainedAt]      = useState({})
+  const [shinyObtainedAt, setShinyObtainedAt] = useState({})
   const [myListings,   setMyListings]  = useState([])
   const [totalBuys,    setTotalBuys]   = useState(0)
   const [totalSells,   setTotalSells]  = useState(0)
@@ -152,6 +157,32 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
       return next   // === prev si rien n'a changé → pas de re-render
     })
   }, [achievementProgress])
+
+  // ── Datation locale des geocoins acquis pendant la session ────────────────
+  // Le serveur date l'acquisition, mais la map n'est relue qu'au chargement :
+  // un geocoin gagné/acheté maintenant resterait « sans date » jusqu'au F5, donc
+  // sans badge « New » et rangé hors des sections. Plutôt que de dater à la main
+  // dans la quinzaine d'endroits qui ajoutent une carte (quiz, marché, boutique,
+  // dépôt, forge, achievements…), on observe l'apparition d'un id dans la
+  // collection : un seul endroit, aucun chemin oublié. Le premier passage ne
+  // date rien — c'est le chargement initial, pas une acquisition.
+  const prevOwnedRef      = useRef(null)
+  const prevShinyOwnedRef = useRef(null)
+  useEffect(() => {
+    if (!collectionLoaded) return
+    const stamp = (map, prevRef, setMap) => {
+      const owned = new Set(Object.entries(map).filter(([, n]) => n > 0).map(([id]) => id))
+      const prev = prevRef.current
+      prevRef.current = owned
+      if (!prev) return
+      const fresh = [...owned].filter(id => !prev.has(id))
+      if (!fresh.length) return
+      const now = new Date().toISOString()
+      setMap(m => { const next = { ...m }; fresh.forEach(id => { next[id] = now }); return next })
+    }
+    stamp(collection,      prevOwnedRef,      setObtainedAt)
+    stamp(shinyCollection, prevShinyOwnedRef, setShinyObtainedAt)
+  }, [collection, shinyCollection, collectionLoaded])
 
   // ── Quêtes du jour — rechargement centralisé et séquencé ──────────────────
   // Seule la réponse de la requête la plus récente est appliquée. Sans ce
@@ -394,6 +425,10 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
     if (!profile) {
       // Logout — réinitialiser tout l'état joueur
       setGold(0); setCollection({}); setShinyCollection({}); setMarket([]); setMyListings([]); setMarketLoaded(false)
+      // Repartir sans repère : sinon la collection du compte suivant, comparée à
+      // une collection vide, serait entièrement datée « à l'instant ».
+      setObtainedAt({}); setShinyObtainedAt({})
+      prevOwnedRef.current = null; prevShinyOwnedRef.current = null
       setTransactions([]); setTotalBuys(0); setTotalSells(0); setStreak(0)
       _setUnreadSales(0); setSaleNotifs([]); setUnlockedAch([]); setPendingAch([])
       setQuests(null)
@@ -450,6 +485,8 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
         if (colData.shiny_collection) setShinyCollection(colData.shiny_collection)
         if (colData.descriptions) setCollectionDescriptions(colData.descriptions)
         if (colData.description_translations) setCollectionDescriptionTranslations(colData.description_translations)
+        if (colData.obtained_at) setObtainedAt(colData.obtained_at)
+        if (colData.shiny_obtained_at) setShinyObtainedAt(colData.shiny_obtained_at)
         const alreadyUnlocked = ACHIEVEMENT_DEF
           .filter(def => (colData.collection[def.cardId] || 0) > 0)
           .map(def => def.id)
@@ -1125,7 +1162,7 @@ export function useGameState(auth, { onAchievementCard, onQuestReward } = {}) {
     cardPool, setCardPool, cardTypes, market, setMarket, bannedIPs, seasons, seasonById,
     limits, setLimits, maintenance, setMaintenance, loadingData, configLoaded, collectionLoaded, marketLoaded,
     // Player
-    gold, setGold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, collectionDescriptionTranslations, myListings, totalBuys, totalSells,
+    gold, setGold, collection, setCollection, shinyCollection, setShinyCollection, collectionDescriptions, collectionDescriptionTranslations, obtainedAt, shinyObtainedAt, myListings, totalBuys, totalSells,
     streak, setStreak, transactions, setTransactions, unlockedAch, achievementProgress, pendingAch, setPendingAch,
     pendingUpgrade, setPendingUpgrade, checkAchievementUpgrades,
     saleNotifs, setSaleNotifs, unreadSales, setUnreadSales, clearNewTransactions, marketOpenRef,

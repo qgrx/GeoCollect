@@ -60,7 +60,9 @@ export function BackToTop({ theme, isMobile, label }) {
   )
 }
 
-export default function CollectionScroll({ items, batch = 24, renderItem, theme, isMobile, resetKey, gridKey, topLabel, layout = 'grid', listGap = 9, showCount = true, showTopBtn = true, initialIndex = null }) {
+export default function CollectionScroll({ items, batch = 24, renderItem, theme, isMobile, resetKey, gridKey, topLabel, layout = 'grid', listGap = 9, showCount = true, showTopBtn = true, initialIndex = null, countOverride = null }) {
+  // countOverride : nombre affiché en pied de liste quand `items` contient autre
+  // chose que des éléments comptables (en-têtes de section de la collection).
   // initialIndex : élément à rendre atteignable dès le départ (ex. geocoin ciblé
   // depuis la collection) — on charge d'emblée assez de lots pour qu'il soit
   // dans le DOM, sinon un scrollIntoView ne le trouverait pas.
@@ -106,7 +108,7 @@ export default function CollectionScroll({ items, batch = 24, renderItem, theme,
         </div>
       ) : showCount ? (
         <div style={{ textAlign: 'center', fontSize: 11, color: theme.textMuted, fontWeight: 700, fontFamily: "'Nunito',sans-serif", padding: '4px 0 16px' }}>
-          ({items.length})
+          ({countOverride ?? items.length})
         </div>
       ) : null}
 

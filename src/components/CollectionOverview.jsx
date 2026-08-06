@@ -19,7 +19,7 @@ function injectOverviewStyle() {
 }
 injectOverviewStyle()
 
-export default function CollectionOverview({ items, theme, isMobile, lang, onSelect, shinyOwnedLabel, seasonById = {}, seasonLabel = 'Saison' }) {
+export default function CollectionOverview({ items, theme, isMobile, lang, onSelect, shinyOwnedLabel, seasonById = {}, seasonLabel = 'Saison', isNew, onSeen, newLabel }) {
   const w = isMobile ? 52 : 64
   const h = Math.round(w * 1.3)
 
@@ -39,14 +39,19 @@ export default function CollectionOverview({ items, theme, isMobile, lang, onSel
           // liseré de la couleur de la saison (la même que la pastille de la
           // grille classique) suffit à le repérer — le nom reste dans l'infobulle.
           const season = card.season_id ? seasonById[card.season_id] : null
+          // Nouveauté non encore vue : la vignette est trop petite pour l'étiquette
+          // « New » de la grille classique, une pastille suffit à attirer l'œil.
+          const seenKey = `${card.id}${isShiny ? '_shiny' : ''}`
+          const fresh = !missing && !!isNew?.(card.id, !!isShiny)
           const title = [
             cardName(card, lang),
+            fresh && newLabel ? newLabel : null,
             shinyOwned && shinyOwnedLabel ? shinyOwnedLabel : null,
             season ? `${seasonLabel} : ${seasonName(season, lang)}` : null,
           ].filter(Boolean).join(' — ')
           return (
-            <div key={`${card.id}${isShiny ? '_shiny' : ''}`}
-              onClick={clickable ? () => onSelect(card, !!isShiny, isAchievement) : undefined}
+            <div key={seenKey}
+              onClick={clickable ? () => { onSeen?.(seenKey); onSelect(card, !!isShiny, isAchievement) } : undefined}
               title={title}
               style={{
                 position: 'relative', width: w,
@@ -56,7 +61,7 @@ export default function CollectionOverview({ items, theme, isMobile, lang, onSel
                 transition: 'opacity .15s, transform .12s, filter .15s',
                 animation: `overviewPop .3s ${Math.min(idx * 0.008, 0.4)}s ease both`,
               }}
-              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'scale(1.14)'; e.currentTarget.style.zIndex = '10' }}
+              onMouseEnter={e => { if (fresh) onSeen?.(seenKey); e.currentTarget.style.opacity = '1'; e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'scale(1.14)'; e.currentTarget.style.zIndex = '10' }}
               onMouseLeave={e => { e.currentTarget.style.opacity = dim; e.currentTarget.style.filter = missing && !shinyOwned ? 'grayscale(1)' : 'none'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1' }}
             >
               <div style={{
@@ -73,6 +78,7 @@ export default function CollectionOverview({ items, theme, isMobile, lang, onSel
                 {season && <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, background: seasonColor(season), pointerEvents: 'none' }} />}
               </div>
               {((isShiny && !missing) || shinyOwned) && <div style={{ position: 'absolute', top: 2, left: 2, fontSize: 9, lineHeight: 1, pointerEvents: 'none' }}>✨</div>}
+              {fresh && <div style={{ position: 'absolute', top: -3, right: -3, width: 9, height: 9, borderRadius: '50%', background: '#3fb950', border: `2px solid ${theme.bgMain}`, boxShadow: '0 0 6px #3fb95099', pointerEvents: 'none' }} />}
               {c > 1 && (
                 <div style={{ position: 'absolute', top: 2, right: 2, background: '#000000bb', color: '#fff', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '1px 3px', lineHeight: 1.2, fontFamily: "'Nunito',sans-serif" }}>×{c}</div>
               )}

@@ -17,6 +17,7 @@ import { DOCS_ROUTES } from './routes.js';
 import { QUIZ_INTERVAL, PSEUDO_NOTIF_DAYS, PSEUDO_CHANGE_DAYS, DEFAULT_RANKS, DEFAULT_RARITY_RATES } from './data/constants.js';
 import { collScore, computeCardLimitStatus, countOwnedUnique, computeStreakHandicap, isHandicapExemptCard, patronageHaloColor, answerWordCount } from './utils/gameUtils.js';
 import { isCorrectAnswer } from './utils/answer.js';
+import { withSectionHeaders, isFreshlyObtained, SEEN_CARDS_KEY } from './utils/collectionDates.js';
 
 // ─── State hooks ──────────────────────────────────────────────────────────────
 import { useGameState } from './hooks/useGameState.js'
@@ -1086,9 +1087,25 @@ export default function App() {
   const [showMissing,     setShowMissing]     = useState(() => { try { return localStorage.getItem('geocoins_coll_missing') === '1' } catch { return false } });
   const [showShiny,       setShowShiny]       = useState(false);
   const [demoInfo,        setDemoInfo]        = useState(null);  // 'shiny' | 'rarity' : présentation feature en démo
-  const [sortBy,          setSortBy]          = useState(() => { // 'rarity'|'name-asc'|'name-desc'
-    try { const s = localStorage.getItem('geocoins_coll_sort'); return ['rarity', 'name-asc', 'name-desc'].includes(s) ? s : 'rarity' } catch { return 'rarity' }
+  const [sortBy,          setSortBy]          = useState(() => { // 'rarity'|'name-asc'|'name-desc'|'recent'
+    try { const s = localStorage.getItem('geocoins_coll_sort'); return ['rarity', 'name-asc', 'name-desc', 'recent'].includes(s) ? s : 'rarity' } catch { return 'rarity' }
   });
+  // Geocoins dont le badge « New » a été acquitté (survol ou ouverture), par
+  // navigateur. On ne conserve que les clés encore fraîches : sans cet élagage,
+  // la liste grossirait indéfiniment alors que le badge ne concerne que les 7
+  // derniers jours.
+  const [seenCards, setSeenCards] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(SEEN_CARDS_KEY) || '[]')) } catch { return new Set() }
+  });
+  const freshKeysRef = useRef(new Set());
+  const markCardSeen = useCallback(key => {
+    setSeenCards(prev => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev); next.add(key);
+      try { localStorage.setItem(SEEN_CARDS_KEY, JSON.stringify([...next].filter(k => freshKeysRef.current.has(k)))) } catch { /* quota/private */ }
+      return next;
+    });
+  }, []);
   const [sortMenuOpen,    setSortMenuOpen]    = useState(false);
   const [gridAnimKey,     setGridAnimKey]     = useState(0);
   const [cardSearch,      setCardSearch]      = useState('');
@@ -2250,8 +2267,25 @@ export default function App() {
     const q = cardSearch.trim().toLowerCase();
     const matchSearch = card => !q || card.name.toLowerCase().includes(q) || card.type.toLowerCase().includes(q);
 
+    // Date d'entrée en collection, posée sur CHAQUE élément avant le tri (le tri
+    // « Récents » et les sections en dépendent). Un exemplaire manquant n'a pas
+    // de date ; un brillant a la sienne, distincte de celle du geocoin normal.
+    const withDates = list => list.map(x => ({
+      ...x,
+      at: x.missing ? null : ((x.isShiny ? gs.shinyObtainedAt?.[x.card.id] : gs.obtainedAt?.[x.card.id]) || null),
+    }))
+
     // Fonction de tri appliquée en fin
-    const sortFn = sortBy === 'name-asc'
+    const sortFn = sortBy === 'recent'
+      ? (a, b) => {
+          // Plus récent d'abord ; les geocoins sans date connue ferment la marche
+          // (ils forment leur propre section), départagés par rareté.
+          const ta = a.at ? new Date(a.at).getTime() : -Infinity
+          const tb = b.at ? new Date(b.at).getTime() : -Infinity
+          if (ta !== tb) return tb - ta
+          return (RARITY_CONFIG[a.card?.rarity]?.order ?? 99) - (RARITY_CONFIG[b.card?.rarity]?.order ?? 99)
+        }
+      : sortBy === 'name-asc'
       ? (a, b) => (a.card?.name || '').localeCompare(b.card?.name || '')
       : sortBy === 'name-desc'
       ? (a, b) => (b.card?.name || '').localeCompare(a.card?.name || '')
@@ -2276,9 +2310,9 @@ export default function App() {
           .filter(([id, v]) => v > 0 && !shinyIds.has(+id))
           .map(([id]) => ({ card: publicCardPool.find(c => c.id === +id), count: 0, isShiny: false, missing: true }))
           .filter(x => x.card && (af || x.card.type === filter) && matchSearch(x.card))
-        return [...shinyList, ...nonShiny].sort(sortFn)
+        return withDates([...shinyList, ...nonShiny]).sort(sortFn)
       }
-      return shinyList.sort(sortFn)
+      return withDates(shinyList).sort(sortFn)
     }
 
     // ── Mode normal (existant) ───────────────────────────────────────────────
@@ -2313,8 +2347,31 @@ export default function App() {
         normalList = [...normalList, ...missingAch]
       }
     }
-    return normalList.sort(sortFn)
-  }, [showMissing, collViewAll, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, publicCardPool, visibleCardPool, gs.shinyCollection, patronageOfferRank]);
+    return withDates(normalList).sort(sortFn)
+  }, [showMissing, collViewAll, showShiny, sortBy, filter, cardSearch, auth.isDemo, gs.collection, publicCardPool, visibleCardPool, gs.shinyCollection, gs.obtainedAt, gs.shinyObtainedAt, patronageOfferRank]);
+
+  // ── Sections par ancienneté (tri « Récents » uniquement) ─────────────────
+  // On injecte des en-têtes dans la liste plutôt que d'imbriquer des grilles :
+  // le défilement par lots de CollectionScroll continue de fonctionner tel quel,
+  // un en-tête étant simplement un élément large de toute la ligne.
+  const sectionedCards = useMemo(
+    () => (sortBy === 'recent' && !collViewAll ? withSectionHeaders(displayCards) : displayCards),
+    [displayCards, sortBy, collViewAll]);
+
+  // Clés (`id` ou `id_shiny`) des geocoins encore assez récents pour porter le
+  // badge « New » — sert aussi à élaguer la liste des acquittements stockés.
+  const freshKeys = useMemo(() => {
+    const now = Date.now()
+    const keys = new Set()
+    Object.entries(gs.obtainedAt || {}).forEach(([id, at]) => { if (isFreshlyObtained(at, now)) keys.add(id) })
+    Object.entries(gs.shinyObtainedAt || {}).forEach(([id, at]) => { if (isFreshlyObtained(at, now)) keys.add(`${id}_shiny`) })
+    return keys
+  }, [gs.obtainedAt, gs.shinyObtainedAt]);
+  freshKeysRef.current = freshKeys;
+  const isNewCard = useCallback((cardId, isShiny) => {
+    const key = isShiny ? `${cardId}_shiny` : `${cardId}`
+    return freshKeys.has(key) && !seenCards.has(key)
+  }, [freshKeys, seenCards]);
 
   const pseudoChangedAt = auth.profile?.pseudo_changed_at ? new Date(auth.profile.pseudo_changed_at).getTime() : 0
   const pseudoChanged   = pseudoChangedAt > 0 && (Date.now() - pseudoChangedAt) < PSEUDO_NOTIF_DAYS * 864e5
@@ -2405,6 +2462,7 @@ export default function App() {
         @keyframes fadeUp   { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes cardSort { 0%{opacity:0;transform:scale(.88) translateY(6px)} 60%{transform:scale(1.03) translateY(-2px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
         @keyframes fadeLeft { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes newBadgeIn { from{opacity:0;transform:scale(.6)} to{opacity:1;transform:scale(1)} }
       `}</style>
 
       {/* ── Toast hors-ligne ── (pas en démo : aucun socket attendu) */}
@@ -2862,13 +2920,13 @@ export default function App() {
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <button onClick={() => setSortMenuOpen(v => !v)}
                         style={{ background: sortBy !== 'rarity' ? '#74b9ff22' : theme.bgInput, border: `1px solid ${sortBy !== 'rarity' ? '#74b9ff' : theme.border}`, color: sortBy !== 'rarity' ? '#74b9ff' : theme.textSecondary, padding: '7px 11px', borderRadius: 8, fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {sortBy === 'rarity' ? t('sort_rarity') : sortBy === 'name-asc' ? t('sort_name_asc') : sortBy === 'offerable' ? t('sort_offerable') : t('sort_name_desc')} ⌄
+                        {sortBy === 'rarity' ? t('sort_rarity') : sortBy === 'name-asc' ? t('sort_name_asc') : sortBy === 'offerable' ? t('sort_offerable') : sortBy === 'recent' ? t('sort_recent') : t('sort_name_desc')} ⌄
                       </button>
                       {sortMenuOpen && (
                         <>
                           <div onClick={() => setSortMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
                           <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 100, background: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: 10, boxShadow: '0 8px 24px #0008', overflow: 'hidden', minWidth: 130 }}>
-                            {[['rarity', t('sort_rarity')], ['name-asc', t('sort_name_asc')], ['name-desc', t('sort_name_desc')], ['offerable', t('sort_offerable')]].map(([val, lbl]) => (
+                            {[['recent', t('sort_recent')], ['rarity', t('sort_rarity')], ['name-asc', t('sort_name_asc')], ['name-desc', t('sort_name_desc')], ['offerable', t('sort_offerable')]].map(([val, lbl]) => (
                               <button key={val} onClick={() => { setSortBy(val); setGridAnimKey(k => k+1); setSortMenuOpen(false); }}
                                 style={{ display: 'block', width: '100%', background: sortBy === val ? '#f9ca2418' : 'none', border: 'none', borderBottom: `1px solid ${theme.border}`, color: sortBy === val ? theme.gold : theme.textPrimary, padding: '9px 14px', fontFamily: "'Nunito',sans-serif", fontWeight: sortBy === val ? 900 : 600, fontSize: 12, cursor: 'pointer', textAlign: 'left' }}>
                                 {sortBy === val ? '✓ ' : ''}{lbl}
@@ -2923,15 +2981,28 @@ export default function App() {
                     <CollectionOverview
                       items={displayCards} theme={theme} isMobile={isMobile} lang={lang} shinyOwnedLabel={t('coll_owned_shiny')}
                       seasonById={gs.seasonById} seasonLabel={t('season_label')}
+                      isNew={isNewCard} onSeen={markCardSeen} newLabel={t('coll_new_badge')}
                       onSelect={(card, isShiny, isAchievement) => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', desc_translations: (!isShiny && gs.collectionDescriptionTranslations?.[card.id]) || card.description_translations || null, progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(isShiny); setSelectedCardFromHistory(false); }}
                     />
                   ) : (
                     <CollectionScroll
-                      items={displayCards} batch={COLL_PAGE_SIZE} theme={theme} isMobile={isMobile}
+                      items={sectionedCards} countOverride={displayCards.length} batch={COLL_PAGE_SIZE} theme={theme} isMobile={isMobile}
                       gridKey={gridAnimKey} topLabel={t('coll_back_top')}
                       resetKey={`${filter}|${sortBy}|${cardSearch}|${showShiny}|${showMissing}|${gridAnimKey}`}
-                      renderItem={({ card, count, cnt, missing, isShiny, shinyOwned }, idx) => {
+                      renderItem={({ card, count, cnt, missing, isShiny, shinyOwned, at, __header }, idx) => {
+                        // En-tête de section (tri « Récents ») : occupe toute la
+                        // largeur, ce qui force le retour à la ligne du flex-wrap.
+                        if (__header) return (
+                          <div key={`hdr_${__header}`} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, margin: idx === 0 ? '0 0 2px' : '14px 0 2px' }}>
+                            <span style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, color: theme.textSecondary, fontFamily: "'Nunito',sans-serif", whiteSpace: 'nowrap' }}>
+                              {t(`coll_section_${__header}`)}
+                            </span>
+                            <div style={{ flex: 1, height: 1, background: theme.border }} />
+                          </div>
+                        )
                         const c = count || cnt || 0;
+                        const seenKey = `${card.id}${isShiny ? '_shiny' : ''}`
+                        const isNew = !missing && isNewCard(card.id, !!isShiny)
                         const isAchievement = card.type?.toLowerCase().startsWith('achievement')
                         const isEvolutive = isAchievement && !!gs.achievementProgress?.[card.id]?.tiers
                         // Geocoin de saison : rien ne le distinguait d'un geocoin permanent
@@ -2944,9 +3015,21 @@ export default function App() {
                         const anim = gridAnimKey > 0
                           ? `cardSort .4s ${(idx % COLL_PAGE_SIZE) * 0.03}s cubic-bezier(.34,1.56,.64,1) both`
                           : `collBatchIn .45s ${(idx % COLL_PAGE_SIZE) * 0.02}s cubic-bezier(.34,1.56,.64,1) both`
+                        // data-tour : premier geocoin RÉEL — en tri « Récents », l'index 0
+                        // est un en-tête de section, l'ancre du tour y serait perdue.
                         return (
-                          <div key={`${card.id}${isShiny ? '_shiny' : ''}`} style={{ position: 'relative', animation: anim }} {...(idx === 0 ? { 'data-tour': 'collection' } : {})}>
+                          <div key={seenKey} style={{ position: 'relative', animation: anim }} {...(idx === (sectionedCards[0]?.__header ? 1 : 0) ? { 'data-tour': 'collection' } : {})}
+                            title={at ? `${t('coll_obtained_on')} ${new Date(at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang)}` : undefined}
+                            onMouseEnter={isNew ? () => markCardSeen(seenKey) : undefined}>
                             {isEvolutive && <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 7, background: '#f9ca24cc', color: '#1e3045', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .3, pointerEvents: 'none' }}>{t('evolutive_badge')}</div>}
+                            {/* « New » : discret, disparaît dès que le joueur survole ou ouvre
+                                le geocoin (acquittement mémorisé dans ce navigateur). Placé
+                                sous la pastille ×N quand il y a des doublons. */}
+                            {isNew && (
+                              <div style={{ position: 'absolute', top: c > 1 ? 30 : 6, right: 6, zIndex: 8, background: '#3fb950', color: '#0d2016', fontSize: 8, fontWeight: 900, borderRadius: 4, padding: '2px 5px', letterSpacing: .4, boxShadow: '0 1px 6px #0007', pointerEvents: 'none', fontFamily: "'Nunito',sans-serif", animation: 'newBadgeIn .3s ease both' }}>
+                                {t('coll_new_badge')}
+                              </div>
+                            )}
                             {season && (() => {
                               const bg = seasonColor(season)
                               const label = seasonName(season, lang)
@@ -2957,7 +3040,7 @@ export default function App() {
                                 </div>
                               )
                             })()}
-                            <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', desc_translations: (!isShiny && gs.collectionDescriptionTranslations?.[card.id]) || card.description_translations || null, progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
+                            <Card card={card} count={missing ? 0 : c} dimmed={missing} isShiny={!!isShiny} onClick={(missing && !isAchievement) ? undefined : () => { markCardSeen(seenKey); setSelectedCard({ ...card, desc: (!isShiny && gs.collectionDescriptions?.[card.id]) || card.desc || '', desc_translations: (!isShiny && gs.collectionDescriptionTranslations?.[card.id]) || card.description_translations || null, progressInfo: isAchievement ? gs.achievementProgress?.[card.id] : null }); setSelectedCardIsShiny(!!isShiny); setSelectedCardFromHistory(false); }} />
                             {/* Possédé uniquement en brillant : le geocoin est bien acquis, mais rangé
                                 dans l'onglet ✨ — sans ce rappel il paraît simplement manquant. */}
                             {shinyOwned && (
