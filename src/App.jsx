@@ -398,6 +398,18 @@ export default function App() {
         const drift  = nextAt ? Math.abs(Date.now() + Math.max(0, nextAt - srvNow) - nextQuizTimeRef.current) : 0
         if (drift < 10_000) { setWonRound(null); return }   // round clos : « ✓ Gagné » sans objet
       }
+      // Réponse PÉRIMÉE : la requête est partie AVANT le lancement du round reçu entre
+      // temps par quiz:new (elle était en vol au coup d'envoi). Son instantané « pas de
+      // quiz » décrit l'avant-round : le traiter purgerait le pendingQuiz tout frais —
+      // bouton « Participer » tué à la naissance, et si le round est résolu avant que le
+      // poll de secours ne le récupère, la manche se joue sans le joueur (décompte suivant
+      // affiché à la place, sans bannière). Discriminant : un vrai round mort (le cas que
+      // ce filet répare) a toujours un started_at ANTÉRIEUR au server_time de la réponse ;
+      // marge 2 s pour l'ordre lecture DB / horodatage côté serveur.
+      if (quiet && !data.quiz && pendingQuizRef.current?.started_at && data.server_time
+          && new Date(data.server_time).getTime() < new Date(pendingQuizRef.current.started_at).getTime() + 2000) {
+        return
+      }
       // Plus de quiz actif côté serveur : purger un éventuel quiz en attente périmé
       // (round résolu pendant la suspension → sinon « Participer » sur un quiz mort)
       // et refermer un « ✓ Gagné / Répondu » qui n'a plus de round.
@@ -3027,7 +3039,6 @@ export default function App() {
                   ) : (
                     <CollectionScroll
                       items={sectionedCards} countOverride={displayCards.length} batch={COLL_PAGE_SIZE} theme={theme} isMobile={isMobile}
-                      align={sortBy === 'recent' ? 'start' : 'center'}
                       gridKey={gridAnimKey} topLabel={t('coll_back_top')}
                       resetKey={`${filter}|${sortBy}|${cardSearch}|${showShiny}|${showMissing}|${gridAnimKey}`}
                       renderItem={({ card, count, cnt, missing, isShiny, shinyOwned, at, __header }, idx) => {
