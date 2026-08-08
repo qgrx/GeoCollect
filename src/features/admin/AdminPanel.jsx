@@ -234,10 +234,15 @@ const GENERIC_KIND_LABELS={
 };
 const GENERIC_KIND_ORDER=Object.keys(GENERIC_KIND_LABELS);
 
-// ─── Gestionnaire de questions (réutilisé par les trois onglets de « Questions ») ──
+// ─── Gestionnaire de questions (réutilisé par les quatre onglets de « Questions ») ──
 // mode='published' → questions en jeu (hidden=false) · mode='drafts' → brouillons écrits
-// à la main · mode='generic' → les quatre questions fabriquées par l'API pour chaque
-// geocoin d'hommage (code GC, type, pays, rareté).
+// à la main · mode='generic' / 'generic_hidden' → les quatre questions fabriquées par
+// l'API pour chaque geocoin d'hommage (code GC, type, pays, rareté).
+//
+// Les deux modes génériques se partagent sur l'état du GEOCOIN, pas de la question :
+// publier une question qui nomme un geocoin encore caché le révélerait aux joueurs
+// avant sa sortie. Les questions des geocoins non publiés vivent donc dans leur propre
+// onglet, d'où l'on ne publie qu'en connaissance de cause.
 // Composant autonome : il charge ses propres données et n'écrit jamais hors de son périmètre
 // (un import de brouillons ne touche pas les questions publiées et inversement).
 //
@@ -247,8 +252,9 @@ const GENERIC_KIND_ORDER=Object.keys(GENERIC_KIND_LABELS);
 // proposer le bouton.
 function QuestionsManager({mode,setMsg,t,cards}){
   const isDraft = mode==='drafts';
-  const isGeneric = mode==='generic';
-  const accent = isGeneric ? '#00b894' : isDraft ? '#e17055' : '#e74c3c';
+  const isGenericHidden = mode==='generic_hidden';
+  const isGeneric = mode==='generic' || isGenericHidden;
+  const accent = isGenericHidden ? '#0984e3' : isGeneric ? '#00b894' : isDraft ? '#e17055' : '#e74c3c';
   const [all,setAll]=useState(null);                 // toutes les questions (null = chargement)
   const [editQ,setEditQ]=useState(null);
   const emptyNq=()=>({q:"",a:"",hint:"",alt_answers:[],publish_at:null});
@@ -270,14 +276,21 @@ function QuestionsManager({mode,setMsg,t,cards}){
     if(isDraft) apiGetAdminConfig().then(({data})=>setGlobalPublishAt(data?.config?.drafts_publish_at||null));
   },[isDraft]);
 
-  // Une question générique publiée à la main reste visible dans « Publiées » — elle
-  // est dans le pool du quiz comme n'importe quelle autre — et dans « Génériques »,
-  // qui montre l'état de chaque geocoin. Seul l'onglet « Brouillons » les écarte :
-  // son bouton « Publier N » les compterait sinon.
-  const items=(all||[]).filter(q=> isGeneric ? !!q.generic_kind : isDraft ? (q.hidden&&!q.generic_kind) : !q.hidden);
-
   // Nom du geocoin d'une question générique (pool admin déjà chargé par l'onglet Cartes).
   const cardById=useMemo(()=>{const m={};for(const c of (cards||[]))m[c.id]=c;return m;},[cards]);
+
+  // Une question générique publiée à la main reste visible dans « Publiées » — elle
+  // est dans le pool du quiz comme n'importe quelle autre — et dans son onglet
+  // générique, qui montre l'état de chaque geocoin. Seul l'onglet « Brouillons » les
+  // écarte : son bouton « Publier N » les compterait sinon.
+  // Une question orpheline (geocoin supprimé, card_id passé à NULL) reste dans
+  // l'onglet des geocoins publiés : elle ne révèle plus rien, et il faut la voir
+  // quelque part pour pouvoir la traiter.
+  const isHiddenCoin=q=>!!cardById[q.card_id]?.hidden;
+  const items=(all||[]).filter(q=>
+    isGeneric ? (!!q.generic_kind && isHiddenCoin(q)===isGenericHidden)
+    : isDraft ? (q.hidden&&!q.generic_kind)
+    : !q.hidden);
 
   // ── Planification globale (publie TOUS les brouillons à une date donnée) ──
   async function saveGlobalSchedule(){
@@ -359,7 +372,13 @@ function QuestionsManager({mode,setMsg,t,cards}){
     setMsg(newActive?"✅ Question réactivée.":"⛔ Question désactivée.");
   }
   async function publishNow(q){
-    if(!window.confirm("Publier ce brouillon maintenant ? Il entrera dans le pool des quiz."))return;
+    // Un geocoin encore caché n'est pas censé être connu des joueurs : sa question
+    // le nommerait, avec sa rareté et la cache honorée. On le dit franchement.
+    const coin=cardById[q.card_id];
+    const warn=q.generic_kind&&coin?.hidden
+      ? `⚠️ Le geocoin « ${coin.name} » n'est pas encore publié : cette question le révélera aux joueurs (nom, rareté, cache honorée).\n\nPublier quand même ?`
+      : "Publier ce brouillon maintenant ? Il entrera dans le pool des quiz.";
+    if(!window.confirm(warn))return;
     const {error}=await apiAdminEditFullQuestion(q.id,{q:q.q,a:q.a,hint:q.hint,alt_answers:q.alt_answers||[],hidden:false,publish_at:null});
     if(error){setMsg("❌ "+error);return;}
     setAll(prev=>(prev||[]).map(x=>x.id===q.id?{...x,hidden:false,publish_at:null}:x));
@@ -473,7 +492,7 @@ function QuestionsManager({mode,setMsg,t,cards}){
   return(
     <div>
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
-        <div style={{flex:1,fontWeight:900,color:accent,fontSize:14}}>{isGeneric?"🧬 Questions génériques":isDraft?"📝 Brouillons":"❓ Questions"} ({items.length})</div>
+        <div style={{flex:1,fontWeight:900,color:accent,fontSize:14}}>{isGenericHidden?"🧬 Génériques — geocoins non publiés":isGeneric?"🧬 Questions génériques":isDraft?"📝 Brouillons":"❓ Questions"} ({items.length})</div>
         {isDraft&&items.length>0&&(
           <button onClick={publishAll} style={{...BTN("linear-gradient(135deg,#e17055,#d63031)"),padding:"5px 11px",fontSize:11,borderRadius:7}} title="Publier tous les brouillons d'un coup">🚀 Publier {items.length}</button>
         )}
@@ -485,12 +504,20 @@ function QuestionsManager({mode,setMsg,t,cards}){
       </div>
 
       {isGeneric&&(
-        <div style={{background:"#00b89412",border:"1px solid #00b89440",borderRadius:11,padding:"11px 14px",marginBottom:14,fontSize:12,color:"#a8bfcf",lineHeight:1.5}}>
-          Fabriquées automatiquement à la création d'un geocoin de type <b style={{color:"#fff"}}>Hommages</b>, dans les quatre langues, et
-          <b style={{color:"#fff"}}> tenues à jour</b> tant qu'elles restent en brouillon : corriger le code GC, le poseur ou le pays sur la
-          fiche du geocoin réécrit la question. Une question manquante est une donnée manquante sur la carte.
-          <br/>Elles restent en brouillon jusqu'à ce que tu en publies une (🚀) — ni « Publier tout », ni import CSV, ni planification groupée ne les touchent.
-          <b style={{color:"#fff"}}> Publiée, une question n'est plus jamais réécrite.</b>
+        <div style={{background:isGenericHidden?"#0984e312":"#00b89412",border:`1px solid ${isGenericHidden?"#0984e344":"#00b89440"}`,borderRadius:11,padding:"11px 14px",marginBottom:14,fontSize:12,color:"#a8bfcf",lineHeight:1.5}}>
+          {isGenericHidden?(<>
+            Les questions des geocoins d'hommage <b style={{color:"#fff"}}>encore cachés</b>, mises de côté ici pour une raison :
+            <b style={{color:"#fff"}}> publier une question qui nomme un geocoin non sorti le révèle aux joueurs</b> — son nom, sa rareté,
+            la cache qu'il honore. Elles passeront d'elles-mêmes dans l'onglet voisin à la publication du geocoin.
+            <br/>Publier reste possible (🚀), avec confirmation : c'est parfois voulu, jamais par distraction.
+          </>):(<>
+            Fabriquées automatiquement à la création d'un geocoin de type <b style={{color:"#fff"}}>Hommages</b>, dans les quatre langues, et
+            <b style={{color:"#fff"}}> tenues à jour</b> tant qu'elles restent en brouillon : corriger le code GC, le poseur ou le pays sur la
+            fiche du geocoin réécrit la question. Une question manquante est une donnée manquante sur la carte.
+            <br/>Elles restent en brouillon jusqu'à ce que tu en publies une (🚀) — ni « Publier tout », ni import CSV, ni planification groupée ne les touchent.
+            <b style={{color:"#fff"}}> Publiée, une question n'est plus jamais réécrite.</b>
+            <br/>Les geocoins pas encore sortis ont leur propre onglet, pour ne pas les révéler par mégarde.
+          </>)}
         </div>
       )}
 
@@ -577,7 +604,7 @@ function QuestionsManager({mode,setMsg,t,cards}){
         <span style={{fontSize:11,color:"#8daacc",whiteSpace:"nowrap",fontWeight:700}}>{filtered.length}/{items.length}</span>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:isGeneric?12:6,marginBottom:10}}>
-        {(isGeneric?groupSlice.length:slice.length)===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"18px 0",fontSize:12}}>{isGeneric?"Aucune question générique. Elles apparaissent à la création d'un geocoin d'hommage dont la cache est renseignée.":isDraft?"Aucun brouillon.":"Aucune question trouvée."}</div>}
+        {(isGeneric?groupSlice.length:slice.length)===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"18px 0",fontSize:12}}>{isGenericHidden?"Aucun geocoin d'hommage caché n'a de question générique en attente.":isGeneric?"Aucune question générique. Elles apparaissent à la création d'un geocoin d'hommage dont la cache est renseignée.":isDraft?"Aucun brouillon.":"Aucune question trouvée."}</div>}
 
         {/* Mode générique : un bloc par geocoin, ses questions dedans. */}
         {groupSlice.map(g=>(
@@ -1036,7 +1063,7 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
         {/* ── QUESTIONS (publiées) ── */}
         {tab==="questions"&&<div>
           <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-            {[['published','❓ Publiées'],['drafts','📝 Brouillons'],['generic','🧬 Génériques']].map(([v,l])=>(
+            {[['published','❓ Publiées'],['drafts','📝 Brouillons'],['generic','🧬 Génériques'],['generic_hidden','🧬 Génériques non publiés']].map(([v,l])=>(
               <button key={v} onClick={()=>setQMode(v)}
                 style={{background:qMode===v?"#e74c3c":"#ffffff18",border:"none",color:"#fff",padding:"7px 16px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{l}</button>
             ))}
