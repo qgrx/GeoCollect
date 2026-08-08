@@ -226,6 +226,12 @@ export const apiAdminDeletePublishedQuestions = ()                   => apiFetch
 export const apiAdminEditQuestion       = (id, q, a)                 => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { question: q, answer: a } })
 export const apiAdminEditFullQuestion   = (id, fields)               => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { question: fields.q, answer: fields.a, hint: fields.hint || '', alt_answers: fields.alt_answers || [], ...(fields.hidden !== undefined ? { hidden: fields.hidden } : {}), ...(fields.publish_at !== undefined ? { publish_at: fields.publish_at } : {}) } })
 export const apiAdminToggleQuestion     = (id, active)               => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { active } })
+// Publier ne touche QUE l'état de publication. Passer par apiAdminEditFullQuestion
+// renvoyait aussi énoncé, réponse et alternatives tels que la page les avait en
+// mémoire : une question modifiée ailleurs entre-temps (script, autre onglet)
+// se faisait écraser par la version périmée du navigateur — c'est ainsi que des
+// réponses alternatives ajoutées en base ont disparu au moment de la publication.
+export const apiAdminPublishQuestion    = (id)                       => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { hidden: false, publish_at: null } })
 export const apiAdminSaveTranslations      = (id, translations)       => apiFetch(`/api/admin/questions/${id}`, { method: 'PATCH', body: { translations } })
 export const apiAdminSaveCardNameTrans     = (id, name_translations)  => apiFetch(`/api/admin/cards/${id}/name-translations`, { method: 'PATCH', body: { name_translations } })
 export const apiAdminSaveCardDescTrans     = (id, description_translations) => apiFetch(`/api/admin/cards/${id}/description-translations`, { method: 'PATCH', body: { description_translations } })

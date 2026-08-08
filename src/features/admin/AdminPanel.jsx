@@ -12,7 +12,7 @@ import { apiGetAchievementCards, apiEditAchievementCard, apiTriggerQuiz, apiTrig
   apiAdminGetMarketVolume,
   apiAdminPurgeOrphans, apiAdminPurgeExpired, apiAdminDiagnoseListings,
   apiAdminSaveTranslations,
-  apiAdminEditFullQuestion, apiAdminAddQuestion, apiAdminBatchAddQuestions,
+  apiAdminEditFullQuestion, apiAdminPublishQuestion, apiAdminAddQuestion, apiAdminBatchAddQuestions,
   apiAdminDeleteDraftQuestions, apiAdminDeletePublishedQuestions,
   apiAdminToggleQuestion, apiReleaseHiddenQuestions,
   apiGetAchievementDefs, apiGetAchievementDefStats, apiCreateAchievementDef, apiUpdateAchievementDef, apiDeleteAchievementDef, apiReleaseHiddenAchievements,
@@ -379,7 +379,7 @@ function QuestionsManager({mode,setMsg,t,cards}){
       ? `⚠️ Le geocoin « ${coin.name} » n'est pas encore publié : cette question le révélera aux joueurs (nom, rareté, cache honorée).\n\nPublier quand même ?`
       : "Publier ce brouillon maintenant ? Il entrera dans le pool des quiz.";
     if(!window.confirm(warn))return;
-    const {error}=await apiAdminEditFullQuestion(q.id,{q:q.q,a:q.a,hint:q.hint,alt_answers:q.alt_answers||[],hidden:false,publish_at:null});
+    const {error}=await apiAdminPublishQuestion(q.id);
     if(error){setMsg("❌ "+error);return;}
     setAll(prev=>(prev||[]).map(x=>x.id===q.id?{...x,hidden:false,publish_at:null}:x));
     setMsg("✅ Brouillon publié !");
