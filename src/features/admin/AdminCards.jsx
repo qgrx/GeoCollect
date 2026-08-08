@@ -12,6 +12,7 @@ import Card from '../../components/Card.jsx';
 import AdminCardBatch from './AdminCardBatch.jsx';
 import RichTextEditor from '../docs/RichTextEditor.jsx';
 import { richTextHtml, richTextLength } from '../../utils/richText.js';
+import { cardNameFromFile } from '../../utils/cardFileName.js';
 
 // Petits utilitaires dupliqués pour rendre le composant autonome
 function Fld({lbl,children}){
@@ -54,7 +55,19 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const [filterForgeCostVal, setFilterForgeCostVal] = useState('');
   const advActiveCount = [filterSellable, filterMinPrice, filterShiny, filterForgeCost].filter(Boolean).length;
   const [circulation, setCirculation] = useState(null);
-  const [nc, setNc] = useState({ name: "", type: cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "", forgeable: false, forgeCost: "", shiny_forge_cost: null, season_id: null, hidden: false, gc_code: "", gc_owner: "", gc_cache_type: "", gc_placed_date: "" });
+  // Valeurs d'une nouvelle carte. Les trois points de remise à zéro (état
+  // initial, bouton « ➕ Nouvelle carte », fermeture du formulaire) partagent
+  // cette fabrique : les listes recopiées avaient déjà divergé (celle de
+  // closeForm avait perdu `hidden`).
+  //
+  // Une carte naît CACHÉE, comme celles de la création par lot : on prépare les
+  // geocoins puis on les publie depuis l'onglet « 🚫 Cachées ». `sellable` reste
+  // à true — c'est l'état voulu une fois la carte publiée ; tant qu'elle est
+  // cachée, l'enregistrement force la non-vendabilité.
+  function blankCard() {
+    return { name: "", type: filterType !== 'Tous' ? filterType : cardTypes[0] || "", rarity: "commun", image: null, thumbnail: null, desc: "", sellable: true, minPrice: "", forgeable: false, forgeCost: "", shiny_forge_cost: null, season_id: null, hidden: true, gc_code: "", gc_owner: "", gc_cache_type: "", gc_placed_date: "" };
+  }
+  const [nc, setNc] = useState(blankCard);
 
   const displayCards = useMemo(() => {
     const RARITY_ORDER = { légendaire: 0, épique: 1, rare: 2, commun: 3 };
@@ -138,6 +151,33 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
   const csvCardRef = useRef();
   const fileRef = useRef();
   const editFileRef = useRef();
+
+  /**
+   * Dépôt de l'image d'un geocoin.
+   *
+   * À la CRÉATION, un nom encore vide est complété d'après le nom du fichier
+   * (« ile_de_re.png » → « Ile de re »), comme le fait la création par lot. Le
+   * nom est dérivé AVANT le traitement de l'image : il est gravé dans les
+   * métadonnées PNG, qui seraient sinon vides pour la carte la plus courante.
+   * Un nom déjà saisi n'est jamais écrasé — même règle qu'au remplissage depuis
+   * geocaching.com, et en édition on ne touche jamais au nom.
+   */
+  function handleCardImage(e) {
+    const src = editCard || nc;
+    const autoName = (!editCard && !src.name?.trim())
+      ? cardNameFromFile(e.target.files?.[0]?.name || '')
+      : '';
+    if (autoName) setNc(p => (p.name?.trim() ? p : { ...p, name: autoName }));
+
+    imgUpload(
+      e,
+      ({ imageBase64, thumbnailBase64 }) => {
+        if (editCard) setEditCard(p => ({ ...p, image: imageBase64, thumbnail: thumbnailBase64 }));
+        else setNc(p => ({ ...p, image: imageBase64, thumbnail: thumbnailBase64 }));
+      },
+      { name: autoName || src.name || '', type: src.type || '', rarity: src.rarity || '' }
+    );
+  }
 
   const { c1p, c2p } = useMemo(() => { const { c1, c2 } = cardCC(nc.rarity); return { c1p: c1, c2p: c2 }; }, [nc.rarity]);
 
@@ -255,7 +295,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
 
   function closeForm() {
     setEditCard(null); setNewCardMode(false); setBatchMode(false);
-    setNc({ name:"", type: filterType !== 'Tous' ? filterType : cardTypes[0]||"", rarity:"commun", image:null, thumbnail:null, desc:"", sellable:true, minPrice:"", forgeable:false, forgeCost:"", shiny_forge_cost:null, season_id:null, gc_code:"", gc_owner:"", gc_cache_type:"", gc_placed_date:"" });
+    setNc(blankCard());
     if (fileRef.current) fileRef.current.value = '';
     if (editFileRef.current) editFileRef.current.value = '';
   }
@@ -268,7 +308,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
           {editCard ? `✏️ ${editCard.name}` : newCardMode ? "➕ Nouvelle carte" : batchMode ? "📦 Création par lot" : "🃏 Geocoins"}
         </div>
         {!editCard && !newCardMode && !batchMode && (
-          <button onClick={()=>{ setNewCardMode(true); setNc({name:"",type:filterType!=='Tous'?filterType:cardTypes[0]||"",rarity:"commun",image:null,thumbnail:null,desc:"",sellable:true,minPrice:"",forgeable:false,forgeCost:"",shiny_forge_cost:null,season_id:null,hidden:false,gc_code:"",gc_owner:"",gc_cache_type:"",gc_placed_date:""}); }}
+          <button onClick={()=>{ setNewCardMode(true); setNc(blankCard()); }}
             style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"6px 14px",fontSize:12,borderRadius:8}}>➕ Nouvelle carte</button>
         )}
         {!editCard && !newCardMode && !batchMode && (
@@ -507,7 +547,7 @@ export default function AdminCards({ cardPool, cardTypes, onAddCard, onEditCard,
               );
             })()}
             <Fld lbl="Rareté (définit les couleurs)"><select value={editCard?editCard.rarity:nc.rarity} onChange={e=>{editCard?setEditCard({...editCard,rarity:e.target.value}):setNc({...nc,rarity:e.target.value});}} style={SEL}>{["commun","rare","épique","légendaire"].map(r=><option key={r} value={r}>{RC[r].label}</option>)}</select><div style={{marginTop:5,height:6,borderRadius:3,background:`linear-gradient(90deg,${c1p},${c2p})`,transition:"background .3s"}}/></Fld>
-            <Fld lbl="Image PNG"><div onClick={()=>(editCard?editFileRef:fileRef).current.click()} style={{border:"2px dashed #ffffff33",borderRadius:9,padding:"13px",textAlign:"center",cursor:"pointer",background:"#ffffff08"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#f9ca2466"} onMouseLeave={e=>e.currentTarget.style.borderColor="#ffffff33"}>{(editCard?editCard.image:nc.image)?<img src={editCard?editCard.image:nc.image} style={{maxWidth:"100%",maxHeight:80,objectFit:"contain",borderRadius:5}} alt="prev"/>:<div style={{color:"#8daacc",fontSize:12}}>📁 Choisir un PNG<br/><span style={{fontSize:10,color:"#a8bfcf"}}>Carré, fond transparent recommandé</span></div>}</div><input ref={editCard?editFileRef:fileRef} type="file" accept=".png,image/png" onChange={e=>{const src=editCard||nc;imgUpload(e,({imageBase64, thumbnailBase64})=>editCard?setEditCard({...editCard,image:imageBase64,thumbnail:thumbnailBase64}):setNc({...nc,image:imageBase64,thumbnail:thumbnailBase64}),{name:src.name||'',type:src.type||'',rarity:src.rarity||''});}} style={{display:"none"}}/></Fld>
+            <Fld lbl="Image PNG"><div onClick={()=>(editCard?editFileRef:fileRef).current.click()} style={{border:"2px dashed #ffffff33",borderRadius:9,padding:"13px",textAlign:"center",cursor:"pointer",background:"#ffffff08"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#f9ca2466"} onMouseLeave={e=>e.currentTarget.style.borderColor="#ffffff33"}>{(editCard?editCard.image:nc.image)?<img src={editCard?editCard.image:nc.image} style={{maxWidth:"100%",maxHeight:80,objectFit:"contain",borderRadius:5}} alt="prev"/>:<div style={{color:"#8daacc",fontSize:12}}>📁 Choisir un PNG<br/><span style={{fontSize:10,color:"#a8bfcf"}}>Carré, fond transparent recommandé{!editCard&&<><br/>Le nom du fichier remplit le titre s'il est vide</>}</span></div>}</div><input ref={editCard?editFileRef:fileRef} type="file" accept=".png,image/png" onChange={handleCardImage} style={{display:"none"}}/></Fld>
             <Fld lbl="Saison (optionnel)"><select value={(editCard?editCard.season_id:nc.season_id)??''} onChange={e=>{const v=e.target.value===''?null:+e.target.value;editCard?setEditCard({...editCard,season_id:v}):setNc({...nc,season_id:v});}} style={SEL}><option value="">Aucune saison (disponible en permanence)</option>{seasons.map(s=><option key={s.id} value={s.id}>{s.name} ({s.start_date} → {s.end_date})</option>)}</select></Fld>
             {(editCard?editCard.season_id:nc.season_id)&&(
               <Fld lbl="Coût hors saison (override)">

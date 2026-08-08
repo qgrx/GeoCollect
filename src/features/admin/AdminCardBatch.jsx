@@ -1,21 +1,17 @@
 import { useState, useRef, useMemo } from 'react';
 import { INP, SEL, BTN } from '../../utils/styles.js';
 import { RC } from '../../data/cards.js';
+import { cardNameFromFile, MAX_CARD_NAME } from '../../utils/cardFileName.js';
 
 // ─── Création de geocoins par lot ─────────────────────────────────────────────
 // On dépose N images d'un coup : chaque image devient un geocoin dont le nom est
-// le nom du fichier (sans extension). Le lot est créé **caché** (hidden=true,
+// tiré du nom du fichier (cf. cardNameFromFile). Le lot est créé **caché** (hidden=true,
 // donc non vendable et invisible pour les joueurs) : la publication se fait
 // ensuite depuis l'onglet « 🚫 Cachées » (immédiate ou programmée).
 // Catégorie / rareté / saison sont choisies une fois pour tout le lot.
 
-const MAX_NAME  = 50;   // contrainte de la colonne cards.name
+const MAX_NAME  = MAX_CARD_NAME;
 const MAX_FILES = 200;  // garde-fou : au-delà, le traitement navigateur devient très long
-
-// Nom du geocoin = nom du fichier sans son extension.
-function nameFromFile(filename) {
-  return filename.replace(/\.[^.]+$/, '').trim().slice(0, MAX_NAME);
-}
 
 export default function AdminCardBatch({ cardPool, cardTypes, defaultType, seasons = [], onAddCard, setMsg, onClose }) {
   const [type, setType]         = useState(defaultType || cardTypes[0] || '');
@@ -75,7 +71,7 @@ export default function AdminCardBatch({ cardPool, cardTypes, defaultType, seaso
     const next = [];
     for (let i = 0; i < images.length; i++) {
       const f = images[i];
-      const name = nameFromFile(f.name);
+      const name = cardNameFromFile(f.name);
       const base = { key: `b${++keySeq.current}`, fileName: f.name, file: f, name, meta: { name, type, rarity } };
       try {
         const { medium, small } = await processCardImage(f, { name, type, rarity });
