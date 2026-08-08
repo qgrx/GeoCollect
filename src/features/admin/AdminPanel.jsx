@@ -220,16 +220,35 @@ const mapServerQ = q => ({
   hidden:!!q.hidden, publish_at:q.publish_at||null,
   translations:q.translations||{}, alt_answers:q.alt_answers||[],
   report_count:q.report_count||0,
+  // Questions génériques d'un geocoin d'hommage (fabriquées par l'API).
+  card_id:q.card_id??null, generic_kind:q.generic_kind||null,
 });
 const Q_TRANS_LANGS=[{code:'en',label:'English'},{code:'de',label:'Deutsch'},{code:'es',label:'Español'}];
 
-// ─── Gestionnaire de questions (réutilisé par les onglets « Questions » et « Brouillons ») ──
-// mode='published' → questions en jeu (hidden=false) · mode='drafts' → brouillons (hidden=true).
+// Les quatre modèles de question générique, dans l'ordre où l'API les fabrique.
+const GENERIC_KIND_LABELS={
+  gc_code:    {icon:'🏷️', label:'Code GC'},
+  cache_type: {icon:'🧭', label:'Type de cache'},
+  gc_country: {icon:'🌍', label:'Pays'},
+  rarity:     {icon:'💎', label:'Rareté'},
+};
+const GENERIC_KIND_ORDER=Object.keys(GENERIC_KIND_LABELS);
+
+// ─── Gestionnaire de questions (réutilisé par les trois onglets de « Questions ») ──
+// mode='published' → questions en jeu (hidden=false) · mode='drafts' → brouillons écrits
+// à la main · mode='generic' → les quatre questions fabriquées par l'API pour chaque
+// geocoin d'hommage (code GC, type, pays, rareté).
 // Composant autonome : il charge ses propres données et n'écrit jamais hors de son périmètre
 // (un import de brouillons ne touche pas les questions publiées et inversement).
-function QuestionsManager({mode,setMsg,t}){
+//
+// Les génériques se comptent par centaines et forment un réservoir : ni import CSV, ni
+// publication groupée, ni planification dans ce mode — on y pioche une question à la fois.
+// L'API applique la même règle de son côté (`generic_kind`), le front ne fait que ne pas
+// proposer le bouton.
+function QuestionsManager({mode,setMsg,t,cards}){
   const isDraft = mode==='drafts';
-  const accent = isDraft ? '#e17055' : '#e74c3c';
+  const isGeneric = mode==='generic';
+  const accent = isGeneric ? '#00b894' : isDraft ? '#e17055' : '#e74c3c';
   const [all,setAll]=useState(null);                 // toutes les questions (null = chargement)
   const [editQ,setEditQ]=useState(null);
   const emptyNq=()=>({q:"",a:"",hint:"",alt_answers:[],publish_at:null});
@@ -251,7 +270,14 @@ function QuestionsManager({mode,setMsg,t}){
     if(isDraft) apiGetAdminConfig().then(({data})=>setGlobalPublishAt(data?.config?.drafts_publish_at||null));
   },[isDraft]);
 
-  const items=(all||[]).filter(q=> isDraft ? q.hidden : !q.hidden);
+  // Une question générique publiée à la main reste visible dans « Publiées » — elle
+  // est dans le pool du quiz comme n'importe quelle autre — et dans « Génériques »,
+  // qui montre l'état de chaque geocoin. Seul l'onglet « Brouillons » les écarte :
+  // son bouton « Publier N » les compterait sinon.
+  const items=(all||[]).filter(q=> isGeneric ? !!q.generic_kind : isDraft ? (q.hidden&&!q.generic_kind) : !q.hidden);
+
+  // Nom du geocoin d'une question générique (pool admin déjà chargé par l'onglet Cartes).
+  const cardById=useMemo(()=>{const m={};for(const c of (cards||[]))m[c.id]=c;return m;},[cards]);
 
   // ── Planification globale (publie TOUS les brouillons à une date donnée) ──
   async function saveGlobalSchedule(){
@@ -373,28 +399,100 @@ function QuestionsManager({mode,setMsg,t}){
   };
 
   const Q_PAGE=10;
+  const needle=qSearch.toLowerCase();
+  // En mode générique on cherche aussi sur le NOM DU GEOCOIN : c'est par lui
+  // qu'on arrive ici (« où en est Mingo ? »), pas par le texte de la question.
+  const haystack=q=>[q.q,q.a,q.hint||"",(q.alt_answers||[]).join(" "),isGeneric?(cardById[q.card_id]?.name||""):""].join(" ").toLowerCase();
   const filtered=items.filter(q=>
     (!qFilterReported || ((q.report_count||0)>0 && !resetReports.has(q.id))) &&
-    (q.q.toLowerCase().includes(qSearch.toLowerCase())||
-     q.a.toLowerCase().includes(qSearch.toLowerCase())||
-     (q.hint||"").toLowerCase().includes(qSearch.toLowerCase())||
-     (q.alt_answers||[]).some(a=>a.toLowerCase().includes(qSearch.toLowerCase())))
+    haystack(q).includes(needle)
   );
-  const totalPages=Math.ceil(filtered.length/Q_PAGE);
+
+  // Mode générique : les quatre questions d'un même hommage se lisent ensemble,
+  // donc une « page » vaut des geocoins entiers et non un nombre de questions.
+  const groups=[];
+  if(isGeneric){
+    const byCard=new Map();
+    for(const q of filtered){
+      const k=q.card_id??0;
+      if(!byCard.has(k)) byCard.set(k,[]);
+      byCard.get(k).push(q);
+    }
+    for(const [cardId,qs] of byCard){
+      qs.sort((a,b)=>GENERIC_KIND_ORDER.indexOf(a.generic_kind)-GENERIC_KIND_ORDER.indexOf(b.generic_kind));
+      groups.push({cardId,card:cardById[cardId]||null,questions:qs});
+    }
+    groups.sort((a,b)=>(a.card?.name||"").localeCompare(b.card?.name||""));
+  }
+  const G_PAGE=4;
+  const totalPages=isGeneric?Math.ceil(groups.length/G_PAGE):Math.ceil(filtered.length/Q_PAGE);
   const pg=Math.min(qPage,Math.max(0,totalPages-1));
-  const slice=filtered.slice(pg*Q_PAGE,(pg+1)*Q_PAGE);
+  const slice=isGeneric?[]:filtered.slice(pg*Q_PAGE,(pg+1)*Q_PAGE);
+  const groupSlice=isGeneric?groups.slice(pg*G_PAGE,(pg+1)*G_PAGE):[];
+
+  // Ligne d'une question — identique dans les trois modes, d'où la fonction :
+  // la liste plate et les blocs par geocoin affichent exactement la même chose.
+  const renderRow = q => {
+    const inactive=q.active===false;
+    const kind=q.generic_kind?GENERIC_KIND_LABELS[q.generic_kind]:null;
+    return(
+      <div key={q.id} style={{display:"flex",alignItems:"flex-start",gap:9,background:editQ?.id===q.id?"#f9ca2410":inactive?"#e74c3c08":"#ffffff08",borderRadius:9,padding:"9px 12px",border:`1px solid ${editQ?.id===q.id?"#f9ca2444":inactive?"#e74c3c22":"#ffffff10"}`,opacity:inactive?0.6:1}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:2}}>
+            {kind&&<span title={`Question générique — ${kind.label}`} style={{fontSize:9,fontWeight:900,color:"#00b894",background:"#00b89418",border:"1px solid #00b89440",borderRadius:5,padding:"1px 6px",whiteSpace:"nowrap"}}>{kind.icon} {kind.label}</span>}
+            {/* Publiée = dans le pool du quiz. C'est l'information qu'on cherche
+                dans l'onglet Génériques, où brouillons et publiées cohabitent. */}
+            {q.generic_kind&&<span style={{fontSize:9,fontWeight:800,color:q.hidden?"#8daacc":"#e17055"}}>{q.hidden?"brouillon":"publiée"}</span>}
+            {!kind&&q.generic_kind&&<span style={{fontSize:9,color:"#8daacc"}}>{q.generic_kind}</span>}
+          </div>
+          <div style={{fontSize:12,color:inactive?"#666":"#fff",fontWeight:700,marginBottom:2,textDecoration:inactive?"line-through":"none"}}>{q.q}</div>
+          <div style={{fontSize:11,color:"#00b894",fontWeight:700}}>→ {q.a}</div>
+          {(q.alt_answers||[]).length>0&&<div style={{fontSize:10,color:"#00b894",opacity:.7,marginTop:1}}>∥ {q.alt_answers.join(", ")}</div>}
+          {q.hint&&<div style={{fontSize:10,color:"#a8bfcf",marginTop:2}}>💡 {q.hint}</div>}
+          {q.hidden&&q.publish_at&&<div style={{display:"inline-block",fontSize:10,color:"#f9ca24",fontWeight:800,marginTop:3,background:"#f9ca2418",borderRadius:4,padding:"1px 6px"}}>📅 Publication : {new Date(q.publish_at).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}</div>}
+          {(q.report_count||0)>0&&!resetReports.has(q.id)&&(
+            <div style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:3}}>
+              <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#e74c3c22",border:"1px solid #e74c3c44",borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800,color:"#e74c3c"}}>⚠ {q.report_count} signalement{q.report_count>1?"s":""}</div>
+              <button onClick={()=>resetRep(q)} title="Réinitialiser les signalements" style={{background:"#ffffff12",border:"1px solid #ffffff22",color:"#aaa",padding:"1px 7px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>↺ reset</button>
+            </div>
+          )}
+          {inactive&&<div style={{fontSize:9,color:"#e74c3c",fontWeight:800,marginTop:3}}>DÉSACTIVÉE</div>}
+        </div>
+        <div style={{display:"flex",gap:5,flexShrink:0}}>
+          {/* Publier : sur tout brouillon, générique compris — c'est le seul
+              geste qui sorte une question générique du réservoir. */}
+          {!inactive&&q.hidden&&<button onClick={()=>publishNow(q)} title="Publier maintenant" style={{background:"#e1705522",border:"1px solid #e1705544",color:"#e17055",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>🚀</button>}
+          {!inactive&&<button onClick={()=>{setEditQ(editQ?.id===q.id?null:{...q,alt_answers:q.alt_answers||[]});setAltInput("");}} style={{background:"#f9ca2422",border:"1px solid #f9ca2444",color:"#f9ca24",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>✏️</button>}
+          {!inactive&&<button onClick={()=>setTransQ(transQ?.id===q.id?null:{...q,translations:q.translations||{}})} title="Traduire" style={{background:"#6c5ce722",border:"1px solid #6c5ce744",color:"#a29bfe",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>🌐</button>}
+          <button onClick={()=>toggleActive(q)} style={{background:inactive?"#00b89422":"#e74c3c22",border:`1px solid ${inactive?"#00b89444":"#e74c3c44"}`,color:inactive?"#00b894":"#e74c3c",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{inactive?"✅":"🗑️"}</button>
+        </div>
+      </div>
+    );
+  };
 
   return(
     <div>
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
-        <div style={{flex:1,fontWeight:900,color:accent,fontSize:14}}>{isDraft?"📝 Brouillons":"❓ Questions"} ({items.length})</div>
+        <div style={{flex:1,fontWeight:900,color:accent,fontSize:14}}>{isGeneric?"🧬 Questions génériques":isDraft?"📝 Brouillons":"❓ Questions"} ({items.length})</div>
         {isDraft&&items.length>0&&(
           <button onClick={publishAll} style={{...BTN("linear-gradient(135deg,#e17055,#d63031)"),padding:"5px 11px",fontSize:11,borderRadius:7}} title="Publier tous les brouillons d'un coup">🚀 Publier {items.length}</button>
         )}
-        <button onClick={()=>csvRef.current.click()} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📥 CSV</button>
-        <button onClick={exportCSV} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📤 Export</button>
-        <input ref={csvRef} type="file" accept=".csv" onChange={handleCSV} style={{display:"none"}}/>
+        {!isGeneric&&<>
+          <button onClick={()=>csvRef.current.click()} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📥 CSV</button>
+          <button onClick={exportCSV} style={{...BTN("#ffffff18"),padding:"5px 11px",fontSize:11,borderRadius:7}}>📤 Export</button>
+          <input ref={csvRef} type="file" accept=".csv" onChange={handleCSV} style={{display:"none"}}/>
+        </>}
       </div>
+
+      {isGeneric&&(
+        <div style={{background:"#00b89412",border:"1px solid #00b89440",borderRadius:11,padding:"11px 14px",marginBottom:14,fontSize:12,color:"#a8bfcf",lineHeight:1.5}}>
+          Fabriquées automatiquement à la création d'un geocoin de type <b style={{color:"#fff"}}>Hommages</b>, dans les quatre langues, et
+          <b style={{color:"#fff"}}> tenues à jour</b> tant qu'elles restent en brouillon : corriger le code GC, le poseur ou le pays sur la
+          fiche du geocoin réécrit la question. Une question manquante est une donnée manquante sur la carte.
+          <br/>Elles restent en brouillon jusqu'à ce que tu en publies une (🚀) — ni « Publier tout », ni import CSV, ni planification groupée ne les touchent.
+          <b style={{color:"#fff"}}> Publiée, une question n'est plus jamais réécrite.</b>
+        </div>
+      )}
 
       {/* Planification groupée (brouillons uniquement) : publie TOUS les brouillons à une date donnée */}
       {isDraft&&(
@@ -428,9 +526,11 @@ function QuestionsManager({mode,setMsg,t}){
         </div>
       )}
 
-      {/* Formulaire */}
-      <div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:14}}>
+      {/* Formulaire — en mode générique, uniquement pour ÉDITER : ces questions
+          se fabriquent depuis la fiche du geocoin, pas en les tapant ici. */}
+      {(!isGeneric||editQ)&&<div style={{background:"#ffffff08",borderRadius:11,padding:14,border:"1px solid #ffffff12",marginBottom:14}}>
         <div style={{fontWeight:800,color:"#f9ca24",marginBottom:9,fontSize:13}}>{editQ?"✏️ Éditer":(isDraft?"➕ Nouveau brouillon":"➕ Nouvelle question")}</div>
+        {isGeneric&&editQ&&<div style={{fontSize:11,color:"#e17055",fontWeight:700,marginBottom:8}}>⚠️ Tant que cette question est en brouillon, une modification de la fiche du geocoin la réécrira. Publie-la pour figer ton texte.</div>}
         <Fld lbl="Question"><input value={cur.q} onChange={e=>set({...cur,q:e.target.value})} style={INP} placeholder={t("admin_q_placeholder")}/></Fld>
         <Fld lbl="Réponse attendue"><input value={cur.a} onChange={e=>set({...cur,a:e.target.value})} style={INP} placeholder={t("admin_q_answer_placeholder")||"Réponse exacte"}/></Fld>
         <Fld lbl="Réponses alternatives">
@@ -465,7 +565,7 @@ function QuestionsManager({mode,setMsg,t}){
             <button onClick={addQuestion} style={{...BTN("linear-gradient(135deg,#e74c3c,#c0392b)"),padding:"8px 16px",borderRadius:8,fontSize:12}}>Ajouter</button>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Recherche + pagination */}
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
@@ -476,32 +576,27 @@ function QuestionsManager({mode,setMsg,t}){
         </button>
         <span style={{fontSize:11,color:"#8daacc",whiteSpace:"nowrap",fontWeight:700}}>{filtered.length}/{items.length}</span>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-        {slice.length===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"18px 0",fontSize:12}}>{isDraft?"Aucun brouillon.":"Aucune question trouvée."}</div>}
-        {slice.map(q=>{const inactive=q.active===false;return(
-          <div key={q.id} style={{display:"flex",alignItems:"flex-start",gap:9,background:editQ?.id===q.id?"#f9ca2410":inactive?"#e74c3c08":"#ffffff08",borderRadius:9,padding:"9px 12px",border:`1px solid ${editQ?.id===q.id?"#f9ca2444":inactive?"#e74c3c22":"#ffffff10"}`,opacity:inactive?0.6:1}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:12,color:inactive?"#666":"#fff",fontWeight:700,marginBottom:2,textDecoration:inactive?"line-through":"none"}}>{q.q}</div>
-              <div style={{fontSize:11,color:"#00b894",fontWeight:700}}>→ {q.a}</div>
-              {(q.alt_answers||[]).length>0&&<div style={{fontSize:10,color:"#00b894",opacity:.7,marginTop:1}}>∥ {q.alt_answers.join(", ")}</div>}
-              {q.hint&&<div style={{fontSize:10,color:"#a8bfcf",marginTop:2}}>💡 {q.hint}</div>}
-              {isDraft&&q.publish_at&&<div style={{display:"inline-block",fontSize:10,color:"#f9ca24",fontWeight:800,marginTop:3,background:"#f9ca2418",borderRadius:4,padding:"1px 6px"}}>📅 Publication : {new Date(q.publish_at).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}</div>}
-              {(q.report_count||0)>0&&!resetReports.has(q.id)&&(
-                <div style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:3}}>
-                  <div style={{display:"inline-flex",alignItems:"center",gap:4,background:"#e74c3c22",border:"1px solid #e74c3c44",borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800,color:"#e74c3c"}}>⚠ {q.report_count} signalement{q.report_count>1?"s":""}</div>
-                  <button onClick={()=>resetRep(q)} title="Réinitialiser les signalements" style={{background:"#ffffff12",border:"1px solid #ffffff22",color:"#aaa",padding:"1px 7px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>↺ reset</button>
-                </div>
-              )}
-              {inactive&&<div style={{fontSize:9,color:"#e74c3c",fontWeight:800,marginTop:3}}>DÉSACTIVÉE</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:isGeneric?12:6,marginBottom:10}}>
+        {(isGeneric?groupSlice.length:slice.length)===0&&<div style={{textAlign:"center",color:"#a8bfcf",padding:"18px 0",fontSize:12}}>{isGeneric?"Aucune question générique. Elles apparaissent à la création d'un geocoin d'hommage dont la cache est renseignée.":isDraft?"Aucun brouillon.":"Aucune question trouvée."}</div>}
+
+        {/* Mode générique : un bloc par geocoin, ses questions dedans. */}
+        {groupSlice.map(g=>(
+          <div key={g.cardId} style={{background:"#00b8940a",border:"1px solid #00b89430",borderRadius:11,padding:"10px 12px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:7}}>
+              <span style={{fontWeight:900,color:"#00b894",fontSize:13}}>{g.card?.name||`Geocoin supprimé (#${g.cardId||"?"})`}</span>
+              {g.card?.gc_code&&<span style={{fontSize:10,fontWeight:800,color:"#74b9ff",background:"#74b9ff18",borderRadius:5,padding:"1px 6px"}}>{g.card.gc_code}</span>}
+              {g.card?.rarity&&<span style={{fontSize:10,fontWeight:800,color:RC[g.card.rarity]?.color||"#aaa"}}>{RC[g.card.rarity]?.label||g.card.rarity}</span>}
+              {g.card?.hidden&&<span style={{fontSize:10,fontWeight:800,color:"#e17055"}}>carte cachée</span>}
+              <span style={{marginLeft:"auto",fontSize:10,color:"#8daacc",fontWeight:700}}>
+                {g.questions.filter(q=>!q.hidden).length}/{g.questions.length} publiée(s)
+                {g.questions.length<4&&<span style={{color:"#e17055"}}> · {4-g.questions.length} manquante(s)</span>}
+              </span>
             </div>
-            <div style={{display:"flex",gap:5,flexShrink:0}}>
-              {!inactive&&isDraft&&<button onClick={()=>publishNow(q)} title="Publier maintenant" style={{background:"#e1705522",border:"1px solid #e1705544",color:"#e17055",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>🚀</button>}
-              {!inactive&&<button onClick={()=>{setEditQ(editQ?.id===q.id?null:{...q,alt_answers:q.alt_answers||[]});setAltInput("");}} style={{background:"#f9ca2422",border:"1px solid #f9ca2444",color:"#f9ca24",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>✏️</button>}
-              {!inactive&&<button onClick={()=>setTransQ(transQ?.id===q.id?null:{...q,translations:q.translations||{}})} title="Traduire" style={{background:"#6c5ce722",border:"1px solid #6c5ce744",color:"#a29bfe",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>🌐</button>}
-              <button onClick={()=>toggleActive(q)} style={{background:inactive?"#00b89422":"#e74c3c22",border:`1px solid ${inactive?"#00b89444":"#e74c3c44"}`,color:inactive?"#00b894":"#e74c3c",padding:"4px 9px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{inactive?"✅":"🗑️"}</button>
-            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>{g.questions.map(renderRow)}</div>
           </div>
-        );})}
+        ))}
+
+        {slice.map(renderRow)}
       </div>
       {totalPages>1&&(
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
@@ -940,13 +1035,13 @@ export default function AdminPanel({cardPool,cardTypes,questions,limits,maintena
 
         {/* ── QUESTIONS (publiées) ── */}
         {tab==="questions"&&<div>
-          <div style={{display:"flex",gap:8,marginBottom:14}}>
-            {[['published','❓ Publiées'],['drafts','📝 Brouillons']].map(([v,l])=>(
+          <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+            {[['published','❓ Publiées'],['drafts','📝 Brouillons'],['generic','🧬 Génériques']].map(([v,l])=>(
               <button key={v} onClick={()=>setQMode(v)}
                 style={{background:qMode===v?"#e74c3c":"#ffffff18",border:"none",color:"#fff",padding:"7px 16px",borderRadius:50,fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{l}</button>
             ))}
           </div>
-          <QuestionsManager key={qMode} mode={qMode} setMsg={setMsg} t={t}/>
+          <QuestionsManager key={qMode} mode={qMode} setMsg={setMsg} t={t} cards={cardPool}/>
         </div>}
 
         {/* ── QUIZ CONFIG ── */}
